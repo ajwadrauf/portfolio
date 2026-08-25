@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AD_PRESETS, AD_VIDEO_MODELS, getAdPreset, type AudioMode } from "@/lib/adPresets";
-import { MUSIC_MODEL_ID, MUSIC_STYLES } from "@/lib/music";
+import {
+  MUSIC_HANDLE_SECONDS,
+  MUSIC_MODEL_ID,
+  MUSIC_STYLES,
+  SYNC_CAVEATS,
+  musicLengthFor,
+} from "@/lib/music";
 import { MODELS, estimateCost } from "@/lib/models";
 
 type Phase = "idle" | "composing" | "ready" | "starting" | "polling" | "done" | "failed" | "mock";
@@ -67,7 +73,9 @@ export function AdLab() {
 
   const preset = getAdPreset(presetId);
   const videoCost = estimateCost(modelId, { seconds: preset.durationSeconds });
-  const musicCost = estimateCost(MUSIC_MODEL_ID, { seconds: preset.durationSeconds });
+  const musicCost = estimateCost(MUSIC_MODEL_ID, {
+    seconds: musicLengthFor(preset.durationSeconds),
+  });
   const cost = videoCost + (audioMode === "layered" ? musicCost : 0);
 
   useEffect(() => {
@@ -498,7 +506,11 @@ export function AdLab() {
                     onClick={() => void generateMusic()}
                     disabled={musicBusy}
                   >
-                    {musicBusy ? "Composing…" : musicUrl ? "Regenerate music" : `Generate music (~$${musicCost.toFixed(2)})`}
+                    {musicBusy
+                      ? "Composing…"
+                      : musicUrl
+                        ? "Regenerate music"
+                        : `Generate music (${preset.durationSeconds + MUSIC_HANDLE_SECONDS}s, ~$${musicCost.toFixed(2)})`}
                   </button>
                   {musicUrl && <span className="chip border-success/40 text-success">track ready</span>}
                 </div>
@@ -514,13 +526,32 @@ export function AdLab() {
                     >
                       Download track
                     </a>
+                    <p className="mt-1 text-xs text-muted">
+                      Generated {MUSIC_HANDLE_SECONDS}s longer than the cut for
+                      trim handles — slide a downbeat onto the price stamp in
+                      the edit.
+                    </p>
                   </div>
                 )}
-                <p className="mt-3 text-xs text-muted">
-                  Preview plays both layers in sync below. For final delivery,
-                  drop the MP4 and the track into your editor — that mix is a
-                  finishing step, not a generation step.
-                </p>
+                {preset.beatSensitive && (
+                  <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                    <span className="font-bold">Beat-sensitive concept.</span>{" "}
+                    This preset cuts its action to a musical pulse, but the bed
+                    is composed without seeing the video — the beats will not
+                    line up on their own. Budget an alignment pass in the
+                    editor, or pick a pad-like style that hides drift.
+                  </p>
+                )}
+                <details className="mt-3 rounded-lg border border-border-soft bg-surface-2 p-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                    What layered audio does and doesn&apos;t guarantee
+                  </summary>
+                  <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-muted">
+                    {SYNC_CAVEATS.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </details>
               </>
             )}
           </div>

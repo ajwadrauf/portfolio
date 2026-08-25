@@ -29,6 +29,12 @@ export type AdPreset = {
   sfx: string[];
   /** Default music-bed style id (see lib/music.ts) for the separate score layer. */
   musicStyleId: string;
+  /**
+   * True when the concept's action is cut to a musical pulse. A blindly
+   * composed bed will visibly drift against these, so they need a manual
+   * alignment pass in the edit.
+   */
+  beatSensitive?: boolean;
   fields: AdField[];
   /** Deterministic template — the baseline prompt before AI composition. */
   template: (p: Record<string, string>, audioMode: AudioMode) => string;
@@ -184,6 +190,7 @@ export const AD_PRESETS: AdPreset[] = [
       "Big final stamp sound with the price.",
     ],
     musicStyleId: "punchy-electronic",
+    beatSensitive: true,
     fields: [
       { key: "product", label: "Product", placeholder: "a can of sparkling water", example: "a teal can of sparkling water" },
       { key: "bg", label: "Background color", placeholder: "hot coral", example: "hot coral" },

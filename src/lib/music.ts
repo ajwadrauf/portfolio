@@ -63,3 +63,26 @@ export const getMusicStyle = (id: string): MusicStyle => {
 };
 
 export const MUSIC_MODEL_ID = "eleven-music";
+
+/**
+ * Beds are generated longer than the cut so the edit has trim handles at both
+ * ends. Music models only approximate a requested length, and a track that
+ * runs out two frames early is unusable — one that runs long is just trimmed.
+ */
+export const MUSIC_HANDLE_SECONDS = 2;
+
+export const musicLengthFor = (cutSeconds: number) => cutSeconds + MUSIC_HANDLE_SECONDS;
+
+/**
+ * What the layered-audio approach does and does not guarantee. Surfaced in the
+ * UI on purpose: a demo that states its own limits is more useful than one
+ * that implies the mix is finished.
+ */
+export const SYNC_CAVEATS = [
+  "Sound effects sync; music does not. Veo generates SFX from the picture it just made, so hits land. The music model never sees the video — it composes from text alone.",
+  "You get two files, not one. Nothing is muxed: the finished ad exists after you combine the MP4 and the track in an editor.",
+  "The preview is an approximation. Two media elements synced on play/pause/seek — enough to judge the vibe, not sample-accurate.",
+  `The bed is generated ${MUSIC_HANDLE_SECONDS}s longer than the cut, giving you handles to slide a downbeat onto the money moment.`,
+  "No mix is applied — no ducking under SFX, no level matching, no mastering.",
+  "Expect variance: 2–4 generations to land one you like.",
+];
