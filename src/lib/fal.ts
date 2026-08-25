@@ -57,6 +57,31 @@ export async function falGenerateImage(opts: {
   return { url };
 }
 
+/**
+ * Music generation (ElevenLabs Music). Tracks this short return in seconds,
+ * so a blocking subscribe is fine — no queue/poll needed.
+ */
+export async function falGenerateMusic(opts: {
+  endpoint: string;
+  prompt: string;
+  durationSeconds: number;
+}): Promise<{ url: string }> {
+  const f = client();
+  const result = await f.subscribe(opts.endpoint, {
+    input: {
+      prompt: opts.prompt,
+      // API accepts 3_000 – 600_000 ms.
+      music_length_ms: Math.min(Math.max(Math.round(opts.durationSeconds * 1000), 3000), 600000),
+    },
+    logs: false,
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = result.data as any;
+  const url: string | undefined = data?.audio?.url ?? data?.audio_url ?? data?.audio_file?.url;
+  if (!url) throw new Error(`Music model returned no audio URL (endpoint ${opts.endpoint})`);
+  return { url };
+}
+
 /** Queue a fal video job (Kling image-to-video). Returns the request id for polling. */
 export async function falStartVideo(opts: {
   endpoint: string;

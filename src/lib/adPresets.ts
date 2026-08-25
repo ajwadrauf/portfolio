@@ -25,11 +25,28 @@ export type AdPreset = {
   aesthetics: string[];
   scenes: { title: string; description: string }[];
   overlay: string;
-  audio: string[];
+  /** Sound design the VIDEO model renders — effects and ambience, never music. */
+  sfx: string[];
+  /** Default music-bed style id (see lib/music.ts) for the separate score layer. */
+  musicStyleId: string;
   fields: AdField[];
   /** Deterministic template — the baseline prompt before AI composition. */
-  template: (p: Record<string, string>) => string;
+  template: (p: Record<string, string>, audioMode: AudioMode) => string;
 };
+
+/**
+ * native  — let the video model handle all audio, music included (weaker music).
+ * layered — video model renders SFX only; a music model scores it separately.
+ */
+export type AudioMode = "native" | "layered";
+
+/** Builds the trailing Audio: cue for a prompt, given the chosen mode. */
+export function audioCue(sfx: string[], audioMode: AudioMode, nativeMusic: string): string {
+  const effects = sfx.join(" ");
+  return audioMode === "layered"
+    ? `Audio: ${effects} Sound effects and ambience only — no music, no musical score, no soundtrack.`
+    : `Audio: ${effects} ${nativeMusic}`;
+}
 
 const COMMON_FIELDS: AdField[] = [
   { key: "brand", label: "Brand name", placeholder: "KOLDA", example: "KOLDA" },
@@ -60,11 +77,12 @@ export const AD_PRESETS: AdPreset[] = [
       { title: "Text overlay", description: "Bold stark text snaps on: brand top-left, tagline middle-left, price bottom-right." },
     ],
     overlay: "Brand name top-left, tagline middle-left, price bottom-right — bold, stark, snapping on in sync with the final audio cue.",
-    audio: [
-      "Quirky, upbeat, staccato synth track.",
-      "Rewind / reverse-playback distortion matching the reverse visuals.",
+    sfx: [
+      "Rewind / reverse-playback whoosh distortion matching the reverse visuals.",
+      "Utensil clinks and soft food movement, played backwards.",
       "Crisp cash-register ding synced to the price text appearing.",
     ],
+    musicStyleId: "playful-indie",
     fields: [
       { key: "product", label: "Product (raw, packaged)", placeholder: "a bag of spaghetti", example: "a bag of dried spaghetti in simple packaging" },
       { key: "plated", label: "Finished form (plated)", placeholder: "a white bowl of spaghetti with red sauce", example: "a white bowl of spaghetti topped with rich red tomato sauce" },
@@ -72,8 +90,8 @@ export const AD_PRESETS: AdPreset[] = [
       { key: "bg", label: "Background color", placeholder: "ultra-bright yellow", example: "ultra-bright yellow" },
       ...COMMON_FIELDS,
     ],
-    template: (p) =>
-      `Top-down overhead flat-lay on a ${p.bg} monochromatic background, static camera, snappy high-contrast stop-motion aesthetic. Reverse-chronological sequence: it opens on ${p.plated} centered in frame; a human hand pulls the plate away; a ladle scoops the topping off in fluid reverse-gravity motion; tongs lift the cooked base up and out of frame; the food abruptly transforms to its raw state, flying backward out of ${p.vessel} and sliding into ${p.product}; a hand places the packaged product flat on the background. Bold stark text snaps on at the end: "${p.brand}" top-left, "${p.tagline}" middle-left, "${p.price}" bottom-right. Audio: quirky upbeat staccato synth with a rewind reverse-playback distortion throughout, ending on a crisp cash-register ding synced to the price appearing.`,
+    template: (p, mode) =>
+      `Top-down overhead flat-lay on a ${p.bg} monochromatic background, static camera, snappy high-contrast stop-motion aesthetic. Reverse-chronological sequence: it opens on ${p.plated} centered in frame; a human hand pulls the plate away; a ladle scoops the topping off in fluid reverse-gravity motion; tongs lift the cooked base up and out of frame; the food abruptly transforms to its raw state, flying backward out of ${p.vessel} and sliding into ${p.product}; a hand places the packaged product flat on the background. Bold stark text snaps on at the end: "${p.brand}" top-left, "${p.tagline}" middle-left, "${p.price}" bottom-right. ${audioCue(["Rewind reverse-playback whoosh throughout, backwards utensil clinks and food movement, and a crisp cash-register ding synced to the price appearing."], mode, "Underscored by a quirky upbeat staccato synth track.")}`,
   },
   {
     id: "anti-gravity",
@@ -95,19 +113,20 @@ export const AD_PRESETS: AdPreset[] = [
       { title: "Text overlay", description: "Brand and tagline fade in beside the product; price stamps bottom-right." },
     ],
     overlay: "Brand and tagline beside the product, price stamping bottom-right on the final beat.",
-    audio: [
-      "Airy, minimal electronic track with rising anticipation.",
-      "Soft whoosh accents as ingredients move; one satisfying click at assembly.",
-      "Warm pop on the price stamp.",
+    sfx: [
+      "Soft airy whoosh accents as each ingredient floats and orbits.",
+      "One satisfying mechanical click at the moment of assembly.",
+      "Warm pop synced to the price stamp.",
     ],
+    musicStyleId: "premium-cinematic",
     fields: [
       { key: "ingredients", label: "Ingredients (floating)", placeholder: "coffee beans, a cinnamon stick...", example: "glossy roasted coffee beans and a curl of steam" },
       { key: "product", label: "Finished product", placeholder: "a bag of coffee", example: "a kraft bag of dark roast whole-bean coffee" },
       { key: "bg", label: "Background color", placeholder: "deep forest green", example: "deep forest green" },
       ...COMMON_FIELDS,
     ],
-    template: (p) =>
-      `Eye-level macro studio shot on a ${p.bg} seamless background, soft dimensional lighting, slow subtle push-in. ${p.ingredients} rise weightlessly from the bottom of frame, rotating slowly, then orbit a central point and converge, snapping together mid-air into ${p.product}. The finished product settles gently onto a clean surface with one soft bounce and poses as a hero shot. Text fades in beside it: "${p.brand}" with the tagline "${p.tagline}", and "${p.price}" stamps bottom-right on the final beat. Audio: airy minimal electronic track building anticipation, soft whooshes with the floating motion, a satisfying click at assembly, and a warm pop synced to the price stamp.`,
+    template: (p, mode) =>
+      `Eye-level macro studio shot on a ${p.bg} seamless background, soft dimensional lighting, slow subtle push-in. ${p.ingredients} rise weightlessly from the bottom of frame, rotating slowly, then orbit a central point and converge, snapping together mid-air into ${p.product}. The finished product settles gently onto a clean surface with one soft bounce and poses as a hero shot. Text fades in beside it: "${p.brand}" with the tagline "${p.tagline}", and "${p.price}" stamps bottom-right on the final beat. ${audioCue(["Soft airy whooshes with the floating motion, a satisfying click at assembly, and a warm pop synced to the price stamp."], mode, "Underscored by an airy minimal electronic track building anticipation.")}`,
   },
   {
     id: "macro-loop",
@@ -127,17 +146,18 @@ export const AD_PRESETS: AdPreset[] = [
       { title: "The loop point", description: "The action resolves back to the opening framing so the clip loops invisibly." },
     ],
     overlay: "Minimal: a small brand watermark bottom corner only — the texture carries the ad.",
-    audio: [
-      "ASMR-forward: the action's real sound, close-mic'd and crisp.",
-      "No music, or a barely-there ambient pad.",
+    sfx: [
+      "ASMR-forward: the action's real sound, close-mic'd, crisp and intimate.",
+      "Nothing else in the mix — the texture carries it.",
     ],
+    musicStyleId: "minimal-ambient",
     fields: [
       { key: "product", label: "Product surface", placeholder: "sparkling water over ice", example: "sparkling water cascading over clear ice cubes" },
       { key: "action", label: "The satisfying action", placeholder: "a slow pour with rising bubbles", example: "a slow pour, bubbles racing to the surface in slow motion" },
       ...COMMON_FIELDS.filter((f) => f.key === "brand"),
     ],
-    template: (p) =>
-      `Extreme macro close-up, shallow depth of field, rich natural lighting raking across the surface. ${p.product}: ${p.action}, unfolding in luxurious slow motion. The action resolves back to the exact opening framing so the clip loops seamlessly. A small "${p.brand}" watermark sits in the bottom corner; no other text. Audio: ASMR-forward — the real sound of the action, close-mic'd, crisp and intimate, with no music.`,
+    template: (p, mode) =>
+      `Extreme macro close-up, shallow depth of field, rich natural lighting raking across the surface. ${p.product}: ${p.action}, unfolding in luxurious slow motion. The action resolves back to the exact opening framing so the clip loops seamlessly. A small "${p.brand}" watermark sits in the bottom corner; no other text. ${audioCue(["ASMR-forward — the real sound of the action, close-mic'd, crisp and intimate."], mode, "No music.")}`,
   },
   {
     id: "multiply-grid",
@@ -158,18 +178,19 @@ export const AD_PRESETS: AdPreset[] = [
       { title: "The price", description: "Everything scales down slightly and the price stamps into the center gap." },
     ],
     overlay: "Brand name small at top; the price is the hero, stamping dead-center on the final beat.",
-    audio: [
-      "Percussive, beat-driven track — every duplication lands on a hit.",
+    sfx: [
       "Snappy stop-motion foley for each product landing.",
+      "Rhythmic thuds as the grid multiplies.",
       "Big final stamp sound with the price.",
     ],
+    musicStyleId: "punchy-electronic",
     fields: [
       { key: "product", label: "Product", placeholder: "a can of sparkling water", example: "a teal can of sparkling water" },
       { key: "bg", label: "Background color", placeholder: "hot coral", example: "hot coral" },
       ...COMMON_FIELDS,
     ],
-    template: (p) =>
-      `Top-down flat-lay on a ${p.bg} seamless background, static camera, punchy stop-motion rhythm with hard graphic shadows. ${p.product} lands center-frame with a thud; on each musical beat it duplicates — one, two, four, eight — snapping into a perfect tidy grid that fills the frame edge to edge. The grid scales down slightly and "${p.price}" stamps dead-center on the final beat, with "${p.brand}" small at the top and the tagline "${p.tagline}" beneath it. Audio: percussive beat-driven track where every duplication lands on a hit, snappy stop-motion foley per landing, and a big stamp sound with the price.`,
+    template: (p, mode) =>
+      `Top-down flat-lay on a ${p.bg} seamless background, static camera, punchy stop-motion rhythm with hard graphic shadows. ${p.product} lands center-frame with a thud; on each beat it duplicates — one, two, four, eight — snapping into a perfect tidy grid that fills the frame edge to edge. The grid scales down slightly and "${p.price}" stamps dead-center on the final beat, with "${p.brand}" small at the top and the tagline "${p.tagline}" beneath it. ${audioCue(["Snappy stop-motion foley on every product landing, rhythmic thuds as the grid multiplies, and a big stamp sound with the price."], mode, "Underscored by a percussive beat-driven track where every duplication lands on a hit.")}`,
   },
 ];
 

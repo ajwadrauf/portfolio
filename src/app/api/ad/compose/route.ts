@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AD_NEGATIVE_PROMPT, getAdPreset } from "@/lib/adPresets";
+import { AD_NEGATIVE_PROMPT, getAdPreset, type AudioMode } from "@/lib/adPresets";
 import { reasonJson } from "@/lib/gemini";
 import { hasGeminiKey, isDryRun } from "@/lib/models";
 
@@ -27,12 +27,14 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       presetId: string;
       params: Record<string, string>;
+      audioMode?: AudioMode;
     };
     const preset = getAdPreset(body.presetId);
     const params = Object.fromEntries(
       preset.fields.map((f) => [f.key, (body.params?.[f.key] ?? "").trim() || f.placeholder]),
     );
-    const baseline = preset.template(params);
+    const audioMode: AudioMode = body.audioMode ?? "layered";
+    const baseline = preset.template(params, audioMode);
 
     if (!hasGeminiKey() || isDryRun()) {
       return NextResponse.json({
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
     const result = await reasonJson({
       prompt: `You are a creative director finalizing a short-form product ad prompt for Google Veo (native synchronized audio; text in quotes renders as on-screen or spoken content).
 
-The ad concept is a fixed preset — do NOT change its concept, camera style, structure or audio design. Your job is to polish the draft prompt below into the strongest possible ${preset.durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, keep the Audio: cue, and keep it as one flowing prompt of 4-8 sentences. No real-world brand names other than the quoted brand text.
+The ad concept is a fixed preset — do NOT change its concept, camera style, structure or audio design. Your job is to polish the draft prompt below into the strongest possible ${preset.durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, and keep it as one flowing prompt of 4-8 sentences. Preserve the Audio: cue's instructions exactly in spirit — ${audioMode === "layered" ? "in particular it MUST still forbid music/score/soundtrack, because the music bed is composed separately and layered in" : "including its musical direction"}. No real-world brand names other than the quoted brand text.
 
 Preset: ${preset.name} — ${preset.hook}
 

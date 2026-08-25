@@ -19,8 +19,8 @@ export type ModelInfo = {
   /** Provider-side model ID / endpoint slug (env-overridable). */
   endpoint: string;
   label: string;
-  kind: "image" | "video";
-  /** USD. Images: per image. Video: per second. */
+  kind: "image" | "video" | "music";
+  /** USD. Images: per image. Video/music: per second. */
   unitCost: number;
   unit: "image" | "second";
   strengths: string;
@@ -124,6 +124,21 @@ export const MODELS: Record<string, ModelInfo> = {
     strengths:
       "4-7x cheaper than alternatives, uniquely strong multi-shot subject consistency.",
     bestFor: "Cost-efficient social cutdowns; same product across many shots.",
+  },
+
+  // ---------------- Music ----------------
+  "eleven-music": {
+    id: "eleven-music",
+    provider: "fal",
+    endpoint: env("FAL_MUSIC_ENDPOINT", "fal-ai/elevenlabs/music"),
+    label: "ElevenLabs Music (via fal.ai)",
+    kind: "music",
+    unitCost: 0.0133, // ~$0.80 / minute
+    unit: "second",
+    strengths:
+      "Generates an actual composed track — genre, tempo, instrumentation and arrangement — from 3s to 10 minutes.",
+    bestFor:
+      "The music bed under an ad. Video models render SFX and ambience well but do not compose music; this layer does.",
   },
 };
 

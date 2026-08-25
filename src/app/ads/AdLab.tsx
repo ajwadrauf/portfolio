@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AD_PRESETS, AD_VIDEO_MODELS, getAdPreset } from "@/lib/adPresets";
+import { AD_PRESETS, AD_VIDEO_MODELS, getAdPreset, type AudioMode } from "@/lib/adPresets";
+import { MUSIC_MODEL_ID, MUSIC_STYLES } from "@/lib/music";
 import { MODELS, estimateCost } from "@/lib/models";
 
 type Phase = "idle" | "composing" | "ready" | "starting" | "polling" | "done" | "failed" | "mock";
@@ -55,8 +56,19 @@ export function AdLab() {
   const [sessionSpend, setSessionSpend] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // Audio layer
+  const [audioMode, setAudioMode] = useState<AudioMode>("layered");
+  const [musicStyleId, setMusicStyleId] = useState<string>(AD_PRESETS[0].musicStyleId);
+  const [musicUrl, setMusicUrl] = useState<string | null>(null);
+  const [musicBusy, setMusicBusy] = useState(false);
+  const [musicOn, setMusicOn] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
   const preset = getAdPreset(presetId);
-  const cost = estimateCost(modelId, { seconds: preset.durationSeconds });
+  const videoCost = estimateCost(modelId, { seconds: preset.durationSeconds });
+  const musicCost = estimateCost(MUSIC_MODEL_ID, { seconds: preset.durationSeconds });
+  const cost = videoCost + (audioMode === "layered" ? musicCost : 0);
 
   useEffect(() => {
     fetch("/api/health")
@@ -80,6 +92,8 @@ export function AdLab() {
 
   const selectPreset = useCallback((id: string) => {
     setPresetId(id);
+    setMusicStyleId(getAdPreset(id).musicStyleId);
+    setMusicUrl(null);
     setParams({});
     setFinalPrompt("");
     setNegativePrompt("");
@@ -100,7 +114,7 @@ export function AdLab() {
       const res = await fetch("/api/ad/compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presetId, params }),
+        body: JSON.stringify({ presetId, params, audioMode }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Compose failed");
@@ -111,7 +125,44 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Compose failed");
       setPhase("idle");
     }
-  }, [params, presetId]);
+  }, [audioMode, params, presetId]);
+
+  const generateMusic = useCallback(async () => {
+    setError(null);
+    setMusicBusy(true);
+    try {
+      const res = await fetch("/api/ad/music", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ styleId: musicStyleId, durationSeconds: preset.durationSeconds }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Music generation failed");
+      if (!json.mock) addSpend(json.cost ?? 0);
+      setMusicUrl(json.audioUrl);
+      setMusicOn(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Music generation failed");
+    } finally {
+      setMusicBusy(false);
+    }
+  }, [addSpend, musicStyleId, preset.durationSeconds]);
+
+  /** Keep the separately generated music bed locked to the video's transport. */
+  const syncAudio = useCallback(
+    (action: "play" | "pause" | "seek") => {
+      const v = videoRef.current;
+      const a = audioRef.current;
+      if (!v || !a) return;
+      if (action === "pause") {
+        a.pause();
+        return;
+      }
+      a.currentTime = Math.min(v.currentTime, a.duration || v.currentTime);
+      if (action === "play" && musicOn) void a.play().catch(() => {});
+    },
+    [musicOn],
+  );
 
   const generate = useCallback(async () => {
     setError(null);
@@ -124,6 +175,8 @@ export function AdLab() {
     setPhase("starting");
     setVideoUrl(null);
     setPosterDataUrl(null);
+    // Score in parallel with the render — music returns in seconds, video in minutes.
+    if (audioMode === "layered" && !musicUrl) void generateMusic();
     try {
       const res = await fetch("/api/ad/start", {
         method: "POST",
@@ -181,7 +234,7 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Generation failed");
       setPhase("failed");
     }
-  }, [addSpend, cost, finalPrompt, health, modelId, negativePrompt, preset, productImage]);
+  }, [addSpend, audioMode, cost, finalPrompt, generateMusic, health, modelId, musicUrl, negativePrompt, preset, productImage]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -252,13 +305,19 @@ export function AdLab() {
                   ))}
                 </ul>
                 <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-accent">
-                  Audio design
+                  Sound design (rendered by the video model)
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
-                  {preset.audio.map((a) => (
+                  {preset.sfx.map((a) => (
                     <li key={a}>{a}</li>
                   ))}
                 </ul>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-accent">
+                  Music bed (scored separately)
+                </p>
+                <p className="mt-2 text-sm text-muted">
+                  {MUSIC_STYLES.find((m) => m.id === musicStyleId)?.prompt}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-accent">
@@ -378,6 +437,95 @@ export function AdLab() {
         {/* right — model, generate, result */}
         <div className="space-y-6">
           <div className="card p-5">
+            <h2 className="font-semibold">Audio</h2>
+            <div className="mt-3 space-y-2">
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border-soft bg-surface p-3">
+                <input
+                  type="radio"
+                  name="audioMode"
+                  className="mt-1 accent-[var(--accent)]"
+                  checked={audioMode === "layered"}
+                  onChange={() => setAudioMode("layered")}
+                />
+                <span>
+                  <span className="text-sm font-semibold">Layered — SFX + composed music</span>
+                  <span className="mt-0.5 block text-xs text-muted">
+                    Veo renders sound effects only; a music model scores a real
+                    track. How a studio actually does it.
+                  </span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border-soft bg-surface p-3">
+                <input
+                  type="radio"
+                  name="audioMode"
+                  className="mt-1 accent-[var(--accent)]"
+                  checked={audioMode === "native"}
+                  onChange={() => setAudioMode("native")}
+                />
+                <span>
+                  <span className="text-sm font-semibold">Native only — Veo does everything</span>
+                  <span className="mt-0.5 block text-xs text-muted">
+                    One call, but video models approximate music rather than
+                    composing it.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            {audioMode === "layered" && (
+              <>
+                <label className="mt-4 block">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+                    Music style
+                  </span>
+                  <select
+                    className="input"
+                    value={musicStyleId}
+                    onChange={(e) => {
+                      setMusicStyleId(e.target.value);
+                      setMusicUrl(null);
+                    }}
+                  >
+                    {MUSIC_STYLES.map((m) => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    className="btn-secondary !px-3 !py-1.5 text-xs"
+                    onClick={() => void generateMusic()}
+                    disabled={musicBusy}
+                  >
+                    {musicBusy ? "Composing…" : musicUrl ? "Regenerate music" : `Generate music (~$${musicCost.toFixed(2)})`}
+                  </button>
+                  {musicUrl && <span className="chip border-success/40 text-success">track ready</span>}
+                </div>
+                {musicUrl && (
+                  <div className="mt-3">
+                    <audio src={musicUrl} controls className="w-full" />
+                    <a
+                      href={musicUrl}
+                      download={`${preset.id}-music`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
+                    >
+                      Download track
+                    </a>
+                  </div>
+                )}
+                <p className="mt-3 text-xs text-muted">
+                  Preview plays both layers in sync below. For final delivery,
+                  drop the MP4 and the track into your editor — that mix is a
+                  finishing step, not a generation step.
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="card p-5">
             <h2 className="font-semibold">Generate</h2>
             <label className="mt-3 block">
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
@@ -403,6 +551,11 @@ export function AdLab() {
               <div className="text-sm text-muted">
                 {preset.durationSeconds}s · {preset.aspect} ·{" "}
                 <span className="font-bold text-accent">~${cost.toFixed(2)}</span>
+                {audioMode === "layered" && (
+                  <span className="block text-xs">
+                    video ${videoCost.toFixed(2)} + music ${musicCost.toFixed(2)}
+                  </span>
+                )}
                 {health && !health.live && (
                   <span className="ml-1 text-xs text-warning">(demo — $0)</span>
                 )}
@@ -425,10 +578,15 @@ export function AdLab() {
               <div className={`relative w-full bg-surface-2 ${ASPECT_CLASS[preset.aspect]}`}>
                 {videoUrl ? (
                   <video
+                    ref={videoRef}
                     src={videoUrl}
                     controls
                     playsInline
                     className="absolute inset-0 h-full w-full object-cover"
+                    onPlay={() => syncAudio("play")}
+                    onPause={() => syncAudio("pause")}
+                    onSeeked={() => syncAudio("seek")}
+                    onEnded={() => syncAudio("pause")}
                   />
                 ) : posterDataUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -457,15 +615,47 @@ export function AdLab() {
               </div>
               {videoUrl && (
                 <div className="p-4">
-                  <a
-                    href={videoUrl}
-                    download={`${preset.id}-ad.mp4`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-accent hover:underline"
-                  >
-                    Download MP4
-                  </a>
+                  {musicUrl && audioMode === "layered" && (
+                    <>
+                      {/* Hidden bed, transport-locked to the video above. */}
+                      <audio ref={audioRef} src={musicUrl} className="hidden" />
+                      <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted">
+                        <input
+                          type="checkbox"
+                          className="accent-[var(--accent)]"
+                          checked={musicOn}
+                          onChange={(e) => {
+                            setMusicOn(e.target.checked);
+                            if (!e.target.checked) audioRef.current?.pause();
+                            else if (!videoRef.current?.paused) syncAudio("play");
+                          }}
+                        />
+                        Play music bed with the video
+                      </label>
+                    </>
+                  )}
+                  <div className="flex gap-3">
+                    <a
+                      href={videoUrl}
+                      download={`${preset.id}-ad.mp4`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-semibold text-accent hover:underline"
+                    >
+                      Download MP4
+                    </a>
+                    {musicUrl && (
+                      <a
+                        href={musicUrl}
+                        download={`${preset.id}-music`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-semibold text-accent hover:underline"
+                      >
+                        Download music
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
