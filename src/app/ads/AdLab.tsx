@@ -6,6 +6,7 @@ import {
   MUSIC_HANDLE_SECONDS,
   MUSIC_MODEL_ID,
   MUSIC_STYLES,
+  NO_MUSIC_ID,
   SYNC_CAVEATS,
   musicLengthFor,
 } from "@/lib/music";
@@ -63,6 +64,17 @@ export function AdLab() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   // Vision autofill
+  /**
+   * Audio settings are baked into the composed prompt, so changing them makes
+   * the shown prompt stale — clear it rather than let Generate run a prompt
+   * that no longer matches the settings.
+   */
+  const invalidatePrompt = useCallback(() => {
+    setFinalPrompt("");
+    setNegativePrompt("");
+    setPhase("idle");
+  }, []);
+
   const [autofillBusy, setAutofillBusy] = useState(false);
   const [autofillRationale, setAutofillRationale] = useState<string | null>(null);
   const [autofilledKeys, setAutofilledKeys] = useState<Set<string>>(new Set());
@@ -81,7 +93,9 @@ export function AdLab() {
   const musicCost = estimateCost(MUSIC_MODEL_ID, {
     seconds: musicLengthFor(preset.durationSeconds),
   });
-  const cost = videoCost + (audioMode === "layered" ? musicCost : 0);
+  /** True when a separate music model will actually be billed. */
+  const scoringSeparately = audioMode === "layered" && musicStyleId !== NO_MUSIC_ID;
+  const cost = videoCost + (scoringSeparately ? musicCost : 0);
 
   useEffect(() => {
     fetch("/api/health")
@@ -176,7 +190,13 @@ export function AdLab() {
       const res = await fetch("/api/ad/compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presetId, params, audioMode, imageDataUrl: productImage ?? undefined }),
+        body: JSON.stringify({
+          presetId,
+          params,
+          audioMode,
+          musicStyleId,
+          imageDataUrl: productImage ?? undefined,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Compose failed");
@@ -187,7 +207,7 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Compose failed");
       setPhase("idle");
     }
-  }, [audioMode, params, presetId, productImage]);
+  }, [audioMode, musicStyleId, params, presetId, productImage]);
 
   const generateMusic = useCallback(async () => {
     setError(null);
@@ -238,7 +258,7 @@ export function AdLab() {
     setVideoUrl(null);
     setPosterDataUrl(null);
     // Score in parallel with the render — music returns in seconds, video in minutes.
-    if (audioMode === "layered" && !musicUrl) void generateMusic();
+    if (scoringSeparately && !musicUrl) void generateMusic();
     try {
       const res = await fetch("/api/ad/start", {
         method: "POST",
@@ -296,7 +316,7 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Generation failed");
       setPhase("failed");
     }
-  }, [addSpend, audioMode, cost, finalPrompt, generateMusic, health, modelId, musicUrl, negativePrompt, preset, productImage]);
+  }, [addSpend, cost, finalPrompt, generateMusic, health, modelId, musicUrl, negativePrompt, preset, productImage, scoringSeparately]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -554,7 +574,10 @@ export function AdLab() {
                   name="audioMode"
                   className="mt-1 accent-[var(--accent)]"
                   checked={audioMode === "layered"}
-                  onChange={() => setAudioMode("layered")}
+                  onChange={() => {
+                    setAudioMode("layered");
+                    invalidatePrompt();
+                  }}
                 />
                 <span>
                   <span className="text-sm font-semibold">Layered — SFX + composed music</span>
@@ -570,7 +593,10 @@ export function AdLab() {
                   name="audioMode"
                   className="mt-1 accent-[var(--accent)]"
                   checked={audioMode === "native"}
-                  onChange={() => setAudioMode("native")}
+                  onChange={() => {
+                    setAudioMode("native");
+                    invalidatePrompt();
+                  }}
                 />
                 <span>
                   <span className="text-sm font-semibold">Native only — Veo does everything</span>
@@ -582,25 +608,33 @@ export function AdLab() {
               </label>
             </div>
 
-            {audioMode === "layered" && (
+            <label className="mt-4 block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+                Music style
+              </span>
+              <select
+                className="input"
+                value={musicStyleId}
+                onChange={(e) => {
+                  setMusicStyleId(e.target.value);
+                  setMusicUrl(null);
+                  // In native mode the brief is written into the video prompt.
+                  if (audioMode === "native") invalidatePrompt();
+                }}
+              >
+                {MUSIC_STYLES.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-muted">
+                {audioMode === "native"
+                  ? "This brief is written into the video prompt for Veo to interpret."
+                  : "This brief is sent to the music model as its own composition."}
+              </span>
+            </label>
+
+            {audioMode === "layered" && musicStyleId !== NO_MUSIC_ID && (
               <>
-                <label className="mt-4 block">
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
-                    Music style
-                  </span>
-                  <select
-                    className="input"
-                    value={musicStyleId}
-                    onChange={(e) => {
-                      setMusicStyleId(e.target.value);
-                      setMusicUrl(null);
-                    }}
-                  >
-                    {MUSIC_STYLES.map((m) => (
-                      <option key={m.id} value={m.id}>{m.label}</option>
-                    ))}
-                  </select>
-                </label>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button
                     className="btn-secondary !px-3 !py-1.5 text-xs"
@@ -683,7 +717,7 @@ export function AdLab() {
               <div className="text-sm text-muted">
                 {preset.durationSeconds}s · {preset.aspect} ·{" "}
                 <span className="font-bold text-accent">~${cost.toFixed(2)}</span>
-                {audioMode === "layered" && (
+                {scoringSeparately && (
                   <span className="block text-xs">
                     video ${videoCost.toFixed(2)} + music ${musicCost.toFixed(2)}
                   </span>
@@ -747,7 +781,7 @@ export function AdLab() {
               </div>
               {videoUrl && (
                 <div className="p-4">
-                  {musicUrl && audioMode === "layered" && (
+                  {musicUrl && scoringSeparately && (
                     <>
                       {/* Hidden bed, transport-locked to the video above. */}
                       <audio ref={audioRef} src={musicUrl} className="hidden" />

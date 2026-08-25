@@ -125,6 +125,30 @@ export const MODELS: Record<string, ModelInfo> = {
       "4-7x cheaper than alternatives, uniquely strong multi-shot subject consistency.",
     bestFor: "Cost-efficient social cutdowns; same product across many shots.",
   },
+  "runway-gen4": {
+    id: "runway-gen4",
+    provider: "fal",
+    endpoint: env("FAL_RUNWAY_ENDPOINT", "fal-ai/runway-gen4/turbo/image-to-video"),
+    label: "Runway Gen-4 (via fal.ai)",
+    kind: "video",
+    unitCost: 0.15,
+    unit: "second",
+    strengths:
+      "The strongest creative-control surface: motion brush, camera control, video-to-video. Built for iteration — generate, then refine.",
+    bestFor: "VFX-leaning brand films and shot-heavy storytelling where you expect to iterate on the motion.",
+  },
+  "seedance-2": {
+    id: "seedance-2",
+    provider: "fal",
+    endpoint: env("FAL_SEEDANCE_VIDEO_ENDPOINT", "fal-ai/bytedance/seedance/v2/pro/image-to-video"),
+    label: "Seedance 2.0 Pro (ByteDance, via fal.ai)",
+    kind: "video",
+    unitCost: 0.12,
+    unit: "second",
+    strengths:
+      "Purpose-built for short-form product ads: strong multi-shot consistency and structured generation — define it upfront, get repeatable results.",
+    bestFor: "The UGC/performance-ad workhorse: vertical product-in-hand creative shipped at volume.",
+  },
 
   // ---------------- Music ----------------
   "eleven-music": {

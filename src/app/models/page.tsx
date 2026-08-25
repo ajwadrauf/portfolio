@@ -37,11 +37,11 @@ const VIDEO_NOTES = [
   },
   {
     name: "Seedance 2.0 (ByteDance)",
-    take: "Current leader for multi-shot narrative ads. Not wired into this demo, but it's first on the pilot list for anything longer than a single-scene spot.",
+    take: "The short-form product-ad workhorse: structured generation with strong multi-shot consistency — define the shot upfront and get repeatable results across a batch. Wired in as a video option here, and the natural default for high-volume vertical performance creative.",
   },
   {
-    name: "Runway Gen-4.5",
-    take: "Best creative control surface (video-to-video, motion control, editor-grade tooling). Less an API pick, more the finishing suite a studio team works in daily.",
+    name: "Runway Gen-4",
+    take: "The creative-control surface: motion brush, camera control, video-to-video. Built around iteration rather than one-shot generation, which is why it stays the tool a studio team works in daily — also wired in here so the same brief can be pushed through it.",
   },
   {
     name: "Sora 2 (OpenAI)",

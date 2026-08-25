@@ -70,6 +70,9 @@ Model IDs and endpoint slugs move fast. They all live in
 | `FAL_KONTEXT_ENDPOINT` | `fal-ai/flux-pro/kontext/max/multi` | https://fal.ai/models |
 | `FAL_SEEDREAM_ENDPOINT` | `fal-ai/bytedance/seedream/v4/edit` | https://fal.ai/models |
 | `FAL_KLING_ENDPOINT` | `fal-ai/kling-video/v3/standard/image-to-video` | https://fal.ai/models |
+| `FAL_RUNWAY_ENDPOINT` | `fal-ai/runway-gen4/turbo/image-to-video` | https://fal.ai/models |
+| `FAL_SEEDANCE_VIDEO_ENDPOINT` | `fal-ai/bytedance/seedance/v2/pro/image-to-video` | https://fal.ai/models |
+| `FAL_MUSIC_ENDPOINT` | `fal-ai/elevenlabs/music` | https://fal.ai/models |
 
 ### 3. Cheap smoke test (≈ $0.10 total)
 

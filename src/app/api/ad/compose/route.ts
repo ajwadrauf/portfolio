@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { AD_NEGATIVE_PROMPT, getAdPreset, type AudioMode } from "@/lib/adPresets";
 import { dataUrlToInline, reasonJson } from "@/lib/gemini";
+import { getMusicStyle } from "@/lib/music";
 import { hasGeminiKey, isDryRun } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
@@ -29,13 +30,15 @@ export async function POST(req: Request) {
       params: Record<string, string>;
       audioMode?: AudioMode;
       imageDataUrl?: string;
+      musicStyleId?: string;
     };
     const preset = getAdPreset(body.presetId);
     const params = Object.fromEntries(
       preset.fields.map((f) => [f.key, (body.params?.[f.key] ?? "").trim() || f.placeholder]),
     );
     const audioMode: AudioMode = body.audioMode ?? "layered";
-    const baseline = preset.template(params, audioMode);
+    const musicBrief = getMusicStyle(body.musicStyleId ?? preset.musicStyleId).prompt;
+    const baseline = preset.template(params, audioMode, musicBrief);
 
     if (!hasGeminiKey() || isDryRun()) {
       return NextResponse.json({

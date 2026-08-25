@@ -17,7 +17,15 @@ export type MusicStyle = {
   prompt: string;
 };
 
+/** Explicit "no bed" choice — ASMR/texture concepts are stronger without one. */
+export const NO_MUSIC_ID = "none";
+
 export const MUSIC_STYLES: MusicStyle[] = [
+  {
+    id: NO_MUSIC_ID,
+    label: "No music (SFX only)",
+    prompt: "",
+  },
   {
     id: "playful-indie",
     label: "Playful indie-pop",
