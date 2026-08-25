@@ -56,7 +56,7 @@ export default function ModelsPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-14">
       <p className="chip mb-4">Point of view · August 2026</p>
-      <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+      <h1 className="text-[clamp(2rem,4vw,2.75rem)] tracking-[-0.035em]">
         The model landscape, and why routing beats picking
       </h1>
       <p className="mt-4 text-lg leading-relaxed text-muted">
@@ -66,7 +66,7 @@ export default function ModelsPage() {
         the live routing table behind the Studio demo.
       </p>
 
-      <h2 className="mt-12 text-xl font-bold">Wired into this demo</h2>
+      <h2 className="mt-12 text-xl">Wired into this demo</h2>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
@@ -94,7 +94,7 @@ export default function ModelsPage() {
         estimator and are kept in one config file so drift is a one-line fix.
       </p>
 
-      <h2 className="mt-12 text-xl font-bold">Stills — the read</h2>
+      <h2 className="mt-12 text-xl">Stills — the read</h2>
       <div className="mt-4 space-y-4">
         {IMAGE_NOTES.map((n) => (
           <div key={n.name} className="card p-5">
@@ -104,7 +104,7 @@ export default function ModelsPage() {
         ))}
       </div>
 
-      <h2 className="mt-12 text-xl font-bold">Video — the read</h2>
+      <h2 className="mt-12 text-xl">Video — the read</h2>
       <div className="mt-4 space-y-4">
         {VIDEO_NOTES.map((n) => (
           <div key={n.name} className="card p-5">
@@ -114,7 +114,7 @@ export default function ModelsPage() {
         ))}
       </div>
 
-      <h2 className="mt-12 text-xl font-bold">Ready / emerging / not yet viable</h2>
+      <h2 className="mt-12 text-xl">Ready / emerging / not yet viable</h2>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         <div className="card border-success/40 p-5">
           <p className="font-semibold text-success">Ready to use</p>

@@ -495,7 +495,7 @@ function UploadStep({
   const [dragging, setDragging] = useState(false);
   return (
     <section className="mt-8">
-      <h1 className="text-2xl font-bold tracking-tight">Start with one product photo</h1>
+      <h1 className="text-[1.75rem] tracking-[-0.03em]">Start with one product photo</h1>
       <p className="mt-2 max-w-2xl text-muted">
         The pipeline analyzes the image, interviews you only where it needs to,
         writes the campaign brief, and produces the full multi-format pack.
@@ -596,7 +596,7 @@ function ClarifyStep({
         </div>
       </div>
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">A couple of questions</h1>
+        <h1 className="text-[1.75rem] tracking-[-0.03em]">A couple of questions</h1>
         <p className="mt-2 text-muted">
           The model only asks what it can&apos;t see — smart defaults are preselected.
         </p>
@@ -609,7 +609,7 @@ function ClarifyStep({
                   <button
                     key={opt}
                     onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))}
-                    className={`rounded-lg border px-4 py-2 text-sm transition ${
+                    className={`rounded-[6px] border px-4 py-2 text-sm transition ${
                       answers[q.id] === opt
                         ? "border-accent bg-accent/15 font-semibold text-foreground"
                         : "border-border-soft bg-surface-2 text-muted hover:border-accent/50"
@@ -680,7 +680,7 @@ function BriefStep({
   }
   return (
     <section className="mt-8">
-      <h1 className="text-2xl font-bold tracking-tight">The campaign brief</h1>
+      <h1 className="text-[1.75rem] tracking-[-0.03em]">The campaign brief</h1>
       <p className="mt-2 max-w-2xl text-muted">
         One brief drives all eight deliverables. Every field is editable —
         this is the human judgment gate before anything generates.
@@ -688,7 +688,7 @@ function BriefStep({
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {BRIEF_FIELDS.map((f) => (
           <label key={f.key} className={f.long ? "md:col-span-2" : ""}>
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+            <span className="mb-1 block label">
               {f.label}
             </span>
             {f.long ? (
@@ -737,7 +737,7 @@ function DeliverablesStep({
 }) {
   return (
     <section className="mt-8">
-      <h1 className="text-2xl font-bold tracking-tight">The content pack</h1>
+      <h1 className="text-[1.75rem] tracking-[-0.03em]">The content pack</h1>
       <p className="mt-2 max-w-2xl text-muted">
         Each deliverable routes to the model best suited — and priced — for the
         job. Costs are shown before anything runs.
@@ -834,7 +834,7 @@ function ResultsStep({
     <section className="mt-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-[1.75rem] tracking-[-0.03em]">
             {allSettled ? "The content pack" : "Generating the pack…"}
           </h1>
           <p className="mt-2 text-muted">
@@ -934,7 +934,7 @@ function JobCard({ job }: { job: Job }) {
           )}
         </div>
         {showPrompt && job.prompt && (
-          <p className="mt-2 rounded-lg bg-surface-2 p-3 font-mono text-xs leading-relaxed text-muted">
+          <p className="mt-2 rounded-[6px] bg-surface-2 p-3 font-mono text-xs leading-relaxed text-muted">
             {job.prompt}
           </p>
         )}

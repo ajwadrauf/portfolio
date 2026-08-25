@@ -1,32 +1,25 @@
 @import "tailwindcss";
 
 /*
- * Cream light theme with muted Loblaw-Agency-inspired accents.
- * UX rules applied: one primary accent (muted magenta) for interactive
- * elements; the other logo hues appear only as semantic colors (green =
- * success, amber = warning, red = danger) and a subtle header strip.
- * All text colors clear WCAG AA on their surfaces.
+ * Design tokens — Ajwad Rauf portfolio system.
+ * Source of truth for both the portfolio home and the AI Content Studio, so
+ * the two halves are one system rather than two things that resemble each
+ * other. Values mirror the Claude Design system exactly.
  */
 :root {
   --background: #faf6ee;
   --surface: #fffdf8;
-  --surface-2: #f3ede0;
-  --border: #e6ddca;
+  --surface-2: #f4eee1;
+  --border: rgba(43, 37, 34, 0.13);
+  --border-strong: rgba(43, 37, 34, 0.22);
   --foreground: #2b2522;
   --muted: #6b6257;
-  --accent: #8e3a7c; /* muted magenta — the logo's "A" */
-  --accent-soft: #712e63;
+  --accent: #8e3a7c;
+  --accent-soft: #6f2c60;
   --success: #2e7d4f;
   --warning: #92400e;
   --danger: #b3372f;
-  /* muted spectrum for the brand strip */
-  --strip-1: #a34f93;
-  --strip-2: #6c5aa8;
-  --strip-3: #4a7fae;
-  --strip-4: #5d9668;
-  --strip-5: #c9a13b;
-  --strip-6: #c07840;
-  --strip-7: #ab4a42;
+  --radius: 6px;
 }
 
 @theme inline {
@@ -34,6 +27,7 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border-soft: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
@@ -41,32 +35,58 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+}
+
+/* Headings sit at 500, not bold — the scale carries the emphasis. */
+h1,
+h2,
+h3 {
+  font-weight: 500;
+  letter-spacing: -0.03em;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+/* The one place the full spectrum appears. */
 .brand-strip {
   height: 3px;
   background: linear-gradient(
     90deg,
-    var(--strip-1),
-    var(--strip-2),
-    var(--strip-3),
-    var(--strip-4),
-    var(--strip-5),
-    var(--strip-6),
-    var(--strip-7)
+    #8e3a7c,
+    #6d4b9e,
+    #3c6ea5,
+    #2e7d4f,
+    #a8862f,
+    #b8722f,
+    #b3372f
   );
+}
+
+/* Mono eyebrow/label — the system's connective tissue. */
+.label {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.label-sm {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .no-scrollbar {
@@ -78,21 +98,26 @@ body {
 }
 
 .card {
-  @apply rounded-xl border border-border-soft bg-surface shadow-[0_1px_3px_rgba(43,37,34,0.06)];
+  @apply rounded-[6px] border border-border-soft bg-surface;
 }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex items-center justify-center gap-2 rounded-[6px] bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border-soft bg-surface px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex items-center justify-center gap-2 rounded-[6px] border border-border-soft bg-surface px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+/* Underlined text link, as used across the design. */
+.link-rule {
+  @apply inline-flex items-center gap-2 border-b border-accent pb-[3px] font-semibold text-accent transition hover:border-accent-soft hover:text-accent-soft;
 }
 
 .chip {
-  @apply inline-flex items-center gap-1 rounded-full border border-border-soft bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted;
+  @apply inline-flex items-center gap-1 rounded-full border border-border-soft px-3 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted;
 }
 
 .input {
-  @apply w-full rounded-lg border border-border-soft bg-surface px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted/60 focus:border-accent;
+  @apply w-full rounded-[6px] border border-border-soft bg-surface px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted/60 focus:border-accent;
 }

@@ -31,7 +31,7 @@ export function SectionNav({ sections }: { sections: NavSection[] }) {
 
   return (
     <nav aria-label="Sections" className="text-sm">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
+      <p className="mb-3 label">
         Contents
       </p>
       <ol className="space-y-1">

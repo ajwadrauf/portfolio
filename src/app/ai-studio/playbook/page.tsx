@@ -78,7 +78,7 @@ function SectionHead({ num, title, lede }: { num: string; title: string; lede: s
     <header className="mb-6">
       <div className="flex items-baseline gap-3">
         <span className="font-mono text-sm font-bold text-accent/40">{num}</span>
-        <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+        <h2 className="text-[1.75rem] tracking-[-0.03em]">{title}</h2>
       </div>
       <p className="mt-2 pl-9 text-base leading-relaxed text-muted">{lede}</p>
     </header>
@@ -91,13 +91,13 @@ export default function PlaybookPage() {
       {/* ---------- Header ---------- */}
       <header className="max-w-3xl">
         <p className="chip mb-4">Playbook · How the studio scales beyond one person</p>
-        <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
+        <h1 className="text-[clamp(2.25rem,5vw,3.5rem)] leading-[1.05] tracking-[-0.04em]">
           The production playbook
         </h1>
         <p className="mt-5 text-lg leading-relaxed text-muted">
           A studio isn&apos;t a person who&apos;s good with tools — it&apos;s a documented
           system anyone trained can run. This is the playbook the{" "}
-          <Link href="/studio" className="font-medium text-accent hover:underline">
+          <Link href="/ai-studio/studio" className="font-medium text-accent hover:underline">
             demo pipeline
           </Link>{" "}
           implements, written to be handed over.
@@ -127,7 +127,7 @@ export default function PlaybookPage() {
               {PIPELINE.map((p, i) => (
                 <li
                   key={p.step}
-                  className={`relative rounded-lg border bg-surface p-4 ${
+                  className={`relative rounded-[6px] border bg-surface p-4 ${
                     p.human ? "border-accent/50" : "border-border-soft"
                   }`}
                 >
@@ -137,7 +137,7 @@ export default function PlaybookPage() {
                     </span>
                     <span className="font-semibold">{p.step}</span>
                     {p.human && (
-                      <span className="ml-auto rounded-full bg-accent/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                      <span className="ml-auto rounded-full bg-accent/12 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-accent">
                         Human
                       </span>
                     )}
@@ -175,7 +175,7 @@ export default function PlaybookPage() {
               title="Prompt system"
               lede="Prompts are templates, not incantations. Nothing depends on a hero prompt someone keeps in their head."
             />
-            <div className="overflow-x-auto rounded-xl border border-border-soft bg-surface-2 p-5">
+            <div className="overflow-x-auto rounded-[6px] border border-border-soft bg-surface-2 p-5">
               <pre className="font-mono text-xs leading-relaxed text-muted">
 {`BRIEF          mood · setting · palette · headline EN/FR
      +
@@ -216,7 +216,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
               title="Model routing"
               lede="Draft cheap, finish premium. Routing — not negotiation — is where an AI studio finds most of its cost efficiency."
             />
-            <div className="overflow-x-auto rounded-xl border border-border-soft">
+            <div className="overflow-x-auto rounded-[6px] border border-border-soft">
               <table className="w-full min-w-[560px] border-collapse text-sm">
                 <thead>
                   <tr className="bg-surface-2 text-left text-muted">
@@ -238,7 +238,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
             </div>
             <p className="mt-3 text-sm text-muted">
               The live table lives on the{" "}
-              <Link href="/models" className="font-medium text-accent hover:underline">
+              <Link href="/ai-studio/models" className="font-medium text-accent hover:underline">
                 model landscape
               </Link>{" "}
               page and is re-evaluated monthly.
@@ -256,7 +256,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
               {GATES.map((g) => (
                 <div
                   key={g.n}
-                  className="grid gap-3 rounded-lg border border-border-soft bg-surface p-5 md:grid-cols-[auto_1fr]"
+                  className="grid gap-3 rounded-[6px] border border-border-soft bg-surface p-5 md:grid-cols-[auto_1fr]"
                 >
                   <span className="font-mono text-2xl font-bold text-accent/25">{g.n}</span>
                   <div>
@@ -285,7 +285,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
                 ["Cheap defaults", "Cost-efficient tiers are default; premium is an explicit choice."],
                 ["Handles, not reruns", "Assets generated with trim room so a near-miss is an edit, not a regeneration."],
               ].map(([t, d]) => (
-                <div key={t} className="rounded-lg border border-border-soft bg-surface p-4">
+                <div key={t} className="rounded-[6px] border border-border-soft bg-surface p-4">
                   <p className="text-sm font-semibold">{t}</p>
                   <p className="mt-1 text-sm leading-snug text-muted">{d}</p>
                 </div>
@@ -338,7 +338,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
               title="Measurement"
               lede="What the studio is accountable for, and what good looks like."
             />
-            <div className="overflow-x-auto rounded-xl border border-border-soft">
+            <div className="overflow-x-auto rounded-[6px] border border-border-soft">
               <table className="w-full min-w-[600px] border-collapse text-sm">
                 <thead>
                   <tr className="bg-surface-2 text-left text-muted">

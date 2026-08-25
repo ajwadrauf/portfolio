@@ -208,7 +208,7 @@ export function PackshotStudio() {
         <span className="chip">Session spend: ${sessionSpend.toFixed(2)}</span>
       </div>
 
-      <h1 className="mt-6 text-2xl font-bold tracking-tight">Packshot Studio</h1>
+      <h1 className="mt-6 text-[1.75rem] tracking-[-0.03em]">Packshot Studio</h1>
       <p className="mt-2 max-w-3xl text-muted">
         The planogram case: every SKU needs product-on-white at up to 7 angles.
         Upload the reference photos you already have, and generate the missing
@@ -230,7 +230,7 @@ export function PackshotStudio() {
           <div className="card p-5">
             <h2 className="font-semibold">1 · Product</h2>
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+              <span className="mb-1 block label">
                 SKU / GTIN
               </span>
               <input
@@ -241,7 +241,7 @@ export function PackshotStudio() {
               />
             </label>
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+              <span className="mb-1 block label">
                 Language code
               </span>
               <select
@@ -255,7 +255,7 @@ export function PackshotStudio() {
               </select>
             </label>
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+              <span className="mb-1 block label">
                 Product notes (optional)
               </span>
               <input
@@ -306,7 +306,7 @@ export function PackshotStudio() {
                     <img
                       src={r.dataUrl}
                       alt={r.angle}
-                      className="aspect-square w-full rounded-lg border border-border-soft object-cover"
+                      className="aspect-square w-full rounded-[6px] border border-border-soft object-cover"
                     />
                     <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[10px] font-semibold text-background">
                       {r.angle}
@@ -328,7 +328,7 @@ export function PackshotStudio() {
           <div className="card p-5">
             <h2 className="font-semibold">3 · Model</h2>
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+              <span className="mb-1 block label">
                 Primary
               </span>
               <select
@@ -344,7 +344,7 @@ export function PackshotStudio() {
               </select>
             </label>
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+              <span className="mb-1 block label">
                 Challenger (A/B, optional)
               </span>
               <select
@@ -379,7 +379,7 @@ export function PackshotStudio() {
                 return (
                   <label
                     key={a.id}
-                    className="flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-border-soft bg-surface px-3 py-2"
+                    className="flex cursor-pointer items-center justify-between gap-2 rounded-[6px] border border-border-soft bg-surface px-3 py-2"
                   >
                     <span className="flex items-center gap-2">
                       <input
@@ -518,7 +518,7 @@ function PackshotCard({ job, sku, lang }: { job: Job; sku: string; lang: string 
           )}
         </div>
         {showPrompt && job.prompt && (
-          <p className="mt-2 rounded-lg bg-surface-2 p-3 font-mono text-xs leading-relaxed text-muted">
+          <p className="mt-2 rounded-[6px] bg-surface-2 p-3 font-mono text-xs leading-relaxed text-muted">
             {job.prompt}
           </p>
         )}

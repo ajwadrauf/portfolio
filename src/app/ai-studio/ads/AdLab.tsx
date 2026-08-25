@@ -340,7 +340,7 @@ export function AdLab() {
         <span className="chip">Session spend: ${sessionSpend.toFixed(2)}</span>
       </div>
 
-      <h1 className="mt-6 text-2xl font-bold tracking-tight">Ad Lab</h1>
+      <h1 className="mt-6 text-[1.75rem] tracking-[-0.03em]">Ad Lab</h1>
       <p className="mt-2 max-w-3xl text-muted">
         Mini product ads as <span className="font-semibold text-foreground">preset recipes</span>:
         each concept is a structured, deconstructed prompt — aesthetics, beat-by-beat
@@ -378,7 +378,7 @@ export function AdLab() {
             <h2 className="font-semibold">The recipe — {preset.name}</h2>
             <div className="mt-4 grid gap-5 md:grid-cols-2">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+                <p className="label !text-accent">
                   Core aesthetics
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
@@ -386,7 +386,7 @@ export function AdLab() {
                     <li key={a}>{a}</li>
                   ))}
                 </ul>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-accent">
+                <p className="mt-4 label !text-accent">
                   Sound design (rendered by the video model)
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
@@ -394,7 +394,7 @@ export function AdLab() {
                     <li key={a}>{a}</li>
                   ))}
                 </ul>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-accent">
+                <p className="mt-4 label !text-accent">
                   Music bed (scored separately)
                 </p>
                 <p className="mt-2 text-sm text-muted">
@@ -402,7 +402,7 @@ export function AdLab() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+                <p className="label !text-accent">
                   Action sequence
                 </p>
                 <ol className="mt-2 space-y-2">
@@ -415,7 +415,7 @@ export function AdLab() {
                     </li>
                   ))}
                 </ol>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-accent">
+                <p className="mt-4 label !text-accent">
                   Text overlay
                 </p>
                 <p className="mt-2 text-sm text-muted">{preset.overlay}</p>
@@ -435,13 +435,13 @@ export function AdLab() {
             </div>
 
             {/* Photo first — it drives everything below */}
-            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-border-soft bg-surface-2 p-4">
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[6px] border border-border-soft bg-surface-2 p-4">
               {productImage && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={productImage}
                   alt="Product"
-                  className="h-16 w-16 rounded-lg border border-border-soft object-cover"
+                  className="h-16 w-16 rounded-[6px] border border-border-soft object-cover"
                 />
               )}
               <button
@@ -482,7 +482,7 @@ export function AdLab() {
             </div>
 
             {autofillRationale && (
-              <div className="mt-3 rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs leading-relaxed text-muted">
+              <div className="mt-3 rounded-[6px] border border-accent/30 bg-accent/5 p-3 text-xs leading-relaxed text-muted">
                 <span className="font-bold text-accent">Filled from your photo.</span>{" "}
                 {autofillRationale} Review every field — especially the price —
                 before composing.
@@ -492,7 +492,7 @@ export function AdLab() {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {preset.fields.map((f) => (
                 <label key={f.key}>
-                  <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+                  <span className="mb-1 flex items-center gap-1.5 label">
                     {f.label}
                     {autofilledKeys.has(f.key) && (
                       <span className="rounded bg-accent/15 px-1 py-px text-[10px] font-bold normal-case tracking-normal text-accent">
@@ -540,7 +540,7 @@ export function AdLab() {
             <div className="card p-5">
               <h2 className="font-semibold">The composed prompt — edit before you spend</h2>
               <label className="mt-3 block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+                <span className="mb-1 block label">
                   Video prompt
                 </span>
                 <textarea
@@ -550,7 +550,7 @@ export function AdLab() {
                 />
               </label>
               <label className="mt-3 block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+                <span className="mb-1 block label">
                   Negative prompt
                 </span>
                 <input
@@ -568,7 +568,7 @@ export function AdLab() {
           <div className="card p-5">
             <h2 className="font-semibold">Audio</h2>
             <div className="mt-3 space-y-2">
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border-soft bg-surface p-3">
+              <label className="flex cursor-pointer items-start gap-2 rounded-[6px] border border-border-soft bg-surface p-3">
                 <input
                   type="radio"
                   name="audioMode"
@@ -587,7 +587,7 @@ export function AdLab() {
                   </span>
                 </span>
               </label>
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border-soft bg-surface p-3">
+              <label className="flex cursor-pointer items-start gap-2 rounded-[6px] border border-border-soft bg-surface p-3">
                 <input
                   type="radio"
                   name="audioMode"
@@ -609,7 +609,7 @@ export function AdLab() {
             </div>
 
             <label className="mt-4 block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+              <span className="mb-1 block label">
                 Music style
               </span>
               <select
@@ -669,7 +669,7 @@ export function AdLab() {
                   </div>
                 )}
                 {preset.beatSensitive && (
-                  <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                  <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
                     <span className="font-bold">Beat-sensitive concept.</span>{" "}
                     This preset cuts its action to a musical pulse, but the bed
                     is composed without seeing the video — the beats will not
@@ -677,7 +677,7 @@ export function AdLab() {
                     editor, or pick a pad-like style that hides drift.
                   </p>
                 )}
-                <details className="mt-3 rounded-lg border border-border-soft bg-surface-2 p-3">
+                <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
                   <summary className="cursor-pointer text-xs font-semibold text-foreground">
                     What layered audio does and doesn&apos;t guarantee
                   </summary>
@@ -694,7 +694,7 @@ export function AdLab() {
           <div className="card p-5">
             <h2 className="font-semibold">Generate</h2>
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+              <span className="mb-1 block label">
                 Video model
               </span>
               <select

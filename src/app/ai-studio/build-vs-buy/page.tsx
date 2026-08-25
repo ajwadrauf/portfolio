@@ -96,7 +96,7 @@ export default function BuildVsBuyPage() {
       {/* ---------- Header ---------- */}
       <header className="max-w-3xl">
         <p className="chip mb-4">One-pager · Studio operating decision</p>
-        <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
+        <h1 className="text-[clamp(2.25rem,5vw,3.5rem)] leading-[1.05] tracking-[-0.04em]">
           Build vs. buy
         </h1>
         <p className="mt-5 text-lg leading-relaxed text-muted">
@@ -110,19 +110,19 @@ export default function BuildVsBuyPage() {
       {/* ---------- The call, up front ---------- */}
       <section className="mt-12">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">
+          <h2 className="label !text-accent">
             The call
           </h2>
           <span className="h-px flex-1 bg-border-soft" />
         </div>
-        <div className="mt-5 grid gap-px overflow-hidden rounded-xl border border-border-soft bg-border-soft sm:grid-cols-3">
+        <div className="mt-5 grid gap-px overflow-hidden rounded-[6px] border border-border-soft bg-border-soft sm:grid-cols-3">
           {[
             ["Buy", "Suites for exploration", "A few seats so creatives touch every new model the week it ships. R&D spend, not production infrastructure."],
             ["Build", "APIs for production", "Gemini direct plus one aggregator. Every repeatable pipeline lives here. This demo runs exactly this stack."],
             ["Neither, forever", "Re-evaluate monthly", "Model IDs and prices in one config file. When a leader changes, it's an edit — not a rebuild."],
           ].map(([verdict, title, body]) => (
             <div key={title} className="bg-surface p-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-accent">
+              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent">
                 {verdict}
               </p>
               <h3 className="mt-2 font-semibold leading-snug">{title}</h3>
@@ -135,7 +135,7 @@ export default function BuildVsBuyPage() {
       {/* ---------- Stack diagram ---------- */}
       <section className="mt-14">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">
+          <h2 className="label !text-accent">
             The stack
           </h2>
           <span className="h-px flex-1 bg-border-soft" />
@@ -144,7 +144,7 @@ export default function BuildVsBuyPage() {
           {LAYERS.map((l, i) => (
             <div
               key={l.name}
-              className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border-soft bg-surface px-5 py-4 ${
+              className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[6px] border border-border-soft bg-surface px-5 py-4 ${
                 ["", "sm:ml-6", "sm:ml-12"][i]
               }`}
             >
@@ -169,12 +169,12 @@ export default function BuildVsBuyPage() {
       {/* ---------- Comparison matrix ---------- */}
       <section className="mt-14">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">
+          <h2 className="label !text-accent">
             Head to head
           </h2>
           <span className="h-px flex-1 bg-border-soft" />
         </div>
-        <div className="mt-5 overflow-x-auto rounded-xl border border-border-soft">
+        <div className="mt-5 overflow-x-auto rounded-[6px] border border-border-soft">
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr className="bg-surface-2">
@@ -209,7 +209,7 @@ export default function BuildVsBuyPage() {
                         >
                           {cell}
                           {isBest && (
-                            <span className="ml-1.5 align-middle text-[10px] font-bold uppercase tracking-wider text-accent">
+                            <span className="ml-1.5 align-middle font-mono text-[10px] uppercase tracking-[0.12em] text-accent">
                               ✦ edge
                             </span>
                           )}
@@ -231,7 +231,7 @@ export default function BuildVsBuyPage() {
       {/* ---------- Deep dives ---------- */}
       <section className="mt-14">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">
+          <h2 className="label !text-accent">
             The layers in detail
           </h2>
           <span className="h-px flex-1 bg-border-soft" />
@@ -242,14 +242,14 @@ export default function BuildVsBuyPage() {
               <div>
                 <div className="flex items-baseline gap-3">
                   <span className="font-mono text-2xl font-bold text-accent/30">{l.n}</span>
-                  <h3 className="text-xl font-bold tracking-tight">{l.name}</h3>
+                  <h3 className="text-xl tracking-[-0.025em]">{l.name}</h3>
                 </div>
                 <p className="mt-1 pl-11 text-sm text-muted">{l.examples}</p>
                 <p className="mt-3 pl-11 text-sm leading-relaxed text-muted">{l.body}</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg border-l-2 border-success bg-surface p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-success">
+                <div className="rounded-[6px] border-l-2 border-success bg-surface p-4">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-success">
                     Wins when
                   </p>
                   <ul className="mt-2 space-y-1.5 text-sm leading-snug text-muted">
@@ -258,8 +258,8 @@ export default function BuildVsBuyPage() {
                     ))}
                   </ul>
                 </div>
-                <div className="rounded-lg border-l-2 border-danger bg-surface p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-danger">
+                <div className="rounded-[6px] border-l-2 border-danger bg-surface p-4">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-danger">
                     Fails when
                   </p>
                   <ul className="mt-2 space-y-1.5 text-sm leading-snug text-muted">
@@ -291,7 +291,7 @@ export default function BuildVsBuyPage() {
       {/* ---------- Lenses ---------- */}
       <section className="mt-14">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">
+          <h2 className="label !text-accent">
             Three questions that settle it
           </h2>
           <span className="h-px flex-1 bg-border-soft" />
@@ -307,7 +307,7 @@ export default function BuildVsBuyPage() {
       </section>
 
       {/* ---------- Concrete footer ---------- */}
-      <section className="mt-14 rounded-xl border border-accent/30 bg-accent/[0.05] p-6">
+      <section className="mt-14 rounded-[6px] border border-accent/30 bg-accent/[0.05] p-6">
         <h2 className="font-semibold">What this demo actually runs on</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           Gemini direct for reasoning, vision, Nano Banana stills and Veo video;
@@ -315,7 +315,7 @@ export default function BuildVsBuyPage() {
           model ID and price lives in one config file with environment
           overrides — the switching cost this page argues for, made real.
         </p>
-        <Link href="/models" className="mt-4 inline-block text-sm font-semibold text-accent hover:underline">
+        <Link href="/ai-studio/models" className="mt-4 inline-block text-sm font-semibold text-accent hover:underline">
           See the routing table →
         </Link>
       </section>

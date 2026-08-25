@@ -125,7 +125,7 @@ export function LiveGate() {
             onSubmit={submit}
             className="card w-full max-w-sm p-6"
           >
-            <h2 className="text-lg font-bold tracking-tight">Enable live generation</h2>
+            <h2 className="text-lg tracking-[-0.02em]">Enable live generation</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
               Browsing works without this — every page runs in demo mode with
               realistic mock outputs. Enter the passcode from the application

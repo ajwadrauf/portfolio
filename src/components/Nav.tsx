@@ -5,30 +5,44 @@ import { usePathname } from "next/navigation";
 import { LiveGate } from "./LiveGate";
 
 const LINKS = [
-  { href: "/", label: "Overview" },
-  { href: "/studio", label: "Studio" },
-  { href: "/packshots", label: "Packshots" },
-  { href: "/ads", label: "Ad Lab" },
-  { href: "/models", label: "Models" },
-  { href: "/build-vs-buy", label: "Build vs. Buy" },
-  { href: "/playbook", label: "Playbook" },
+  { href: "/ai-studio", label: "Overview" },
+  { href: "/ai-studio/studio", label: "Studio" },
+  { href: "/ai-studio/packshots", label: "Packshots" },
+  { href: "/ai-studio/ads", label: "Ad Lab" },
+  { href: "/ai-studio/models", label: "Models" },
+  { href: "/ai-studio/build-vs-buy", label: "Build vs. Buy" },
+  { href: "/ai-studio/playbook", label: "Playbook" },
 ] as const;
 
 export function Nav() {
   const pathname = usePathname();
   return (
-    <header className="sticky top-0 z-40 border-b border-border-soft bg-background/85 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-border-soft bg-background/90 backdrop-blur">
       <div className="brand-strip" />
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-sm font-bold text-white">
-            AI
+        <div className="flex items-center justify-between gap-4 sm:justify-start">
+          <Link
+            href="/"
+            className="label whitespace-nowrap transition hover:text-foreground"
+            title="Back to ajwadrauf.com"
+          >
+            ← Ajwad Rauf
+          </Link>
+          <span className="hidden h-4 w-px bg-border-strong sm:block" />
+          <Link href="/ai-studio" className="label !text-foreground whitespace-nowrap">
+            AI Content Studio
+          </Link>
+          <span className="sm:hidden">
+            <LiveGate />
           </span>
-          Content Studio
-        </Link>
-        <div className="flex items-center gap-3 sm:order-last">
-          <LiveGate />
         </div>
+
+        <div className="flex items-center gap-3 sm:order-last">
+          <span className="hidden sm:block">
+            <LiveGate />
+          </span>
+        </div>
+
         <nav className="no-scrollbar -mx-6 flex items-center gap-1 overflow-x-auto px-6 text-sm sm:mx-0 sm:overflow-visible sm:px-0">
           {LINKS.map((l) => {
             const active = pathname === l.href;
@@ -36,7 +50,7 @@ export function Nav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className={`whitespace-nowrap rounded-lg px-3 py-1.5 transition ${
+                className={`whitespace-nowrap rounded-[6px] px-3 py-1.5 transition ${
                   active
                     ? "bg-surface-2 font-semibold text-foreground"
                     : "text-muted hover:text-foreground"
