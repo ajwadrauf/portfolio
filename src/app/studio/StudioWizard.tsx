@@ -898,7 +898,7 @@ function JobCard({ job }: { job: Job }) {
           </div>
         )}
         {job.status === "mock" && (
-          <span className="absolute left-2 top-2 rounded bg-warning/90 px-2 py-0.5 text-xs font-bold text-black">
+          <span className="absolute left-2 top-2 rounded bg-warning px-2 py-0.5 text-xs font-bold text-white">
             DEMO
           </span>
         )}
