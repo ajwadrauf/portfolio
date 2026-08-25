@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b0f14;
+  --surface: #111823;
+  --surface-2: #17202e;
+  --border: #243144;
+  --foreground: #e7edf5;
+  --muted: #8fa3b8;
+  --accent: #3b82f6;
+  --accent-soft: #1d4ed8;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border-soft: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.card {
+  @apply rounded-xl border border-border-soft bg-surface;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border-soft bg-surface-2 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.chip {
+  @apply inline-flex items-center gap-1 rounded-full border border-border-soft bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted;
+}
+
+.input {
+  @apply w-full rounded-lg border border-border-soft bg-surface-2 px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted/60 focus:border-accent;
+}

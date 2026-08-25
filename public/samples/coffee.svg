@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2ede7"/>
+      <stop offset="1" stop-color="#d9cfc4"/>
+    </linearGradient>
+    <linearGradient id="bag" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3a2a1e"/>
+      <stop offset="0.5" stop-color="#54392a"/>
+      <stop offset="1" stop-color="#2e2016"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <ellipse cx="400" cy="870" rx="220" ry="30" fill="#a4907c" opacity="0.45"/>
+  <g>
+    <path d="M260 320 L540 320 L560 840 Q560 868 532 868 L268 868 Q240 868 240 840 Z" fill="url(#bag)"/>
+    <rect x="260" y="300" width="280" height="46" rx="10" fill="#20150e"/>
+    <rect x="285" y="470" width="230" height="230" rx="16" fill="#f6efe6" opacity="0.96"/>
+    <text x="400" y="556" text-anchor="middle" font-family="Georgia,serif" font-size="44" font-weight="700" fill="#3a2a1e">KOLDA</text>
+    <text x="400" y="600" text-anchor="middle" font-family="system-ui,sans-serif" font-size="21" fill="#6f5844">dark roast · whole bean</text>
+    <text x="400" y="648" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" fill="#96826d">notes of cocoa &amp; cherry · 340 g</text>
+    <circle cx="400" cy="770" r="26" fill="#c9a878"/>
+    <path d="M400 752 q14 18 0 36 q-14 -18 0 -36" fill="#54392a"/>
+  </g>
+</svg>

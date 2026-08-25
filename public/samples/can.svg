@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef4f7"/>
+      <stop offset="1" stop-color="#cfdde6"/>
+    </linearGradient>
+    <linearGradient id="can" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0f7d8c"/>
+      <stop offset="0.5" stop-color="#14a5b8"/>
+      <stop offset="0.85" stop-color="#0d6b78"/>
+      <stop offset="1" stop-color="#0a5560"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <ellipse cx="400" cy="880" rx="230" ry="34" fill="#8fa8b5" opacity="0.45"/>
+  <g>
+    <rect x="270" y="220" width="260" height="640" rx="42" fill="url(#can)"/>
+    <ellipse cx="400" cy="228" rx="128" ry="26" fill="#c7d3d8"/>
+    <ellipse cx="400" cy="224" rx="112" ry="20" fill="#e8eef1"/>
+    <rect x="300" y="240" width="42" height="600" rx="21" fill="url(#shine)"/>
+    <rect x="292" y="430" width="216" height="180" rx="16" fill="#ffffff" opacity="0.94"/>
+    <text x="400" y="505" text-anchor="middle" font-family="system-ui,sans-serif" font-size="44" font-weight="800" fill="#0d6b78">GLACIA</text>
+    <text x="400" y="552" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="500" fill="#4a6b74">sparkling water</text>
+    <text x="400" y="700" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" fill="#d7f2f5">LIME &amp; MINT · 355 mL</text>
+  </g>
+  <circle cx="250" cy="330" r="6" fill="#ffffff" opacity="0.7"/>
+  <circle cx="560" cy="410" r="4" fill="#ffffff" opacity="0.6"/>
+  <circle cx="235" cy="560" r="5" fill="#ffffff" opacity="0.5"/>
+</svg>
