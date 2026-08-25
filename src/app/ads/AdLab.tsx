@@ -150,6 +150,7 @@ export function AdLab() {
       const deadline = Date.now() + POLL_DEADLINE_MS;
       while (Date.now() < deadline) {
         await sleep(POLL_INTERVAL_MS);
+        let status: { status?: string; videoUrl?: string; error?: string } | null = null;
         try {
           const sres = await fetch("/api/generate/video/status", {
             method: "POST",
@@ -161,15 +162,18 @@ export function AdLab() {
               modelId,
             }),
           });
-          const sjson = await sres.json();
-          if (sjson.status === "done") {
-            setVideoUrl(sjson.videoUrl);
-            setPhase("done");
-            return;
-          }
-          if (sjson.status === "failed") throw new Error(sjson.error ?? "Generation failed");
-        } catch (e) {
-          if (e instanceof Error && e.message !== "Failed to fetch") throw e;
+          status = await sres.json();
+        } catch {
+          // Transient network error — the render is still running, keep polling.
+          continue;
+        }
+        if (status?.status === "done") {
+          setVideoUrl(status.videoUrl!);
+          setPhase("done");
+          return;
+        }
+        if (status?.status === "failed") {
+          throw new Error(status.error ?? "Generation failed");
         }
       }
       throw new Error("Timed out after 10 minutes — the job may still finish on the provider side.");

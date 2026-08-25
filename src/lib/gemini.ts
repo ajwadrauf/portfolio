@@ -1,5 +1,5 @@
 import "server-only";
-import { GoogleGenAI } from "@google/genai";
+import { GenerateVideosOperation, GoogleGenAI } from "@google/genai";
 import { GEMINI_REASONING_MODEL } from "./models";
 
 let client: GoogleGenAI | null = null;
@@ -119,12 +119,13 @@ export type VeoPollResult =
 /** Poll a Veo operation by name (stateless across requests). */
 export async function pollVeo(operationName: string): Promise<VeoPollResult> {
   const ai = gemini();
-  // Reconstruct a minimal operation handle from its name; the SDK only needs
-  // the name to fetch current state.
-  const op = await ai.operations.getVideosOperation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    operation: { name: operationName } as any,
-  });
+  // The SDK calls methods off the operation's prototype, so this must be a
+  // real GenerateVideosOperation instance — a plain { name } object fails
+  // with "operation._fromAPIResponse is not a function". Only the name is
+  // needed to fetch current state, which keeps the status route stateless.
+  const handle = new GenerateVideosOperation();
+  handle.name = operationName;
+  const op = await ai.operations.getVideosOperation({ operation: handle });
 
   if (!op.done) return { status: "pending" };
   if (op.error) {
