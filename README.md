@@ -18,6 +18,7 @@ Tailwind CSS 4 · Zod.
 |---|---|
 | `/` | Landing — the pitch, pipeline and metrics |
 | `/studio` | The live generating tool (5-step wizard) |
+| `/packshots` | GS1 planogram packshot generator: product-on-white at every angle from existing reference photos, with grounded-vs-reconstructed QA flags |
 | `/models` | Model landscape: costs, strengths, ready/emerging/not-viable |
 | `/build-vs-buy` | One-pager: suites vs. aggregators vs. direct APIs |
 | `/playbook` | Production playbook: workflow, prompt system, quality gates, governance |

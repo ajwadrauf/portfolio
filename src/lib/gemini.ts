@@ -57,13 +57,11 @@ export async function generateImage(opts: {
   model: string;
   prompt: string;
   aspectRatio: string;
-  referenceImage?: InlineImage;
+  referenceImages?: InlineImage[];
 }): Promise<{ dataUrl: string }> {
   const parts: object[] = [];
-  if (opts.referenceImage) {
-    parts.push({
-      inlineData: { mimeType: opts.referenceImage.mimeType, data: opts.referenceImage.data },
-    });
+  for (const ref of opts.referenceImages ?? []) {
+    parts.push({ inlineData: { mimeType: ref.mimeType, data: ref.data } });
   }
   parts.push({ text: opts.prompt });
 

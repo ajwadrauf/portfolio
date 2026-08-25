@@ -56,9 +56,9 @@ export async function POST(req: Request) {
         model: model.endpoint,
         prompt,
         aspectRatio: spec.aspect,
-        referenceImage:
+        referenceImages:
           spec.usesProductImage && body.imageDataUrl
-            ? dataUrlToInline(body.imageDataUrl)
+            ? [dataUrlToInline(body.imageDataUrl)]
             : undefined,
       });
       return NextResponse.json({ mock: false, imageDataUrl: dataUrl, prompt, cost });

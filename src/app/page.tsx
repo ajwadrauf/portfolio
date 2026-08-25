@@ -135,6 +135,51 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Packshot case */}
+      <section className="border-t border-border-soft py-16">
+        <div className="card grid gap-8 p-8 md:grid-cols-[1fr_320px]">
+          <div>
+            <p className="chip mb-3">Case study · The planogram problem</p>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Product-on-white, every angle, without the reshoot
+            </h2>
+            <p className="mt-4 leading-relaxed text-muted">
+              Every SKU needs GS1 planogram packshots — front, back, left,
+              right, top, bottom — shot on white, retouched, named to spec.
+              Multiply that by a private-label catalog and it&apos;s one of the
+              largest recurring photography line items in retail. The Packshot
+              Studio takes the reference photos you already have and generates
+              the missing angles, with GS1-style filenames out of the box.
+            </p>
+            <p className="mt-3 leading-relaxed text-muted">
+              And it&apos;s honest about the limits: angles backed by a real
+              reference are marked <span className="font-semibold text-success">grounded</span>;
+              faces the camera never saw are{" "}
+              <span className="font-semibold text-warning">reconstructed</span>{" "}
+              and flagged for mandatory label QA — because the model can&apos;t
+              know what an unseen panel says. That distinction is the quality
+              gate that makes this usable in production.
+            </p>
+            <a href="/packshots" className="btn-primary mt-6">
+              Open the Packshot Studio →
+            </a>
+          </div>
+          <div className="grid grid-cols-2 content-start gap-3 text-sm">
+            {[
+              ["6+1", "planogram angles per SKU, one generation each"],
+              ["~$0.94", "per full 7-angle set on the Pro tier"],
+              ["GS1", "naming convention applied automatically"],
+              ["QA flag", "on every reconstructed, ungrounded angle"],
+            ].map(([stat, label]) => (
+              <div key={label} className="rounded-lg border border-border-soft bg-surface-2 p-4">
+                <p className="text-xl font-bold text-accent">{stat}</p>
+                <p className="mt-1 text-xs text-muted">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Models strip */}
       <section className="border-t border-border-soft py-16">
         <div className="flex items-end justify-between gap-4">
