@@ -69,6 +69,14 @@ body {
   );
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .card {
   @apply rounded-xl border border-border-soft bg-surface shadow-[0_1px_3px_rgba(43,37,34,0.06)];
 }

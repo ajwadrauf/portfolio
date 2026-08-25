@@ -1,224 +1,318 @@
 import Link from "next/link";
-import { DELIVERABLES } from "@/lib/deliverables";
 import { MODELS } from "@/lib/models";
 
-const PIPELINE = [
+/** The role's four mandates, and what in this portfolio answers each. */
+const MANDATES = [
   {
-    step: "1 · Ingest",
-    title: "One product photo",
-    body: "Drag in a single product shot — the only asset the pipeline needs.",
+    n: "01",
+    mandate: "Produce the work yourself",
+    jd: "“Ability to produce finished creative content independently across stills, motion, video — not just direct others to do so.”",
+    answer:
+      "Everything here is a working tool, not a case-study screenshot. Upload a product photo and it produces finished stills, bilingual promo tiles, GS1 packshots and scored video ads — live, in the browser, in minutes.",
+    proof: [{ label: "Open the Studio", href: "/studio" }],
   },
   {
-    step: "2 · Understand",
-    title: "Vision analysis + adaptive interview",
-    body: "Gemini reads the image, extracts product context, and asks only the questions it can't answer itself — usually zero to three.",
+    n: "02",
+    mandate: "Stand up the studio's workflows and standards",
+    jd: "“Stand up the AI Content Studio's tools, workflows, standards, intake processes, and quality gates.”",
+    answer:
+      "The pipeline is the point: self-filling intake, one brief driving every deliverable, model routing by job and price, and named quality gates. The playbook documents all of it so it scales past one person.",
+    proof: [{ label: "Read the playbook", href: "/playbook" }],
   },
   {
-    step: "3 · Brief",
-    title: "One AI-written campaign brief",
-    body: "A single structured brief — mood, setting, palette, bilingual headlines, video direction — drives every deliverable. Fully editable before anything generates.",
+    n: "03",
+    mandate: "Evaluate tools and build-vs-buy",
+    jd: "“Evaluate AI tools, platforms, vendor relationships, and build-vs-buy decisions as the production model evolves.”",
+    answer:
+      "Nine models across three vendors are wired in and swappable from one config file, with a written point of view on what's ready, what's emerging and what isn't viable — plus a one-pager on suites vs. aggregators vs. direct APIs.",
+    proof: [
+      { label: "Model landscape", href: "/models" },
+      { label: "Build vs. buy", href: "/build-vs-buy" },
+    ],
   },
   {
-    step: "4 · Route",
-    title: "Model routing with live cost preview",
-    body: "Each deliverable runs on the model best suited (and priced) for it: Nano Banana Pro for text-in-image, Flux for photorealism, Veo for hero motion, Kling for volume cutdowns.",
+    n: "04",
+    mandate: "Teach it, and govern it",
+    jd: "“Build reusable playbooks, prompt approaches… support responsible AI use, including rights/IP, brand safety, disclosure and approval.”",
+    answer:
+      "Every asset exposes the prompt that made it. Reconstructed packshot angles are flagged for label QA. Prices are never invented. The demo states its own limits — because knowing what AI can't do yet is the job.",
+    proof: [{ label: "See the packshot QA flags", href: "/packshots" }],
+  },
+];
+
+const TOOLS = [
+  {
+    href: "/studio",
+    name: "Campaign Studio",
+    line: "One photo → a full multi-format pack",
+    body: "Vision analysis, an AI-written editable brief, then six stills and two videos across formats, languages and seasons — each routed to the right model at the right price.",
+    tags: ["Stills", "Motion", "EN/FR versioning"],
   },
   {
-    step: "5 · Deliver",
-    title: "A finished multi-format pack",
-    body: "Hero still, format adaptations, EN/FR promo tiles, a seasonal variant, and two videos with native audio — from one photo, in minutes.",
+    href: "/packshots",
+    name: "Packshot Studio",
+    line: "GS1 planogram angles without the reshoot",
+    body: "Upload the reference angles a SKU already has, generate the missing product-on-white views with GS1 filenames — grounded angles marked, reconstructed ones flagged for label QA.",
+    tags: ["Product on white", "A/B bake-offs", "Governance"],
+  },
+  {
+    href: "/ads",
+    name: "Ad Lab",
+    line: "Preset ad recipes any SKU can run through",
+    body: "Deconstructed concepts — aesthetics, beat-by-beat action, overlay spec, sound design — with the product swapped in from a photo, then scored with a real composed music bed.",
+    tags: ["Short-form video", "Prompt systems", "Sound design"],
+  },
+];
+
+const KNOWLEDGE = [
+  {
+    h: "Video models don't compose music",
+    p: "They render SFX, ambience and dialogue convincingly, then approximate music. So the Ad Lab splits the layers: the video model does sound design, a music model scores, and the mix stays a finishing step in the edit.",
+  },
+  {
+    h: "Text-in-image is a routing decision",
+    p: "Most image models still mangle type. That single constraint is why bilingual promo tiles route to the pro tier while format adaptations run four times cheaper on flash.",
+  },
+  {
+    h: "AI can't know what it never saw",
+    p: "A generated packshot of a panel no camera captured is a plausible reconstruction, not a record. It gets labelled that way, every time, because a wrong ingredient list is a recall, not a retouch.",
+  },
+  {
+    h: "The leaderboard flips quarterly",
+    p: "Sora 2's API sunset stranded pipelines built on it. Model IDs and prices live in one config file with env overrides, so switching a vendor is an edit — not a rebuild.",
   },
 ];
 
 export default function Home() {
-  const stillCount = DELIVERABLES.filter((d) => d.kind === "still").length;
-  const videoCount = DELIVERABLES.filter((d) => d.kind === "video").length;
-
   return (
     <div className="mx-auto max-w-6xl px-6">
-      {/* Hero */}
+      {/* ---------- Hero ---------- */}
       <section className="py-20 sm:py-28">
-        <p className="chip mb-6">Live demo · AI production pipeline</p>
-        <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
-          One product photo in.
+        <p className="chip mb-6">
+          Portfolio · Director, AI Content Studio — Loblaw Agency
+        </p>
+        <h1 className="max-w-4xl text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
+          The role asks for someone who still
           <br />
-          <span className="text-accent">A retail campaign out.</span>
+          makes the work.
+          <span className="block text-accent">So this portfolio is the work.</span>
         </h1>
-        <p className="mt-6 max-w-2xl text-lg text-muted">
-          A working AI Content Studio in miniature: upload a single product
-          image and this pipeline analyzes it, writes the campaign brief, and
-          produces {stillCount} finished stills and {videoCount} videos across
-          formats, languages and seasons — routing each deliverable to the
-          right model at the right cost.
+        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
+          Not a gallery of outputs — a functioning AI content studio in
+          miniature. Three production tools you can run right now, built on
+          nine models across three vendors, with the routing, cost governance
+          and quality gates that make AI production survivable at retail
+          volume.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/studio" className="btn-primary">
-            Open the Studio →
+            Run the pipeline →
           </Link>
-          <Link href="/build-vs-buy" className="btn-secondary">
-            Read the build-vs-buy case
+          <Link href="/playbook" className="btn-secondary">
+            Read the playbook
           </Link>
         </div>
-        <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[
-            ["8", "deliverables from one photo"],
-            ["4+", "models routed by fitness & cost"],
-            ["EN/FR", "bilingual versioning built in"],
-            ["<$3", "estimated cost per full pack*"],
-          ].map(([stat, label]) => (
-            <div key={label} className="card p-4">
-              <p className="text-2xl font-bold text-accent">{stat}</p>
-              <p className="mt-1 text-sm text-muted">{label}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-muted/70">
-          *At current list prices with the cost-efficient default routing (Veo
-          3.1 Fast + Kling 3.0 + Nano Banana). Full pricing on the{" "}
-          <Link href="/models" className="underline hover:text-foreground">
-            model landscape
-          </Link>{" "}
-          page.
-        </p>
       </section>
 
-      {/* Why */}
+      {/* ---------- Mandate mapping ---------- */}
       <section className="border-t border-border-soft py-16">
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Why this exists
-        </h2>
-        <div className="mt-6 grid gap-6 md:grid-cols-3">
-          <div className="card p-6">
-            <h3 className="font-semibold">Content demand outgrew production</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Retail content is a versioning business: every campaign multiplies
-              across formats, placements, seasons and — in Canada — two
-              languages. Traditional production models can&apos;t scale to that
-              volume at that cadence.
-            </p>
-          </div>
-          <div className="card p-6">
-            <h3 className="font-semibold">AI changes the unit economics</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              A format adaptation that took a studio day becomes a routed model
-              call costing cents. The craft moves upstream — into the brief,
-              the prompt system, and the quality gate — where judgment lives.
-            </p>
-          </div>
-          <div className="card p-6">
-            <h3 className="font-semibold">The pipeline is the portfolio</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Anyone can show AI outputs. This demo shows the production
-              system: intake, adaptive briefing, model routing, cost
-              governance, and quality thinking — the actual work of standing up
-              an AI content studio.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Pipeline */}
-      <section className="border-t border-border-soft py-16">
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          The pipeline
-        </h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-5">
-          {PIPELINE.map((p) => (
-            <div key={p.step} className="card flex flex-col p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-                {p.step}
-              </p>
-              <h3 className="mt-2 font-semibold leading-snug">{p.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{p.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Packshot case */}
-      <section className="border-t border-border-soft py-16">
-        <div className="card grid gap-8 p-8 md:grid-cols-[1fr_320px]">
-          <div>
-            <p className="chip mb-3">Case study · The planogram problem</p>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Product-on-white, every angle, without the reshoot
-            </h2>
-            <p className="mt-4 leading-relaxed text-muted">
-              Every SKU needs GS1 planogram packshots — front, back, left,
-              right, top, bottom — shot on white, retouched, named to spec.
-              Multiply that by a private-label catalog and it&apos;s one of the
-              largest recurring photography line items in retail. The Packshot
-              Studio takes the reference photos you already have and generates
-              the missing angles, with GS1-style filenames out of the box.
-            </p>
-            <p className="mt-3 leading-relaxed text-muted">
-              And it&apos;s honest about the limits: angles backed by a real
-              reference are marked <span className="font-semibold text-success">grounded</span>;
-              faces the camera never saw are{" "}
-              <span className="font-semibold text-warning">reconstructed</span>{" "}
-              and flagged for mandatory label QA — because the model can&apos;t
-              know what an unseen panel says. That distinction is the quality
-              gate that makes this usable in production.
-            </p>
-            <a href="/packshots" className="btn-primary mt-6">
-              Open the Packshot Studio →
-            </a>
-          </div>
-          <div className="grid grid-cols-2 content-start gap-3 text-sm">
-            {[
-              ["6+1", "planogram angles per SKU, one generation each"],
-              ["~$0.94", "per full 7-angle set on the Pro tier"],
-              ["GS1", "naming convention applied automatically"],
-              ["QA flag", "on every reconstructed, ungrounded angle"],
-            ].map(([stat, label]) => (
-              <div key={label} className="rounded-lg border border-border-soft bg-surface-2 p-4">
-                <p className="text-xl font-bold text-accent">{stat}</p>
-                <p className="mt-1 text-xs text-muted">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Models strip */}
-      <section className="border-t border-border-soft py-16">
-        <div className="flex items-end justify-between gap-4">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            The models under the hood
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+            What the role asks for
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            Four mandates, four answers
           </h2>
-          <Link href="/models" className="text-sm text-accent hover:underline">
+          <p className="mt-3 leading-relaxed text-muted">
+            The posting is unusually specific about wanting a hands-on
+            producer, not an oversight-only leader. Each mandate below is
+            answered by something in this portfolio you can open and use.
+          </p>
+        </div>
+
+        <div className="mt-10 space-y-10">
+          {MANDATES.map((m) => (
+            <article key={m.n} className="grid gap-5 md:grid-cols-[1fr_1.35fr] md:gap-10">
+              <div>
+                <div className="flex items-baseline gap-3">
+                  <span className="font-mono text-2xl font-bold text-accent/30">{m.n}</span>
+                  <h3 className="text-xl font-bold leading-snug tracking-tight">
+                    {m.mandate}
+                  </h3>
+                </div>
+                <blockquote className="mt-3 border-l-2 border-border-soft pl-4 text-sm italic leading-relaxed text-muted">
+                  {m.jd}
+                </blockquote>
+              </div>
+              <div>
+                <p className="leading-relaxed text-muted">{m.answer}</p>
+                <div className="mt-3 flex flex-wrap gap-4">
+                  {m.proof.map((p) => (
+                    <Link
+                      key={p.href}
+                      href={p.href}
+                      className="text-sm font-semibold text-accent hover:underline"
+                    >
+                      {p.label} →
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------- The three tools ---------- */}
+      <section className="border-t border-border-soft py-16">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+            The tools
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            Three surfaces, one production system
+          </h2>
+          <p className="mt-3 leading-relaxed text-muted">
+            Each covers a different slice of what a retail agency actually
+            ships — and all three share the same intake, routing, cost and
+            governance layer.
+          </p>
+        </div>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {TOOLS.map((t) => (
+            <Link
+              key={t.href}
+              href={t.href}
+              className="card group flex flex-col p-6 transition hover:border-accent"
+            >
+              <h3 className="text-lg font-bold tracking-tight">{t.name}</h3>
+              <p className="mt-1 text-sm font-medium text-accent">{t.line}</p>
+              <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">{t.body}</p>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {t.tags.map((tag) => (
+                  <span key={tag} className="chip">{tag}</span>
+                ))}
+              </div>
+              <span className="mt-4 text-sm font-semibold text-accent">
+                Open →
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------- Why it matters (retail context) ---------- */}
+      <section className="border-t border-border-soft py-16">
+        <div className="grid gap-10 md:grid-cols-[1fr_1.2fr]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+              The problem this is built for
+            </p>
+            <h2 className="mt-2 text-2xl font-bold leading-snug tracking-tight sm:text-3xl">
+              Retail content is a versioning business
+            </h2>
+          </div>
+          <div className="space-y-4 leading-relaxed text-muted">
+            <p>
+              A single campaign multiplies across formats, placements, seasons,
+              store banners and — in Canada — two official languages. One idea
+              becomes forty assets before it reaches a shopper. Traditional
+              production can make the one beautifully; it cannot make the forty
+              at that cadence.
+            </p>
+            <p>
+              That&apos;s the gap AI closes, and it changes where craft lives. An
+              adaptation that took a studio day becomes a routed call costing
+              cents, so judgment moves upstream — into the brief, the prompt
+              system and the quality gate. The skill isn&apos;t operating the
+              tools. It&apos;s deciding what good is, and building a system that
+              produces it repeatedly.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- Knowledge / POV ---------- */}
+      <section className="border-t border-border-soft py-16">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+            What working with these tools actually teaches you
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            Four things you only learn by shipping
+          </h2>
+          <p className="mt-3 leading-relaxed text-muted">
+            The role asks for an internal authority on what&apos;s ready, what&apos;s
+            emerging and what isn&apos;t viable. That judgment comes from hitting
+            the limits, not reading about them.
+          </p>
+        </div>
+        <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-border-soft bg-border-soft sm:grid-cols-2">
+          {KNOWLEDGE.map((k) => (
+            <div key={k.h} className="bg-surface p-6">
+              <h3 className="font-semibold leading-snug">{k.h}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{k.p}</p>
+            </div>
+          ))}
+        </div>
+        <Link
+          href="/models"
+          className="mt-6 inline-block text-sm font-semibold text-accent hover:underline"
+        >
+          The full ready / emerging / not-viable read →
+        </Link>
+      </section>
+
+      {/* ---------- Stack ---------- */}
+      <section className="border-t border-border-soft py-16">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+              Under the hood
+            </p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+              Nine models, one routing table
+            </h2>
+          </div>
+          <Link href="/models" className="text-sm font-semibold text-accent hover:underline">
             Full landscape →
           </Link>
         </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.values(MODELS).map((m) => (
-            <div key={m.id} className="card p-5">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="font-semibold leading-snug">{m.label}</h3>
-                <span className="chip shrink-0">
-                  {m.kind === "image"
-                    ? `$${m.unitCost.toFixed(3)}/img`
-                    : `$${m.unitCost.toFixed(2)}/s`}
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{m.bestFor}</p>
-            </div>
-          ))}
+        <div className="mt-8 overflow-x-auto rounded-xl border border-border-soft">
+          <table className="w-full min-w-[600px] border-collapse text-sm">
+            <tbody>
+              {Object.values(MODELS).map((m) => (
+                <tr key={m.id} className="border-b border-border-soft/60 last:border-0">
+                  <td className="px-4 py-3 font-medium">{m.label}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted">
+                    {m.unit === "image"
+                      ? `$${m.unitCost}/image`
+                      : `$${m.unitCost}/second`}
+                  </td>
+                  <td className="px-4 py-3 text-muted">{m.bestFor}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+        <p className="mt-3 text-xs text-muted/70">
+          Every ID and price sits in one config file with environment
+          overrides — swapping a model is an edit, not a rebuild.
+        </p>
       </section>
 
-      {/* CTA */}
+      {/* ---------- CTA ---------- */}
       <section className="border-t border-border-soft py-20 text-center">
         <h2 className="text-3xl font-bold tracking-tight">
-          See it run end to end
+          It runs right now, for free
         </h2>
-        <p className="mx-auto mt-3 max-w-xl text-muted">
-          The Studio works in demo mode with zero API spend, and goes fully
-          live the moment keys are configured — with a cost estimate shown
-          before any credit is used.
+        <p className="mx-auto mt-3 max-w-xl leading-relaxed text-muted">
+          Demo mode exercises the entire pipeline with zero API spend. Add
+          keys and it goes fully live — with a cost estimate and confirmation
+          before a single credit is used.
         </p>
         <Link href="/studio" className="btn-primary mt-8">
-          Launch the Studio →
+          Run the pipeline →
         </Link>
       </section>
     </div>
