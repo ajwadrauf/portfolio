@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { falGenerateImage } from "@/lib/fal";
 import { dataUrlToInline, generateImage } from "@/lib/gemini";
-import { estimateCost, getModel, hasGeminiKey, isDryRun } from "@/lib/models";
+import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib/models";
 import { mockImageDataUrl } from "@/lib/mock";
 import {
+  PACKSHOT_MODELS,
   buildPackshotPrompt,
   getAngle,
   isGrounded,
@@ -12,7 +14,6 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-const ALLOWED_MODELS = ["nano-banana-pro", "nano-banana-flash"];
 const MAX_REFERENCES = 6;
 
 export async function POST(req: Request) {
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
     const spec = getAngle(body.targetAngle);
     label = spec.label;
-    if (!ALLOWED_MODELS.includes(body.modelId)) {
+    if (!PACKSHOT_MODELS.includes(body.modelId)) {
       return NextResponse.json(
         { error: `Model ${body.modelId} not allowed for packshots` },
         { status: 400 },
@@ -47,7 +48,10 @@ export async function POST(req: Request) {
     const prompt = buildPackshotPrompt(body.targetAngle, providedAngles, body.productNotes);
     const cost = estimateCost(model.id);
 
-    if (!hasGeminiKey() || isDryRun()) {
+    const live =
+      !isDryRun() && (model.provider === "gemini" ? hasGeminiKey() : hasFalKey());
+
+    if (!live) {
       return NextResponse.json({
         mock: true,
         imageDataUrl: mockImageDataUrl({
@@ -61,13 +65,23 @@ export async function POST(req: Request) {
       });
     }
 
-    const { dataUrl } = await generateImage({
-      model: model.endpoint,
+    if (model.provider === "gemini") {
+      const { dataUrl } = await generateImage({
+        model: model.endpoint,
+        prompt,
+        aspectRatio: "1:1",
+        referenceImages: references.map((r) => dataUrlToInline(r.dataUrl)),
+      });
+      return NextResponse.json({ mock: false, imageDataUrl: dataUrl, prompt, grounded, cost });
+    }
+
+    const { url } = await falGenerateImage({
+      endpoint: model.endpoint,
       prompt,
       aspectRatio: "1:1",
-      referenceImages: references.map((r) => dataUrlToInline(r.dataUrl)),
+      referenceImageDataUrls: references.map((r) => r.dataUrl),
     });
-    return NextResponse.json({ mock: false, imageDataUrl: dataUrl, prompt, grounded, cost });
+    return NextResponse.json({ mock: false, imageUrl: url, prompt, grounded, cost });
   } catch (e) {
     console.error(`packshot generation failed (${label})`, e);
     return NextResponse.json(

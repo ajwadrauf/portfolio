@@ -65,6 +65,30 @@ export const MODELS: Record<string, ModelInfo> = {
     strengths: "Best pure photorealism in market. Food and product photography excels here.",
     bestFor: "Photorealistic hero stills where the image is the product.",
   },
+  "flux-kontext": {
+    id: "flux-kontext",
+    provider: "fal",
+    endpoint: env("FAL_KONTEXT_ENDPOINT", "fal-ai/flux-pro/kontext/max/multi"),
+    label: "Flux Kontext Max (BFL, via fal.ai)",
+    kind: "image",
+    unitCost: 0.08,
+    unit: "image",
+    strengths:
+      "Instruction-based editing with strong subject identity preservation and multi-image input; superb surface texture.",
+    bestFor: "Packshot challenger: identity-true edits where texture matters more than dense label text.",
+  },
+  "seedream-4": {
+    id: "seedream-4",
+    provider: "fal",
+    endpoint: env("FAL_SEEDREAM_ENDPOINT", "fal-ai/bytedance/seedream/v4/edit"),
+    label: "Seedream 4.0 Edit (ByteDance, via fal.ai)",
+    kind: "image",
+    unitCost: 0.03,
+    unit: "image",
+    strengths:
+      "Very strong subject-consistent editing at the lowest price in its class; multi-image input.",
+    bestFor: "Packshot challenger: the value benchmark every bake-off should include.",
+  },
 
   // ---------------- Video ----------------
   "veo-3.1-fast": {

@@ -24,6 +24,8 @@ export async function falGenerateImage(opts: {
   aspectRatio: string;
   /** data URL of the product photo; fal auto-uploads data URIs. */
   referenceImageDataUrl?: string;
+  /** multiple reference data URLs, for multi-image edit endpoints (Kontext multi, Seedream edit). */
+  referenceImageDataUrls?: string[];
 }): Promise<{ url: string }> {
   const f = client();
   const input: Record<string, unknown> = {
@@ -34,7 +36,17 @@ export async function falGenerateImage(opts: {
     // unknown fields are ignored by fal input validation on most endpoints.
     output_format: "jpeg",
   };
-  if (opts.referenceImageDataUrl) input.image_url = opts.referenceImageDataUrl;
+  const refs = opts.referenceImageDataUrls?.length
+    ? opts.referenceImageDataUrls
+    : opts.referenceImageDataUrl
+      ? [opts.referenceImageDataUrl]
+      : [];
+  if (refs.length > 0) {
+    // Single-image endpoints read image_url; multi-image edit endpoints read
+    // image_urls. Send both — fal ignores fields an endpoint doesn't define.
+    input.image_url = refs[0];
+    if (refs.length > 1 || opts.referenceImageDataUrls) input.image_urls = refs;
+  }
 
   const result = await f.subscribe(opts.endpoint, { input, logs: false });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

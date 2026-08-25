@@ -13,6 +13,14 @@
  * label-accuracy QA before use — or be grounded by uploading that face.
  */
 
+/** Models eligible for packshot work (all support multi-image reference input). */
+export const PACKSHOT_MODELS = [
+  "nano-banana-pro",
+  "nano-banana-flash",
+  "flux-kontext",
+  "seedream-4",
+];
+
 export type PackAngle =
   | "front"
   | "back"

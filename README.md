@@ -66,6 +66,8 @@ Model IDs and endpoint slugs move fast. They all live in
 | `GEMINI_VEO_MODEL` | `veo-3.1-generate-preview` | same |
 | `GEMINI_VEO_FAST_MODEL` | `veo-3.1-fast-generate-preview` | same |
 | `FAL_FLUX_ENDPOINT` | `fal-ai/flux-2-pro` | https://fal.ai/models |
+| `FAL_KONTEXT_ENDPOINT` | `fal-ai/flux-pro/kontext/max/multi` | https://fal.ai/models |
+| `FAL_SEEDREAM_ENDPOINT` | `fal-ai/bytedance/seedream/v4/edit` | https://fal.ai/models |
 | `FAL_KLING_ENDPOINT` | `fal-ai/kling-video/v3/standard/image-to-video` | https://fal.ai/models |
 
 ### 3. Cheap smoke test (≈ $0.10 total)

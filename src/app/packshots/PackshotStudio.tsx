@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MODELS, estimateCost } from "@/lib/models";
 import {
+  PACKSHOT_MODELS,
   PACK_ANGLES,
   gs1FileName,
   isGrounded,
@@ -13,8 +14,11 @@ type Reference = { angle: PackAngle; dataUrl: string };
 
 type Job = {
   angle: PackAngle;
+  modelId: string;
+  role: "primary" | "challenger";
   status: "queued" | "running" | "done" | "failed" | "mock";
   imageDataUrl?: string;
+  imageUrl?: string;
   prompt?: string;
   grounded?: boolean;
   error?: string;
@@ -22,7 +26,6 @@ type Job = {
 };
 
 const SPEND_KEY = "studio-session-spend";
-const MODEL_OPTIONS = ["nano-banana-pro", "nano-banana-flash"] as const;
 const LANGS = ["enfr", "en", "fr"] as const;
 
 async function toProcessedDataUrl(file: File): Promise<string> {
@@ -50,7 +53,9 @@ async function toProcessedDataUrl(file: File): Promise<string> {
 }
 
 export function PackshotStudio() {
-  const [health, setHealth] = useState<{ gemini: boolean; live: boolean } | null>(null);
+  const [health, setHealth] = useState<{ gemini: boolean; fal: boolean; live: boolean } | null>(
+    null,
+  );
   const [sku, setSku] = useState("");
   const [lang, setLang] = useState<(typeof LANGS)[number]>("enfr");
   const [notes, setNotes] = useState("");
@@ -60,6 +65,7 @@ export function PackshotStudio() {
     Object.fromEntries(PACK_ANGLES.map((a) => [a.id, a.id !== "front"])),
   );
   const [modelId, setModelId] = useState<string>("nano-banana-pro");
+  const [challengerId, setChallengerId] = useState<string>("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [sessionSpend, setSessionSpend] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -68,8 +74,10 @@ export function PackshotStudio() {
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
-      .then((h) => setHealth({ gemini: h.gemini, live: h.gemini && !h.dryRun }))
-      .catch(() => setHealth({ gemini: false, live: false }));
+      .then((h) =>
+        setHealth({ gemini: h.gemini, fal: h.fal, live: (h.gemini || h.fal) && !h.dryRun }),
+      )
+      .catch(() => setHealth({ gemini: false, fal: false, live: false }));
     try {
       setSessionSpend(Number(localStorage.getItem(SPEND_KEY) ?? 0));
     } catch {}
@@ -90,7 +98,8 @@ export function PackshotStudio() {
     () => PACK_ANGLES.filter((a) => targets[a.id]).map((a) => a.id),
     [targets],
   );
-  const totalEstimate = selectedAngles.length * estimateCost(modelId);
+  const perAngleCost = estimateCost(modelId) + (challengerId ? estimateCost(challengerId) : 0);
+  const totalEstimate = selectedAngles.length * perAngleCost;
   const groundedCount = selectedAngles.filter((a) => isGrounded(a, providedAngles)).length;
 
   const addReference = useCallback(
@@ -109,34 +118,48 @@ export function PackshotStudio() {
     [uploadAngle],
   );
 
-  const updateJob = useCallback((angle: PackAngle, patch: Partial<Job>) => {
-    setJobs((prev) => prev.map((j) => (j.angle === angle ? { ...j, ...patch } : j)));
-  }, []);
+  const updateJob = useCallback(
+    (angle: PackAngle, jobModelId: string, patch: Partial<Job>) => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.angle === angle && j.modelId === jobModelId ? { ...j, ...patch } : j,
+        ),
+      );
+    },
+    [],
+  );
 
   const generate = useCallback(async () => {
     if (references.length === 0 || selectedAngles.length === 0) return;
     setError(null);
+    const runs: { angle: PackAngle; modelId: string; role: "primary" | "challenger" }[] =
+      selectedAngles.flatMap((angle) => [
+        { angle, modelId, role: "primary" as const },
+        ...(challengerId
+          ? [{ angle, modelId: challengerId, role: "challenger" as const }]
+          : []),
+      ]);
     if (health?.live) {
       const ok = window.confirm(
-        `This will run ${selectedAngles.length} live packshot generation${selectedAngles.length === 1 ? "" : "s"} at an estimated cost of $${totalEstimate.toFixed(2)}. Proceed?`,
+        `This will run ${runs.length} live packshot generation${runs.length === 1 ? "" : "s"}${challengerId ? " (A/B: primary + challenger per angle)" : ""} at an estimated cost of $${totalEstimate.toFixed(2)}. Proceed?`,
       );
       if (!ok) return;
     }
-    setJobs(selectedAngles.map((angle) => ({ angle, status: "queued", cost: 0 })));
+    setJobs(runs.map((r) => ({ ...r, status: "queued", cost: 0 })));
 
-    const queue = [...selectedAngles];
+    const queue = [...runs];
     const worker = async () => {
       for (;;) {
-        const angle = queue.shift();
-        if (!angle) return;
-        updateJob(angle, { status: "running" });
+        const run = queue.shift();
+        if (!run) return;
+        updateJob(run.angle, run.modelId, { status: "running" });
         try {
           const res = await fetch("/api/packshot", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              targetAngle: angle,
-              modelId,
+              targetAngle: run.angle,
+              modelId: run.modelId,
               references,
               productNotes: notes || undefined,
             }),
@@ -144,15 +167,16 @@ export function PackshotStudio() {
           const json = await res.json();
           if (!res.ok) throw new Error(json.error ?? "Generation failed");
           if (!json.mock) addSpend(json.cost ?? 0);
-          updateJob(angle, {
+          updateJob(run.angle, run.modelId, {
             status: json.mock ? "mock" : "done",
             imageDataUrl: json.imageDataUrl,
+            imageUrl: json.imageUrl,
             prompt: json.prompt,
             grounded: json.grounded,
             cost: json.mock ? 0 : (json.cost ?? 0),
           });
         } catch (e) {
-          updateJob(angle, {
+          updateJob(run.angle, run.modelId, {
             status: "failed",
             error: e instanceof Error ? e.message : "Generation failed",
           });
@@ -160,7 +184,7 @@ export function PackshotStudio() {
       }
     };
     await Promise.all([worker(), worker()]);
-  }, [addSpend, health, modelId, notes, references, selectedAngles, totalEstimate, updateJob]);
+  }, [addSpend, challengerId, health, modelId, notes, references, selectedAngles, totalEstimate, updateJob]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -171,9 +195,13 @@ export function PackshotStudio() {
             <span className={`inline-block h-2 w-2 rounded-full ${health?.gemini ? "bg-success" : "bg-muted/50"}`} />
             Gemini API {health?.gemini ? "connected" : "not configured"}
           </span>
+          <span className="chip">
+            <span className={`inline-block h-2 w-2 rounded-full ${health?.fal ? "bg-success" : "bg-muted/50"}`} />
+            fal.ai {health?.fal ? "connected" : "not configured"}
+          </span>
           {health && !health.live && (
             <span className="chip border-warning/40 text-warning">
-              Demo mode — zero-cost mocks; add GEMINI_API_KEY to go live
+              Demo mode — zero-cost mocks; add API keys to go live
             </span>
           )}
         </div>
@@ -299,20 +327,44 @@ export function PackshotStudio() {
 
           <div className="card p-5">
             <h2 className="font-semibold">3 · Model</h2>
-            <select
-              className="input mt-3"
-              value={modelId}
-              onChange={(e) => setModelId(e.target.value)}
-            >
-              {MODEL_OPTIONS.map((m) => (
-                <option key={m} value={m}>
-                  {MODELS[m].label} — ${MODELS[m].unitCost}/img
-                </option>
-              ))}
-            </select>
+            <label className="mt-3 block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+                Primary
+              </span>
+              <select
+                className="input"
+                value={modelId}
+                onChange={(e) => setModelId(e.target.value)}
+              >
+                {PACKSHOT_MODELS.map((m) => (
+                  <option key={m} value={m}>
+                    {MODELS[m].label} — ${MODELS[m].unitCost}/img
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-3 block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+                Challenger (A/B, optional)
+              </span>
+              <select
+                className="input"
+                value={challengerId}
+                onChange={(e) => setChallengerId(e.target.value)}
+              >
+                <option value="">Off — primary only</option>
+                {PACKSHOT_MODELS.filter((m) => m !== modelId).map((m) => (
+                  <option key={m} value={m}>
+                    {MODELS[m].label} — ${MODELS[m].unitCost}/img
+                  </option>
+                ))}
+              </select>
+            </label>
             <p className="mt-2 text-xs text-muted">
-              Pro holds label text and brand detail best — use it for final
-              assets; Flash is fine for layout drafts.
+              Nano Banana Pro holds label text best; Flux Kontext wins on
+              surface texture; Seedream is the value benchmark. With a
+              challenger set, every angle runs on both models and renders side
+              by side — the bake-off that should decide your default.
             </p>
           </div>
         </div>
@@ -374,9 +426,13 @@ export function PackshotStudio() {
           </div>
 
           {jobs.length > 0 && (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div
+              className={`mt-6 grid gap-4 ${
+                challengerId ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"
+              }`}
+            >
               {jobs.map((j) => (
-                <PackshotCard key={j.angle} job={j} sku={sku} lang={lang} />
+                <PackshotCard key={`${j.angle}:${j.modelId}`} job={j} sku={sku} lang={lang} />
               ))}
             </div>
           )}
@@ -388,16 +444,20 @@ export function PackshotStudio() {
 
 function PackshotCard({ job, sku, lang }: { job: Job; sku: string; lang: string }) {
   const spec = PACK_ANGLES.find((a) => a.id === job.angle)!;
+  const model = MODELS[job.modelId];
   const [showPrompt, setShowPrompt] = useState(false);
-  const fileName = gs1FileName(sku, lang, job.angle);
+  const gs1 = gs1FileName(sku, lang, job.angle);
+  const fileName =
+    job.role === "challenger" ? gs1.replace(/\.jpg$/, `__${job.modelId}.jpg`) : gs1;
+  const media = job.imageDataUrl ?? job.imageUrl;
 
   return (
     <div className="card overflow-hidden">
       <div className="relative aspect-square w-full bg-surface-2">
-        {job.imageDataUrl ? (
+        {media ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={job.imageDataUrl}
+            src={media}
             alt={spec.label}
             className="absolute inset-0 h-full w-full object-cover"
           />
@@ -427,14 +487,22 @@ function PackshotCard({ job, sku, lang }: { job: Job; sku: string; lang: string 
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="font-semibold">{spec.label}</p>
-          {job.cost > 0 && <span className="chip">${job.cost.toFixed(2)}</span>}
+          <span className="flex items-center gap-1">
+            {job.role === "challenger" && (
+              <span className="chip border-accent/40 text-accent">challenger</span>
+            )}
+            {job.cost > 0 && <span className="chip">${job.cost.toFixed(2)}</span>}
+          </span>
         </div>
+        <p className="mt-0.5 text-xs text-muted">{model.label}</p>
         <p className="mt-1 break-all font-mono text-[11px] text-muted">{fileName}</p>
         <div className="mt-3 flex gap-2">
-          {job.imageDataUrl && (
+          {media && (
             <a
-              href={job.imageDataUrl}
+              href={media}
               download={fileName}
+              target={job.imageUrl ? "_blank" : undefined}
+              rel="noreferrer"
               className="text-xs font-semibold text-accent hover:underline"
             >
               Download
