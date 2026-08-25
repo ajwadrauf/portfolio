@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchVeoFile } from "@/lib/gemini";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 /**
  * Streams a generated Veo file to the browser. The Gemini Files API requires

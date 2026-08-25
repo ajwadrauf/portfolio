@@ -7,7 +7,7 @@ import { mockImageDataUrl } from "@/lib/mock";
 import type { CampaignBrief, DeliverableId } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   let label = "Still";

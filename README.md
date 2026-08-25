@@ -118,6 +118,31 @@ fix the env var per the table above, don't retry blindly.
 
 ## Deploying
 
-Any Node host works. Vercel is simplest: import the repo, set the env vars,
-deploy. Video generation needs function `maxDuration` ≥ 60s (configured
-per-route; on Vercel this requires a plan that allows it).
+Needs a Node host — the API routes are server-side, so static hosts
+(GitHub Pages, shared cPanel hosting) will not work. Vercel is simplest.
+
+1. Import the GitHub repo at https://vercel.com/new
+2. Set the production branch under **Settings → Git**
+3. Add environment variables under **Settings → Environment Variables**
+4. Add the custom domain under **Settings → Domains** and follow the DNS
+   records Vercel shows you
+
+Every route caps at `maxDuration = 60`, which fits Vercel's Hobby tier.
+Video generation is unaffected: the start route returns an operation id
+immediately and the browser polls, so no single request runs long.
+
+### ⚠️ Protect your API keys on a public deployment
+
+If you deploy with live API keys, **anyone who finds the URL can spend your
+credits** — the generate endpoints are public. For a public portfolio,
+either:
+
+- Deploy with `DRY_RUN=1` so the site serves demo mocks (full UX, zero
+  spend), and run live locally when demoing; or
+- Put the site behind Vercel's password protection (Settings → Deployment
+  Protection); or
+- Set hard spend caps at the provider: https://ai.studio/spend for Gemini,
+  and a spending limit in the fal.ai dashboard.
+
+Deploying live keys to a public URL with no cap is the one configuration
+to avoid.
