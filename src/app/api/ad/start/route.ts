@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consume, liveJson, unlocked } from "@/lib/auth";
 import { AD_VIDEO_MODELS } from "@/lib/adPresets";
 import { falStartVideo } from "@/lib/fal";
 import { dataUrlToInline, startVeo } from "@/lib/gemini";
@@ -35,8 +36,9 @@ export async function POST(req: Request) {
     const seconds = Math.min(Math.max(body.durationSeconds ?? 8, 4), 10);
     const cost = estimateCost(model.id, { seconds });
 
-    const live =
-      !isDryRun() && (model.provider === "gemini" ? hasGeminiKey() : hasFalKey());
+    const hasKey = model.provider === "gemini" ? hasGeminiKey() : hasFalKey();
+    const spend = !isDryRun() && hasKey && unlocked(req) ? consume(req) : null;
+    const live = spend?.ok ?? false;
 
     if (!live) {
       return NextResponse.json({
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
         durationSeconds: seconds,
         firstFrame: body.imageDataUrl ? dataUrlToInline(body.imageDataUrl) : undefined,
       });
-      return NextResponse.json({ mock: false, provider: "gemini", operationName, cost });
+      return liveJson(spend, { mock: false, provider: "gemini", operationName, cost });
     }
 
     const { requestId } = await falStartVideo({
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
       referenceImageDataUrl: body.imageDataUrl,
       negativePrompt: body.negativePrompt,
     });
-    return NextResponse.json({ mock: false, provider: "fal", falRequestId: requestId, cost });
+    return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, cost });
   } catch (e) {
     console.error("ad start failed", e);
     return NextResponse.json(

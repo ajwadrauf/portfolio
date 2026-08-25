@@ -131,18 +131,42 @@ Every route caps at `maxDuration = 60`, which fits Vercel's Hobby tier.
 Video generation is unaffected: the start route returns an operation id
 immediately and the browser polls, so no single request runs long.
 
-### ⚠️ Protect your API keys on a public deployment
+### Protecting your API keys on a public deployment
 
-If you deploy with live API keys, **anyone who finds the URL can spend your
-credits** — the generate endpoints are public. For a public portfolio,
-either:
+A public URL with real keys would otherwise let anyone spend your credits.
+The live-mode gate handles this: **without the passcode the site serves demo
+mode**, so browsing is open to everyone and only generation is gated.
 
-- Deploy with `DRY_RUN=1` so the site serves demo mocks (full UX, zero
-  spend), and run live locally when demoing; or
-- Put the site behind Vercel's password protection (Settings → Deployment
-  Protection); or
-- Set hard spend caps at the provider: https://ai.studio/spend for Gemini,
-  and a spending limit in the fal.ai dashboard.
+Set these in Vercel:
 
-Deploying live keys to a public URL with no cap is the one configuration
-to avoid.
+| Variable | Purpose |
+|---|---|
+| `LIVE_PASSCODE` | Unlocks live generation. Share it in your application. |
+| `SESSION_SECRET` | Signs the session cookie. Any long random string. |
+| `LIVE_BUDGET` | Live generations per unlocked session (default 40). |
+
+Generate strong values with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
+```
+
+How it holds up:
+
+- The passcode never reaches the browser; it is compared server-side in
+  constant time.
+- Unlocking issues an **HMAC-signed, HttpOnly** cookie — JavaScript cannot
+  read it and it cannot be forged or edited without `SESSION_SECRET`.
+- The remaining budget lives **inside** the signed cookie, so editing it to
+  get more generations invalidates the signature and locks the session.
+- Unlock attempts are rate-limited per IP (8 per 15 min) with a uniform
+  delay on failure, so brute-forcing is slow and pointless against a
+  high-entropy passcode.
+- **Every paid route re-checks the gate server-side.** A crafted request
+  with no valid cookie receives mocks, never a live generation.
+- If you deploy keys *without* a passcode, the header shows a red
+  **"⚠ Ungated live"** warning so the misconfiguration is obvious.
+
+Still worth setting provider-side caps as a final backstop:
+https://ai.studio/spend for Gemini, and a spending limit in the fal.ai
+dashboard.

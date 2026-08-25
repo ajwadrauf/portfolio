@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consume, liveJson, unlocked } from "@/lib/auth";
 import { getDeliverable } from "@/lib/deliverables";
 import { falStartVideo } from "@/lib/fal";
 import { dataUrlToInline, startVeo } from "@/lib/gemini";
@@ -36,8 +37,11 @@ export async function POST(req: Request) {
     const prompt = spec.buildPrompt(body.brief);
     const cost = estimateCost(model.id, { seconds });
 
-    const live =
-      !isDryRun() && (model.provider === "gemini" ? hasGeminiKey() : hasFalKey());
+    const hasKey = model.provider === "gemini" ? hasGeminiKey() : hasFalKey();
+    // Gate first, then spend a unit of this session's budget. Either failing
+    // degrades to demo mode rather than erroring.
+    const spend = !isDryRun() && hasKey && unlocked(req) ? consume(req) : null;
+    const live = spend?.ok ?? false;
 
     if (!live) {
       return NextResponse.json({
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
             ? dataUrlToInline(body.imageDataUrl)
             : undefined,
       });
-      return NextResponse.json({ mock: false, provider: "gemini", operationName, prompt, cost });
+      return liveJson(spend, { mock: false, provider: "gemini", operationName, prompt, cost });
     }
 
     const { requestId } = await falStartVideo({
@@ -75,7 +79,7 @@ export async function POST(req: Request) {
       referenceImageDataUrl: spec.usesProductImage ? body.imageDataUrl : undefined,
       negativePrompt: body.brief.negativePrompt,
     });
-    return NextResponse.json({ mock: false, provider: "fal", falRequestId: requestId, prompt, cost });
+    return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, prompt, cost });
   } catch (e) {
     console.error(`video start failed (${label})`, e);
     return NextResponse.json(

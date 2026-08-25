@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { unlocked } from "@/lib/auth";
 import { AD_NEGATIVE_PROMPT, getAdPreset, type AudioMode } from "@/lib/adPresets";
 import { dataUrlToInline, reasonJson } from "@/lib/gemini";
 import { getMusicStyle } from "@/lib/music";
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     const musicBrief = getMusicStyle(body.musicStyleId ?? preset.musicStyleId).prompt;
     const baseline = preset.template(params, audioMode, musicBrief);
 
-    if (!hasGeminiKey() || isDryRun()) {
+    if (!hasGeminiKey() || isDryRun() || !unlocked(req)) {
       return NextResponse.json({
         finalPrompt: baseline,
         negativePrompt: AD_NEGATIVE_PROMPT,

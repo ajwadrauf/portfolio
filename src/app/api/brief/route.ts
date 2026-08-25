@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { unlocked } from "@/lib/auth";
 import { dataUrlToInline, reasonJson } from "@/lib/gemini";
 import { hasGeminiKey, isDryRun } from "@/lib/models";
 import { mockBrief } from "@/lib/mock";
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "productContext is required" }, { status: 400 });
     }
 
-    if (!hasGeminiKey() || isDryRun()) {
+    if (!hasGeminiKey() || isDryRun() || !unlocked(req)) {
       return NextResponse.json({ brief: mockBrief(), mock: true });
     }
 

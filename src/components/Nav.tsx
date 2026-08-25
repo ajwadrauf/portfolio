@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LiveGate } from "./LiveGate";
 
 const LINKS = [
   { href: "/", label: "Overview" },
@@ -25,6 +26,9 @@ export function Nav() {
           </span>
           Content Studio
         </Link>
+        <div className="flex items-center gap-3 sm:order-last">
+          <LiveGate />
+        </div>
         <nav className="no-scrollbar -mx-6 flex items-center gap-1 overflow-x-auto px-6 text-sm sm:mx-0 sm:overflow-visible sm:px-0">
           {LINKS.map((l) => {
             const active = pathname === l.href;

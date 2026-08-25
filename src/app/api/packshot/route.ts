@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consume, liveJson, unlocked } from "@/lib/auth";
 import { falGenerateImage } from "@/lib/fal";
 import { dataUrlToInline, generateImage } from "@/lib/gemini";
 import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib/models";
@@ -48,8 +49,11 @@ export async function POST(req: Request) {
     const prompt = buildPackshotPrompt(body.targetAngle, providedAngles, body.productNotes);
     const cost = estimateCost(model.id);
 
-    const live =
-      !isDryRun() && (model.provider === "gemini" ? hasGeminiKey() : hasFalKey());
+    const hasKey = model.provider === "gemini" ? hasGeminiKey() : hasFalKey();
+    // Gate first, then spend a unit of this session's budget. Either failing
+    // degrades to demo mode rather than erroring.
+    const spend = !isDryRun() && hasKey && unlocked(req) ? consume(req) : null;
+    const live = spend?.ok ?? false;
 
     if (!live) {
       return NextResponse.json({
@@ -72,7 +76,7 @@ export async function POST(req: Request) {
         aspectRatio: "1:1",
         referenceImages: references.map((r) => dataUrlToInline(r.dataUrl)),
       });
-      return NextResponse.json({ mock: false, imageDataUrl: dataUrl, prompt, grounded, cost });
+      return liveJson(spend, { mock: false, imageDataUrl: dataUrl, prompt, grounded, cost });
     }
 
     const { url } = await falGenerateImage({
@@ -81,7 +85,7 @@ export async function POST(req: Request) {
       aspectRatio: "1:1",
       referenceImageDataUrls: references.map((r) => r.dataUrl),
     });
-    return NextResponse.json({ mock: false, imageUrl: url, prompt, grounded, cost });
+    return liveJson(spend, { mock: false, imageUrl: url, prompt, grounded, cost });
   } catch (e) {
     console.error(`packshot generation failed (${label})`, e);
     return NextResponse.json(

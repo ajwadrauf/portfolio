@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consume, liveJson, unlocked } from "@/lib/auth";
 import { falGenerateMusic } from "@/lib/fal";
 import { mockMusicDataUrl } from "@/lib/mockAudio";
 import { estimateCost, getModel, hasFalKey, isDryRun } from "@/lib/models";
@@ -22,7 +23,9 @@ export async function POST(req: Request) {
     const model = getModel(MUSIC_MODEL_ID);
     const cost = estimateCost(MUSIC_MODEL_ID, { seconds });
 
-    if (!hasFalKey() || isDryRun()) {
+    const spend =
+      !isDryRun() && hasFalKey() && unlocked(req) ? consume(req) : null;
+    if (!spend?.ok) {
       return NextResponse.json({
         mock: true,
         audioUrl: mockMusicDataUrl(seconds),
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
       prompt,
       durationSeconds: seconds,
     });
-    return NextResponse.json({ mock: false, audioUrl: url, prompt, cost });
+    return liveJson(spend, { mock: false, audioUrl: url, prompt, cost });
   } catch (e) {
     console.error("music generation failed", e);
     return NextResponse.json(

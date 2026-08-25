@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { unlocked } from "@/lib/auth";
 import { dataUrlToInline, reasonJson } from "@/lib/gemini";
 import { hasGeminiKey, isDryRun } from "@/lib/models";
 import { mockAnalyze } from "@/lib/mock";
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "imageDataUrl is required" }, { status: 400 });
     }
 
-    if (!hasGeminiKey() || isDryRun()) {
+    if (!hasGeminiKey() || isDryRun() || !unlocked(req)) {
       return NextResponse.json({ ...mockAnalyze(), mock: true });
     }
 
