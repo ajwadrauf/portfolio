@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { AD_NEGATIVE_PROMPT, getAdPreset, type AudioMode } from "@/lib/adPresets";
-import { reasonJson } from "@/lib/gemini";
+import { dataUrlToInline, reasonJson } from "@/lib/gemini";
 import { hasGeminiKey, isDryRun } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       presetId: string;
       params: Record<string, string>;
       audioMode?: AudioMode;
+      imageDataUrl?: string;
     };
     const preset = getAdPreset(body.presetId);
     const params = Object.fromEntries(
@@ -48,13 +49,14 @@ export async function POST(req: Request) {
       prompt: `You are a creative director finalizing a short-form product ad prompt for Google Veo (native synchronized audio; text in quotes renders as on-screen or spoken content).
 
 The ad concept is a fixed preset — do NOT change its concept, camera style, structure or audio design. Your job is to polish the draft prompt below into the strongest possible ${preset.durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, and keep it as one flowing prompt of 4-8 sentences. Preserve the Audio: cue's instructions exactly in spirit — ${audioMode === "layered" ? "in particular it MUST still forbid music/score/soundtrack, because the music bed is composed separately and layered in" : "including its musical direction"}. No real-world brand names other than the quoted brand text.
-
+${body.imageDataUrl ? "\nA photo of the ACTUAL product is attached, and it will also be passed to the video model as the grounding first frame. Anchor the prompt in what the photo really shows — the packaging's true colors, materials, finish and proportions — and correct any detail in the draft that contradicts the photo. The product in the ad must be recognizably THIS product.\n" : ""}
 Preset: ${preset.name} — ${preset.hook}
 
 Draft prompt:
 ${baseline}
 
 Return finalPrompt (the polished prompt) and negativePrompt (short artifact-avoidance list appropriate to this style).`,
+      image: body.imageDataUrl ? dataUrlToInline(body.imageDataUrl) : undefined,
       responseSchema: COMPOSE_SCHEMA,
       validate: (raw) => raw as { finalPrompt: string; negativePrompt: string },
     });

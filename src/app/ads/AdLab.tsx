@@ -62,6 +62,11 @@ export function AdLab() {
   const [sessionSpend, setSessionSpend] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // Vision autofill
+  const [autofillBusy, setAutofillBusy] = useState(false);
+  const [autofillRationale, setAutofillRationale] = useState<string | null>(null);
+  const [autofilledKeys, setAutofilledKeys] = useState<Set<string>>(new Set());
+
   // Audio layer
   const [audioMode, setAudioMode] = useState<AudioMode>("layered");
   const [musicStyleId, setMusicStyleId] = useState<string>(AD_PRESETS[0].musicStyleId);
@@ -98,21 +103,70 @@ export function AdLab() {
     });
   }, []);
 
-  const selectPreset = useCallback((id: string) => {
-    setPresetId(id);
-    setMusicStyleId(getAdPreset(id).musicStyleId);
-    setMusicUrl(null);
-    setParams({});
-    setFinalPrompt("");
-    setNegativePrompt("");
-    setPhase("idle");
-    setVideoUrl(null);
-    setPosterDataUrl(null);
-    setError(null);
-  }, []);
+  /**
+   * Photo is the source of truth: every field the vision model can ground in
+   * the image is overwritten; fields it can't determine (e.g. no printed
+   * price) keep whatever the user typed.
+   */
+  const runAutofill = useCallback(
+    async (imageDataUrl: string, forPresetId: string) => {
+      setAutofillBusy(true);
+      setAutofillRationale(null);
+      try {
+        const res = await fetch("/api/ad/autofill", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ presetId: forPresetId, imageDataUrl }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "Photo analysis failed");
+        const values = json.values as Record<string, string>;
+        const filled = new Set<string>();
+        setParams((prev) => {
+          const next = { ...prev };
+          for (const [key, value] of Object.entries(values)) {
+            if (value) {
+              next[key] = value;
+              filled.add(key);
+            }
+          }
+          return next;
+        });
+        setAutofilledKeys(filled);
+        setAutofillRationale(json.rationale ?? null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Photo analysis failed");
+      } finally {
+        setAutofillBusy(false);
+      }
+    },
+    [],
+  );
+
+  const selectPreset = useCallback(
+    (id: string) => {
+      setPresetId(id);
+      setMusicStyleId(getAdPreset(id).musicStyleId);
+      setMusicUrl(null);
+      setParams({});
+      setAutofilledKeys(new Set());
+      setAutofillRationale(null);
+      setFinalPrompt("");
+      setNegativePrompt("");
+      setPhase("idle");
+      setVideoUrl(null);
+      setPosterDataUrl(null);
+      setError(null);
+      // A different preset asks different questions of the same photo.
+      if (productImage) void runAutofill(productImage, id);
+    },
+    [productImage, runAutofill],
+  );
 
   const loadExample = useCallback(() => {
     setParams(Object.fromEntries(preset.fields.map((f) => [f.key, f.example])));
+    setAutofilledKeys(new Set());
+    setAutofillRationale(null);
   }, [preset]);
 
   const compose = useCallback(async () => {
@@ -122,7 +176,7 @@ export function AdLab() {
       const res = await fetch("/api/ad/compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presetId, params, audioMode }),
+        body: JSON.stringify({ presetId, params, audioMode, imageDataUrl: productImage ?? undefined }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Compose failed");
@@ -133,7 +187,7 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Compose failed");
       setPhase("idle");
     }
-  }, [audioMode, params, presetId]);
+  }, [audioMode, params, presetId, productImage]);
 
   const generateMusic = useCallback(async () => {
     setError(null);
@@ -351,31 +405,35 @@ export function AdLab() {
 
           <div className="card p-5">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="font-semibold">Swap in your product</h2>
-              <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={loadExample}>
-                Load example
+              <h2 className="font-semibold">Your product</h2>
+              <button
+                className="text-xs font-semibold text-muted hover:text-foreground"
+                onClick={loadExample}
+              >
+                or load an example
               </button>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {preset.fields.map((f) => (
-                <label key={f.key}>
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
-                    {f.label}
-                  </span>
-                  <input
-                    className="input"
-                    placeholder={f.placeholder}
-                    value={params[f.key] ?? ""}
-                    onChange={(e) =>
-                      setParams((prev) => ({ ...prev, [f.key]: e.target.value }))
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button className="btn-secondary" onClick={() => fileInput.current?.click()}>
-                {productImage ? "Replace product photo" : "Add product photo (optional)"}
+
+            {/* Photo first — it drives everything below */}
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-border-soft bg-surface-2 p-4">
+              {productImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={productImage}
+                  alt="Product"
+                  className="h-16 w-16 rounded-lg border border-border-soft object-cover"
+                />
+              )}
+              <button
+                className="btn-secondary"
+                onClick={() => fileInput.current?.click()}
+                disabled={autofillBusy}
+              >
+                {autofillBusy
+                  ? "Reading the photo…"
+                  : productImage
+                    ? "Replace product photo"
+                    : "Upload product photo"}
               </button>
               <input
                 ref={fileInput}
@@ -386,7 +444,9 @@ export function AdLab() {
                   const f = e.target.files?.[0];
                   if (f) {
                     try {
-                      setProductImage(await toProcessedDataUrl(f));
+                      const dataUrl = await toProcessedDataUrl(f);
+                      setProductImage(dataUrl);
+                      void runAutofill(dataUrl, presetId);
                     } catch {
                       setError("Could not read that image");
                     }
@@ -394,24 +454,65 @@ export function AdLab() {
                   e.target.value = "";
                 }}
               />
-              {productImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={productImage}
-                  alt="Product"
-                  className="h-14 w-14 rounded-lg border border-border-soft object-cover"
-                />
-              )}
-              <p className="text-xs text-muted">
-                With a photo, the real product grounds the ad (image-to-video first frame).
+              <p className="min-w-40 flex-1 text-xs text-muted">
+                The photo fills the fields below (brand read off the pack, a
+                background color reasoned from the packaging) and grounds the
+                video as its first frame.
               </p>
+            </div>
+
+            {autofillRationale && (
+              <div className="mt-3 rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs leading-relaxed text-muted">
+                <span className="font-bold text-accent">Filled from your photo.</span>{" "}
+                {autofillRationale} Review every field — especially the price —
+                before composing.
+              </div>
+            )}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {preset.fields.map((f) => (
+                <label key={f.key}>
+                  <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+                    {f.label}
+                    {autofilledKeys.has(f.key) && (
+                      <span className="rounded bg-accent/15 px-1 py-px text-[10px] font-bold normal-case tracking-normal text-accent">
+                        from photo
+                      </span>
+                    )}
+                    {f.key === "price" && productImage && !autofilledKeys.has("price") && (
+                      <span className="rounded bg-warning/15 px-1 py-px text-[10px] font-bold normal-case tracking-normal text-warning">
+                        not on pack — set it
+                      </span>
+                    )}
+                  </span>
+                  <input
+                    className="input disabled:opacity-60"
+                    placeholder={f.placeholder}
+                    disabled={autofillBusy}
+                    value={params[f.key] ?? ""}
+                    onChange={(e) => {
+                      setParams((prev) => ({ ...prev, [f.key]: e.target.value }));
+                      setAutofilledKeys((prev) => {
+                        if (!prev.has(f.key)) return prev;
+                        const next = new Set(prev);
+                        next.delete(f.key);
+                        return next;
+                      });
+                    }}
+                  />
+                </label>
+              ))}
             </div>
             <button
               className="btn-primary mt-5"
               onClick={() => void compose()}
-              disabled={phase === "composing"}
+              disabled={phase === "composing" || autofillBusy}
             >
-              {phase === "composing" ? "Composing…" : "Compose the prompt →"}
+              {phase === "composing"
+                ? "Composing…"
+                : productImage
+                  ? "Compose the prompt from photo + fields →"
+                  : "Compose the prompt →"}
             </button>
           </div>
 

@@ -14,6 +14,12 @@ export type AdField = {
   placeholder: string;
   /** Example value used by the "Load example" button. */
   example: string;
+  /**
+   * Instruction for the vision autofill: how to derive this field from the
+   * uploaded product photo. Fields the model must not invent (like price)
+   * say so here explicitly.
+   */
+  autofill: string;
 };
 
 export type AdPreset = {
@@ -55,10 +61,22 @@ export function audioCue(sfx: string[], audioMode: AudioMode, nativeMusic: strin
 }
 
 const COMMON_FIELDS: AdField[] = [
-  { key: "brand", label: "Brand name", placeholder: "KOLDA", example: "KOLDA" },
-  { key: "tagline", label: "Tagline", placeholder: "Simple. Done right.", example: "Dark roast. Zero drama." },
-  { key: "price", label: "Price", placeholder: "$3.99", example: "$9.99" },
+  {
+    key: "brand", label: "Brand name", placeholder: "KOLDA", example: "KOLDA",
+    autofill: "Read the brand name exactly as printed on the packaging. Return an empty string if no brand is legible — do not guess.",
+  },
+  {
+    key: "tagline", label: "Tagline", placeholder: "Simple. Done right.", example: "Dark roast. Zero drama.",
+    autofill: "Write one punchy retail tagline for this exact product, maximum 6 words, matching the tone the packaging projects (premium, playful, no-nonsense...).",
+  },
+  {
+    key: "price", label: "Price", placeholder: "$3.99", example: "$9.99",
+    autofill: "Only a price that is actually printed and legible on the packaging, formatted like \"$3.99\". Return an empty string otherwise — NEVER invent a price; a wrong price in an ad is a compliance failure.",
+  },
 ];
+
+const BG_AUTOFILL =
+  "Choose ONE bold, saturated background color that complements the packaging's palette and makes the product pop (e.g. a coffee bag in kraft brown suits ultra-bright yellow or teal). Name the color vividly.";
 
 export const AD_PRESETS: AdPreset[] = [
   {
@@ -90,10 +108,19 @@ export const AD_PRESETS: AdPreset[] = [
     ],
     musicStyleId: "playful-indie",
     fields: [
-      { key: "product", label: "Product (raw, packaged)", placeholder: "a bag of spaghetti", example: "a bag of dried spaghetti in simple packaging" },
-      { key: "plated", label: "Finished form (plated)", placeholder: "a white bowl of spaghetti with red sauce", example: "a white bowl of spaghetti topped with rich red tomato sauce" },
-      { key: "vessel", label: "Cooking vessel", placeholder: "a pot on a stove", example: "a yellow pot on a yellow stove" },
-      { key: "bg", label: "Background color", placeholder: "ultra-bright yellow", example: "ultra-bright yellow" },
+      {
+        key: "product", label: "Product (raw, packaged)", placeholder: "a bag of spaghetti", example: "a bag of dried spaghetti in simple packaging",
+        autofill: "Describe the packaged product exactly as photographed — packaging type, contents, dominant colors, finish.",
+      },
+      {
+        key: "plated", label: "Finished form (plated)", placeholder: "a white bowl of spaghetti with red sauce", example: "a white bowl of spaghetti topped with rich red tomato sauce",
+        autofill: "Describe the most appetizing prepared, plated or served form of this product — the finished result a shopper imagines (for coffee: a steaming mug; for pasta: a sauced bowl).",
+      },
+      {
+        key: "vessel", label: "Cooking vessel", placeholder: "a pot on a stove", example: "a yellow pot on a yellow stove",
+        autofill: "Name the vessel or appliance used to prepare this product (pot, kettle, French press, pan...), colored to match the background color you chose.",
+      },
+      { key: "bg", label: "Background color", placeholder: "ultra-bright yellow", example: "ultra-bright yellow", autofill: BG_AUTOFILL },
       ...COMMON_FIELDS,
     ],
     template: (p, mode) =>
@@ -126,9 +153,15 @@ export const AD_PRESETS: AdPreset[] = [
     ],
     musicStyleId: "premium-cinematic",
     fields: [
-      { key: "ingredients", label: "Ingredients (floating)", placeholder: "coffee beans, a cinnamon stick...", example: "glossy roasted coffee beans and a curl of steam" },
-      { key: "product", label: "Finished product", placeholder: "a bag of coffee", example: "a kraft bag of dark roast whole-bean coffee" },
-      { key: "bg", label: "Background color", placeholder: "deep forest green", example: "deep forest green" },
+      {
+        key: "ingredients", label: "Ingredients (floating)", placeholder: "coffee beans, a cinnamon stick...", example: "glossy roasted coffee beans and a curl of steam",
+        autofill: "Name 2-3 visually striking raw ingredients or components of this product that would look beautiful levitating (beans, grains, droplets, a curl of steam...).",
+      },
+      {
+        key: "product", label: "Finished product", placeholder: "a bag of coffee", example: "a kraft bag of dark roast whole-bean coffee",
+        autofill: "Describe the finished packaged product exactly as photographed — packaging type, colors, finish.",
+      },
+      { key: "bg", label: "Background color", placeholder: "deep forest green", example: "deep forest green", autofill: BG_AUTOFILL },
       ...COMMON_FIELDS,
     ],
     template: (p, mode) =>
@@ -158,8 +191,14 @@ export const AD_PRESETS: AdPreset[] = [
     ],
     musicStyleId: "minimal-ambient",
     fields: [
-      { key: "product", label: "Product surface", placeholder: "sparkling water over ice", example: "sparkling water cascading over clear ice cubes" },
-      { key: "action", label: "The satisfying action", placeholder: "a slow pour with rising bubbles", example: "a slow pour, bubbles racing to the surface in slow motion" },
+      {
+        key: "product", label: "Product surface", placeholder: "sparkling water over ice", example: "sparkling water cascading over clear ice cubes",
+        autofill: "Describe this product's most texturally rich surface or contents at extreme close-up (crema, condensation, crumb, grain, fizz...).",
+      },
+      {
+        key: "action", label: "The satisfying action", placeholder: "a slow pour with rising bubbles", example: "a slow pour, bubbles racing to the surface in slow motion",
+        autofill: "Describe ONE hypnotic, satisfying macro action true to this product — a pour, crack, drizzle, bloom, fizz or steam — worth watching on loop.",
+      },
       ...COMMON_FIELDS.filter((f) => f.key === "brand"),
     ],
     template: (p, mode) =>
@@ -192,8 +231,11 @@ export const AD_PRESETS: AdPreset[] = [
     musicStyleId: "punchy-electronic",
     beatSensitive: true,
     fields: [
-      { key: "product", label: "Product", placeholder: "a can of sparkling water", example: "a teal can of sparkling water" },
-      { key: "bg", label: "Background color", placeholder: "hot coral", example: "hot coral" },
+      {
+        key: "product", label: "Product", placeholder: "a can of sparkling water", example: "a teal can of sparkling water",
+        autofill: "Describe the packaged product exactly as photographed, compactly — it must read clearly as one repeated unit in a grid.",
+      },
+      { key: "bg", label: "Background color", placeholder: "hot coral", example: "hot coral", autofill: BG_AUTOFILL },
       ...COMMON_FIELDS,
     ],
     template: (p, mode) =>
