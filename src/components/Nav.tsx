@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Overview" },
   { href: "/studio", label: "Studio" },
   { href: "/packshots", label: "Packshots" },
+  { href: "/ads", label: "Ad Lab" },
   { href: "/models", label: "Models" },
   { href: "/build-vs-buy", label: "Build vs. Buy" },
   { href: "/playbook", label: "Playbook" },

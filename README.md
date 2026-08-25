@@ -18,7 +18,8 @@ Tailwind CSS 4 · Zod.
 |---|---|
 | `/` | Landing — the pitch, pipeline and metrics |
 | `/studio` | The live generating tool (5-step wizard) |
-| `/packshots` | GS1 planogram packshot generator: product-on-white at every angle from existing reference photos, with grounded-vs-reconstructed QA flags |
+| `/packshots` | GS1 planogram packshot generator: product-on-white at every angle from existing reference photos, with grounded-vs-reconstructed QA flags, plus A/B challenger bake-offs |
+| `/ads` | Ad Lab: preset mini product ad recipes (structured scene-by-scene prompts with audio design) — swap in any SKU, AI-compose the final Veo prompt, generate |
 | `/models` | Model landscape: costs, strengths, ready/emerging/not-viable |
 | `/build-vs-buy` | One-pager: suites vs. aggregators vs. direct APIs |
 | `/playbook` | Production playbook: workflow, prompt system, quality gates, governance |
