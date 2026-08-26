@@ -686,6 +686,7 @@ export const AUDIO_REF_LIMITS = {
   maxMB: 4,
   formats: "MP3, WAV or M4A",
   mimeTypes: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/mp4", "audio/aac"],
+  extensions: [".mp3", ".wav", ".m4a", ".aac"],
 } as const;
 
 export const VIDEO_REF_LIMITS = {
@@ -696,7 +697,32 @@ export const VIDEO_REF_LIMITS = {
   softMaxSeconds: 10,
   formats: "MP4, MOV or WebM",
   mimeTypes: ["video/mp4", "video/quicktime", "video/webm"],
+  extensions: [".mp4", ".mov", ".webm", ".m4v"],
 } as const;
+
+/**
+ * Decides what kind of reference a file is.
+ *
+ * MIME type alone is not trustworthy here: browsers and operating systems
+ * disagree about .mov in particular, and a QuickTime file routinely arrives
+ * as an empty type or application/octet-stream. Falling back to the
+ * extension is what stops a video being handed to the image decoder, which
+ * fails with a nonsense message about not being able to read an image.
+ */
+export function referenceMediaOf(
+  name: string,
+  mimeType: string,
+): ReferenceMedia {
+  const type = (mimeType || "").toLowerCase();
+  if (type.startsWith("video/")) return "video";
+  if (type.startsWith("audio/")) return "audio";
+  if (type.startsWith("image/")) return "image";
+
+  const ext = name.toLowerCase().slice(name.lastIndexOf("."));
+  if ((VIDEO_REF_LIMITS.extensions as readonly string[]).includes(ext)) return "video";
+  if ((AUDIO_REF_LIMITS.extensions as readonly string[]).includes(ext)) return "audio";
+  return "image";
+}
 
 /**
  * What a reference is FOR. Reference-to-video models don't just want more

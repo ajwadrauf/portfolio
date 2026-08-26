@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AUDIO_REF_LIMITS, VIDEO_REF_LIMITS } from "@/lib/adPresets";
+import { AUDIO_REF_LIMITS, VIDEO_REF_LIMITS, referenceMediaOf } from "@/lib/adPresets";
 import { unlocked } from "@/lib/auth";
 import { falUpload } from "@/lib/fal";
 import { hasFalKey, isDryRun } from "@/lib/models";
@@ -38,8 +38,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const kind = file.type.startsWith("audio/") ? "audio" : "video";
+    // Trust the extension as much as the MIME type — see referenceMediaOf.
+    const name = file instanceof File ? file.name : "";
+    const media = referenceMediaOf(name, file.type);
+    if (media === "image") {
+      return NextResponse.json(
+        {
+          error: `That doesn't look like a clip or a track. Use ${VIDEO_REF_LIMITS.formats} for motion, or ${AUDIO_REF_LIMITS.formats} for audio.`,
+        },
+        { status: 415 },
+      );
+    }
+    const kind = media;
     const limits = KINDS[kind];
+    const ext = name.toLowerCase().slice(name.lastIndexOf("."));
 
     if (file.size > limits.maxBytes) {
       return NextResponse.json(
@@ -49,9 +61,15 @@ export async function POST(req: Request) {
         { status: 413 },
       );
     }
-    if (file.type && !(limits.mimeTypes as readonly string[]).includes(file.type)) {
+    // Either signal is enough: a .mov that reports application/octet-stream is
+    // still a .mov, and a video/mp4 blob without a filename is still an MP4.
+    const mimeOk = (limits.mimeTypes as readonly string[]).includes(file.type);
+    const extOk = (limits.extensions as readonly string[]).includes(ext);
+    if (!mimeOk && !extOk) {
       return NextResponse.json(
-        { error: `Unsupported type ${file.type}. Use ${limits.formats}.` },
+        {
+          error: `Unsupported ${kind} file${file.type ? ` (${file.type})` : ""}. Use ${limits.formats}.`,
+        },
         { status: 415 },
       );
     }

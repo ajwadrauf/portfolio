@@ -9,6 +9,7 @@ import {
   REFERENCE_ROLES,
   REF_CEILINGS,
   audioCapability,
+  referenceMediaOf,
   editableRecipeOf,
   getAdPreset,
   isDefaultRecipe,
@@ -124,6 +125,12 @@ export function AdLab() {
     { url: string; media: ReferenceMedia; role: ReferenceRole; name: string }[]
   >([]);
   const [uploading, setUploading] = useState(false);
+  /**
+   * Reference failures are shown inside the References step, not in the
+   * page-level banner. The banner sits thousands of pixels above the Add
+   * reference button, so an error there reads as nothing happening at all.
+   */
+  const [refError, setRefError] = useState<string | null>(null);
   const [seconds, setSeconds] = useState<number | null>(null);
   const refInput = useRef<HTMLInputElement>(null);
 
@@ -191,6 +198,8 @@ export function AdLab() {
   /** True when a separate music model will actually be billed. */
   const scoringSeparately = audioMode === "layered" && musicStyleId !== NO_MUSIC_ID;
   const cost = videoCost + (scoringSeparately ? musicCost : 0);
+  /** Clips and tracks leave the browser, so demo mode can't accept them. */
+  const clipsUploadable = health?.live ?? true;
   /** The bed can only steer the render on a model that reads audio in. */
   const timingRefAvailable = cap.refAudio && scoringSeparately;
   const timingRefActive = Boolean(timingRefAvailable && musicAsTimingRef && musicUrl);
@@ -285,6 +294,7 @@ export function AdLab() {
       setMusicAsTimingRef(false);
       setSeconds(null);
       setRefs([]);
+      setRefError(null);
       setParams({});
       setAutofilledKeys(new Set());
       setAutofillRationale(null);
@@ -368,15 +378,26 @@ export function AdLab() {
   const addReference = useCallback(
     async (file: File) => {
       setError(null);
-      const isVideo = file.type.startsWith("video/");
-      const isAudio = file.type.startsWith("audio/");
+      setRefError(null);
+      // MIME type alone mis-routes .mov files, which then hit the image
+      // decoder and fail with a message about an unreadable image.
+      const media = referenceMediaOf(file.name, file.type);
+      const isAudio = media === "audio";
       try {
-        if (isVideo || isAudio) {
+        if (media !== "image") {
           const limits = isAudio ? AUDIO_REF_LIMITS : VIDEO_REF_LIMITS;
-          // Check locally first — no point spending upload time on a file
+          // Clips and tracks leave the browser, so they need live mode. Say so
+          // before the upload rather than after a round trip.
+          if (health && !health.live) {
+            setRefError(
+              `${isAudio ? "Tracks" : "Clips"} upload to the generation provider, so they need live mode — and this session is in demo mode. Unlock live mode in the header, or use image references, which stay in the browser.`,
+            );
+            return;
+          }
+          // Check size locally too — no point spending upload time on a file
           // the server is going to reject.
           if (file.size > limits.maxBytes) {
-            setError(
+            setRefError(
               isAudio
                 ? `That track is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${limits.maxMB}MB — the reference only needs to be as long as the cut.`
                 : `That clip is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${limits.maxMB}MB — around ${VIDEO_REF_LIMITS.idealSeconds} seconds is all the model reads.`,
@@ -395,7 +416,7 @@ export function AdLab() {
             ...prev,
             {
               url: json.url,
-              media: isAudio ? "audio" : "video",
+              media,
               role: isAudio ? "rhythm" : "motion",
               name: file.name,
             },
@@ -409,12 +430,12 @@ export function AdLab() {
         }
         invalidatePrompt();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not add that reference");
+        setRefError(e instanceof Error ? e.message : "Could not add that reference");
       } finally {
         setUploading(false);
       }
     },
-    [invalidatePrompt],
+    [health, invalidatePrompt],
   );
 
   const generateMusic = useCallback(async () => {
@@ -1367,19 +1388,43 @@ export function AdLab() {
                 e.target.value = "";
               }}
             />
+
+            {/* Reference failures belong here, next to the button that caused
+                them — not in the page banner far above. */}
+            {refError && (
+              <p
+                role="alert"
+                className="mt-3 rounded-[6px] border border-danger/50 bg-danger/10 p-3 text-sm leading-relaxed text-danger"
+              >
+                {refError}
+              </p>
+            )}
+
             <div className="mt-2 flex flex-wrap gap-1.5">
               <span className="chip">
                 Stills · JPG, PNG, WebP · up to {REF_CEILINGS.image}
               </span>
-              <span className="chip border-warning/40 !text-warning">
+              <span
+                className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
+              >
                 Clips · {VIDEO_REF_LIMITS.formats} · ≤{VIDEO_REF_LIMITS.maxMB}MB ·{" "}
-                ~{VIDEO_REF_LIMITS.idealSeconds}s · live mode
+                ~{VIDEO_REF_LIMITS.idealSeconds}s
               </span>
-              <span className="chip border-warning/40 !text-warning">
-                Tracks · {AUDIO_REF_LIMITS.formats} · ≤{AUDIO_REF_LIMITS.maxMB}MB ·
-                live mode
+              <span
+                className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
+              >
+                Tracks · {AUDIO_REF_LIMITS.formats} · ≤{AUDIO_REF_LIMITS.maxMB}MB
               </span>
             </div>
+
+            {!clipsUploadable && (
+              <p className="mt-2 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                <span className="font-bold">Stills only in demo mode.</span>{" "}
+                Images are processed in your browser, but clips and tracks have
+                to be uploaded to the generation provider — so they need live
+                mode. Unlock it in the header to use them.
+              </p>
+            )}
             <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
               Add more angles of the product to tighten the identity lock, a
               still to borrow a palette from, a <strong>short clip</strong>{" "}
