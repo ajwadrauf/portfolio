@@ -503,6 +503,23 @@ export const AD_VIDEO_MODELS = [
 export const MULTI_REF_MODELS = ["seedance-2.5-ref"];
 
 /**
+ * Limits on video references, defined once so the upload route and the UI
+ * can never drift apart. The size cap comes from the serverless request
+ * limit the clip passes through on its way to the provider; the duration
+ * guidance is craft, not a limit — these models read the camera move, not
+ * the content, so a long clip costs upload time and buys nothing.
+ */
+export const VIDEO_REF_LIMITS = {
+  maxBytes: 4 * 1024 * 1024,
+  maxMB: 4,
+  idealSeconds: 5,
+  /** Above this we warn; the model gains nothing from the extra footage. */
+  softMaxSeconds: 10,
+  formats: "MP4, MOV or WebM",
+  mimeTypes: ["video/mp4", "video/quicktime", "video/webm"],
+} as const;
+
+/**
  * What a reference is FOR. Reference-to-video models don't just want more
  * inputs — each reference is assigned a job in the prompt, which is how the
  * model knows to copy the product's identity from one and only the palette

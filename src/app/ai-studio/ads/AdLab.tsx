@@ -10,6 +10,7 @@ import {
   maxAdSeconds,
   recipeStatus,
   unmetCriticalSteps,
+  VIDEO_REF_LIMITS,
   type AudioMode,
   type ReferenceMedia,
   type ReferenceRole,
@@ -268,6 +269,14 @@ export function AdLab() {
       const isVideo = file.type.startsWith("video/");
       try {
         if (isVideo) {
+          // Check locally first — no point spending upload time on a file
+          // the server is going to reject.
+          if (file.size > VIDEO_REF_LIMITS.maxBytes) {
+            setError(
+              `That clip is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${VIDEO_REF_LIMITS.maxMB}MB — around ${VIDEO_REF_LIMITS.idealSeconds} seconds is all the model reads.`,
+            );
+            return;
+          }
           // Clips upload to the provider once and travel as a URL — inlining
           // video as base64 would blow past the request size limit.
           setUploading(true);
@@ -1010,12 +1019,21 @@ export function AdLab() {
                     e.target.value = "";
                   }}
                 />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <span className="chip">Stills · JPG, PNG, WebP</span>
+                  <span className="chip border-warning/40 !text-warning">
+                    Clips · {VIDEO_REF_LIMITS.formats} · ≤{VIDEO_REF_LIMITS.maxMB}MB ·{" "}
+                    ~{VIDEO_REF_LIMITS.idealSeconds}s · live mode
+                  </span>
+                </div>
                 <p className="mt-2 text-xs leading-relaxed text-muted">
                   Add more angles of the product to tighten the identity lock, a
                   still to borrow a palette from, or a <strong>short clip</strong>{" "}
                   whose camera move and cut rhythm you want imitated. Each gets a
-                  job in the prompt — set it in the dropdown. Clips upload to the
-                  provider (live mode only, keep them under 4MB).
+                  job in the prompt — set it in the dropdown.{" "}
+                  <strong>Trim clips before uploading</strong> — these models read
+                  the camera move, not the content, so anything past a few seconds
+                  costs upload time and buys nothing.
                 </p>
               </div>
             )}
