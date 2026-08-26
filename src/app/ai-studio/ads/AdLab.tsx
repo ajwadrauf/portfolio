@@ -183,8 +183,11 @@ export function AdLab() {
     (id: string) => {
       setPresetId(id);
       setMusicStyleId(getAdPreset(id).musicStyleId);
+      const next = getAdPreset(id);
+      if (next.preferredModelId) setModelId(next.preferredModelId);
       setMusicUrl(null);
       setSeconds(null);
+      setRefs([]);
       setParams({});
       setAutofilledKeys(new Set());
       setAutofillRationale(null);
@@ -823,6 +826,68 @@ export function AdLab() {
                     {(productImage ? 1 : 0) + refs.length} of 50
                   </span>
                 </div>
+
+                {/* Reference recipe — the concept ships with instructions */}
+                {preset.referenceRecipe && (
+                  <details open className="mt-3 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-3">
+                    <summary className="cursor-pointer text-xs font-semibold text-accent">
+                      Reference recipe for {preset.name} — what to add, and why
+                    </summary>
+                    <ol className="mt-3 space-y-3">
+                      {preset.referenceRecipe.map((step, i) => {
+                        // A step counts as satisfied once a reference of the
+                        // same media type and role exists.
+                        const satisfied =
+                          step.role === "product" && step.media === "image"
+                            ? (productImage ? 1 : 0) +
+                                refs.filter((r) => r.role === "product").length >
+                              preset.referenceRecipe!.slice(0, i).filter(
+                                (x) => x.role === "product" && x.media === "image",
+                              ).length
+                            : refs.some(
+                                (r) => r.role === step.role && r.media === step.media,
+                              );
+                        return (
+                          <li key={i} className="flex gap-3">
+                            <span
+                              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full font-mono text-[9px] ${
+                                satisfied
+                                  ? "bg-success text-white"
+                                  : "border border-border-strong text-muted"
+                              }`}
+                            >
+                              {satisfied ? "✓" : i + 1}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-xs font-semibold leading-snug">
+                                {step.what}
+                                {step.optional && (
+                                  <span className="ml-1.5 font-normal text-muted">
+                                    (optional)
+                                  </span>
+                                )}
+                              </span>
+                              <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent">
+                                  {step.media === "video" ? "clip" : "still"} ·{" "}
+                                  {REFERENCE_ROLES.find((r) => r.id === step.role)?.label}
+                                </span>
+                              </span>
+                              <span className="mt-1 block text-xs leading-relaxed text-muted">
+                                {step.why}
+                              </span>
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                    <p className="mt-3 border-t border-accent/20 pt-2 text-xs leading-relaxed text-muted">
+                      Order matters: references are numbered as you add them, and
+                      the prompt addresses them by that number. Add the product
+                      first.
+                    </p>
+                  </details>
+                )}
 
                 <div className="mt-3 space-y-2">
                   {productImage && (

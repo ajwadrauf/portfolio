@@ -41,6 +41,17 @@ export type AdPreset = {
    * alignment pass in the edit.
    */
   beatSensitive?: boolean;
+  /**
+   * The model this concept was designed for. Selecting the preset switches
+   * to it — some concepts only hold together on reference-to-video.
+   */
+  preferredModelId?: string;
+  /**
+   * Step-by-step guide to the references this concept wants, in the order
+   * they should be uploaded. Shown in the UI as a recipe so the concept
+   * arrives with instructions, not just an idea.
+   */
+  referenceRecipe?: RecipeStep[];
   fields: AdField[];
   /**
    * Deterministic template — the baseline prompt before AI composition.
@@ -60,6 +71,44 @@ export type AdPreset = {
  * layered — video model renders SFX only; a music model scores it separately.
  */
 export type AudioMode = "native" | "layered";
+
+/** One instruction in a preset's reference recipe. */
+export type RecipeStep = {
+  media: "image" | "video";
+  role: string;
+  /** What to upload. */
+  what: string;
+  /** Why it earns its slot — the teaching half. */
+  why: string;
+  optional?: boolean;
+};
+
+/**
+ * The recipe every product concept benefits from, before preset-specific
+ * additions. Written as instructions a colleague can follow without having
+ * built the pipeline.
+ */
+export const BASE_RECIPE: RecipeStep[] = [
+  {
+    media: "image",
+    role: "product",
+    what: "Your product photo, shot straight-on with the label readable.",
+    why: "Becomes [Image1] and anchors identity. Everything else is judged against it.",
+  },
+  {
+    media: "image",
+    role: "product",
+    what: "A second angle of the same product — three-quarter or side.",
+    why: "Two angles give the model geometry to hold onto. This is the single biggest reduction in drift.",
+  },
+  {
+    media: "video",
+    role: "motion",
+    what: "A 3-5 second clip whose camera move you want imitated.",
+    why: "Camera language is far easier to show than to describe. Trim tight — the model reads the move, not the content.",
+    optional: true,
+  },
+];
 
 /**
  * Builds the trailing Audio: cue.
@@ -131,6 +180,16 @@ export const AD_PRESETS: AdPreset[] = [
       "Crisp cash-register ding synced to the price text appearing.",
     ],
     musicStyleId: "playful-indie",
+    referenceRecipe: [
+      ...BASE_RECIPE,
+      {
+        media: "image",
+        role: "product",
+        what: "A photo of the product's prepared form, if you have one.",
+        why: "This concept ends on the raw pack but opens on the finished dish — showing both halves stops the model inventing the food.",
+        optional: true,
+      },
+    ],
     fields: [
       {
         key: "product", label: "Product (raw, packaged)", placeholder: "a bag of spaghetti", example: "a bag of dried spaghetti in simple packaging",
@@ -176,6 +235,16 @@ export const AD_PRESETS: AdPreset[] = [
       "Warm pop synced to the price stamp.",
     ],
     musicStyleId: "premium-cinematic",
+    referenceRecipe: [
+      ...BASE_RECIPE,
+      {
+        media: "image",
+        role: "style",
+        what: "A lighting reference — any image with the glow you want.",
+        why: "Weightless assembly lives or dies on light. Borrowing a lighting mood is faster than describing one.",
+        optional: true,
+      },
+    ],
     fields: [
       {
         key: "ingredients", label: "Ingredients (floating)", placeholder: "coffee beans, a cinnamon stick...", example: "glossy roasted coffee beans and a curl of steam",
@@ -214,6 +283,22 @@ export const AD_PRESETS: AdPreset[] = [
       "Nothing else in the mix — the texture carries it.",
     ],
     musicStyleId: "minimal-ambient",
+    referenceRecipe: [
+      BASE_RECIPE[0],
+      {
+        media: "image",
+        role: "product",
+        what: "A macro close-up of the product's surface or contents.",
+        why: "The whole concept is texture. A macro reference tells the model what the surface actually looks like at that distance.",
+      },
+      {
+        media: "video",
+        role: "motion",
+        what: "A clip of the satisfying action you want echoed.",
+        why: "Pours, cracks and blooms are motion, not description. Three seconds is plenty.",
+        optional: true,
+      },
+    ],
     fields: [
       {
         key: "product", label: "Product surface", placeholder: "sparkling water over ice", example: "sparkling water cascading over clear ice cubes",
@@ -227,6 +312,80 @@ export const AD_PRESETS: AdPreset[] = [
     ],
     template: (p, mode, musicBrief) =>
       `Extreme macro close-up, shallow depth of field, rich natural lighting raking across the surface. ${p.product}: ${p.action}, unfolding in luxurious slow motion. The action resolves back to the exact opening framing so the clip loops seamlessly. A small "${p.brand}" watermark sits in the bottom corner; no other text. ${audioCue(["ASMR-forward — the real sound of the action, close-mic'd, crisp and intimate."], mode, musicBrief)}`,
+  },
+  {
+    id: "ordered-array",
+    name: "Ordered Array",
+    hook: "Product and its raw ingredient in precise geometric arrays, cut to the beat, ending on a slow-motion payoff.",
+    aspect: "16:9",
+    durationSeconds: 15,
+    preferredModelId: "seedance-2.5-ref",
+    aesthetics: [
+      "Bright, colourful commercial style on one saturated background.",
+      "Highly ordered geometric arrays — everything gridded, aligned, deliberate.",
+      "Clean and premium, but rhythmically driven: cuts land on the beat.",
+      "Ends on a slow-motion sensory climax, not a product card.",
+    ],
+    scenes: [
+      { title: "Visual focus", description: "Opens tight on the raw ingredient, music dropping on the downbeat." },
+      { title: "The array", description: "Product and ingredient arrange into a precise geometric grid, top-down." },
+      { title: "Formations", description: "Variants line up in neat formations, cutting to close-ups on each." },
+      { title: "The climax", description: "The sensory payoff hits and instantly enters slow motion." },
+      { title: "Text overlay", description: "Bold stark text snaps on over the settled frame." },
+    ],
+    overlay: "Brand top-left, tagline middle-left, price bottom-right — snapping on with the final beat.",
+    sfx: [
+      "Crisp granular sounds of the raw ingredient moving and settling.",
+      "Tight mechanical snaps as each formation locks into place.",
+      "A deep slow-motion whoosh at the climax, then a clean stamp on the price.",
+    ],
+    musicStyleId: "punchy-electronic",
+    beatSensitive: true,
+    referenceRecipe: [
+      ...BASE_RECIPE,
+      {
+        media: "video",
+        role: "composition",
+        what: "A clip or still with the gridded, top-down look you want.",
+        why: "This concept lives on precise arrangement. Showing the model an array beats describing one.",
+      },
+      {
+        media: "video",
+        role: "rhythm",
+        what: "A short clip whose cut timing you want matched.",
+        why: "Becomes [Video2]. The cuts key off its beats, which is what makes the array feel choreographed rather than assembled.",
+        optional: true,
+      },
+      {
+        media: "image",
+        role: "style",
+        what: "A palette reference — any image with the colour mood you want.",
+        why: "Borrows colour and lighting only, never subject matter. Useful when the packaging alone is too plain to set a mood.",
+        optional: true,
+      },
+    ],
+    fields: [
+      {
+        key: "product", label: "Product (packaged)", placeholder: "a bag of whole bean coffee", example: "a bright yellow bag of No Frills whole bean dark roast coffee",
+        autofill: "Describe the packaged product exactly as photographed — packaging type, dominant colours, finish.",
+      },
+      {
+        key: "variants", label: "Variants to array", placeholder: "three roasts: dark, medium, decaf", example: "three roasts: dark, medium and decaf",
+        autofill: "Name 3-4 variants of this product that would read as a set (flavours, roasts, sizes). Infer plausible ones from the category if the photo shows only one.",
+      },
+      {
+        key: "rawElement", label: "Raw ingredient", placeholder: "glossy roasted coffee beans", example: "glossy roasted coffee beans",
+        autofill: "Name the raw ingredient or contents that pairs with this product and looks good arrayed in bulk (beans, grains, leaves, nuts).",
+      },
+      {
+        key: "climax", label: "Slow-motion climax", placeholder: "a scoop lifts and beans cascade back", example: "a metal scoop plunges into a mound of beans and lifts, beans cascading back in a arc",
+        autofill: "Describe ONE tactile, sensory action with this product worth seeing in slow motion — a pour, a cascade, a crack, a bloom of steam.",
+      },
+      { key: "bg", label: "Background colour", placeholder: "ultra-bright yellow", example: "ultra-bright yellow", autofill: BG_AUTOFILL },
+      ...COMMON_FIELDS,
+    ],
+    template: (p, mode, musicBrief) =>
+      `Bright, colourful commercial style on a ${p.bg} background — ${p.product} as the star, featuring ${p.variants}. ${p.rawElement} and their corresponding packs are arranged in highly ordered geometric arrays; the overall frame is clean, premium and rhythmically driven. The opening establishes visual focus tight on ${p.rawElement}, with the music dropping on the downbeat. The variants then line up in neat formations, cutting to close-ups on each in turn. At the climax ${p.climax} — instantly entering slow motion, every grain and highlight readable, before the frame settles back into its grid. Bold stark text snaps on at the end: "${p.brand}" top-left, "${p.tagline}" middle-left, "${p.price}" bottom-right. ${audioCue(["Crisp granular sounds of the ingredient moving and settling, tight mechanical snaps as each formation locks into place, a deep slow-motion whoosh at the climax and a clean stamp on the price."], mode, musicBrief)}`,
   },
   {
     id: "multiply-grid",
@@ -254,6 +413,15 @@ export const AD_PRESETS: AdPreset[] = [
     ],
     musicStyleId: "punchy-electronic",
     beatSensitive: true,
+    referenceRecipe: [
+      ...BASE_RECIPE,
+      {
+        media: "video",
+        role: "rhythm",
+        what: "A clip whose cut timing you want the duplications to match.",
+        why: "This concept multiplies on the beat. Without a rhythm reference the grid fills at the model's tempo, not yours.",
+      },
+    ],
     fields: [
       {
         key: "product", label: "Product", placeholder: "a can of sparkling water", example: "a teal can of sparkling water",
