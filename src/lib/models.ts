@@ -19,7 +19,7 @@ export type ModelInfo = {
   /** Provider-side model ID / endpoint slug (env-overridable). */
   endpoint: string;
   label: string;
-  kind: "image" | "video" | "music";
+  kind: "image" | "video" | "music" | "sfx";
   /** USD. Images: per image. Video/music: per second. */
   unitCost: number;
   unit: "image" | "second";
@@ -163,6 +163,20 @@ export const MODELS: Record<string, ModelInfo> = {
   },
 
   // ---------------- Music ----------------
+  "eleven-sfx": {
+    id: "eleven-sfx",
+    provider: "fal",
+    endpoint: env("FAL_SFX_ENDPOINT", "fal-ai/elevenlabs/sound-effects/v2"),
+    label: "ElevenLabs Sound Effects v2 (via fal.ai)",
+    kind: "sfx",
+    unitCost: 0.002,
+    unit: "second",
+    strengths:
+      "Text-to-sound-effect: one named effect at a time, 0.5-30s, optionally seamless-looping. Made to be dropped on a frame, not to underscore a whole cut.",
+    bestFor:
+      "The hero product sound — the crack, the pour, the seal breaking. The one noise the ad is actually selling, which a video model only ever approximates.",
+  },
+
   "eleven-music": {
     id: "eleven-music",
     provider: "fal",

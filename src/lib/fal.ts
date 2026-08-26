@@ -137,6 +137,40 @@ export async function falGenerateMusic(opts: {
   return { url };
 }
 
+/**
+ * Sound-effect generation (ElevenLabs text-to-sound-effects).
+ *
+ * Effects are seconds long and return fast, so a blocking subscribe is fine.
+ * `duration_seconds` is optional at the API — omitting it lets the model
+ * pick a length from the description, which is usually right for a transient
+ * and usually wrong for anything that needs to fill a known gap.
+ */
+export async function falGenerateSoundEffect(opts: {
+  endpoint: string;
+  text: string;
+  durationSeconds?: number;
+  promptInfluence?: number;
+  loop?: boolean;
+}): Promise<{ url: string }> {
+  const f = client();
+  const input: Record<string, unknown> = { text: opts.text };
+  if (opts.durationSeconds !== undefined) input.duration_seconds = opts.durationSeconds;
+  if (opts.promptInfluence !== undefined) input.prompt_influence = opts.promptInfluence;
+  if (opts.loop) input.loop = true;
+
+  try {
+    const result = await f.subscribe(opts.endpoint, { input, logs: false });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = result.data as any;
+    const url: string | undefined =
+      data?.audio?.url ?? data?.audio_url ?? data?.audio_file?.url;
+    if (!url) throw new Error(`Sound-effect model returned no audio URL (endpoint ${opts.endpoint})`);
+    return { url };
+  } catch (e) {
+    throw new Error(describeFalError(e));
+  }
+}
+
 /** Queue a fal video job. Returns the request id for polling. */
 export async function falStartVideo(opts: {
   endpoint: string;

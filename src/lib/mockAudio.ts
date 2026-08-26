@@ -65,3 +65,31 @@ function encodeWav(samples: Float32Array): Buffer {
   }
   return buffer;
 }
+
+/**
+ * Demo-mode spot effect: a short synthesized transient — a bright attack and
+ * a decaying body over filtered noise — so the effects workflow can be run
+ * end to end without spending. It is deliberately generic: the point of the
+ * mock is the workflow, not the sound.
+ */
+export function mockSfxDataUrl(durationSeconds: number): string {
+  const duration = Math.min(Math.max(durationSeconds, 0.5), 6);
+  const total = Math.floor(duration * SAMPLE_RATE);
+  const samples = new Float32Array(total);
+  let noise = 0;
+
+  for (let i = 0; i < total; i++) {
+    const t = i / SAMPLE_RATE;
+    // Sharp attack, exponential decay — the shape of most product foley.
+    const env = Math.exp(-5 * t);
+    // One-pole low-passed noise gives a body rather than a hiss.
+    noise = noise * 0.82 + (Math.random() * 2 - 1) * 0.18;
+    const click = Math.exp(-90 * t) * (Math.random() * 2 - 1) * 0.5;
+    const body = Math.sin(2 * Math.PI * 140 * t) * 0.25 * env;
+    const value = click + noise * env * 0.7 + body;
+
+    const fade = Math.min(1, i / (SAMPLE_RATE * 0.002), (total - i) / (SAMPLE_RATE * 0.05));
+    samples[i] = Math.max(-1, Math.min(1, value)) * fade;
+  }
+  return `data:audio/wav;base64,${encodeWav(samples).toString("base64")}`;
+}

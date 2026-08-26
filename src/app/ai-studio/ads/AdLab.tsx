@@ -34,6 +34,13 @@ import {
   musicLengthFor,
 } from "@/lib/music";
 import { MODELS, estimateCost } from "@/lib/models";
+import {
+  LAYER_NOTES,
+  SFX_LIMITS,
+  SFX_MODEL_ID,
+  SFX_PROMPT_TIPS,
+  clampSfxSeconds,
+} from "@/lib/sfx";
 
 type Phase = "idle" | "composing" | "ready" | "starting" | "polling" | "done" | "failed" | "mock";
 
@@ -171,6 +178,14 @@ export function AdLab() {
   const [musicOn, setMusicOn] = useState(true);
   /** Feed the composed bed back into the render as a timing signal. */
   const [musicAsTimingRef, setMusicAsTimingRef] = useState(false);
+  /**
+   * Spot effects, keyed by the recipe's sound-design line they came from.
+   * The recipe already names the effects this concept needs; generating them
+   * is just taking that list seriously.
+   */
+  const [sfxTracks, setSfxTracks] = useState<Record<string, string>>({});
+  const [sfxBusy, setSfxBusy] = useState<string | null>(null);
+  const [sfxSeconds, setSfxSeconds] = useState<number>(SFX_LIMITS.defaultSeconds);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -299,6 +314,7 @@ export function AdLab() {
       if (next.preferredModelId) setModelId(next.preferredModelId);
       setMusicUrl(null);
       setMusicAsTimingRef(false);
+      setSfxTracks({});
       setSeconds(null);
       setRefs([]);
       setRefError(null);
@@ -471,6 +487,32 @@ export function AdLab() {
     setRefUrl("");
     invalidatePrompt();
   }, [invalidatePrompt, refUrl]);
+
+  const sfxCost = estimateCost(SFX_MODEL_ID, { seconds: clampSfxSeconds(sfxSeconds) });
+
+  /** One effect per call — two events in one prompt gives a muddle of both. */
+  const generateSfx = useCallback(
+    async (text: string) => {
+      setError(null);
+      setSfxBusy(text);
+      try {
+        const res = await fetch("/api/ad/sfx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, durationSeconds: sfxSeconds }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "Sound effect failed");
+        if (!json.mock) addSpend(json.cost ?? 0);
+        setSfxTracks((prev) => ({ ...prev, [text]: json.audioUrl }));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Sound effect failed");
+      } finally {
+        setSfxBusy(null);
+      }
+    },
+    [addSpend, sfxSeconds],
+  );
 
   const generateMusic = useCallback(async () => {
     setError(null);
@@ -1112,6 +1154,104 @@ export function AdLab() {
                 </span>
               )}
             </label>
+          )}
+
+          {/* Spot effects — available whenever effects are being built outside
+              the video model, which is both layered and silent. */}
+          {audioMode !== "native" && recipe.sfx.length > 0 && (
+            <div className="mt-4 border-t border-border-soft pt-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="text-sm font-semibold">
+                  Spot effects — {MODELS[SFX_MODEL_ID].label.split(" (")[0]}
+                </h3>
+                <span className="label-sm">~${sfxCost.toFixed(3)} each</span>
+              </div>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted">
+                {cap.native && audioMode === "layered"
+                  ? `${modelName} already renders effects from the picture it is making, which is why they land on the right frame — but it approximates a described effect rather than producing it. These are the hero hits: generated exactly as described, delivered as separate files, and placed by you in the edit.`
+                  : `${modelName} gives you no audio here, so these are the effects track. Each one is a separate file you place in the edit.`}{" "}
+                One event per generation.
+              </p>
+
+              <label className="mt-3 flex flex-wrap items-center gap-3">
+                <span className="label">Length</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={10}
+                  step={0.5}
+                  value={sfxSeconds}
+                  onChange={(e) => setSfxSeconds(Number(e.target.value))}
+                  className="w-40 accent-[var(--accent)]"
+                />
+                <span className="font-mono text-xs text-foreground">{sfxSeconds}s</span>
+                <span className="text-xs text-muted">
+                  Long enough for the hit plus its tail; the model accepts{" "}
+                  {SFX_LIMITS.minSeconds}–{SFX_LIMITS.maxSeconds}s.
+                </span>
+              </label>
+
+              <ul className="mt-3 space-y-2">
+                {recipe.sfx.map((line, i) => (
+                  <li
+                    key={i}
+                    className="rounded-[6px] border border-border-soft bg-surface p-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <p className="min-w-0 flex-1 basis-64 text-xs leading-relaxed text-muted">
+                        {line}
+                      </p>
+                      <button
+                        className="btn-secondary shrink-0 !px-3 !py-1.5 text-xs"
+                        onClick={() => void generateSfx(line)}
+                        disabled={sfxBusy !== null}
+                      >
+                        {sfxBusy === line
+                          ? "Generating…"
+                          : sfxTracks[line]
+                            ? "Regenerate"
+                            : "Generate effect"}
+                      </button>
+                    </div>
+                    {sfxTracks[line] && (
+                      <div className="mt-2">
+                        <audio src={sfxTracks[line]} controls className="h-9 w-full max-w-sm" />
+                        <a
+                          href={sfxTracks[line]}
+                          download={`${preset.id}-sfx-${i + 1}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
+                        >
+                          Download effect {i + 1}
+                        </a>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                These lines come from the recipe&apos;s sound design — edit them
+                in step 2 to change what gets generated.
+              </p>
+
+              <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                  How the layers stack, and how to describe an effect
+                </summary>
+                <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-muted">
+                  {LAYER_NOTES.map((c) => (
+                    <li key={c}>{c}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 label !text-accent">Describing an effect</p>
+                <ul className="mt-1 list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-muted">
+                  {SFX_PROMPT_TIPS.map((c) => (
+                    <li key={c}>{c}</li>
+                  ))}
+                </ul>
+              </details>
+            </div>
           )}
 
           {scoringSeparately && (
