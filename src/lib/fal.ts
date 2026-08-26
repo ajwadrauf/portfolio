@@ -111,6 +111,17 @@ export async function falStartVideo(opts: {
   referenceImageDataUrls?: string[];
   /** Video references, already uploaded — passed as URLs, never inlined. */
   referenceVideoUrls?: string[];
+  /**
+   * Audio references, already uploaded. Seedance 2.5 Reference reads these as
+   * timing signals in the same pass that generates the picture, which is how
+   * the cuts end up on the beats.
+   */
+  referenceAudioUrls?: string[];
+  /**
+   * Whether the model should render its own audio. Only endpoints that expose
+   * the switch honour it; the rest are told in the prompt instead.
+   */
+  generateAudio?: boolean;
   negativePrompt?: string;
 }): Promise<{ requestId: string }> {
   const f = client();
@@ -131,6 +142,12 @@ export async function falStartVideo(opts: {
     input.video_urls = videoRefs;
     input.reference_video_urls = videoRefs;
   }
+  const audioRefs = opts.referenceAudioUrls?.filter(Boolean) ?? [];
+  if (audioRefs.length > 0) {
+    input.audio_urls = audioRefs;
+    input.reference_audio_urls = audioRefs;
+  }
+  if (opts.generateAudio !== undefined) input.generate_audio = opts.generateAudio;
   if (opts.referenceImageDataUrl) input.image_url = opts.referenceImageDataUrl;
   if (opts.negativePrompt) input.negative_prompt = opts.negativePrompt;
 

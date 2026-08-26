@@ -4,14 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AD_PRESETS,
   AD_VIDEO_MODELS,
+  AUDIO_REF_LIMITS,
   MULTI_REF_MODELS,
   REFERENCE_ROLES,
+  REF_CEILINGS,
+  audioCapability,
+  editableRecipeOf,
   getAdPreset,
+  isDefaultRecipe,
   maxAdSeconds,
   recipeStatus,
   unmetCriticalSteps,
   VIDEO_REF_LIMITS,
   type AudioMode,
+  type EditableRecipe,
   type ReferenceMedia,
   type ReferenceRole,
   type ReferenceSpec,
@@ -22,6 +28,7 @@ import {
   MUSIC_STYLES,
   NO_MUSIC_ID,
   SYNC_CAVEATS,
+  TIMING_REF_NOTES,
   musicLengthFor,
 } from "@/lib/music";
 import { MODELS, estimateCost } from "@/lib/models";
@@ -35,6 +42,13 @@ const ASPECT_CLASS: Record<string, string> = {
   "9:16": "aspect-[9/16]",
   "16:9": "aspect-[16/9]",
 };
+
+const REF_ACCEPT =
+  "image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav,audio/mp4,audio/aac";
+
+const toLines = (xs: string[]) => xs.join("\n");
+const fromLines = (v: string) =>
+  v.split("\n").map((x) => x.trim()).filter(Boolean);
 
 async function toProcessedDataUrl(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
@@ -62,6 +76,34 @@ async function toProcessedDataUrl(file: File): Promise<string> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** One numbered card in the single-column flow. */
+function Step({
+  n,
+  title,
+  aside,
+  children,
+}: {
+  n: number;
+  title: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="card p-5 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-3 font-semibold">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/12 font-mono text-[11px] text-accent">
+            {n}
+          </span>
+          {title}
+        </h2>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function AdLab() {
   const [health, setHealth] = useState<{ gemini: boolean; fal: boolean; live: boolean } | null>(null);
   const [presetId, setPresetId] = useState<string>(AD_PRESETS[0].id);
@@ -85,11 +127,10 @@ export function AdLab() {
   const [seconds, setSeconds] = useState<number | null>(null);
   const refInput = useRef<HTMLInputElement>(null);
 
-  // Vision autofill
   /**
-   * Audio settings are baked into the composed prompt, so changing them makes
-   * the shown prompt stale — clear it rather than let Generate run a prompt
-   * that no longer matches the settings.
+   * Audio settings and recipe edits are baked into the composed prompt, so
+   * changing them makes the shown prompt stale — clear it rather than let
+   * Generate run a prompt that no longer matches the settings.
    */
   const invalidatePrompt = useCallback(() => {
     setFinalPrompt("");
@@ -97,9 +138,16 @@ export function AdLab() {
     setPhase("idle");
   }, []);
 
+  // Vision autofill
   const [autofillBusy, setAutofillBusy] = useState(false);
   const [autofillRationale, setAutofillRationale] = useState<string | null>(null);
   const [autofilledKeys, setAutofilledKeys] = useState<Set<string>>(new Set());
+
+  // The recipe is editable — a preset is a starting point, not a locked asset.
+  const [recipe, setRecipe] = useState<EditableRecipe>(() =>
+    editableRecipeOf(AD_PRESETS[0]),
+  );
+  const [editingRecipe, setEditingRecipe] = useState(false);
 
   // Audio layer
   const [audioMode, setAudioMode] = useState<AudioMode>("layered");
@@ -107,14 +155,20 @@ export function AdLab() {
   const [musicUrl, setMusicUrl] = useState<string | null>(null);
   const [musicBusy, setMusicBusy] = useState(false);
   const [musicOn, setMusicOn] = useState(true);
+  /** Feed the composed bed back into the render as a timing signal. */
+  const [musicAsTimingRef, setMusicAsTimingRef] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const preset = getAdPreset(presetId);
+  const cap = audioCapability(modelId);
+  const modelName = MODELS[modelId].label.split(" (")[0];
   const supportsRefs = MULTI_REF_MODELS.includes(modelId);
   const secondsCap = maxAdSeconds(modelId);
   const duration = Math.min(seconds ?? preset.durationSeconds, secondsCap);
   const videoCost = estimateCost(modelId, { seconds: duration });
+  const recipeEdited = !isDefaultRecipe(preset, recipe);
+
   /** Every reference the model will receive, product photo included. */
   const allRefSpecs = useMemo(
     () => [
@@ -123,7 +177,7 @@ export function AdLab() {
     ],
     [productImage, refs],
   );
-  const recipe = useMemo(
+  const recipeChecklist = useMemo(
     () => recipeStatus(preset.referenceRecipe, allRefSpecs),
     [preset.referenceRecipe, allRefSpecs],
   );
@@ -137,6 +191,27 @@ export function AdLab() {
   /** True when a separate music model will actually be billed. */
   const scoringSeparately = audioMode === "layered" && musicStyleId !== NO_MUSIC_ID;
   const cost = videoCost + (scoringSeparately ? musicCost : 0);
+  /** The bed can only steer the render on a model that reads audio in. */
+  const timingRefAvailable = cap.refAudio && scoringSeparately;
+  const timingRefActive = Boolean(timingRefAvailable && musicAsTimingRef && musicUrl);
+
+  /** Audio references sent to the model, in the order the prompt numbers them. */
+  const audioRefUrls = useMemo(
+    () => [
+      ...refs.filter((r) => r.media === "audio").map((r) => r.url),
+      ...(timingRefActive && musicUrl ? [musicUrl] : []),
+    ],
+    [refs, timingRefActive, musicUrl],
+  );
+  /** Reference jobs, ordered to match the URLs above per media type. */
+  const composeRefs = useMemo<ReferenceSpec[]>(
+    () => [
+      ...(productImage ? [{ role: "product", media: "image" } as ReferenceSpec] : []),
+      ...refs.map((r) => ({ role: r.role, media: r.media }) as ReferenceSpec),
+      ...(timingRefActive ? [{ role: "rhythm", media: "audio" } as ReferenceSpec] : []),
+    ],
+    [productImage, refs, timingRefActive],
+  );
 
   useEffect(() => {
     fetch("/api/health")
@@ -200,11 +275,14 @@ export function AdLab() {
 
   const selectPreset = useCallback(
     (id: string) => {
-      setPresetId(id);
-      setMusicStyleId(getAdPreset(id).musicStyleId);
       const next = getAdPreset(id);
+      setPresetId(id);
+      setRecipe(editableRecipeOf(next));
+      setEditingRecipe(false);
+      setMusicStyleId(next.musicStyleId);
       if (next.preferredModelId) setModelId(next.preferredModelId);
       setMusicUrl(null);
+      setMusicAsTimingRef(false);
       setSeconds(null);
       setRefs([]);
       setParams({});
@@ -220,6 +298,23 @@ export function AdLab() {
       if (productImage) void runAutofill(productImage, id);
     },
     [productImage, runAutofill],
+  );
+
+  /** Silent models have no native audio to choose; don't offer the option. */
+  useEffect(() => {
+    if (!cap.native && audioMode === "native") {
+      setAudioMode("layered");
+      invalidatePrompt();
+    }
+    if (!cap.refAudio && musicAsTimingRef) setMusicAsTimingRef(false);
+  }, [cap.native, cap.refAudio, audioMode, musicAsTimingRef, invalidatePrompt]);
+
+  const editRecipe = useCallback(
+    (patch: Partial<EditableRecipe>) => {
+      setRecipe((prev) => ({ ...prev, ...patch }));
+      invalidatePrompt();
+    },
+    [invalidatePrompt],
   );
 
   const loadExample = useCallback(() => {
@@ -241,14 +336,10 @@ export function AdLab() {
           audioMode,
           musicStyleId,
           modelId,
-          references: supportsRefs
-            ? ([
-                ...(productImage
-                  ? [{ role: "product", media: "image" } as ReferenceSpec]
-                  : []),
-                ...refs.map((r) => ({ role: r.role, media: r.media }) as ReferenceSpec),
-              ] satisfies ReferenceSpec[])
-            : [],
+          // Only sent when edited — an untouched preset keeps the hand-tuned
+          // prompt it was written as.
+          recipe: recipeEdited ? recipe : undefined,
+          references: supportsRefs ? composeRefs : [],
           imageDataUrl: productImage ?? undefined,
         }),
       });
@@ -261,24 +352,39 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Compose failed");
       setPhase("idle");
     }
-  }, [audioMode, modelId, musicStyleId, params, presetId, productImage, refs, supportsRefs]);
+  }, [
+    audioMode,
+    composeRefs,
+    modelId,
+    musicStyleId,
+    params,
+    presetId,
+    productImage,
+    recipe,
+    recipeEdited,
+    supportsRefs,
+  ]);
 
   const addReference = useCallback(
     async (file: File) => {
       setError(null);
       const isVideo = file.type.startsWith("video/");
+      const isAudio = file.type.startsWith("audio/");
       try {
-        if (isVideo) {
+        if (isVideo || isAudio) {
+          const limits = isAudio ? AUDIO_REF_LIMITS : VIDEO_REF_LIMITS;
           // Check locally first — no point spending upload time on a file
           // the server is going to reject.
-          if (file.size > VIDEO_REF_LIMITS.maxBytes) {
+          if (file.size > limits.maxBytes) {
             setError(
-              `That clip is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${VIDEO_REF_LIMITS.maxMB}MB — around ${VIDEO_REF_LIMITS.idealSeconds} seconds is all the model reads.`,
+              isAudio
+                ? `That track is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${limits.maxMB}MB — the reference only needs to be as long as the cut.`
+                : `That clip is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${limits.maxMB}MB — around ${VIDEO_REF_LIMITS.idealSeconds} seconds is all the model reads.`,
             );
             return;
           }
-          // Clips upload to the provider once and travel as a URL — inlining
-          // video as base64 would blow past the request size limit.
+          // Clips and tracks upload to the provider once and travel as a URL —
+          // inlining them as base64 would blow past the request size limit.
           setUploading(true);
           const form = new FormData();
           form.append("file", file);
@@ -287,7 +393,12 @@ export function AdLab() {
           if (!res.ok) throw new Error(json.error ?? "Upload failed");
           setRefs((prev) => [
             ...prev,
-            { url: json.url, media: "video", role: "motion", name: file.name },
+            {
+              url: json.url,
+              media: isAudio ? "audio" : "video",
+              role: isAudio ? "rhythm" : "motion",
+              name: file.name,
+            },
           ]);
         } else {
           const dataUrl = await toProcessedDataUrl(file);
@@ -320,12 +431,14 @@ export function AdLab() {
       if (!json.mock) addSpend(json.cost ?? 0);
       setMusicUrl(json.audioUrl);
       setMusicOn(true);
+      // A bed used as a timing signal changes the prompt, so it goes stale.
+      if (musicAsTimingRef) invalidatePrompt();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Music generation failed");
     } finally {
       setMusicBusy(false);
     }
-  }, [addSpend, duration, musicStyleId]);
+  }, [addSpend, duration, invalidatePrompt, musicAsTimingRef, musicStyleId]);
 
   /** Keep the separately generated music bed locked to the video's transport. */
   const syncAudio = useCallback(
@@ -354,8 +467,10 @@ export function AdLab() {
     setPhase("starting");
     setVideoUrl(null);
     setPosterDataUrl(null);
-    // Score in parallel with the render — music returns in seconds, video in minutes.
-    if (scoringSeparately && !musicUrl) void generateMusic();
+    // Score in parallel with the render — music returns in seconds, video in
+    // minutes. Not when the bed is a timing reference: then it has to exist
+    // before the render starts, and the button blocks until it does.
+    if (scoringSeparately && !musicUrl && !timingRefActive) void generateMusic();
     try {
       const res = await fetch("/api/ad/start", {
         method: "POST",
@@ -373,6 +488,8 @@ export function AdLab() {
           referenceVideoUrls: supportsRefs
             ? refs.filter((r) => r.media === "video").map((r) => r.url)
             : undefined,
+          referenceAudioUrls: supportsRefs ? audioRefUrls : undefined,
+          generateAudio: audioMode !== "silent",
           presetName: preset.name,
         }),
       });
@@ -419,10 +536,61 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Generation failed");
       setPhase("failed");
     }
-  }, [addSpend, cost, duration, finalPrompt, generateMusic, health, modelId, musicUrl, negativePrompt, preset, productImage, refs, scoringSeparately, supportsRefs]);
+  }, [
+    addSpend,
+    audioMode,
+    audioRefUrls,
+    cost,
+    duration,
+    finalPrompt,
+    generateMusic,
+    health,
+    modelId,
+    musicUrl,
+    negativePrompt,
+    preset,
+    productImage,
+    refs,
+    scoringSeparately,
+    supportsRefs,
+    timingRefActive,
+  ]);
+
+  /** The bed must exist before a render that keys off it. */
+  const blockedOnMusic = timingRefAvailable && musicAsTimingRef && !musicUrl;
+
+  const audioChoices = [
+    ...(cap.native
+      ? [
+          {
+            id: "native" as AudioMode,
+            title: `Native — ${modelName} carries all of it`,
+            body: cap.refAudio
+              ? "Sound and picture are generated in one pass, so effects land on frame. One call, one file — but the model approximates music rather than composing it."
+              : "One call, one file: effects, ambience and an attempt at music, all rendered with the picture. The effects are good; the music is a texture, not a track.",
+          },
+        ]
+      : []),
+    {
+      id: "layered" as AudioMode,
+      title: cap.native
+        ? `Layered — ${modelName} does effects, a music model scores it`
+        : `Layered — a composed music bed (${modelName} renders no sound)`,
+      body: cap.native
+        ? "How a studio actually does it. The video model renders the effects it can see itself making; ElevenLabs writes a real track over the top."
+        : "This model returns a silent MP4, so the whole soundtrack is built here: ElevenLabs writes the bed and you add effects in the edit.",
+    },
+    {
+      id: "silent" as AudioMode,
+      title: "Silent — deliver picture only",
+      body: cap.switchable
+        ? `Native audio is switched off at the API, not just asked off in the prompt. The right choice when the ad will be cut to a licensed track.`
+        : "The prompt asks for a silent take. The right choice when the ad will be cut to a licensed track.",
+    },
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-6 py-10">
       {/* status */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -447,70 +615,193 @@ export function AdLab() {
       <p className="mt-2 max-w-3xl text-muted">
         Mini product ads as <span className="font-semibold text-foreground">preset recipes</span>:
         each concept is a structured, deconstructed prompt — aesthetics, beat-by-beat
-        action, text overlay spec, audio design — with the product swappable per
-        SKU. Design the concept once; run any product through it.
+        action, text overlay spec, sound design — with the product swappable per
+        SKU. Design the concept once; run any product through it, and edit any
+        part of it when the brief moves.
       </p>
-
-      {/* preset gallery */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {AD_PRESETS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => selectPreset(p.id)}
-            className={`card p-5 text-left transition ${
-              p.id === presetId ? "border-accent ring-1 ring-accent" : "hover:border-accent/50"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="font-semibold">{p.name}</h2>
-              <span className="chip shrink-0">{p.durationSeconds}s · {p.aspect}</span>
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{p.hook}</p>
-          </button>
-        ))}
-      </div>
 
       {error && (
         <div className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">{error}</div>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
-        {/* left — recipe + product form + prompt */}
-        <div className="space-y-6">
-          <div className="card p-5">
-            <h2 className="font-semibold">The recipe — {preset.name}</h2>
+      <div className="mt-8 space-y-6">
+        {/* ---------- 1. concept ---------- */}
+        <Step n={1} title="Pick a concept">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {AD_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => selectPreset(p.id)}
+                className={`rounded-[6px] border p-4 text-left transition ${
+                  p.id === presetId
+                    ? "border-accent bg-accent/[0.04] ring-1 ring-accent"
+                    : "border-border-soft hover:border-accent/50"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">{p.name}</h3>
+                  <span className="chip shrink-0">{p.durationSeconds}s · {p.aspect}</span>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{p.hook}</p>
+              </button>
+            ))}
+          </div>
+        </Step>
+
+        {/* ---------- 2. the recipe ---------- */}
+        <Step
+          n={2}
+          title={`The recipe — ${preset.name}`}
+          aside={
+            <div className="flex items-center gap-2">
+              {recipeEdited && (
+                <span className="chip border-accent/40 !text-accent">Edited</span>
+              )}
+              {recipeEdited && (
+                <button
+                  className="text-xs font-semibold text-muted hover:text-foreground"
+                  onClick={() => {
+                    setRecipe(editableRecipeOf(preset));
+                    invalidatePrompt();
+                  }}
+                >
+                  Reset to preset
+                </button>
+              )}
+              <button
+                className="btn-secondary !px-3 !py-1.5 text-xs"
+                onClick={() => setEditingRecipe((v) => !v)}
+              >
+                {editingRecipe ? "Done editing" : "Edit recipe"}
+              </button>
+            </div>
+          }
+        >
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+            {editingRecipe
+              ? "Change anything. An edited recipe is rebuilt into the prompt section by section — your beats, your sound design — instead of using the preset's hand-tuned paragraph."
+              : "The concept, deconstructed into the four things a video model actually reads. Edit any of it to make the concept yours."}
+          </p>
+
+          {editingRecipe ? (
+            <div className="mt-4 grid gap-5 md:grid-cols-2">
+              <div className="space-y-5">
+                <label className="block">
+                  <span className="mb-1 block label !text-accent">Core aesthetics</span>
+                  <textarea
+                    className="input min-h-32 text-sm leading-relaxed"
+                    value={toLines(recipe.aesthetics)}
+                    onChange={(e) => editRecipe({ aesthetics: fromLines(e.target.value) })}
+                  />
+                  <span className="mt-1 block text-xs text-muted">One per line.</span>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block label !text-accent">
+                    Sound design {cap.native ? `(rendered by ${modelName})` : "(built in the edit)"}
+                  </span>
+                  <textarea
+                    className="input min-h-28 text-sm leading-relaxed"
+                    value={toLines(recipe.sfx)}
+                    onChange={(e) => editRecipe({ sfx: fromLines(e.target.value) })}
+                  />
+                  <span className="mt-1 block text-xs text-muted">
+                    Effects and ambience only — music is set in step 5.
+                  </span>
+                </label>
+              </div>
+              <div className="space-y-5">
+                <div>
+                  <span className="mb-1 block label !text-accent">Action sequence</span>
+                  <div className="space-y-2">
+                    {recipe.scenes.map((sc, i) => (
+                      <div key={i} className="rounded-[6px] border border-border-soft bg-surface-2 p-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-accent">{i + 1}</span>
+                          <input
+                            className="input !py-1 text-xs font-semibold"
+                            value={sc.title}
+                            placeholder="Beat name"
+                            onChange={(e) =>
+                              editRecipe({
+                                scenes: recipe.scenes.map((x, j) =>
+                                  j === i ? { ...x, title: e.target.value } : x,
+                                ),
+                              })
+                            }
+                          />
+                          <button
+                            className="shrink-0 font-mono text-xs text-danger"
+                            aria-label={`Remove beat ${i + 1}`}
+                            onClick={() =>
+                              editRecipe({ scenes: recipe.scenes.filter((_, j) => j !== i) })
+                            }
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <textarea
+                          className="input mt-1.5 min-h-14 text-xs leading-relaxed"
+                          value={sc.description}
+                          placeholder="What happens in this beat"
+                          onChange={(e) =>
+                            editRecipe({
+                              scenes: recipe.scenes.map((x, j) =>
+                                j === i ? { ...x, description: e.target.value } : x,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    className="btn-secondary mt-2 !px-3 !py-1.5 text-xs"
+                    onClick={() =>
+                      editRecipe({
+                        scenes: [...recipe.scenes, { title: "", description: "" }],
+                      })
+                    }
+                  >
+                    Add a beat
+                  </button>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block label !text-accent">Text overlay</span>
+                  <textarea
+                    className="input min-h-20 text-sm leading-relaxed"
+                    value={recipe.overlay}
+                    onChange={(e) => editRecipe({ overlay: e.target.value })}
+                  />
+                  <span className="mt-1 block text-xs text-muted">
+                    Describe placement and timing; the actual words come from your
+                    product fields in step 3.
+                  </span>
+                </label>
+              </div>
+            </div>
+          ) : (
             <div className="mt-4 grid gap-5 md:grid-cols-2">
               <div>
-                <p className="label !text-accent">
-                  Core aesthetics
-                </p>
+                <p className="label !text-accent">Core aesthetics</p>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
-                  {preset.aesthetics.map((a) => (
-                    <li key={a}>{a}</li>
+                  {recipe.aesthetics.map((a, i) => (
+                    <li key={i}>{a}</li>
                   ))}
                 </ul>
                 <p className="mt-4 label !text-accent">
-                  Sound design (rendered by the video model)
+                  Sound design {cap.native ? `(rendered by ${modelName})` : "(built in the edit)"}
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
-                  {preset.sfx.map((a) => (
-                    <li key={a}>{a}</li>
+                  {recipe.sfx.map((a, i) => (
+                    <li key={i}>{a}</li>
                   ))}
                 </ul>
-                <p className="mt-4 label !text-accent">
-                  Music bed (scored separately)
-                </p>
-                <p className="mt-2 text-sm text-muted">
-                  {MUSIC_STYLES.find((m) => m.id === musicStyleId)?.prompt}
-                </p>
               </div>
               <div>
-                <p className="label !text-accent">
-                  Action sequence
-                </p>
+                <p className="label !text-accent">Action sequence</p>
                 <ol className="mt-2 space-y-2">
-                  {preset.scenes.map((s, i) => (
-                    <li key={s.title} className="text-sm">
+                  {recipe.scenes.map((s, i) => (
+                    <li key={i} className="text-sm">
                       <span className="font-semibold">
                         {i + 1} · {s.title}:
                       </span>{" "}
@@ -518,203 +809,220 @@ export function AdLab() {
                     </li>
                   ))}
                 </ol>
-                <p className="mt-4 label !text-accent">
-                  Text overlay
-                </p>
-                <p className="mt-2 text-sm text-muted">{preset.overlay}</p>
+                <p className="mt-4 label !text-accent">Text overlay</p>
+                <p className="mt-2 text-sm text-muted">{recipe.overlay}</p>
               </div>
-            </div>
-          </div>
-
-          <div className="card p-5">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="font-semibold">Your product</h2>
-              <button
-                className="text-xs font-semibold text-muted hover:text-foreground"
-                onClick={loadExample}
-              >
-                or load an example
-              </button>
-            </div>
-
-            {/* Photo first — it drives everything below */}
-            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[6px] border border-border-soft bg-surface-2 p-4">
-              {productImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={productImage}
-                  alt="Product"
-                  className="h-16 w-16 rounded-[6px] border border-border-soft object-cover"
-                />
-              )}
-              <button
-                className="btn-secondary"
-                onClick={() => fileInput.current?.click()}
-                disabled={autofillBusy}
-              >
-                {autofillBusy
-                  ? "Reading the photo…"
-                  : productImage
-                    ? "Replace product photo"
-                    : "Upload product photo"}
-              </button>
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (f) {
-                    try {
-                      const dataUrl = await toProcessedDataUrl(f);
-                      setProductImage(dataUrl);
-                      void runAutofill(dataUrl, presetId);
-                    } catch {
-                      setError("Could not read that image");
-                    }
-                  }
-                  e.target.value = "";
-                }}
-              />
-              <p className="min-w-40 flex-1 text-xs text-muted">
-                The photo fills the fields below (brand read off the pack, a
-                background color reasoned from the packaging) and grounds the
-                video as its first frame.
-              </p>
-            </div>
-
-            {autofillRationale && (
-              <div className="mt-3 rounded-[6px] border border-accent/30 bg-accent/5 p-3 text-xs leading-relaxed text-muted">
-                <span className="font-bold text-accent">Filled from your photo.</span>{" "}
-                {autofillRationale} Review every field — especially the price —
-                before composing.
-              </div>
-            )}
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {preset.fields.map((f) => (
-                <label key={f.key}>
-                  <span className="mb-1 flex items-center gap-1.5 label">
-                    {f.label}
-                    {autofilledKeys.has(f.key) && (
-                      <span className="rounded bg-accent/15 px-1 py-px text-[10px] font-bold normal-case tracking-normal text-accent">
-                        from photo
-                      </span>
-                    )}
-                    {f.key === "price" && productImage && !autofilledKeys.has("price") && (
-                      <span className="rounded bg-warning/15 px-1 py-px text-[10px] font-bold normal-case tracking-normal text-warning">
-                        not on pack — set it
-                      </span>
-                    )}
-                  </span>
-                  <input
-                    className="input disabled:opacity-60"
-                    placeholder={f.placeholder}
-                    disabled={autofillBusy}
-                    value={params[f.key] ?? ""}
-                    onChange={(e) => {
-                      setParams((prev) => ({ ...prev, [f.key]: e.target.value }));
-                      setAutofilledKeys((prev) => {
-                        if (!prev.has(f.key)) return prev;
-                        const next = new Set(prev);
-                        next.delete(f.key);
-                        return next;
-                      });
-                    }}
-                  />
-                </label>
-              ))}
-            </div>
-            <button
-              className="btn-primary mt-5"
-              onClick={() => void compose()}
-              disabled={phase === "composing" || autofillBusy}
-            >
-              {phase === "composing"
-                ? "Composing…"
-                : productImage
-                  ? "Compose the prompt from photo + fields →"
-                  : "Compose the prompt →"}
-            </button>
-          </div>
-
-          {(finalPrompt || phase === "composing") && (
-            <div className="card p-5">
-              <h2 className="font-semibold">The composed prompt — edit before you spend</h2>
-              <label className="mt-3 block">
-                <span className="mb-1 block label">
-                  Video prompt
-                </span>
-                <textarea
-                  className="input min-h-40 font-mono text-xs leading-relaxed"
-                  value={finalPrompt}
-                  onChange={(e) => setFinalPrompt(e.target.value)}
-                />
-              </label>
-              <label className="mt-3 block">
-                <span className="mb-1 block label">
-                  Negative prompt
-                </span>
-                <input
-                  className="input font-mono text-xs"
-                  value={negativePrompt}
-                  onChange={(e) => setNegativePrompt(e.target.value)}
-                />
-              </label>
             </div>
           )}
-        </div>
+        </Step>
 
-        {/* right — model, generate, result */}
-        <div className="space-y-6">
-          <div className="card p-5">
-            <h2 className="font-semibold">Audio</h2>
-            <div className="mt-3 space-y-2">
-              <label className="flex cursor-pointer items-start gap-2 rounded-[6px] border border-border-soft bg-surface p-3">
-                <input
-                  type="radio"
-                  name="audioMode"
-                  className="mt-1 accent-[var(--accent)]"
-                  checked={audioMode === "layered"}
-                  onChange={() => {
-                    setAudioMode("layered");
-                    invalidatePrompt();
-                  }}
-                />
-                <span>
-                  <span className="text-sm font-semibold">Layered — SFX + composed music</span>
-                  <span className="mt-0.5 block text-xs text-muted">
-                    Veo renders sound effects only; a music model scores a real
-                    track. How a studio actually does it.
-                  </span>
-                </span>
-              </label>
-              <label className="flex cursor-pointer items-start gap-2 rounded-[6px] border border-border-soft bg-surface p-3">
-                <input
-                  type="radio"
-                  name="audioMode"
-                  className="mt-1 accent-[var(--accent)]"
-                  checked={audioMode === "native"}
-                  onChange={() => {
-                    setAudioMode("native");
-                    invalidatePrompt();
-                  }}
-                />
-                <span>
-                  <span className="text-sm font-semibold">Native only — Veo does everything</span>
-                  <span className="mt-0.5 block text-xs text-muted">
-                    One call, but video models approximate music rather than
-                    composing it.
-                  </span>
-                </span>
-              </label>
+        {/* ---------- 3. product ---------- */}
+        <Step
+          n={3}
+          title="Your product"
+          aside={
+            <button
+              className="text-xs font-semibold text-muted hover:text-foreground"
+              onClick={loadExample}
+            >
+              or load an example
+            </button>
+          }
+        >
+          {/* Photo first — it drives everything below */}
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[6px] border border-border-soft bg-surface-2 p-4">
+            {productImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={productImage}
+                alt="Product"
+                className="h-16 w-16 rounded-[6px] border border-border-soft object-cover"
+              />
+            )}
+            <button
+              className="btn-secondary"
+              onClick={() => fileInput.current?.click()}
+              disabled={autofillBusy}
+            >
+              {autofillBusy
+                ? "Reading the photo…"
+                : productImage
+                  ? "Replace product photo"
+                  : "Upload product photo"}
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  try {
+                    const dataUrl = await toProcessedDataUrl(f);
+                    setProductImage(dataUrl);
+                    void runAutofill(dataUrl, presetId);
+                  } catch {
+                    setError("Could not read that image");
+                  }
+                }
+                e.target.value = "";
+              }}
+            />
+            <p className="min-w-40 flex-1 text-xs text-muted">
+              The photo fills the fields below (brand read off the pack, a
+              background color reasoned from the packaging) and grounds the
+              video as its first frame.
+            </p>
+          </div>
+
+          {autofillRationale && (
+            <div className="mt-3 rounded-[6px] border border-accent/30 bg-accent/5 p-3 text-xs leading-relaxed text-muted">
+              <span className="font-bold text-accent">Filled from your photo.</span>{" "}
+              {autofillRationale} Review every field — especially the price —
+              before composing.
             </div>
+          )}
 
-            <label className="mt-4 block">
-              <span className="mb-1 block label">
-                Music style
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {preset.fields.map((f) => (
+              <label key={f.key}>
+                <span className="mb-1 flex items-center gap-1.5 label">
+                  {f.label}
+                  {autofilledKeys.has(f.key) && (
+                    <span className="rounded bg-accent/15 px-1 py-px text-[10px] font-bold normal-case tracking-normal text-accent">
+                      from photo
+                    </span>
+                  )}
+                  {f.key === "price" && productImage && !autofilledKeys.has("price") && (
+                    <span className="rounded bg-warning/15 px-1 py-px text-[10px] font-bold normal-case tracking-normal text-warning">
+                      not on pack — set it
+                    </span>
+                  )}
+                </span>
+                <input
+                  className="input disabled:opacity-60"
+                  placeholder={f.placeholder}
+                  disabled={autofillBusy}
+                  value={params[f.key] ?? ""}
+                  onChange={(e) => {
+                    setParams((prev) => ({ ...prev, [f.key]: e.target.value }));
+                    setAutofilledKeys((prev) => {
+                      if (!prev.has(f.key)) return prev;
+                      const next = new Set(prev);
+                      next.delete(f.key);
+                      return next;
+                    });
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+        </Step>
+
+        {/* ---------- 4. model & shot ---------- */}
+        <Step n={4} title="Model and shot">
+          <div className="mt-4 grid gap-5 md:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block label">Video model</span>
+              <select
+                className="input"
+                value={modelId}
+                onChange={(e) => {
+                  setModelId(e.target.value);
+                  setSeconds(null);
+                  invalidatePrompt();
+                }}
+              >
+                {AD_VIDEO_MODELS.map((m) => (
+                  <option key={m} value={m}>
+                    {MODELS[m].label} — ${MODELS[m].unitCost}/s
+                  </option>
+                ))}
+              </select>
+              <span className="mt-2 block text-xs leading-relaxed text-muted">
+                {supportsRefs
+                  ? "Reference-to-video: every uploaded reference is addressed positionally in the prompt ([Image1], [Video1], [Audio1]…), which is what stops the product drifting as the camera moves."
+                  : "Single grounding frame: the product photo conditions the first frame, then the model extrapolates. Cheaper, but the pack can drift as the camera moves."}
               </span>
+            </label>
+
+            {/* Duration — Seedance 2.5 does native 30s takes */}
+            <label className="block">
+              <span className="mb-1 flex items-center justify-between label">
+                <span>Duration</span>
+                <span className="!text-foreground">{duration}s</span>
+              </span>
+              <input
+                type="range"
+                min={4}
+                max={secondsCap}
+                step={1}
+                value={duration}
+                onChange={(e) => setSeconds(Number(e.target.value))}
+                className="w-full accent-[var(--accent)]"
+              />
+              <span className="mt-2 block text-xs leading-relaxed text-muted">
+                {secondsCap >= 30
+                  ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
+                  : `This model caps at ${secondsCap}s.`}{" "}
+                {preset.aspect} · {preset.durationSeconds}s is the concept&apos;s
+                designed length.
+              </span>
+            </label>
+          </div>
+        </Step>
+
+        {/* ---------- 5. sound ---------- */}
+        <Step
+          n={5}
+          title="Sound"
+          aside={
+            <span
+              className={`chip ${cap.native ? "border-success/40 !text-success" : "border-warning/40 !text-warning"}`}
+            >
+              {cap.native ? "Native audio" : "Silent model"}
+            </span>
+          }
+        >
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+            <span className="font-semibold text-foreground">{modelName}:</span>{" "}
+            {cap.note}
+          </p>
+
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {audioChoices.map((c) => (
+              <label
+                key={c.id}
+                className={`flex cursor-pointer gap-2 rounded-[6px] border p-3 transition ${
+                  audioMode === c.id
+                    ? "border-accent bg-accent/[0.04]"
+                    : "border-border-soft bg-surface hover:border-accent/40"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="audioMode"
+                  className="mt-1 accent-[var(--accent)]"
+                  checked={audioMode === c.id}
+                  onChange={() => {
+                    setAudioMode(c.id);
+                    invalidatePrompt();
+                  }}
+                />
+                <span>
+                  <span className="text-sm font-semibold leading-snug">{c.title}</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-muted">
+                    {c.body}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {audioMode !== "silent" && (
+            <label className="mt-4 block max-w-md">
+              <span className="mb-1 block label">Music style</span>
               <select
                 className="input"
                 value={musicStyleId}
@@ -731,55 +1039,116 @@ export function AdLab() {
               </select>
               <span className="mt-1 block text-xs text-muted">
                 {audioMode === "native"
-                  ? "This brief is written into the video prompt for Veo to interpret."
+                  ? `This brief is written into the video prompt for ${modelName} to interpret.`
                   : "This brief is sent to the music model as its own composition."}
               </span>
+              {musicStyleId !== NO_MUSIC_ID && (
+                <span className="mt-2 block rounded-[6px] border border-border-soft bg-surface-2 p-2.5 text-xs leading-relaxed text-muted">
+                  {MUSIC_STYLES.find((m) => m.id === musicStyleId)?.prompt}
+                </span>
+              )}
             </label>
+          )}
 
-            {audioMode === "layered" && musicStyleId !== NO_MUSIC_ID && (
-              <>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <button
-                    className="btn-secondary !px-3 !py-1.5 text-xs"
-                    onClick={() => void generateMusic()}
-                    disabled={musicBusy}
+          {scoringSeparately && (
+            <div className="mt-4 border-t border-border-soft pt-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  className="btn-secondary !px-3 !py-1.5 text-xs"
+                  onClick={() => void generateMusic()}
+                  disabled={musicBusy}
+                >
+                  {musicBusy
+                    ? "Composing…"
+                    : musicUrl
+                      ? "Regenerate music"
+                      : `Generate music (${duration + MUSIC_HANDLE_SECONDS}s, ~$${musicCost.toFixed(2)})`}
+                </button>
+                {musicUrl && <span className="chip border-success/40 !text-success">track ready</span>}
+              </div>
+
+              {musicUrl && (
+                <div className="mt-3 max-w-md">
+                  <audio src={musicUrl} controls className="w-full" />
+                  <a
+                    href={musicUrl}
+                    download={`${preset.id}-music`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
                   >
-                    {musicBusy
-                      ? "Composing…"
-                      : musicUrl
-                        ? "Regenerate music"
-                        : `Generate music (${preset.durationSeconds + MUSIC_HANDLE_SECONDS}s, ~$${musicCost.toFixed(2)})`}
-                  </button>
-                  {musicUrl && <span className="chip border-success/40 text-success">track ready</span>}
-                </div>
-                {musicUrl && (
-                  <div className="mt-3">
-                    <audio src={musicUrl} controls className="w-full" />
-                    <a
-                      href={musicUrl}
-                      download={`${preset.id}-music`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
-                    >
-                      Download track
-                    </a>
-                    <p className="mt-1 text-xs text-muted">
-                      Generated {MUSIC_HANDLE_SECONDS}s longer than the cut for
-                      trim handles — slide a downbeat onto the price stamp in
-                      the edit.
-                    </p>
-                  </div>
-                )}
-                {preset.beatSensitive && (
-                  <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
-                    <span className="font-bold">Beat-sensitive concept.</span>{" "}
-                    This preset cuts its action to a musical pulse, but the bed
-                    is composed without seeing the video — the beats will not
-                    line up on their own. Budget an alignment pass in the
-                    editor, or pick a pad-like style that hides drift.
+                    Download track
+                  </a>
+                  <p className="mt-1 text-xs text-muted">
+                    Generated {MUSIC_HANDLE_SECONDS}s longer than the cut for
+                    trim handles — slide a downbeat onto the price stamp in
+                    the edit.
                   </p>
-                )}
+                </div>
+              )}
+
+              {/* The Seedance-only move: the bed becomes an input. */}
+              {timingRefAvailable && (
+                <div
+                  className={`mt-4 rounded-[6px] border p-3 ${
+                    musicAsTimingRef
+                      ? "border-accent/50 bg-accent/[0.05]"
+                      : "border-border-soft bg-surface-2"
+                  }`}
+                >
+                  <label className="flex cursor-pointer items-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-1 accent-[var(--accent)]"
+                      checked={musicAsTimingRef}
+                      onChange={(e) => {
+                        setMusicAsTimingRef(e.target.checked);
+                        invalidatePrompt();
+                      }}
+                    />
+                    <span>
+                      <span className="text-sm font-semibold">
+                        Cut the picture to this track ({modelName} only)
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-muted">
+                        The bed is handed back to the model as{" "}
+                        <span className="font-mono text-accent">[Audio1]</span>{" "}
+                        and read as a timing signal in the same pass that makes
+                        the picture. This is the difference between beats you
+                        nudge into place afterwards and cuts the render was
+                        built around.
+                      </span>
+                    </span>
+                  </label>
+                  {musicAsTimingRef && !musicUrl && (
+                    <p className="mt-2 rounded-[6px] border border-warning/40 bg-warning/10 p-2 text-xs leading-relaxed text-warning">
+                      Compose the bed first — the reference has to exist before
+                      the render starts.
+                    </p>
+                  )}
+                  {musicAsTimingRef && (
+                    <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-muted">
+                      {TIMING_REF_NOTES.map((c) => (
+                        <li key={c}>{c}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {preset.beatSensitive && !timingRefActive && (
+                <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                  <span className="font-bold">Beat-sensitive concept.</span>{" "}
+                  This preset cuts its action to a musical pulse, but the bed
+                  is composed without the model seeing it — the beats will not
+                  line up on their own.{" "}
+                  {cap.refAudio
+                    ? "Tick the box above to hand the track back as a timing reference, or budget an alignment pass in the editor."
+                    : "Budget an alignment pass in the editor, switch to Seedance 2.5 Reference to feed the track back as a timing signal, or pick a pad-like style that hides drift."}
+                </p>
+              )}
+
+              {!timingRefActive && (
                 <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
                   <summary className="cursor-pointer text-xs font-semibold text-foreground">
                     What layered audio does and doesn&apos;t guarantee
@@ -790,306 +1159,344 @@ export function AdLab() {
                     ))}
                   </ul>
                 </details>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
+        </Step>
 
-          <div className="card p-5">
-            <h2 className="font-semibold">Generate</h2>
-            <label className="mt-3 block">
-              <span className="mb-1 block label">
-                Video model
+        {/* ---------- 6. references ---------- */}
+        {supportsRefs && (
+          <Step
+            n={6}
+            title="References"
+            aside={
+              <span className="label-sm">
+                {(productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0)} of{" "}
+                {REF_CEILINGS.total}
               </span>
-              <select
-                className="input"
-                value={modelId}
-                onChange={(e) => {
-                  setModelId(e.target.value);
-                  setSeconds(null);
-                  invalidatePrompt();
-                }}
-              >
-                {AD_VIDEO_MODELS.map((m) => (
-                  <option key={m} value={m}>
-                    {MODELS[m].label} — ${MODELS[m].unitCost}/s
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="mt-2 text-xs text-muted">
-              {supportsRefs
-                ? "Reference-to-video: every uploaded reference is addressed positionally in the prompt ([Image1], [Image2]…), which is what stops the product drifting as the camera moves."
-                : "Veo renders the synced audio design natively — it's the right tool for these; Kling is the silent-but-cheap draft option."}
-            </p>
-
-            {/* Duration — Seedance 2.5 does native 30s takes */}
-            <label className="mt-4 block">
-              <span className="mb-1 flex items-center justify-between label">
-                <span>Duration</span>
-                <span className="!text-foreground">{duration}s</span>
-              </span>
-              <input
-                type="range"
-                min={4}
-                max={secondsCap}
-                step={1}
-                value={duration}
-                onChange={(e) => setSeconds(Number(e.target.value))}
-                className="w-full accent-[var(--accent)]"
-              />
-              <span className="mt-1 block text-xs text-muted">
-                {secondsCap >= 30
-                  ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
-                  : `This model caps at ${secondsCap}s.`}
-              </span>
-            </label>
-
-            {/* Reference manager */}
-            {supportsRefs && (
-              <div className="mt-4 border-t border-border-soft pt-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="label">References</span>
-                  <span className="label-sm">
-                    {(productImage ? 1 : 0) + refs.length} of 50
-                  </span>
-                </div>
-
-                {/* Reference recipe — the concept ships with instructions */}
-                {preset.referenceRecipe && (
-                  <details open className="mt-3 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-3">
-                    <summary className="cursor-pointer text-xs font-semibold text-accent">
-                      Reference recipe for {preset.name} — what to add, and why
-                    </summary>
-                    <ol className="mt-3 space-y-3">
-                      {recipe.map(({ step, satisfied }, i) => (
-                        <li key={i} className="flex gap-3">
-                          <span
-                            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full font-mono text-[9px] ${
-                              satisfied
-                                ? "bg-success text-white"
-                                : step.impact === "critical"
-                                  ? "bg-warning text-white"
-                                  : "border border-border-strong text-muted"
-                            }`}
-                          >
-                            {satisfied ? "✓" : i + 1}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-xs font-semibold leading-snug">
-                              {step.what}
-                            </span>
-                            <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent">
-                                {step.media === "video" ? "clip" : "still"} ·{" "}
-                                {REFERENCE_ROLES.find((r) => r.id === step.role)?.label}
-                              </span>
-                              {step.impact === "critical" && !satisfied && (
-                                <span className="rounded-full bg-warning/15 px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.1em] text-warning">
-                                  Do this one
-                                </span>
-                              )}
-                              {step.impact === "optional" && (
-                                <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
-                                  optional
-                                </span>
-                              )}
-                            </span>
-                            <span className="mt-1 block text-xs leading-relaxed text-muted">
-                              {step.why}
-                            </span>
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                    <p className="mt-3 border-t border-accent/20 pt-2 text-xs leading-relaxed text-muted">
-                      Order matters: references are numbered as you add them, and
-                      the prompt addresses them by that number. Add the product
-                      first.
-                    </p>
-                  </details>
-                )}
-
-                <div className="mt-3 space-y-2">
-                  {productImage && (
-                    <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={productImage}
-                        alt="Product reference"
-                        className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono text-[11px] text-accent">[Image1]</p>
-                        <p className="text-xs text-muted">
-                          Product identity — from your product photo
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {refs.map((r, i) => {
-                    // Tokens are numbered per media type, matching how the
-                    // model resolves them.
-                    const priorSameMedia = refs
-                      .slice(0, i)
-                      .filter((x) => x.media === r.media).length;
-                    const n =
-                      r.media === "image"
-                        ? (productImage ? 2 : 1) + priorSameMedia
-                        : 1 + priorSameMedia;
-                    const token = r.media === "image" ? `[Image${n}]` : `[Video${n}]`;
-                    const allowed = REFERENCE_ROLES.filter((o) =>
-                      (o.media as readonly string[]).includes(r.media),
-                    );
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 rounded-[6px] border border-border-soft bg-surface p-2"
+            }
+          >
+            {/* Reference recipe — the concept ships with instructions */}
+            {preset.referenceRecipe && (
+              <details open className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-accent">
+                  Reference recipe for {preset.name} — what to add, and why
+                </summary>
+                <ol className="mt-3 grid gap-3 md:grid-cols-2">
+                  {recipeChecklist.map(({ step, satisfied }, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span
+                        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full font-mono text-[9px] ${
+                          satisfied
+                            ? "bg-success text-white"
+                            : step.impact === "critical"
+                              ? "bg-warning text-white"
+                              : "border border-border-strong text-muted"
+                        }`}
                       >
-                        {r.media === "image" ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={r.url}
-                            alt=""
-                            className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
-                          />
-                        ) : (
-                          <video
-                            src={r.url}
-                            muted
-                            playsInline
-                            className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
-                          />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="font-mono text-[11px] text-accent">
-                            {token}
-                            <span className="ml-1.5 text-muted">
-                              {r.media === "video" ? "clip" : "still"}
+                        {satisfied ? "✓" : i + 1}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold leading-snug">
+                          {step.what}
+                        </span>
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent">
+                            {step.media === "video" ? "clip" : step.media === "audio" ? "track" : "still"} ·{" "}
+                            {REFERENCE_ROLES.find((r) => r.id === step.role)?.label}
+                          </span>
+                          {step.impact === "critical" && !satisfied && (
+                            <span className="rounded-full bg-warning/15 px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.1em] text-warning">
+                              Do this one
                             </span>
-                          </p>
-                          <select
-                            className="mt-0.5 w-full bg-transparent text-xs text-muted outline-none"
-                            value={r.role}
-                            onChange={(e) => {
-                              const role = e.target.value as ReferenceRole;
-                              setRefs((prev) =>
-                                prev.map((x, j) => (j === i ? { ...x, role } : x)),
-                              );
-                              invalidatePrompt();
-                            }}
-                          >
-                            {allowed.map((o) => (
-                              <option key={o.id} value={o.id}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <button
-                          className="font-mono text-xs text-danger"
-                          onClick={() => {
-                            setRefs((prev) => prev.filter((_, j) => j !== i));
-                            invalidatePrompt();
-                          }}
-                          aria-label="Remove reference"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <button
-                  className="btn-secondary mt-3 !px-3 !py-1.5 text-xs"
-                  onClick={() => refInput.current?.click()}
-                  disabled={uploading}
-                >
-                  {uploading ? "Uploading clip…" : "Add reference (image or clip)"}
-                </button>
-                <input
-                  ref={refInput}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void addReference(f);
-                    e.target.value = "";
-                  }}
-                />
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <span className="chip">Stills · JPG, PNG, WebP</span>
-                  <span className="chip border-warning/40 !text-warning">
-                    Clips · {VIDEO_REF_LIMITS.formats} · ≤{VIDEO_REF_LIMITS.maxMB}MB ·{" "}
-                    ~{VIDEO_REF_LIMITS.idealSeconds}s · live mode
-                  </span>
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-muted">
-                  Add more angles of the product to tighten the identity lock, a
-                  still to borrow a palette from, or a <strong>short clip</strong>{" "}
-                  whose camera move and cut rhythm you want imitated. Each gets a
-                  job in the prompt — set it in the dropdown.{" "}
-                  <strong>Trim clips before uploading</strong> — these models read
-                  the camera move, not the content, so anything past a few seconds
-                  costs upload time and buys nothing.
-                </p>
-              </div>
-            )}
-            {unmet.length > 0 && (
-              <div className="mt-4 rounded-[6px] border border-warning/50 bg-warning/10 p-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning">
-                  Before you spend ${cost.toFixed(2)}
-                </p>
-                <p className="mt-1.5 text-xs font-semibold leading-snug text-foreground">
-                  {unmet.length === 1
-                    ? "One high-impact reference is missing."
-                    : `${unmet.length} high-impact references are missing.`}
-                </p>
-                <ul className="mt-2 space-y-2">
-                  {unmet.map((step, i) => (
-                    <li key={i} className="text-xs leading-relaxed text-muted">
-                      <span className="font-semibold text-foreground">{step.what}</span>{" "}
-                      {step.ifMissing ?? step.why}
+                          )}
+                          {step.impact === "optional" && (
+                            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
+                              optional
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-1 block text-xs leading-relaxed text-muted">
+                          {step.why}
+                        </span>
+                      </span>
                     </li>
                   ))}
-                </ul>
-                <p className="mt-2 text-xs leading-relaxed text-muted">
-                  Adding these costs nothing. Generating without them usually
-                  costs the price of a second take.
+                </ol>
+                <p className="mt-3 border-t border-accent/20 pt-2 text-xs leading-relaxed text-muted">
+                  Order matters: references are numbered as you add them, and
+                  the prompt addresses them by that number. Add the product
+                  first.
                 </p>
-              </div>
+              </details>
             )}
 
-            <div className="mt-4 flex items-center justify-between border-t border-border-soft pt-4">
-              <div className="text-sm text-muted">
-                {duration}s · {preset.aspect} ·{" "}
-                <span className="font-bold text-accent">~${cost.toFixed(2)}</span>
-                {scoringSeparately && (
-                  <span className="block text-xs">
-                    video ${videoCost.toFixed(2)} + music ${musicCost.toFixed(2)}
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {productImage && (
+                <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={productImage}
+                    alt="Product reference"
+                    className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[11px] text-accent">[Image1]</p>
+                    <p className="text-xs text-muted">
+                      Product identity — from your product photo
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {refs.map((r, i) => {
+                // Tokens are numbered per media type, matching how the
+                // model resolves them.
+                const priorSameMedia = refs
+                  .slice(0, i)
+                  .filter((x) => x.media === r.media).length;
+                const n =
+                  r.media === "image"
+                    ? (productImage ? 2 : 1) + priorSameMedia
+                    : 1 + priorSameMedia;
+                const token =
+                  r.media === "image"
+                    ? `[Image${n}]`
+                    : r.media === "video"
+                      ? `[Video${n}]`
+                      : `[Audio${n}]`;
+                const allowed = REFERENCE_ROLES.filter((o) =>
+                  (o.media as readonly string[]).includes(r.media),
+                );
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 rounded-[6px] border border-border-soft bg-surface p-2"
+                  >
+                    {r.media === "image" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={r.url}
+                        alt=""
+                        className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                      />
+                    ) : r.media === "video" ? (
+                      <video
+                        src={r.url}
+                        muted
+                        playsInline
+                        className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-border-soft bg-surface-2 text-base">
+                        ♪
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-[11px] text-accent">
+                        {token}
+                        <span className="ml-1.5 text-muted">
+                          {r.media === "video" ? "clip" : r.media === "audio" ? "track" : "still"}
+                        </span>
+                      </p>
+                      <select
+                        className="mt-0.5 w-full bg-transparent text-xs text-muted outline-none"
+                        value={r.role}
+                        onChange={(e) => {
+                          const role = e.target.value as ReferenceRole;
+                          setRefs((prev) =>
+                            prev.map((x, j) => (j === i ? { ...x, role } : x)),
+                          );
+                          invalidatePrompt();
+                        }}
+                      >
+                        {allowed.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      className="font-mono text-xs text-danger"
+                      onClick={() => {
+                        setRefs((prev) => prev.filter((_, j) => j !== i));
+                        invalidatePrompt();
+                      }}
+                      aria-label="Remove reference"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+
+              {timingRefActive && (
+                <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-border-soft bg-surface-2 text-base">
+                    ♪
                   </span>
-                )}
-                {health && !health.live && (
-                  <span className="ml-1 text-xs text-warning">(demo — $0)</span>
-                )}
-              </div>
-              <button
-                className={unmet.length > 0 ? "btn-secondary !border-warning !text-warning" : "btn-primary"}
-                disabled={!finalPrompt || phase === "starting" || phase === "polling"}
-                onClick={() => void generate()}
-              >
-                {unmet.length > 0 ? "Generate anyway →" : "Generate ad →"}
-              </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[11px] text-accent">
+                      [Audio{refs.filter((r) => r.media === "audio").length + 1}]
+                      <span className="ml-1.5 text-muted">track</span>
+                    </p>
+                    <p className="text-xs text-muted">
+                      Musical timing — your composed bed, from step 5
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-            {!finalPrompt && (
-              <p className="mt-2 text-xs text-muted">Compose the prompt first.</p>
-            )}
-          </div>
 
-          {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed") && (
-            <div className="card overflow-hidden">
+            <button
+              className="btn-secondary mt-3 !px-3 !py-1.5 text-xs"
+              onClick={() => refInput.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? "Uploading…" : "Add reference (image, clip or track)"}
+            </button>
+            <input
+              ref={refInput}
+              type="file"
+              accept={REF_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void addReference(f);
+                e.target.value = "";
+              }}
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="chip">
+                Stills · JPG, PNG, WebP · up to {REF_CEILINGS.image}
+              </span>
+              <span className="chip border-warning/40 !text-warning">
+                Clips · {VIDEO_REF_LIMITS.formats} · ≤{VIDEO_REF_LIMITS.maxMB}MB ·{" "}
+                ~{VIDEO_REF_LIMITS.idealSeconds}s · live mode
+              </span>
+              <span className="chip border-warning/40 !text-warning">
+                Tracks · {AUDIO_REF_LIMITS.formats} · ≤{AUDIO_REF_LIMITS.maxMB}MB ·
+                live mode
+              </span>
+            </div>
+            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+              Add more angles of the product to tighten the identity lock, a
+              still to borrow a palette from, a <strong>short clip</strong>{" "}
+              whose camera move and cut rhythm you want imitated, or a{" "}
+              <strong>track</strong> whose beats the action should land on. Each
+              gets a job in the prompt — set it in the dropdown.{" "}
+              <strong>Trim clips before uploading</strong> — these models read
+              the camera move, not the content, so anything past a few seconds
+              costs upload time and buys nothing.
+            </p>
+          </Step>
+        )}
+
+        {/* ---------- 7. compose ---------- */}
+        <Step n={supportsRefs ? 7 : 6} title="Compose the prompt">
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+            {recipeEdited
+              ? "Your edited recipe is rebuilt into a prompt section by section, then polished for the target duration. Nothing is generated yet — read it before you spend."
+              : "The recipe, your product fields and every reference job are compiled into one prompt, then polished for the target duration. Nothing is generated yet — read it before you spend."}
+          </p>
+          <button
+            className="btn-primary mt-4"
+            onClick={() => void compose()}
+            disabled={phase === "composing" || autofillBusy}
+          >
+            {phase === "composing"
+              ? "Composing…"
+              : productImage
+                ? "Compose from photo + fields →"
+                : "Compose the prompt →"}
+          </button>
+
+          {finalPrompt && (
+            <>
+              <label className="mt-5 block">
+                <span className="mb-1 block label">Video prompt — edit before you spend</span>
+                <textarea
+                  className="input min-h-40 font-mono text-xs leading-relaxed"
+                  value={finalPrompt}
+                  onChange={(e) => setFinalPrompt(e.target.value)}
+                />
+              </label>
+              <label className="mt-3 block">
+                <span className="mb-1 block label">Negative prompt</span>
+                <input
+                  className="input font-mono text-xs"
+                  value={negativePrompt}
+                  onChange={(e) => setNegativePrompt(e.target.value)}
+                />
+              </label>
+            </>
+          )}
+        </Step>
+
+        {/* ---------- 8. generate ---------- */}
+        <Step n={supportsRefs ? 8 : 7} title="Generate">
+          {unmet.length > 0 && (
+            <div className="mt-4 rounded-[6px] border border-warning/50 bg-warning/10 p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning">
+                Before you spend ${cost.toFixed(2)}
+              </p>
+              <p className="mt-1.5 text-xs font-semibold leading-snug text-foreground">
+                {unmet.length === 1
+                  ? "One high-impact reference is missing."
+                  : `${unmet.length} high-impact references are missing.`}
+              </p>
+              <ul className="mt-2 space-y-2">
+                {unmet.map((step, i) => (
+                  <li key={i} className="text-xs leading-relaxed text-muted">
+                    <span className="font-semibold text-foreground">{step.what}</span>{" "}
+                    {step.ifMissing ?? step.why}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                Adding these costs nothing. Generating without them usually
+                costs the price of a second take.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="text-sm text-muted">
+              {duration}s · {preset.aspect} ·{" "}
+              <span className="font-bold text-accent">~${cost.toFixed(2)}</span>
+              {scoringSeparately && (
+                <span className="block text-xs">
+                  video ${videoCost.toFixed(2)} + music ${musicCost.toFixed(2)}
+                </span>
+              )}
+              {health && !health.live && (
+                <span className="ml-1 text-xs text-warning">(demo — $0)</span>
+              )}
+            </div>
+            <button
+              className={unmet.length > 0 ? "btn-secondary !border-warning !text-warning" : "btn-primary"}
+              disabled={
+                !finalPrompt || blockedOnMusic || phase === "starting" || phase === "polling"
+              }
+              onClick={() => void generate()}
+            >
+              {unmet.length > 0 ? "Generate anyway →" : "Generate ad →"}
+            </button>
+          </div>
+          {!finalPrompt && (
+            <p className="mt-2 text-xs text-muted">Compose the prompt first.</p>
+          )}
+          {finalPrompt && blockedOnMusic && (
+            <p className="mt-2 text-xs text-warning">
+              Compose the music bed in step 5 — the render is set to cut against it.
+            </p>
+          )}
+        </Step>
+
+        {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed") && (
+          <div className="card overflow-hidden">
+            <div className="mx-auto w-full max-w-md">
               <div className={`relative w-full bg-surface-2 ${ASPECT_CLASS[preset.aspect]}`}>
                 {videoUrl ? (
                   <video
@@ -1128,54 +1535,54 @@ export function AdLab() {
                   </span>
                 )}
               </div>
-              {videoUrl && (
-                <div className="p-4">
-                  {musicUrl && scoringSeparately && (
-                    <>
-                      {/* Hidden bed, transport-locked to the video above. */}
-                      <audio ref={audioRef} src={musicUrl} className="hidden" />
-                      <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted">
-                        <input
-                          type="checkbox"
-                          className="accent-[var(--accent)]"
-                          checked={musicOn}
-                          onChange={(e) => {
-                            setMusicOn(e.target.checked);
-                            if (!e.target.checked) audioRef.current?.pause();
-                            else if (!videoRef.current?.paused) syncAudio("play");
-                          }}
-                        />
-                        Play music bed with the video
-                      </label>
-                    </>
-                  )}
-                  <div className="flex gap-3">
+            </div>
+            {videoUrl && (
+              <div className="p-4">
+                {musicUrl && scoringSeparately && (
+                  <>
+                    {/* Hidden bed, transport-locked to the video above. */}
+                    <audio ref={audioRef} src={musicUrl} className="hidden" />
+                    <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted">
+                      <input
+                        type="checkbox"
+                        className="accent-[var(--accent)]"
+                        checked={musicOn}
+                        onChange={(e) => {
+                          setMusicOn(e.target.checked);
+                          if (!e.target.checked) audioRef.current?.pause();
+                          else if (!videoRef.current?.paused) syncAudio("play");
+                        }}
+                      />
+                      Play music bed with the video
+                    </label>
+                  </>
+                )}
+                <div className="flex gap-3">
+                  <a
+                    href={videoUrl}
+                    download={`${preset.id}-ad.mp4`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-accent hover:underline"
+                  >
+                    Download MP4
+                  </a>
+                  {musicUrl && (
                     <a
-                      href={videoUrl}
-                      download={`${preset.id}-ad.mp4`}
+                      href={musicUrl}
+                      download={`${preset.id}-music`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-xs font-semibold text-accent hover:underline"
                     >
-                      Download MP4
+                      Download music
                     </a>
-                    {musicUrl && (
-                      <a
-                        href={musicUrl}
-                        download={`${preset.id}-music`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-semibold text-accent hover:underline"
-                      >
-                        Download music
-                      </a>
-                    )}
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

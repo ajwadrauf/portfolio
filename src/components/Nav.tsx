@@ -43,7 +43,7 @@ export function Nav() {
           </span>
         </div>
 
-        <nav className="no-scrollbar -mx-6 flex items-center gap-1 overflow-x-auto px-6 text-sm sm:mx-0 sm:overflow-visible sm:px-0">
+        <nav className="no-scrollbar -mx-6 flex min-w-0 items-center gap-1 overflow-x-auto px-6 text-sm lg:mx-0 lg:overflow-visible lg:px-0">
           {LINKS.map((l) => {
             const active = pathname === l.href;
             return (

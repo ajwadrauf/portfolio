@@ -69,12 +69,13 @@ export type AdPreset = {
 /**
  * native  — let the video model handle all audio, music included (weaker music).
  * layered — video model renders SFX only; a music model scores it separately.
+ * silent  — no audio at all; the cut will be laid against licensed music.
  */
-export type AudioMode = "native" | "layered";
+export type AudioMode = "native" | "layered" | "silent";
 
 /** One instruction in a preset's reference recipe. */
 export type RecipeStep = {
-  media: "image" | "video";
+  media: ReferenceMedia;
   role: string;
   /** What to upload. */
   what: string;
@@ -166,6 +167,9 @@ export function audioCue(
   audioMode: AudioMode,
   musicBrief: string,
 ): string {
+  if (audioMode === "silent") {
+    return "Audio: none. Render the shot completely silent — no sound effects, no ambience, no music.";
+  }
   const effects = sfx.join(" ");
   if (audioMode === "layered") {
     return `Audio: ${effects} Sound effects and ambience only — no music, no musical score, no soundtrack.`;
@@ -484,6 +488,99 @@ export const AD_PRESETS: AdPreset[] = [
   },
 ];
 
+/**
+ * The editable half of a preset.
+ *
+ * A preset is a creative system, not a locked asset — the point of
+ * deconstructing a prompt into aesthetics, beats, overlay and sound design is
+ * that a producer can change one part without rewriting the whole thing. This
+ * is the shape the UI hands back after an edit.
+ */
+export type EditableRecipe = {
+  aesthetics: string[];
+  scenes: { title: string; description: string }[];
+  overlay: string;
+  sfx: string[];
+};
+
+export const editableRecipeOf = (preset: AdPreset): EditableRecipe => ({
+  aesthetics: [...preset.aesthetics],
+  scenes: preset.scenes.map((s) => ({ ...s })),
+  overlay: preset.overlay,
+  sfx: [...preset.sfx],
+});
+
+/** True when the recipe still matches the preset it came from. */
+export const isDefaultRecipe = (preset: AdPreset, r: EditableRecipe): boolean =>
+  JSON.stringify(r) === JSON.stringify(editableRecipeOf(preset));
+
+/** Guard rails on a recipe arriving from the client. */
+export const RECIPE_LIMITS = {
+  maxAesthetics: 12,
+  maxScenes: 12,
+  maxSfx: 12,
+  maxLine: 600,
+  maxOverlay: 1200,
+} as const;
+
+/**
+ * Builds a prompt from an EDITED recipe.
+ *
+ * Each preset ships a hand-tuned `template` — one flowing paragraph, written
+ * for the concept. That template is a compiled artifact: it cannot absorb a
+ * changed beat or a new aesthetic. So once the recipe is edited, the prompt is
+ * rebuilt from the recipe itself, section by section, and the product fields
+ * are attached as explicit detail rather than woven in. It reads less like
+ * copy and more like a brief — which is exactly right, because a brief is what
+ * the user just wrote.
+ */
+export function composeFromRecipe(
+  preset: AdPreset,
+  recipe: EditableRecipe,
+  p: Record<string, string>,
+  audioMode: AudioMode,
+  musicBrief: string,
+): string {
+  const clean = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
+
+  const parts: string[] = [
+    `A ${preset.durationSeconds}-second ${preset.aspect} product ad.`,
+  ];
+
+  const look = clean(recipe.aesthetics);
+  if (look.length) parts.push(`Look and camera: ${look.join(" ")}`);
+
+  const beats = recipe.scenes
+    .map((sc, i) => {
+      const title = sc.title.trim();
+      const desc = sc.description.trim();
+      if (!title && !desc) return "";
+      return `${i + 1}. ${[title, desc].filter(Boolean).join(" — ")}`;
+    })
+    .filter(Boolean);
+  if (beats.length) parts.push(`Action, in order: ${beats.join(" ")}`);
+
+  const overlay = recipe.overlay.trim();
+  if (overlay) {
+    // Quoted strings render as literal on-screen text, so the copy the user
+    // typed into the fields has to arrive quoted, not described.
+    const copy = (["brand", "tagline", "price"] as const)
+      .filter((k) => p[k]?.trim())
+      .map((k) => `${k} reads "${p[k].trim()}"`);
+    parts.push(
+      `On-screen text: ${overlay}${copy.length ? ` The ${copy.join(", the ")}.` : ""}`,
+    );
+  }
+
+  const details = preset.fields
+    .filter((f) => !["brand", "tagline", "price"].includes(f.key) && p[f.key]?.trim())
+    .map((f) => `${f.label.toLowerCase()} is ${p[f.key].trim()}`);
+  if (details.length) parts.push(`Product detail: ${details.join("; ")}.`);
+
+  parts.push(audioCue(clean(recipe.sfx), audioMode, musicBrief));
+  return parts.join(" ");
+}
+
 export const getAdPreset = (id: string): AdPreset => {
   const p = AD_PRESETS.find((x) => x.id === id);
   if (!p) throw new Error(`Unknown ad preset: ${id}`);
@@ -503,12 +600,94 @@ export const AD_VIDEO_MODELS = [
 export const MULTI_REF_MODELS = ["seedance-2.5-ref"];
 
 /**
+ * Models whose endpoint accepts reference AUDIO (`audio_urls`) alongside the
+ * visual references. Seedance 2.5 generates sound and picture jointly in one
+ * latent space, which is what makes a supplied track usable as a timing
+ * signal rather than decoration: the cuts key off its beats.
+ */
+export const AUDIO_REF_MODELS = ["seedance-2.5-ref"];
+
+/**
+ * Per-media reference ceilings on the reference-to-video endpoint. Images,
+ * clips and tracks each have their own cap and share one overall total.
+ */
+export const REF_CEILINGS = {
+  image: 30,
+  video: 10,
+  audio: 10,
+  total: 50,
+} as const;
+
+/**
+ * What each video model does about sound, stated per model so the UI never
+ * describes one model's behaviour while another is selected.
+ *
+ * `native`    — renders sound with the picture, so hits land on frame.
+ * `switchable`— native audio can be turned off at the API, not just asked off
+ *               in the prompt.
+ * `refAudio`  — accepts a supplied track as an input, not just an output.
+ */
+export type AudioCapability = {
+  native: boolean;
+  switchable: boolean;
+  refAudio: boolean;
+  /** One line, written about this model specifically. */
+  note: string;
+};
+
+const SILENT_MODEL: AudioCapability = {
+  native: false,
+  switchable: false,
+  refAudio: false,
+  note: "Renders picture only — this model returns a silent MP4, so every ad it makes needs its sound built in the edit.",
+};
+
+const AUDIO_CAPABILITIES: Record<string, AudioCapability> = {
+  "veo-3.1": {
+    native: true,
+    switchable: false,
+    refAudio: false,
+    note: "Native 48kHz audio generated with the picture — the best synced sound effects and lip-sync in the set. It cannot take audio in, only put it out, and it approximates music rather than composing it.",
+  },
+  "veo-3.1-fast": {
+    native: true,
+    switchable: false,
+    refAudio: false,
+    note: "Native synchronized audio with the picture. Sound effects land on frame; music comes out as a texture, not a track. Audio is output-only — nothing can be fed in.",
+  },
+  "seedance-2.5": {
+    native: true,
+    switchable: true,
+    refAudio: false,
+    note: "Sound and picture are generated jointly in the same pass, so impacts and ambience sit on the right frames. Native audio can be switched off outright. Reference audio needs the Reference endpoint.",
+  },
+  "seedance-2.5-ref": {
+    native: true,
+    switchable: true,
+    refAudio: true,
+    note: "Sound and picture are generated jointly in one latent space, and this endpoint also takes audio IN — a supplied track becomes a timing signal the cuts key off, which is the one thing that makes a beat-driven concept land on purpose instead of by luck.",
+  },
+  "kling-3.0": SILENT_MODEL,
+  "runway-gen4": SILENT_MODEL,
+};
+
+export const audioCapability = (modelId: string): AudioCapability =>
+  AUDIO_CAPABILITIES[modelId] ?? SILENT_MODEL;
+
+/**
  * Limits on video references, defined once so the upload route and the UI
  * can never drift apart. The size cap comes from the serverless request
  * limit the clip passes through on its way to the provider; the duration
  * guidance is craft, not a limit — these models read the camera move, not
  * the content, so a long clip costs upload time and buys nothing.
  */
+export const AUDIO_REF_LIMITS = {
+  maxBytes: 4 * 1024 * 1024,
+  maxMB: 4,
+  formats: "MP3, WAV or M4A",
+  mimeTypes: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/mp4", "audio/aac"],
+} as const;
+
 export const VIDEO_REF_LIMITS = {
   maxBytes: 4 * 1024 * 1024,
   maxMB: 4,
@@ -559,15 +738,31 @@ export const REFERENCE_ROLES = [
   },
   {
     id: "rhythm",
-    label: "Edit rhythm",
-    hint: "Cut timing to match. Video only.",
-    instruction: "the edit rhythm and cut timing — match the action to its beats",
-    media: ["video"],
+    label: "Edit rhythm / musical timing",
+    hint: "Cut timing to match. A clip supplies its cuts; a track supplies its beats.",
+    instruction:
+      "the edit rhythm and musical timing — cut the action to its beats and land the accents on them",
+    media: ["video", "audio"],
+  },
+  {
+    id: "voice",
+    label: "Voiceover / dialogue",
+    hint: "A spoken line to time the picture against. Audio only.",
+    instruction:
+      "the spoken performance — time the picture to this delivery and keep the words intact",
+    media: ["audio"],
+  },
+  {
+    id: "ambience",
+    label: "Ambience / sound world",
+    hint: "The room tone and texture the shot should sound like. Audio only.",
+    instruction: "the ambience and sonic texture the scene should sit in",
+    media: ["audio"],
   },
 ] as const;
 
 export type ReferenceRole = (typeof REFERENCE_ROLES)[number]["id"];
-export type ReferenceMedia = "image" | "video";
+export type ReferenceMedia = "image" | "video" | "audio";
 export type ReferenceSpec = { role: ReferenceRole; media: ReferenceMedia };
 
 export const getReferenceRole = (id: string) =>
@@ -577,18 +772,19 @@ export const getReferenceRole = (id: string) =>
  * Builds the reference-addressing block appended to the prompt.
  *
  * References are positional and numbered PER MEDIA TYPE — the first image is
- * [Image1] and the first clip is [Video1], independent of upload order —
- * which is how these models resolve them.
+ * [Image1], the first clip is [Video1] and the first track is [Audio1],
+ * independent of upload order — which is how these models resolve them.
  */
 export function referenceBlock(refs: ReferenceSpec[]): string {
   if (refs.length === 0) return "";
-  let images = 0;
-  let videos = 0;
+  const counts = { image: 0, video: 0, audio: 0 };
+  const label = { image: "Image", video: "Video", audio: "Audio" } as const;
   const lines: string[] = [];
   let productToken: string | null = null;
 
   for (const r of refs) {
-    const token = r.media === "video" ? `[Video${++videos}]` : `[Image${++images}]`;
+    const media = r.media in counts ? r.media : "image";
+    const token = `[${label[media]}${++counts[media]}]`;
     if (r.role === "product" && !productToken) productToken = token;
     lines.push(`${token} is the reference for ${getReferenceRole(r.role).instruction}.`);
   }

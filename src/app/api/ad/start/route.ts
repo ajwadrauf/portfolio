@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { consume, liveJson, unlocked } from "@/lib/auth";
-import { AD_VIDEO_MODELS, MULTI_REF_MODELS, maxAdSeconds } from "@/lib/adPresets";
+import {
+  AD_VIDEO_MODELS,
+  AUDIO_REF_MODELS,
+  MULTI_REF_MODELS,
+  REF_CEILINGS,
+  audioCapability,
+  maxAdSeconds,
+} from "@/lib/adPresets";
 import { falStartVideo } from "@/lib/fal";
 import { dataUrlToInline, startVeo } from "@/lib/gemini";
 import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib/models";
@@ -23,6 +30,10 @@ export async function POST(req: Request) {
       referenceImageDataUrls?: string[];
       /** Video reference URLs, already uploaded to the provider's storage. */
       referenceVideoUrls?: string[];
+      /** Audio reference URLs, already uploaded — timing signals, not stems. */
+      referenceAudioUrls?: string[];
+      /** False renders the take silent at the API level, where the model allows it. */
+      generateAudio?: boolean;
       presetName?: string;
     };
 
@@ -78,14 +89,24 @@ export async function POST(req: Request) {
       (u): u is string => Boolean(u),
     );
     const videoRefs = multiRef ? (body.referenceVideoUrls ?? []) : [];
+    // Audio references are a Seedance Reference feature — sending them to an
+    // endpoint that doesn't define the field would just fail validation.
+    const audioRefs = AUDIO_REF_MODELS.includes(body.modelId)
+      ? (body.referenceAudioUrls ?? [])
+      : [];
+    // Only pass the native-audio switch to models that actually expose one;
+    // the rest are told to stay silent in the prompt instead.
+    const cap = audioCapability(body.modelId);
     const { requestId } = await falStartVideo({
       endpoint: model.endpoint,
       prompt: body.prompt,
       durationSeconds: seconds,
       aspectRatio: body.aspect,
       referenceImageDataUrl: multiRef ? undefined : body.imageDataUrl,
-      referenceImageDataUrls: multiRef ? allRefs.slice(0, 50) : undefined,
-      referenceVideoUrls: videoRefs.slice(0, 50),
+      referenceImageDataUrls: multiRef ? allRefs.slice(0, REF_CEILINGS.image) : undefined,
+      referenceVideoUrls: videoRefs.slice(0, REF_CEILINGS.video),
+      referenceAudioUrls: audioRefs.slice(0, REF_CEILINGS.audio),
+      generateAudio: cap.switchable ? (body.generateAudio ?? true) : undefined,
       negativePrompt: body.negativePrompt,
     });
     return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, cost });
