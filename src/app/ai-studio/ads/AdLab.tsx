@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AD_PRESETS,
   AD_VIDEO_MODELS,
@@ -8,6 +8,8 @@ import {
   REFERENCE_ROLES,
   getAdPreset,
   maxAdSeconds,
+  recipeStatus,
+  unmetCriticalSteps,
   type AudioMode,
   type ReferenceMedia,
   type ReferenceRole,
@@ -112,6 +114,22 @@ export function AdLab() {
   const secondsCap = maxAdSeconds(modelId);
   const duration = Math.min(seconds ?? preset.durationSeconds, secondsCap);
   const videoCost = estimateCost(modelId, { seconds: duration });
+  /** Every reference the model will receive, product photo included. */
+  const allRefSpecs = useMemo(
+    () => [
+      ...(productImage ? [{ role: "product", media: "image" }] : []),
+      ...refs.map((r) => ({ role: r.role as string, media: r.media as string })),
+    ],
+    [productImage, refs],
+  );
+  const recipe = useMemo(
+    () => recipeStatus(preset.referenceRecipe, allRefSpecs),
+    [preset.referenceRecipe, allRefSpecs],
+  );
+  const unmet = useMemo(
+    () => (supportsRefs ? unmetCriticalSteps(preset.referenceRecipe, allRefSpecs) : []),
+    [preset.referenceRecipe, allRefSpecs, supportsRefs],
+  );
   const musicCost = estimateCost(MUSIC_MODEL_ID, {
     seconds: musicLengthFor(duration),
   });
@@ -834,52 +852,45 @@ export function AdLab() {
                       Reference recipe for {preset.name} — what to add, and why
                     </summary>
                     <ol className="mt-3 space-y-3">
-                      {preset.referenceRecipe.map((step, i) => {
-                        // A step counts as satisfied once a reference of the
-                        // same media type and role exists.
-                        const satisfied =
-                          step.role === "product" && step.media === "image"
-                            ? (productImage ? 1 : 0) +
-                                refs.filter((r) => r.role === "product").length >
-                              preset.referenceRecipe!.slice(0, i).filter(
-                                (x) => x.role === "product" && x.media === "image",
-                              ).length
-                            : refs.some(
-                                (r) => r.role === step.role && r.media === step.media,
-                              );
-                        return (
-                          <li key={i} className="flex gap-3">
-                            <span
-                              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full font-mono text-[9px] ${
-                                satisfied
-                                  ? "bg-success text-white"
+                      {recipe.map(({ step, satisfied }, i) => (
+                        <li key={i} className="flex gap-3">
+                          <span
+                            className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full font-mono text-[9px] ${
+                              satisfied
+                                ? "bg-success text-white"
+                                : step.impact === "critical"
+                                  ? "bg-warning text-white"
                                   : "border border-border-strong text-muted"
-                              }`}
-                            >
-                              {satisfied ? "✓" : i + 1}
+                            }`}
+                          >
+                            {satisfied ? "✓" : i + 1}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-xs font-semibold leading-snug">
+                              {step.what}
                             </span>
-                            <span className="min-w-0">
-                              <span className="block text-xs font-semibold leading-snug">
-                                {step.what}
-                                {step.optional && (
-                                  <span className="ml-1.5 font-normal text-muted">
-                                    (optional)
-                                  </span>
-                                )}
+                            <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent">
+                                {step.media === "video" ? "clip" : "still"} ·{" "}
+                                {REFERENCE_ROLES.find((r) => r.id === step.role)?.label}
                               </span>
-                              <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent">
-                                  {step.media === "video" ? "clip" : "still"} ·{" "}
-                                  {REFERENCE_ROLES.find((r) => r.id === step.role)?.label}
+                              {step.impact === "critical" && !satisfied && (
+                                <span className="rounded-full bg-warning/15 px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.1em] text-warning">
+                                  Do this one
                                 </span>
-                              </span>
-                              <span className="mt-1 block text-xs leading-relaxed text-muted">
-                                {step.why}
-                              </span>
+                              )}
+                              {step.impact === "optional" && (
+                                <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
+                                  optional
+                                </span>
+                              )}
                             </span>
-                          </li>
-                        );
-                      })}
+                            <span className="mt-1 block text-xs leading-relaxed text-muted">
+                              {step.why}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
                     </ol>
                     <p className="mt-3 border-t border-accent/20 pt-2 text-xs leading-relaxed text-muted">
                       Order matters: references are numbered as you add them, and
@@ -1008,6 +1019,31 @@ export function AdLab() {
                 </p>
               </div>
             )}
+            {unmet.length > 0 && (
+              <div className="mt-4 rounded-[6px] border border-warning/50 bg-warning/10 p-3">
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning">
+                  Before you spend ${cost.toFixed(2)}
+                </p>
+                <p className="mt-1.5 text-xs font-semibold leading-snug text-foreground">
+                  {unmet.length === 1
+                    ? "One high-impact reference is missing."
+                    : `${unmet.length} high-impact references are missing.`}
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {unmet.map((step, i) => (
+                    <li key={i} className="text-xs leading-relaxed text-muted">
+                      <span className="font-semibold text-foreground">{step.what}</span>{" "}
+                      {step.ifMissing ?? step.why}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  Adding these costs nothing. Generating without them usually
+                  costs the price of a second take.
+                </p>
+              </div>
+            )}
+
             <div className="mt-4 flex items-center justify-between border-t border-border-soft pt-4">
               <div className="text-sm text-muted">
                 {duration}s · {preset.aspect} ·{" "}
@@ -1022,11 +1058,11 @@ export function AdLab() {
                 )}
               </div>
               <button
-                className="btn-primary"
+                className={unmet.length > 0 ? "btn-secondary !border-warning !text-warning" : "btn-primary"}
                 disabled={!finalPrompt || phase === "starting" || phase === "polling"}
                 onClick={() => void generate()}
               >
-                Generate ad →
+                {unmet.length > 0 ? "Generate anyway →" : "Generate ad →"}
               </button>
             </div>
             {!finalPrompt && (

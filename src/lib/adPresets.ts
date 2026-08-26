@@ -80,8 +80,45 @@ export type RecipeStep = {
   what: string;
   /** Why it earns its slot — the teaching half. */
   why: string;
-  optional?: boolean;
+  /**
+   * How much this reference changes the output.
+   * `critical` steps are checked before spending — skipping one is the
+   * usual reason a generation comes back wrong and has to be paid for twice.
+   */
+  impact: "critical" | "helpful" | "optional";
+  /** Shown in the pre-flight warning when a critical step is unmet. */
+  ifMissing?: string;
 };
+
+/**
+ * Pairs each recipe step with whether the current references satisfy it.
+ * Steps consume references in order, so two "product angle" steps need two
+ * product images rather than both matching the same one.
+ */
+export function recipeStatus(
+  recipe: RecipeStep[] | undefined,
+  refs: { role: string; media: string }[],
+): { step: RecipeStep; satisfied: boolean }[] {
+  if (!recipe) return [];
+  const pool = refs.map((r) => ({ ...r, used: false }));
+  return recipe.map((step) => {
+    const match = pool.find(
+      (r) => !r.used && r.role === step.role && r.media === step.media,
+    );
+    if (match) match.used = true;
+    return { step, satisfied: Boolean(match) };
+  });
+}
+
+/** Critical steps the current references don't cover yet. */
+export function unmetCriticalSteps(
+  recipe: RecipeStep[] | undefined,
+  refs: { role: string; media: string }[],
+): RecipeStep[] {
+  return recipeStatus(recipe, refs)
+    .filter((s) => !s.satisfied && s.step.impact === "critical")
+    .map((s) => s.step);
+}
 
 /**
  * The recipe every product concept benefits from, before preset-specific
@@ -94,19 +131,24 @@ export const BASE_RECIPE: RecipeStep[] = [
     role: "product",
     what: "Your product photo, shot straight-on with the label readable.",
     why: "Becomes [Image1] and anchors identity. Everything else is judged against it.",
+    impact: "critical",
+    ifMissing: "Without a product reference the model invents the packaging outright.",
   },
   {
     media: "image",
     role: "product",
     what: "A second angle of the same product — three-quarter or side.",
     why: "Two angles give the model geometry to hold onto. This is the single biggest reduction in drift.",
+    impact: "critical",
+    ifMissing:
+      "One angle leaves the model guessing at the sides and back, so the pack warps as the camera moves — the most common reason a take gets paid for twice.",
   },
   {
     media: "video",
     role: "motion",
     what: "A 3-5 second clip whose camera move you want imitated.",
     why: "Camera language is far easier to show than to describe. Trim tight — the model reads the move, not the content.",
-    optional: true,
+    impact: "helpful",
   },
 ];
 
@@ -187,7 +229,7 @@ export const AD_PRESETS: AdPreset[] = [
         role: "product",
         what: "A photo of the product's prepared form, if you have one.",
         why: "This concept ends on the raw pack but opens on the finished dish — showing both halves stops the model inventing the food.",
-        optional: true,
+        impact: "helpful",
       },
     ],
     fields: [
@@ -242,7 +284,7 @@ export const AD_PRESETS: AdPreset[] = [
         role: "style",
         what: "A lighting reference — any image with the glow you want.",
         why: "Weightless assembly lives or dies on light. Borrowing a lighting mood is faster than describing one.",
-        optional: true,
+        impact: "optional",
       },
     ],
     fields: [
@@ -290,13 +332,16 @@ export const AD_PRESETS: AdPreset[] = [
         role: "product",
         what: "A macro close-up of the product's surface or contents.",
         why: "The whole concept is texture. A macro reference tells the model what the surface actually looks like at that distance.",
+        impact: "critical",
+        ifMissing:
+          "At macro distance the model has no idea what your product's surface really looks like, and will invent a texture.",
       },
       {
         media: "video",
         role: "motion",
         what: "A clip of the satisfying action you want echoed.",
         why: "Pours, cracks and blooms are motion, not description. Three seconds is plenty.",
-        optional: true,
+        impact: "helpful",
       },
     ],
     fields: [
@@ -348,20 +393,21 @@ export const AD_PRESETS: AdPreset[] = [
         role: "composition",
         what: "A clip or still with the gridded, top-down look you want.",
         why: "This concept lives on precise arrangement. Showing the model an array beats describing one.",
+        impact: "helpful",
       },
       {
         media: "video",
         role: "rhythm",
         what: "A short clip whose cut timing you want matched.",
         why: "Becomes [Video2]. The cuts key off its beats, which is what makes the array feel choreographed rather than assembled.",
-        optional: true,
+        impact: "helpful",
       },
       {
         media: "image",
         role: "style",
         what: "A palette reference — any image with the colour mood you want.",
         why: "Borrows colour and lighting only, never subject matter. Useful when the packaging alone is too plain to set a mood.",
-        optional: true,
+        impact: "optional",
       },
     ],
     fields: [
@@ -420,6 +466,9 @@ export const AD_PRESETS: AdPreset[] = [
         role: "rhythm",
         what: "A clip whose cut timing you want the duplications to match.",
         why: "This concept multiplies on the beat. Without a rhythm reference the grid fills at the model's tempo, not yours.",
+        impact: "critical",
+        ifMissing:
+          "This concept is cut to a pulse. Without a rhythm reference the duplications land at the model's tempo and the whole idea reads as an accident.",
       },
     ],
     fields: [
