@@ -725,6 +725,29 @@ export function referenceMediaOf(
 }
 
 /**
+ * Reads the media kind from a URL's path.
+ *
+ * The alternative to uploading a clip is pointing at one that is already
+ * hosted — which sidesteps fal's storage service entirely, and is the only
+ * route available when a key can run models but not use storage.
+ */
+export function referenceMediaOfUrl(url: string): ReferenceMedia | null {
+  let path: string;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    path = u.pathname.toLowerCase();
+  } catch {
+    return null;
+  }
+  const ext = path.slice(path.lastIndexOf("."));
+  if ((VIDEO_REF_LIMITS.extensions as readonly string[]).includes(ext)) return "video";
+  if ((AUDIO_REF_LIMITS.extensions as readonly string[]).includes(ext)) return "audio";
+  if ([".jpg", ".jpeg", ".png", ".webp"].includes(ext)) return "image";
+  return null;
+}
+
+/**
  * What a reference is FOR. Reference-to-video models don't just want more
  * inputs — each reference is assigned a job in the prompt, which is how the
  * model knows to copy the product's identity from one and only the palette

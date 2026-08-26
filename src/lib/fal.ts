@@ -58,17 +58,58 @@ export async function falGenerateImage(opts: {
 }
 
 /**
+ * Turns a fal error into something a person can act on.
+ *
+ * The raw errors are bare words — "Forbidden" on its own tells you nothing
+ * about which of several very different problems you have, and the cost of
+ * guessing wrong is topping up an account that was never short of money.
+ */
+function describeFalError(e: unknown): string {
+  const err = e as { status?: number; message?: string; body?: unknown };
+  const status = typeof err?.status === "number" ? err.status : undefined;
+  const text = `${err?.message ?? ""} ${JSON.stringify(err?.body ?? "")}`;
+
+  // fal is explicit about an empty balance; it never says just "Forbidden".
+  if (status === 402 || /exhausted balance|user is locked|insufficient/i.test(text)) {
+    return "fal says this account's balance is exhausted. Top it up at fal.ai/dashboard/billing and try again.";
+  }
+  if (status === 401) {
+    return "fal rejected the API key. Check FAL_KEY in .env.local — it should be the whole key, in the form <id>:<secret> — then restart the server.";
+  }
+  if (status === 403) {
+    return (
+      "fal refused the upload (403). Uploads go to a different service than generation — rest.fal.ai rather than fal.run — " +
+      "and a key can be allowed to run models while still not being allowed to use storage. This is a key-permission problem, not a billing one: " +
+      "an empty balance reports \u201cExhausted balance\u201d instead. Either issue an Admin-scope key at fal.ai/dashboard/keys, " +
+      "or skip the upload and paste a public URL for the clip or track instead."
+    );
+  }
+  if (status === 413) {
+    return "fal rejected the file as too large. Trim it and try again.";
+  }
+  return err?.message ?? "Upload failed";
+}
+
+/**
  * Uploads a file to fal storage and returns its URL.
  *
  * Video references can't ride along as data URLs — a few seconds of 720p is
  * megabytes of base64, which blows past serverless request limits. Uploading
  * once and passing the URL keeps the generation request small, and the same
  * URL can be reused across takes.
+ *
+ * Note this talks to rest.fal.ai, not fal.run: storage is a separate service
+ * with its own permissions, so a key that generates video fine can still be
+ * refused here. Pasting a URL is the way around that.
  */
 export async function falUpload(file: Blob): Promise<{ url: string }> {
   const f = client();
-  const url = await f.storage.upload(file);
-  return { url };
+  try {
+    const url = await f.storage.upload(file);
+    return { url };
+  } catch (e) {
+    throw new Error(describeFalError(e));
+  }
 }
 
 /**

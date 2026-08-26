@@ -10,6 +10,7 @@ import {
   REF_CEILINGS,
   audioCapability,
   referenceMediaOf,
+  referenceMediaOfUrl,
   editableRecipeOf,
   getAdPreset,
   isDefaultRecipe,
@@ -131,6 +132,12 @@ export function AdLab() {
    * reference button, so an error there reads as nothing happening at all.
    */
   const [refError, setRefError] = useState<string | null>(null);
+  /**
+   * Pasting a URL is the escape hatch when fal's storage service refuses the
+   * key — generation and storage are separate services with separate
+   * permissions, and a hosted clip needs neither an upload nor live mode.
+   */
+  const [refUrl, setRefUrl] = useState("");
   const [seconds, setSeconds] = useState<number | null>(null);
   const refInput = useRef<HTMLInputElement>(null);
 
@@ -295,6 +302,7 @@ export function AdLab() {
       setSeconds(null);
       setRefs([]);
       setRefError(null);
+      setRefUrl("");
       setParams({});
       setAutofilledKeys(new Set());
       setAutofillRationale(null);
@@ -437,6 +445,32 @@ export function AdLab() {
     },
     [health, invalidatePrompt],
   );
+
+  /** Adds an already-hosted reference. No upload, so no storage permission. */
+  const addReferenceUrl = useCallback(() => {
+    setError(null);
+    setRefError(null);
+    const url = refUrl.trim();
+    if (!url) return;
+    const media = referenceMediaOfUrl(url);
+    if (!media) {
+      setRefError(
+        `That URL doesn't end in a file extension this model reads. It needs to point straight at the file — ${VIDEO_REF_LIMITS.formats} for clips, ${AUDIO_REF_LIMITS.formats} for tracks, JPG/PNG/WebP for stills — not at a page that plays it. A YouTube or Drive link won't work; a direct link ending in .mp4 will.`,
+      );
+      return;
+    }
+    setRefs((prev) => [
+      ...prev,
+      {
+        url,
+        media,
+        role: media === "audio" ? "rhythm" : media === "video" ? "motion" : "style",
+        name: url.split("/").pop() ?? url,
+      },
+    ]);
+    setRefUrl("");
+    invalidatePrompt();
+  }, [invalidatePrompt, refUrl]);
 
   const generateMusic = useCallback(async () => {
     setError(null);
@@ -598,8 +632,8 @@ export function AdLab() {
         ? `Layered — ${modelName} does effects, a music model scores it`
         : `Layered — a composed music bed (${modelName} renders no sound)`,
       body: cap.native
-        ? "How a studio actually does it. The video model renders the effects it can see itself making; ElevenLabs writes a real track over the top."
-        : "This model returns a silent MP4, so the whole soundtrack is built here: ElevenLabs writes the bed and you add effects in the edit.",
+        ? "How a studio actually does it. The video model renders the effects it can see itself making; ElevenLabs Music writes a real track over the top."
+        : "This model returns a silent MP4, so the whole soundtrack is built here: ElevenLabs Music writes the bed and you add effects in the edit.",
     },
     {
       id: "silent" as AudioMode,
@@ -1058,10 +1092,19 @@ export function AdLab() {
                   <option key={m.id} value={m.id}>{m.label}</option>
                 ))}
               </select>
-              <span className="mt-1 block text-xs text-muted">
+              <span className="mt-1 block text-xs leading-relaxed text-muted">
                 {audioMode === "native"
                   ? `This brief is written into the video prompt for ${modelName} to interpret.`
-                  : "This brief is sent to the music model as its own composition."}
+                  : `This brief is sent to ${MODELS[MUSIC_MODEL_ID].label} as its own composition.`}
+                {audioMode === "layered" && (
+                  <>
+                    {" "}
+                    It runs as an endpoint on fal and bills to the same fal key
+                    as the video — there is no separate ElevenLabs account to
+                    connect, and the fal.ai status at the top of the page covers
+                    it.
+                  </>
+                )}
               </span>
               {musicStyleId !== NO_MUSIC_ID && (
                 <span className="mt-2 block rounded-[6px] border border-border-soft bg-surface-2 p-2.5 text-xs leading-relaxed text-muted">
@@ -1389,6 +1432,28 @@ export function AdLab() {
               }}
             />
 
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                className="input min-w-0 flex-1 basis-64 font-mono text-xs"
+                placeholder="…or paste a direct URL — https://example.com/camera-move.mp4"
+                value={refUrl}
+                onChange={(e) => setRefUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addReferenceUrl();
+                  }
+                }}
+              />
+              <button
+                className="btn-secondary !px-3 !py-1.5 text-xs"
+                onClick={addReferenceUrl}
+                disabled={!refUrl.trim()}
+              >
+                Add from URL
+              </button>
+            </div>
+
             {/* Reference failures belong here, next to the button that caused
                 them — not in the page banner far above. */}
             {refError && (
@@ -1419,12 +1484,23 @@ export function AdLab() {
 
             {!clipsUploadable && (
               <p className="mt-2 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
-                <span className="font-bold">Stills only in demo mode.</span>{" "}
-                Images are processed in your browser, but clips and tracks have
-                to be uploaded to the generation provider — so they need live
-                mode. Unlock it in the header to use them.
+                <span className="font-bold">Uploads need live mode.</span>{" "}
+                Images are processed in your browser, but clips and tracks are
+                uploaded to the generation provider. Unlock live mode in the
+                header — or paste a URL above, which skips the upload entirely.
               </p>
             )}
+            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-foreground">
+                Uploading and pasting a URL are different paths.
+              </span>{" "}
+              An upload goes through fal&apos;s storage service, which is
+              permissioned separately from generation — so a key that renders
+              video fine can still be refused a file upload. A URL is handed
+              straight to the model, so it needs no upload, no live mode and no
+              storage access. It has to be a direct link to the file (ending in
+              .mp4, .mov, .mp3…) that fal can reach without signing in.
+            </p>
             <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
               Add more angles of the product to tighten the identity lock, a
               still to borrow a palette from, a <strong>short clip</strong>{" "}
