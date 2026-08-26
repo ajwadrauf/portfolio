@@ -82,13 +82,19 @@ export async function falGenerateMusic(opts: {
   return { url };
 }
 
-/** Queue a fal video job (Kling image-to-video). Returns the request id for polling. */
+/** Queue a fal video job. Returns the request id for polling. */
 export async function falStartVideo(opts: {
   endpoint: string;
   prompt: string;
   durationSeconds: number;
   aspectRatio: string;
   referenceImageDataUrl?: string;
+  /**
+   * Multiple positional references for reference-to-video endpoints
+   * (Seedance 2.5). The prompt addresses them as [Image1], [Image2]… in
+   * order, which is what holds product identity while the camera moves.
+   */
+  referenceImageDataUrls?: string[];
   negativePrompt?: string;
 }): Promise<{ requestId: string }> {
   const f = client();
@@ -97,6 +103,13 @@ export async function falStartVideo(opts: {
     duration: String(opts.durationSeconds), // Kling expects "5" | "10"
     aspect_ratio: opts.aspectRatio,
   };
+  const refs = opts.referenceImageDataUrls?.filter(Boolean) ?? [];
+  if (refs.length > 0) {
+    // Reference endpoints read image_urls; single-image endpoints read
+    // image_url. Send what applies — fal ignores undefined fields.
+    input.image_urls = refs;
+    input.reference_image_urls = refs;
+  }
   if (opts.referenceImageDataUrl) input.image_url = opts.referenceImageDataUrl;
   if (opts.negativePrompt) input.negative_prompt = opts.negativePrompt;
 

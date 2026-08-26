@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { consume, liveJson, unlocked } from "@/lib/auth";
-import { AD_VIDEO_MODELS } from "@/lib/adPresets";
+import { AD_VIDEO_MODELS, MULTI_REF_MODELS, maxAdSeconds } from "@/lib/adPresets";
 import { falStartVideo } from "@/lib/fal";
 import { dataUrlToInline, startVeo } from "@/lib/gemini";
 import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib/models";
@@ -19,6 +19,8 @@ export async function POST(req: Request) {
       aspect: "9:16" | "16:9";
       durationSeconds: number;
       imageDataUrl?: string;
+      /** Extra product references for reference-to-video models. */
+      referenceImageDataUrls?: string[];
       presetName?: string;
     };
 
@@ -33,7 +35,10 @@ export async function POST(req: Request) {
     }
 
     const model = getModel(body.modelId);
-    const seconds = Math.min(Math.max(body.durationSeconds ?? 8, 4), 10);
+    const seconds = Math.min(
+      Math.max(body.durationSeconds ?? 8, 4),
+      maxAdSeconds(body.modelId),
+    );
     const cost = estimateCost(model.id, { seconds });
 
     const hasKey = model.provider === "gemini" ? hasGeminiKey() : hasFalKey();
@@ -64,12 +69,19 @@ export async function POST(req: Request) {
       return liveJson(spend, { mock: false, provider: "gemini", operationName, cost });
     }
 
+    // Reference-to-video models take every reference positionally; the rest
+    // take a single grounding frame.
+    const multiRef = MULTI_REF_MODELS.includes(body.modelId);
+    const allRefs = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter(
+      (u): u is string => Boolean(u),
+    );
     const { requestId } = await falStartVideo({
       endpoint: model.endpoint,
       prompt: body.prompt,
       durationSeconds: seconds,
       aspectRatio: body.aspect,
-      referenceImageDataUrl: body.imageDataUrl,
+      referenceImageDataUrl: multiRef ? undefined : body.imageDataUrl,
+      referenceImageDataUrls: multiRef ? allRefs.slice(0, 50) : undefined,
       negativePrompt: body.negativePrompt,
     });
     return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, cost });

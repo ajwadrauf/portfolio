@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AD_PRESETS, AD_VIDEO_MODELS, getAdPreset, type AudioMode } from "@/lib/adPresets";
+import {
+  AD_PRESETS,
+  AD_VIDEO_MODELS,
+  MULTI_REF_MODELS,
+  REFERENCE_ROLES,
+  getAdPreset,
+  maxAdSeconds,
+  type AudioMode,
+  type ReferenceRole,
+} from "@/lib/adPresets";
 import {
   MUSIC_HANDLE_SECONDS,
   MUSIC_MODEL_ID,
@@ -63,6 +72,11 @@ export function AdLab() {
   const [sessionSpend, setSessionSpend] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // Reference-to-video: extra references, each with a job.
+  const [refs, setRefs] = useState<{ dataUrl: string; role: ReferenceRole }[]>([]);
+  const [seconds, setSeconds] = useState<number | null>(null);
+  const refInput = useRef<HTMLInputElement>(null);
+
   // Vision autofill
   /**
    * Audio settings are baked into the composed prompt, so changing them makes
@@ -89,9 +103,12 @@ export function AdLab() {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const preset = getAdPreset(presetId);
-  const videoCost = estimateCost(modelId, { seconds: preset.durationSeconds });
+  const supportsRefs = MULTI_REF_MODELS.includes(modelId);
+  const secondsCap = maxAdSeconds(modelId);
+  const duration = Math.min(seconds ?? preset.durationSeconds, secondsCap);
+  const videoCost = estimateCost(modelId, { seconds: duration });
   const musicCost = estimateCost(MUSIC_MODEL_ID, {
-    seconds: musicLengthFor(preset.durationSeconds),
+    seconds: musicLengthFor(duration),
   });
   /** True when a separate music model will actually be billed. */
   const scoringSeparately = audioMode === "layered" && musicStyleId !== NO_MUSIC_ID;
@@ -162,6 +179,7 @@ export function AdLab() {
       setPresetId(id);
       setMusicStyleId(getAdPreset(id).musicStyleId);
       setMusicUrl(null);
+      setSeconds(null);
       setParams({});
       setAutofilledKeys(new Set());
       setAutofillRationale(null);
@@ -195,6 +213,13 @@ export function AdLab() {
           params,
           audioMode,
           musicStyleId,
+          modelId,
+          referenceRoles: supportsRefs
+            ? [
+                ...(productImage ? (["product"] as ReferenceRole[]) : []),
+                ...refs.map((r) => r.role),
+              ]
+            : [],
           imageDataUrl: productImage ?? undefined,
         }),
       });
@@ -207,7 +232,17 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Compose failed");
       setPhase("idle");
     }
-  }, [audioMode, musicStyleId, params, presetId, productImage]);
+  }, [audioMode, modelId, musicStyleId, params, presetId, productImage, refs, supportsRefs]);
+
+  const addReference = useCallback(async (file: File, role: ReferenceRole) => {
+    try {
+      const dataUrl = await toProcessedDataUrl(file);
+      setRefs((prev) => [...prev, { dataUrl, role }]);
+      invalidatePrompt();
+    } catch {
+      setError("Could not read that image");
+    }
+  }, [invalidatePrompt]);
 
   const generateMusic = useCallback(async () => {
     setError(null);
@@ -216,7 +251,7 @@ export function AdLab() {
       const res = await fetch("/api/ad/music", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ styleId: musicStyleId, durationSeconds: preset.durationSeconds }),
+        body: JSON.stringify({ styleId: musicStyleId, durationSeconds: duration }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Music generation failed");
@@ -228,7 +263,7 @@ export function AdLab() {
     } finally {
       setMusicBusy(false);
     }
-  }, [addSpend, musicStyleId, preset.durationSeconds]);
+  }, [addSpend, duration, musicStyleId]);
 
   /** Keep the separately generated music bed locked to the video's transport. */
   const syncAudio = useCallback(
@@ -250,7 +285,7 @@ export function AdLab() {
     setError(null);
     if (health?.live) {
       const ok = window.confirm(
-        `This will run one live ${preset.durationSeconds}s video generation at an estimated cost of $${cost.toFixed(2)}. Proceed?`,
+        `This will run one live ${duration}s video generation at an estimated cost of $${cost.toFixed(2)}. Proceed?`,
       );
       if (!ok) return;
     }
@@ -268,8 +303,9 @@ export function AdLab() {
           negativePrompt,
           modelId,
           aspect: preset.aspect,
-          durationSeconds: preset.durationSeconds,
+          durationSeconds: duration,
           imageDataUrl: productImage ?? undefined,
+          referenceImageDataUrls: supportsRefs ? refs.map((r) => r.dataUrl) : undefined,
           presetName: preset.name,
         }),
       });
@@ -316,7 +352,7 @@ export function AdLab() {
       setError(e instanceof Error ? e.message : "Generation failed");
       setPhase("failed");
     }
-  }, [addSpend, cost, finalPrompt, generateMusic, health, modelId, musicUrl, negativePrompt, preset, productImage, scoringSeparately]);
+  }, [addSpend, cost, duration, finalPrompt, generateMusic, health, modelId, musicUrl, negativePrompt, preset, productImage, refs, scoringSeparately, supportsRefs]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -700,7 +736,11 @@ export function AdLab() {
               <select
                 className="input"
                 value={modelId}
-                onChange={(e) => setModelId(e.target.value)}
+                onChange={(e) => {
+                  setModelId(e.target.value);
+                  setSeconds(null);
+                  invalidatePrompt();
+                }}
               >
                 {AD_VIDEO_MODELS.map((m) => (
                   <option key={m} value={m}>
@@ -710,12 +750,138 @@ export function AdLab() {
               </select>
             </label>
             <p className="mt-2 text-xs text-muted">
-              Veo renders the synced audio design natively — it&apos;s the right
-              tool for these; Kling is the silent-but-cheap draft option.
+              {supportsRefs
+                ? "Reference-to-video: every uploaded reference is addressed positionally in the prompt ([Image1], [Image2]…), which is what stops the product drifting as the camera moves."
+                : "Veo renders the synced audio design natively — it's the right tool for these; Kling is the silent-but-cheap draft option."}
             </p>
+
+            {/* Duration — Seedance 2.5 does native 30s takes */}
+            <label className="mt-4 block">
+              <span className="mb-1 flex items-center justify-between label">
+                <span>Duration</span>
+                <span className="!text-foreground">{duration}s</span>
+              </span>
+              <input
+                type="range"
+                min={4}
+                max={secondsCap}
+                step={1}
+                value={duration}
+                onChange={(e) => setSeconds(Number(e.target.value))}
+                className="w-full accent-[var(--accent)]"
+              />
+              <span className="mt-1 block text-xs text-muted">
+                {secondsCap >= 30
+                  ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
+                  : `This model caps at ${secondsCap}s.`}
+              </span>
+            </label>
+
+            {/* Reference manager */}
+            {supportsRefs && (
+              <div className="mt-4 border-t border-border-soft pt-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="label">References</span>
+                  <span className="label-sm">
+                    {(productImage ? 1 : 0) + refs.length} of 50
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {productImage && (
+                    <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={productImage}
+                        alt="Product reference"
+                        className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-mono text-[11px] text-accent">[Image1]</p>
+                        <p className="text-xs text-muted">
+                          Product identity — from your product photo
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {refs.map((r, i) => {
+                    const role = REFERENCE_ROLES.find((x) => x.id === r.role)!;
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 rounded-[6px] border border-border-soft bg-surface p-2"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={r.dataUrl}
+                          alt={role.label}
+                          className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-mono text-[11px] text-accent">
+                            [Image{(productImage ? 2 : 1) + i}]
+                          </p>
+                          <select
+                            className="mt-0.5 w-full bg-transparent text-xs text-muted outline-none"
+                            value={r.role}
+                            onChange={(e) => {
+                              const role = e.target.value as ReferenceRole;
+                              setRefs((prev) =>
+                                prev.map((x, j) => (j === i ? { ...x, role } : x)),
+                              );
+                              invalidatePrompt();
+                            }}
+                          >
+                            {REFERENCE_ROLES.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          className="font-mono text-xs text-danger"
+                          onClick={() => {
+                            setRefs((prev) => prev.filter((_, j) => j !== i));
+                            invalidatePrompt();
+                          }}
+                          aria-label="Remove reference"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  className="btn-secondary mt-3 !px-3 !py-1.5 text-xs"
+                  onClick={() => refInput.current?.click()}
+                >
+                  Add reference
+                </button>
+                <input
+                  ref={refInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void addReference(f, "style");
+                    e.target.value = "";
+                  }}
+                />
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  Add more angles of the product to tighten the identity lock, or
+                  a palette/composition reference to borrow a look. Each one gets
+                  a job in the prompt — set it in the dropdown.
+                </p>
+              </div>
+            )}
             <div className="mt-4 flex items-center justify-between border-t border-border-soft pt-4">
               <div className="text-sm text-muted">
-                {preset.durationSeconds}s · {preset.aspect} ·{" "}
+                {duration}s · {preset.aspect} ·{" "}
                 <span className="font-bold text-accent">~${cost.toFixed(2)}</span>
                 {scoringSeparately && (
                   <span className="block text-xs">

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { unlocked } from "@/lib/auth";
-import { AD_NEGATIVE_PROMPT, getAdPreset, type AudioMode } from "@/lib/adPresets";
+import {
+  AD_NEGATIVE_PROMPT,
+  MULTI_REF_MODELS,
+  getAdPreset,
+  referenceBlock,
+  type AudioMode,
+  type ReferenceRole,
+} from "@/lib/adPresets";
 import { dataUrlToInline, reasonJson } from "@/lib/gemini";
 import { getMusicStyle } from "@/lib/music";
 import { hasGeminiKey, isDryRun } from "@/lib/models";
@@ -32,6 +39,8 @@ export async function POST(req: Request) {
       audioMode?: AudioMode;
       imageDataUrl?: string;
       musicStyleId?: string;
+      modelId?: string;
+      referenceRoles?: ReferenceRole[];
     };
     const preset = getAdPreset(body.presetId);
     const params = Object.fromEntries(
@@ -39,7 +48,10 @@ export async function POST(req: Request) {
     );
     const audioMode: AudioMode = body.audioMode ?? "layered";
     const musicBrief = getMusicStyle(body.musicStyleId ?? preset.musicStyleId).prompt;
-    const baseline = preset.template(params, audioMode, musicBrief);
+    // Reference-to-video models want each reference assigned a job.
+    const usesRefs = MULTI_REF_MODELS.includes(body.modelId ?? "");
+    const refs = usesRefs ? (body.referenceRoles ?? []) : [];
+    const baseline = preset.template(params, audioMode, musicBrief) + referenceBlock(refs);
 
     if (!hasGeminiKey() || isDryRun() || !unlocked(req)) {
       return NextResponse.json({
@@ -52,7 +64,11 @@ export async function POST(req: Request) {
     const result = await reasonJson({
       prompt: `You are a creative director finalizing a short-form product ad prompt for Google Veo (native synchronized audio; text in quotes renders as on-screen or spoken content).
 
-The ad concept is a fixed preset — do NOT change its concept, camera style, structure or audio design. Your job is to polish the draft prompt below into the strongest possible ${preset.durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, and keep it as one flowing prompt of 4-8 sentences. Preserve the Audio: cue's instructions exactly in spirit — ${audioMode === "layered" ? "in particular it MUST still forbid music/score/soundtrack, because the music bed is composed separately and layered in" : "including its musical direction"}. No real-world brand names other than the quoted brand text.
+The ad concept is a fixed preset — do NOT change its concept, camera style, structure or audio design. Your job is to polish the draft prompt below into the strongest possible ${preset.durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, and keep it as one flowing prompt of 4-8 sentences. Preserve the Audio: cue's instructions exactly in spirit — ${audioMode === "layered" ? "in particular it MUST still forbid music/score/soundtrack, because the music bed is composed separately and layered in" : "including its musical direction"}. No real-world brand names other than the quoted brand text.${
+        refs.length > 0
+          ? "\n\nThe draft ends with a reference-usage block addressing images positionally as [Image1], [Image2] and so on. Keep every one of those bracketed tokens EXACTLY as written and keep the instruction that the product must not drift — the video model resolves them against uploaded reference images."
+          : ""
+      }
 ${body.imageDataUrl ? "\nA photo of the ACTUAL product is attached, and it will also be passed to the video model as the grounding first frame. Anchor the prompt in what the photo really shows — the packaging's true colors, materials, finish and proportions — and correct any detail in the draft that contradicts the photo. The product in the ad must be recognizably THIS product.\n" : ""}
 Preset: ${preset.name} — ${preset.hook}
 

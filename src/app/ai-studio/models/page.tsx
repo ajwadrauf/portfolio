@@ -36,8 +36,8 @@ const VIDEO_NOTES = [
     take: "The value play at ~$0.10/s — 4-7x cheaper than premium tiers — with uniquely strong subject consistency across shots. That consistency is exactly what product content needs: the same can, jar or bag recognizable in every cut.",
   },
   {
-    name: "Seedance 2.0 (ByteDance)",
-    take: "The short-form product-ad workhorse: structured generation with strong multi-shot consistency — define the shot upfront and get repeatable results across a batch. Wired in as a video option here, and the natural default for high-volume vertical performance creative.",
+    name: "Seedance 2.5 (ByteDance) — reference-to-video",
+    take: "The answer to product drift, and the most interesting endpoint in the roster. Instead of one grounding frame, it accepts up to 50 multimodal references addressed positionally in the prompt as [Image1], [Image2]… — so you assign one reference the product's identity, another the palette, another the camera move. The packaging stays itself while the camera moves, which first-frame conditioning cannot guarantee. It also renders native 30-second takes in a single pass, and generates audio jointly with the picture rather than after it.",
   },
   {
     name: "Runway Gen-4",

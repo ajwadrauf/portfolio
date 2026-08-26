@@ -137,17 +137,29 @@ export const MODELS: Record<string, ModelInfo> = {
       "The strongest creative-control surface: motion brush, camera control, video-to-video. Built for iteration — generate, then refine.",
     bestFor: "VFX-leaning brand films and shot-heavy storytelling where you expect to iterate on the motion.",
   },
-  "seedance-2": {
-    id: "seedance-2",
+  "seedance-2.5": {
+    id: "seedance-2.5",
     provider: "fal",
-    endpoint: env("FAL_SEEDANCE_VIDEO_ENDPOINT", "fal-ai/bytedance/seedance/v2/pro/image-to-video"),
-    label: "Seedance 2.0 Pro (ByteDance, via fal.ai)",
+    endpoint: env("FAL_SEEDANCE_VIDEO_ENDPOINT", "bytedance/seedance-2.5/image-to-video"),
+    label: "Seedance 2.5 (ByteDance, via fal.ai)",
     kind: "video",
-    unitCost: 0.12,
+    unitCost: 0.15,
     unit: "second",
     strengths:
-      "Purpose-built for short-form product ads: strong multi-shot consistency and structured generation — define it upfront, get repeatable results.",
-    bestFor: "The UGC/performance-ad workhorse: vertical product-in-hand creative shipped at volume.",
+      "Native 30-second single takes, audio generated jointly with the picture, strong multi-shot consistency.",
+    bestFor: "Short-form product ads at volume; longer cuts no other model does in one pass.",
+  },
+  "seedance-2.5-ref": {
+    id: "seedance-2.5-ref",
+    provider: "fal",
+    endpoint: env("FAL_SEEDANCE_REF_ENDPOINT", "bytedance/seedance-2.5/reference-to-video"),
+    label: "Seedance 2.5 Reference (ByteDance, via fal.ai)",
+    kind: "video",
+    unitCost: 0.15,
+    unit: "second",
+    strengths:
+      "Reference-to-video: up to 50 multimodal references addressed as [Image1], [Video1]... in the prompt, locking product, set and palette across the take. The strongest answer to product drift.",
+    bestFor: "Product-identity-critical ads: the packaging must stay exactly itself while the camera moves.",
   },
 
   // ---------------- Music ----------------

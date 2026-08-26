@@ -276,10 +276,70 @@ export const getAdPreset = (id: string): AdPreset => {
 export const AD_VIDEO_MODELS = [
   "veo-3.1-fast",
   "veo-3.1",
-  "seedance-2",
+  "seedance-2.5-ref",
+  "seedance-2.5",
   "runway-gen4",
   "kling-3.0",
 ];
+
+/** Models whose endpoint accepts multiple positional references ([Image1]...). */
+export const MULTI_REF_MODELS = ["seedance-2.5-ref"];
+
+/**
+ * What a reference image is FOR. Reference-to-video models don't just want
+ * more pictures — each reference is assigned a job in the prompt, which is
+ * how the model knows to copy the product's identity from one and only the
+ * palette from another.
+ */
+export const REFERENCE_ROLES = [
+  {
+    id: "product",
+    label: "Product identity",
+    hint: "The packaging must stay exactly this. Add several angles for a tighter lock.",
+    instruction: "the exact appearance, packaging, proportions and label of the product",
+  },
+  {
+    id: "style",
+    label: "Style / palette",
+    hint: "Colour, lighting and mood to borrow — not the subject.",
+    instruction: "the colour palette, lighting and overall mood only — not its subject matter",
+  },
+  {
+    id: "composition",
+    label: "Composition",
+    hint: "Framing and layout to echo.",
+    instruction: "the framing, layout and staging of the shot",
+  },
+  {
+    id: "motion",
+    label: "Motion / camera",
+    hint: "The camera move and pacing to imitate.",
+    instruction: "the camera movement, pacing and dynamics",
+  },
+] as const;
+
+export type ReferenceRole = (typeof REFERENCE_ROLES)[number]["id"];
+
+export const getReferenceRole = (id: string) =>
+  REFERENCE_ROLES.find((r) => r.id === id) ?? REFERENCE_ROLES[0];
+
+/**
+ * Builds the reference-addressing block appended to a prompt for
+ * reference-to-video models. References are positional: the first image
+ * uploaded is [Image1], and the prompt must say what each one is for.
+ */
+export function referenceBlock(roles: ReferenceRole[]): string {
+  if (roles.length === 0) return "";
+  const lines = roles.map(
+    (r, i) => `[Image${i + 1}] is the reference for ${getReferenceRole(r).instruction}.`,
+  );
+  return ` Reference usage — ${lines.join(" ")} Hold the product in [Image1] pixel-consistent throughout: same packaging, same label text, same proportions, no drift, no re-imagining, even as the camera moves.`;
+}
+
+/** Per-model duration ceiling (seconds). Seedance 2.5 does native 30s takes. */
+export function maxAdSeconds(modelId: string): number {
+  return modelId.startsWith("seedance-2.5") ? 30 : 10;
+}
 
 export const AD_NEGATIVE_PROMPT =
   "blurry, warped product, deformed packaging, illegible text, watermark artifacts, camera shake, extra hands, morphing errors";
