@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { VIDEO_RESOLUTIONS, type VideoResolution } from "@/lib/videoCost";
 import { consume, liveJson, unlocked } from "@/lib/auth";
 import {
   AD_VIDEO_MODELS,
@@ -34,6 +35,8 @@ export async function POST(req: Request) {
       referenceAudioUrls?: string[];
       /** False renders the take silent at the API level, where the model allows it. */
       generateAudio?: boolean;
+      /** Pixel tier. On token-billed models this drives most of the cost. */
+      resolution?: VideoResolution;
       presetName?: string;
     };
 
@@ -52,7 +55,19 @@ export async function POST(req: Request) {
       Math.max(body.durationSeconds ?? 8, 4),
       maxAdSeconds(body.modelId),
     );
-    const cost = estimateCost(model.id, { seconds });
+    const resolution: VideoResolution = VIDEO_RESOLUTIONS.some(
+      (r) => r.id === body.resolution,
+    )
+      ? body.resolution!
+      : "720p";
+    const inputVideoSeconds = (body.referenceVideoUrls?.length ?? 0) * 5;
+    const cost = estimateCost(model.id, {
+      seconds,
+      resolution,
+      aspect: body.aspect,
+      hasVideoInputs: inputVideoSeconds > 0,
+      inputVideoSeconds,
+    });
 
     const hasKey = model.provider === "gemini" ? hasGeminiKey() : hasFalKey();
     const spend = !isDryRun() && hasKey && unlocked(req) ? consume(req) : null;
@@ -107,6 +122,7 @@ export async function POST(req: Request) {
       referenceVideoUrls: videoRefs.slice(0, REF_CEILINGS.video),
       referenceAudioUrls: audioRefs.slice(0, REF_CEILINGS.audio),
       generateAudio: cap.switchable ? (body.generateAudio ?? true) : undefined,
+      resolution: model.id.startsWith("seedance") ? resolution : undefined,
       negativePrompt: body.negativePrompt,
     });
     return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, cost });

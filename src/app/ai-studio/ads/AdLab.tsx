@@ -33,7 +33,12 @@ import {
   TIMING_REF_NOTES,
   musicLengthFor,
 } from "@/lib/music";
-import { MODELS, estimateCost } from "@/lib/models";
+import { MODELS, estimateCost, usesTokenPricing } from "@/lib/models";
+import {
+  VIDEO_RESOLUTIONS,
+  videoToVideoRatio,
+  type VideoResolution,
+} from "@/lib/videoCost";
 import {
   LAYER_NOTES,
   SFX_LIMITS,
@@ -146,6 +151,11 @@ export function AdLab() {
    */
   const [refUrl, setRefUrl] = useState("");
   const [seconds, setSeconds] = useState<number | null>(null);
+  /**
+   * Resolution was never sent, so the endpoint's default decided the bill —
+   * and on a token-billed model pixel area is most of the bill.
+   */
+  const [resolution, setResolution] = useState<VideoResolution>("720p");
   const refInput = useRef<HTMLInputElement>(null);
 
   /**
@@ -195,7 +205,17 @@ export function AdLab() {
   const supportsRefs = MULTI_REF_MODELS.includes(modelId);
   const secondsCap = maxAdSeconds(modelId);
   const duration = Math.min(seconds ?? preset.durationSeconds, secondsCap);
-  const videoCost = estimateCost(modelId, { seconds: duration });
+  const tokenBilled = usesTokenPricing(modelId);
+  /** Reference clips are billed as input duration too, at ~5s apiece. */
+  const inputVideoSeconds =
+    refs.filter((r) => r.media === "video").length * VIDEO_REF_LIMITS.idealSeconds;
+  const videoCost = estimateCost(modelId, {
+    seconds: duration,
+    resolution,
+    aspect: preset.aspect,
+    hasVideoInputs: inputVideoSeconds > 0,
+    inputVideoSeconds,
+  });
   const recipeEdited = !isDefaultRecipe(preset, recipe);
 
   /** Every reference the model will receive, product photo included. */
@@ -578,6 +598,7 @@ export function AdLab() {
           modelId,
           aspect: preset.aspect,
           durationSeconds: duration,
+          resolution,
           imageDataUrl: productImage ?? undefined,
           referenceImageDataUrls: supportsRefs
             ? refs.filter((r) => r.media === "image").map((r) => r.url)
@@ -646,6 +667,7 @@ export function AdLab() {
     musicUrl,
     negativePrompt,
     preset,
+    resolution,
     productImage,
     refs,
     scoringSeparately,
@@ -1033,7 +1055,10 @@ export function AdLab() {
               >
                 {AD_VIDEO_MODELS.map((m) => (
                   <option key={m} value={m}>
-                    {MODELS[m].label} — ${MODELS[m].unitCost}/s
+                    {MODELS[m].label} —{" "}
+                    {usesTokenPricing(m)
+                      ? `~$${MODELS[m].unitCost}/s at 720p, by token`
+                      : `$${MODELS[m].unitCost}/s`}
                   </option>
                 ))}
               </select>
@@ -1068,6 +1093,76 @@ export function AdLab() {
               </span>
             </label>
           </div>
+
+          {tokenBilled && (
+            <div className="mt-5 border-t border-border-soft pt-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="label">Resolution — the real cost lever</span>
+                <span className="label-sm">
+                  {duration}s · ~${videoCost.toFixed(2)}
+                </span>
+              </div>
+              <div className="mt-2 grid gap-2 md:grid-cols-3">
+                {VIDEO_RESOLUTIONS.map((r) => {
+                  const at = estimateCost(modelId, {
+                    seconds: duration,
+                    resolution: r.id,
+                    aspect: preset.aspect,
+                    hasVideoInputs: inputVideoSeconds > 0,
+                    inputVideoSeconds,
+                  });
+                  return (
+                    <label
+                      key={r.id}
+                      className={`flex cursor-pointer gap-2 rounded-[6px] border p-3 transition ${
+                        resolution === r.id
+                          ? "border-accent bg-accent/[0.04]"
+                          : "border-border-soft bg-surface hover:border-accent/40"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="resolution"
+                        className="mt-1 accent-[var(--accent)]"
+                        checked={resolution === r.id}
+                        onChange={() => setResolution(r.id)}
+                      />
+                      <span className="min-w-0">
+                        <span className="flex flex-wrap items-baseline gap-2">
+                          <span className="text-sm font-semibold">{r.label}</span>
+                          <span className="font-mono text-[11px] text-accent">
+                            ~${at.toFixed(2)}
+                          </span>
+                        </span>
+                        <span className="mt-1 block text-xs leading-relaxed text-muted">
+                          {r.note}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+                <span className="font-semibold text-foreground">
+                  Seedance bills by token, not by second.
+                </span>{" "}
+                The token count is roughly width × height × seconds × 24 ÷ 1024,
+                so pixel area matters as much as length — 1080p is about five
+                times the cost of 480p for the same cut, and is billed at a
+                higher rate per token on top of that. Draft at 480p until the
+                take is right.
+                {inputVideoSeconds > 0 && (
+                  <>
+                    {" "}
+                    Your {refs.filter((r) => r.media === "video").length} clip
+                    reference
+                    {refs.filter((r) => r.media === "video").length === 1 ? "" : "s"}{" "}
+                    also add billed duration, discounted by 0.6.
+                  </>
+                )}
+              </p>
+            </div>
+          )}
         </Step>
 
         {/* ---------- 5. sound ---------- */}
@@ -1818,6 +1913,42 @@ export function AdLab() {
                     </label>
                   </>
                 )}
+                <details className="mb-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                    Want to change one thing? Read this before re-rendering
+                  </summary>
+                  <p className="mt-2 text-xs leading-relaxed text-muted">
+                    There is no cheap edit mode. These models re-render; they do
+                    not revise. Feeding this take back in as a video reference
+                    is <strong>more</strong> expensive, not less — the discount
+                    for video inputs is 0.6, but the input clip&apos;s duration
+                    is billed too, so a {duration}s take re-run against itself
+                    costs about{" "}
+                    {videoToVideoRatio(duration, duration).toFixed(1)}× a fresh
+                    render. In rough order of cost, the real options:
+                  </p>
+                  <ol className="mt-2 space-y-1.5 pl-4 text-xs leading-relaxed text-muted">
+                    <li className="list-decimal">
+                      <strong>Grade it in an editor — $0.</strong> For a
+                      background colour shift, a hue qualifier in Resolve or
+                      Premiere is free, instant, and does not risk the product
+                      drifting.
+                    </li>
+                    <li className="list-decimal">
+                      <strong>Change the reference, not the video — ~$0.04.</strong>{" "}
+                      Recolour the background on your product still with an
+                      image model, swap it in as the reference, and re-run. On a
+                      reference-to-video model the render follows the reference,
+                      so this is the controllable way to change what is in the
+                      frame.
+                    </li>
+                    <li className="list-decimal">
+                      <strong>Re-render at 480p first.</strong> If the change is
+                      to the action rather than the colour, iterate at a fifth
+                      the cost and only go to 1080p once it is right.
+                    </li>
+                  </ol>
+                </details>
                 <div className="flex gap-3">
                   <a
                     href={videoUrl}

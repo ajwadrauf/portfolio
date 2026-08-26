@@ -1,3 +1,4 @@
+import { seedanceCost, type VideoResolution } from "./videoCost";
 /**
  * Central model registry — the single place where model IDs, endpoints and
  * pricing live. Every ID can be overridden with an environment variable so
@@ -143,7 +144,9 @@ export const MODELS: Record<string, ModelInfo> = {
     endpoint: env("FAL_SEEDANCE_VIDEO_ENDPOINT", "bytedance/seedance-2.5/image-to-video"),
     label: "Seedance 2.5 (ByteDance, via fal.ai)",
     kind: "video",
-    unitCost: 0.15,
+    // Token-billed. This is the 720p equivalent; 480p is ~$0.21/s and 1080p
+    // ~$1.14/s. See lib/videoCost.ts.
+    unitCost: 0.46,
     unit: "second",
     strengths:
       "Native 30-second single takes, audio generated jointly with the picture, strong multi-shot consistency.",
@@ -155,7 +158,9 @@ export const MODELS: Record<string, ModelInfo> = {
     endpoint: env("FAL_SEEDANCE_REF_ENDPOINT", "bytedance/seedance-2.5/reference-to-video"),
     label: "Seedance 2.5 Reference (ByteDance, via fal.ai)",
     kind: "video",
-    unitCost: 0.15,
+    // Token-billed; 720p equivalent. Supplying video references multiplies
+    // the token price by 0.6 but also bills the input clip's duration.
+    unitCost: 0.46,
     unit: "second",
     strengths:
       "Reference-to-video: up to 50 multimodal references addressed as [Image1], [Video1]... in the prompt, locking product, set and palette across the take. The strongest answer to product drift.",
@@ -201,11 +206,37 @@ export function getModel(id: string): ModelInfo {
 /** Gemini text/vision model used for analysis + brief writing (cheap, multimodal). */
 export const GEMINI_REASONING_MODEL = env("GEMINI_REASONING_MODEL", "gemini-2.5-flash");
 
-export function estimateCost(modelId: string, opts?: { seconds?: number; images?: number }): number {
+export function estimateCost(
+  modelId: string,
+  opts?: {
+    seconds?: number;
+    images?: number;
+    /** Seedance only: pixel area drives the token count, so it drives the bill. */
+    resolution?: VideoResolution;
+    aspect?: string;
+    hasVideoInputs?: boolean;
+    inputVideoSeconds?: number;
+  },
+): number {
   const m = getModel(modelId);
+  // Seedance bills per token, not per second, and the token count scales with
+  // pixel area — a per-second rate would be wrong by a factor that changes
+  // with resolution. See lib/videoCost.ts.
+  if (usesTokenPricing(modelId)) {
+    return seedanceCost({
+      resolution: opts?.resolution ?? "720p",
+      aspect: opts?.aspect ?? "16:9",
+      durationSeconds: opts?.seconds ?? 8,
+      inputVideoSeconds: opts?.inputVideoSeconds,
+      hasVideoInputs: opts?.hasVideoInputs,
+    });
+  }
   if (m.unit === "second") return m.unitCost * (opts?.seconds ?? 8);
   return m.unitCost * (opts?.images ?? 1);
 }
+
+/** Models billed by token rather than by second. */
+export const usesTokenPricing = (modelId: string) => modelId.startsWith("seedance-2.5");
 
 export const hasGeminiKey = () => Boolean(process.env.GEMINI_API_KEY);
 export const hasFalKey = () => Boolean(process.env.FAL_KEY);

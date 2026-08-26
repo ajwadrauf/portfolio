@@ -197,6 +197,9 @@ export async function falStartVideo(opts: {
    * the switch honour it; the rest are told in the prompt instead.
    */
   generateAudio?: boolean;
+  /** "480p" | "720p" | "1080p". Left unset, the endpoint picks — and on a
+   *  token-billed model that choice is most of the bill. */
+  resolution?: string;
   negativePrompt?: string;
 }): Promise<{ requestId: string }> {
   const f = client();
@@ -223,6 +226,7 @@ export async function falStartVideo(opts: {
     input.reference_audio_urls = audioRefs;
   }
   if (opts.generateAudio !== undefined) input.generate_audio = opts.generateAudio;
+  if (opts.resolution) input.resolution = opts.resolution;
   if (opts.referenceImageDataUrl) input.image_url = opts.referenceImageDataUrl;
   if (opts.negativePrompt) input.negative_prompt = opts.negativePrompt;
 
