@@ -286,10 +286,13 @@ export const AD_VIDEO_MODELS = [
 export const MULTI_REF_MODELS = ["seedance-2.5-ref"];
 
 /**
- * What a reference image is FOR. Reference-to-video models don't just want
- * more pictures — each reference is assigned a job in the prompt, which is
- * how the model knows to copy the product's identity from one and only the
- * palette from another.
+ * What a reference is FOR. Reference-to-video models don't just want more
+ * inputs — each reference is assigned a job in the prompt, which is how the
+ * model knows to copy the product's identity from one and only the palette
+ * from another.
+ *
+ * `media` says which kinds suit that job: a camera move reads far better
+ * from a clip than from a still.
  */
 export const REFERENCE_ROLES = [
   {
@@ -297,43 +300,69 @@ export const REFERENCE_ROLES = [
     label: "Product identity",
     hint: "The packaging must stay exactly this. Add several angles for a tighter lock.",
     instruction: "the exact appearance, packaging, proportions and label of the product",
+    media: ["image"],
   },
   {
     id: "style",
     label: "Style / palette",
     hint: "Colour, lighting and mood to borrow — not the subject.",
     instruction: "the colour palette, lighting and overall mood only — not its subject matter",
+    media: ["image", "video"],
   },
   {
     id: "composition",
     label: "Composition",
     hint: "Framing and layout to echo.",
     instruction: "the framing, layout and staging of the shot",
+    media: ["image", "video"],
   },
   {
     id: "motion",
     label: "Motion / camera",
-    hint: "The camera move and pacing to imitate.",
-    instruction: "the camera movement, pacing and dynamics",
+    hint: "The camera move and pacing to imitate — best read from a clip.",
+    instruction: "the camera movement, pacing and shot dynamics",
+    media: ["video", "image"],
+  },
+  {
+    id: "rhythm",
+    label: "Edit rhythm",
+    hint: "Cut timing to match. Video only.",
+    instruction: "the edit rhythm and cut timing — match the action to its beats",
+    media: ["video"],
   },
 ] as const;
 
 export type ReferenceRole = (typeof REFERENCE_ROLES)[number]["id"];
+export type ReferenceMedia = "image" | "video";
+export type ReferenceSpec = { role: ReferenceRole; media: ReferenceMedia };
 
 export const getReferenceRole = (id: string) =>
   REFERENCE_ROLES.find((r) => r.id === id) ?? REFERENCE_ROLES[0];
 
 /**
- * Builds the reference-addressing block appended to a prompt for
- * reference-to-video models. References are positional: the first image
- * uploaded is [Image1], and the prompt must say what each one is for.
+ * Builds the reference-addressing block appended to the prompt.
+ *
+ * References are positional and numbered PER MEDIA TYPE — the first image is
+ * [Image1] and the first clip is [Video1], independent of upload order —
+ * which is how these models resolve them.
  */
-export function referenceBlock(roles: ReferenceRole[]): string {
-  if (roles.length === 0) return "";
-  const lines = roles.map(
-    (r, i) => `[Image${i + 1}] is the reference for ${getReferenceRole(r).instruction}.`,
-  );
-  return ` Reference usage — ${lines.join(" ")} Hold the product in [Image1] pixel-consistent throughout: same packaging, same label text, same proportions, no drift, no re-imagining, even as the camera moves.`;
+export function referenceBlock(refs: ReferenceSpec[]): string {
+  if (refs.length === 0) return "";
+  let images = 0;
+  let videos = 0;
+  const lines: string[] = [];
+  let productToken: string | null = null;
+
+  for (const r of refs) {
+    const token = r.media === "video" ? `[Video${++videos}]` : `[Image${++images}]`;
+    if (r.role === "product" && !productToken) productToken = token;
+    lines.push(`${token} is the reference for ${getReferenceRole(r.role).instruction}.`);
+  }
+
+  const lock = productToken
+    ? ` Hold the product in ${productToken} pixel-consistent throughout: same packaging, same label text, same proportions, no drift, no re-imagining, even as the camera moves.`
+    : "";
+  return ` Reference usage — ${lines.join(" ")}${lock}`;
 }
 
 /** Per-model duration ceiling (seconds). Seedance 2.5 does native 30s takes. */

@@ -58,6 +58,20 @@ export async function falGenerateImage(opts: {
 }
 
 /**
+ * Uploads a file to fal storage and returns its URL.
+ *
+ * Video references can't ride along as data URLs — a few seconds of 720p is
+ * megabytes of base64, which blows past serverless request limits. Uploading
+ * once and passing the URL keeps the generation request small, and the same
+ * URL can be reused across takes.
+ */
+export async function falUpload(file: Blob): Promise<{ url: string }> {
+  const f = client();
+  const url = await f.storage.upload(file);
+  return { url };
+}
+
+/**
  * Music generation (ElevenLabs Music). Tracks this short return in seconds,
  * so a blocking subscribe is fine — no queue/poll needed.
  */
@@ -95,6 +109,8 @@ export async function falStartVideo(opts: {
    * order, which is what holds product identity while the camera moves.
    */
   referenceImageDataUrls?: string[];
+  /** Video references, already uploaded — passed as URLs, never inlined. */
+  referenceVideoUrls?: string[];
   negativePrompt?: string;
 }): Promise<{ requestId: string }> {
   const f = client();
@@ -109,6 +125,11 @@ export async function falStartVideo(opts: {
     // image_url. Send what applies — fal ignores undefined fields.
     input.image_urls = refs;
     input.reference_image_urls = refs;
+  }
+  const videoRefs = opts.referenceVideoUrls?.filter(Boolean) ?? [];
+  if (videoRefs.length > 0) {
+    input.video_urls = videoRefs;
+    input.reference_video_urls = videoRefs;
   }
   if (opts.referenceImageDataUrl) input.image_url = opts.referenceImageDataUrl;
   if (opts.negativePrompt) input.negative_prompt = opts.negativePrompt;

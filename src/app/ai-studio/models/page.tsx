@@ -37,7 +37,7 @@ const VIDEO_NOTES = [
   },
   {
     name: "Seedance 2.5 (ByteDance) — reference-to-video",
-    take: "The answer to product drift, and the most interesting endpoint in the roster. Instead of one grounding frame, it accepts up to 50 multimodal references addressed positionally in the prompt as [Image1], [Image2]… — so you assign one reference the product's identity, another the palette, another the camera move. The packaging stays itself while the camera moves, which first-frame conditioning cannot guarantee. It also renders native 30-second takes in a single pass, and generates audio jointly with the picture rather than after it.",
+    take: "The answer to product drift, and the most interesting endpoint in the roster. Instead of one grounding frame, it accepts up to 50 multimodal references addressed positionally in the prompt as [Image1], [Image2]… — so you assign one reference the product's identity, another the palette, another the camera move. The packaging stays itself while the camera moves, which first-frame conditioning cannot guarantee. References aren't limited to stills either — a short clip can carry the camera move or the cut rhythm, addressed as [Video1] in the same prompt. It also renders native 30-second takes in a single pass, and generates audio jointly with the picture rather than after it.",
   },
   {
     name: "Runway Gen-4",

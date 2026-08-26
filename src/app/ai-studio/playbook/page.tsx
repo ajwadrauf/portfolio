@@ -200,6 +200,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
                 "Video prompts carry an explicit Audio: cue; native-audio models reward sound design written into the prompt.",
                 "Negative prompts are maintained per style, with artifact patterns added as QA finds them.",
                 "No brand names or logos in generation prompts — lockups composite in post, where they're controlled.",
+                "For product motion, references beat a first frame: reference-to-video models hold identity across the take, addressed positionally as [Image1], [Video1] with a stated job each.",
               ].map((t) => (
                 <li key={t} className="flex gap-3">
                   <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" />

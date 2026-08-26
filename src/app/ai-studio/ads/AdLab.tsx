@@ -9,7 +9,9 @@ import {
   getAdPreset,
   maxAdSeconds,
   type AudioMode,
+  type ReferenceMedia,
   type ReferenceRole,
+  type ReferenceSpec,
 } from "@/lib/adPresets";
 import {
   MUSIC_HANDLE_SECONDS,
@@ -73,7 +75,10 @@ export function AdLab() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   // Reference-to-video: extra references, each with a job.
-  const [refs, setRefs] = useState<{ dataUrl: string; role: ReferenceRole }[]>([]);
+  const [refs, setRefs] = useState<
+    { url: string; media: ReferenceMedia; role: ReferenceRole; name: string }[]
+  >([]);
+  const [uploading, setUploading] = useState(false);
   const [seconds, setSeconds] = useState<number | null>(null);
   const refInput = useRef<HTMLInputElement>(null);
 
@@ -214,11 +219,13 @@ export function AdLab() {
           audioMode,
           musicStyleId,
           modelId,
-          referenceRoles: supportsRefs
-            ? [
-                ...(productImage ? (["product"] as ReferenceRole[]) : []),
-                ...refs.map((r) => r.role),
-              ]
+          references: supportsRefs
+            ? ([
+                ...(productImage
+                  ? [{ role: "product", media: "image" } as ReferenceSpec]
+                  : []),
+                ...refs.map((r) => ({ role: r.role, media: r.media }) as ReferenceSpec),
+              ] satisfies ReferenceSpec[])
             : [],
           imageDataUrl: productImage ?? undefined,
         }),
@@ -234,15 +241,40 @@ export function AdLab() {
     }
   }, [audioMode, modelId, musicStyleId, params, presetId, productImage, refs, supportsRefs]);
 
-  const addReference = useCallback(async (file: File, role: ReferenceRole) => {
-    try {
-      const dataUrl = await toProcessedDataUrl(file);
-      setRefs((prev) => [...prev, { dataUrl, role }]);
-      invalidatePrompt();
-    } catch {
-      setError("Could not read that image");
-    }
-  }, [invalidatePrompt]);
+  const addReference = useCallback(
+    async (file: File) => {
+      setError(null);
+      const isVideo = file.type.startsWith("video/");
+      try {
+        if (isVideo) {
+          // Clips upload to the provider once and travel as a URL — inlining
+          // video as base64 would blow past the request size limit.
+          setUploading(true);
+          const form = new FormData();
+          form.append("file", file);
+          const res = await fetch("/api/upload", { method: "POST", body: form });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error ?? "Upload failed");
+          setRefs((prev) => [
+            ...prev,
+            { url: json.url, media: "video", role: "motion", name: file.name },
+          ]);
+        } else {
+          const dataUrl = await toProcessedDataUrl(file);
+          setRefs((prev) => [
+            ...prev,
+            { url: dataUrl, media: "image", role: "style", name: file.name },
+          ]);
+        }
+        invalidatePrompt();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not add that reference");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [invalidatePrompt],
+  );
 
   const generateMusic = useCallback(async () => {
     setError(null);
@@ -305,7 +337,12 @@ export function AdLab() {
           aspect: preset.aspect,
           durationSeconds: duration,
           imageDataUrl: productImage ?? undefined,
-          referenceImageDataUrls: supportsRefs ? refs.map((r) => r.dataUrl) : undefined,
+          referenceImageDataUrls: supportsRefs
+            ? refs.filter((r) => r.media === "image").map((r) => r.url)
+            : undefined,
+          referenceVideoUrls: supportsRefs
+            ? refs.filter((r) => r.media === "video").map((r) => r.url)
+            : undefined,
           presetName: preset.name,
         }),
       });
@@ -806,21 +843,45 @@ export function AdLab() {
                   )}
 
                   {refs.map((r, i) => {
-                    const role = REFERENCE_ROLES.find((x) => x.id === r.role)!;
+                    // Tokens are numbered per media type, matching how the
+                    // model resolves them.
+                    const priorSameMedia = refs
+                      .slice(0, i)
+                      .filter((x) => x.media === r.media).length;
+                    const n =
+                      r.media === "image"
+                        ? (productImage ? 2 : 1) + priorSameMedia
+                        : 1 + priorSameMedia;
+                    const token = r.media === "image" ? `[Image${n}]` : `[Video${n}]`;
+                    const allowed = REFERENCE_ROLES.filter((o) =>
+                      (o.media as readonly string[]).includes(r.media),
+                    );
                     return (
                       <div
                         key={i}
                         className="flex items-center gap-3 rounded-[6px] border border-border-soft bg-surface p-2"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={r.dataUrl}
-                          alt={role.label}
-                          className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
-                        />
+                        {r.media === "image" ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={r.url}
+                            alt=""
+                            className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                          />
+                        ) : (
+                          <video
+                            src={r.url}
+                            muted
+                            playsInline
+                            className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                          />
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="font-mono text-[11px] text-accent">
-                            [Image{(productImage ? 2 : 1) + i}]
+                            {token}
+                            <span className="ml-1.5 text-muted">
+                              {r.media === "video" ? "clip" : "still"}
+                            </span>
                           </p>
                           <select
                             className="mt-0.5 w-full bg-transparent text-xs text-muted outline-none"
@@ -833,7 +894,7 @@ export function AdLab() {
                               invalidatePrompt();
                             }}
                           >
-                            {REFERENCE_ROLES.map((o) => (
+                            {allowed.map((o) => (
                               <option key={o.id} value={o.id}>
                                 {o.label}
                               </option>
@@ -858,24 +919,27 @@ export function AdLab() {
                 <button
                   className="btn-secondary mt-3 !px-3 !py-1.5 text-xs"
                   onClick={() => refInput.current?.click()}
+                  disabled={uploading}
                 >
-                  Add reference
+                  {uploading ? "Uploading clip…" : "Add reference (image or clip)"}
                 </button>
                 <input
                   ref={refInput}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f) void addReference(f, "style");
+                    if (f) void addReference(f);
                     e.target.value = "";
                   }}
                 />
                 <p className="mt-2 text-xs leading-relaxed text-muted">
-                  Add more angles of the product to tighten the identity lock, or
-                  a palette/composition reference to borrow a look. Each one gets
-                  a job in the prompt — set it in the dropdown.
+                  Add more angles of the product to tighten the identity lock, a
+                  still to borrow a palette from, or a <strong>short clip</strong>{" "}
+                  whose camera move and cut rhythm you want imitated. Each gets a
+                  job in the prompt — set it in the dropdown. Clips upload to the
+                  provider (live mode only, keep them under 4MB).
                 </p>
               </div>
             )}

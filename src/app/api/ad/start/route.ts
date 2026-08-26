@@ -19,8 +19,10 @@ export async function POST(req: Request) {
       aspect: "9:16" | "16:9";
       durationSeconds: number;
       imageDataUrl?: string;
-      /** Extra product references for reference-to-video models. */
+      /** Extra image references (data URLs) for reference-to-video models. */
       referenceImageDataUrls?: string[];
+      /** Video reference URLs, already uploaded to the provider's storage. */
+      referenceVideoUrls?: string[];
       presetName?: string;
     };
 
@@ -75,6 +77,7 @@ export async function POST(req: Request) {
     const allRefs = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter(
       (u): u is string => Boolean(u),
     );
+    const videoRefs = multiRef ? (body.referenceVideoUrls ?? []) : [];
     const { requestId } = await falStartVideo({
       endpoint: model.endpoint,
       prompt: body.prompt,
@@ -82,6 +85,7 @@ export async function POST(req: Request) {
       aspectRatio: body.aspect,
       referenceImageDataUrl: multiRef ? undefined : body.imageDataUrl,
       referenceImageDataUrls: multiRef ? allRefs.slice(0, 50) : undefined,
+      referenceVideoUrls: videoRefs.slice(0, 50),
       negativePrompt: body.negativePrompt,
     });
     return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, cost });
