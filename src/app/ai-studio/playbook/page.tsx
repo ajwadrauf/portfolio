@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionNav, type NavSection } from "@/components/SectionNav";
+import { PreflightChecklist } from "./PreflightChecklist";
 
 export const metadata: Metadata = {
   title: "Production Playbook — AI Content Studio",
   description:
-    "The reusable playbook behind the demo: workflow, prompt system, model routing, quality gates, cost governance, responsible AI and measurement.",
+    "The reusable playbook behind the demo: workflow, prompt system, model routing, quality gates, cost governance, the generative-AI guardrails this work is held to, a pre-flight checklist, and measurement.",
 };
 
 const SECTIONS: NavSection[] = [
@@ -14,9 +15,10 @@ const SECTIONS: NavSection[] = [
   { id: "routing", num: "03", label: "Model routing" },
   { id: "gates", num: "04", label: "Quality gates" },
   { id: "cost", num: "05", label: "Cost governance" },
-  { id: "responsible", num: "06", label: "Responsible AI" },
-  { id: "teaching", num: "07", label: "Teaching" },
-  { id: "measure", num: "08", label: "Measurement" },
+  { id: "guardrails", num: "06", label: "Guardrails" },
+  { id: "preflight", num: "07", label: "Pre-flight" },
+  { id: "teaching", num: "08", label: "Teaching" },
+  { id: "measure", num: "09", label: "Measurement" },
 ];
 
 const PIPELINE = [
@@ -57,11 +59,143 @@ const GATES = [
   },
 ];
 
-const RESPONSIBLE = [
-  ["Rights & IP", "Generate only from owned product assets. Prefer providers with enterprise indemnity for production work. Keep the generation record — model, prompt, date — per delivered asset."],
-  ["Disclosure", "Follow platform and regulatory AI-disclosure rules per channel. Default to disclosure where ambiguous."],
-  ["People", "No photoreal likenesses of real people without a consent workflow. Person-generation settings locked at the API layer, not by convention."],
-  ["Privacy", "Product photos only. No customer data ever enters a generation prompt."],
+/**
+ * The governance layer.
+ *
+ * This is not aspiration — it is the set of guidelines this work is actually
+ * held to, restated as decisions rather than as clauses. The ordering is
+ * deliberate: the principle that grants permission, then the three lines that
+ * cannot move, then the one subject where the rules are most specific
+ * (product truth), then people, then the paperwork, then the two questions
+ * that settle everything not covered.
+ */
+const STANDING_PERMISSION =
+  "AI may be used as a creative and production tool wherever the result is original, properly authorised, non-impersonative, accurate, and not misleading to a consumer. Everything already required — Legal, Regulatory, Privacy, Procurement, InfoSec, Brand, advertising approval — still applies. AI is a new way to make the asset, not a new route around the approvals.";
+
+const HARD_STOPS = [
+  {
+    h: "Nobody real, unless they said yes",
+    p: "No cloning, imitating or deliberately evoking the voice, likeness or recognisable characteristics of an actual person without documented rights. Celebrities, influencers, performers, customers, employees, executives — the same line for all of them, and for third-party characters and branded voices. Original synthetic creation is the preferred route; replication is not a shortcut, it is the thing being prohibited.",
+  },
+  {
+    h: "The overall impression is the test",
+    p: "Nothing may materially misrepresent the product, its appearance, quantity, function or performance; a person's identity or relationship to the brand; a customer experience, testimonial or endorsement; or a relationship with another company. Judged the way a reasonable consumer would take the finished ad as a whole — not by whether each component survives inspection on its own. An ad can be assembled entirely from true parts and still fail this.",
+  },
+  {
+    h: "The product is not the part you may invent",
+    p: "Where an ad shows a specific item that is for sale, that item must originate from authentic capture of the real thing. AI may work on everything around it. It may not quietly become the thing itself.",
+  },
+];
+
+/** The clearest rule in the set, so it earns the most explicit treatment. */
+const PRODUCT_TRUTH = {
+  may: [
+    "Cleanup and retouching",
+    "Background replacement or extension",
+    "Removing production artefacts",
+    "Reframing and outpainting",
+    "Lighting and colour correction that stays faithful",
+    "Environment and set dressing",
+  ],
+  mustNot: [
+    "Replacing the captured product with a synthetic one",
+    "Adding toppings, fillings or inclusions that were not there",
+    "Materially increasing apparent quantity or portion",
+    "Improving texture, colour, doneness or quality",
+    "Fabricating preparation results or functionality",
+    "Materially altering packaging or product attributes",
+  ],
+};
+
+const PEOPLE = [
+  {
+    h: "Synthetic people, by surface",
+    p: "Fully synthetic talent is available for stills — lifestyle, social, digital, print, display — provided it is an original creation and not a copy of an identifiable person. For OLV, television and broadcast, the conservative default holds: not without specific review and approval. That is a position about consumer acceptance and talent agreements rather than about capability, and it is expected to move.",
+  },
+  {
+    h: "Hands are not talent",
+    p: "An AI-generated hand entering frame to press a button is an incidental element, not a performer. It stays incidental while nobody is identifiable, it is not built from a real person's likeness, it is not acting as a spokesperson, and the action it performs is an honest representation of using the product.",
+  },
+  {
+    h: "Voices",
+    p: "Original synthetic voice is fine for radio and digital audio. It must not clone a real individual, imitate an identifiable person, impersonate a recognisable character or protected brand voice, or leave a listener wrong about who is speaking — and the commercial-use rights have to be real.",
+  },
+  {
+    h: "Manufactured authority",
+    p: "No synthesised customer reviews, celebrity endorsements, employee statements, expert opinions, regulated-professional recommendations or before-and-after stories. The failure here is not the pixels; it is inventing a person whose credibility is doing the selling. Openly fictional scenarios are a normal Legal question, not this one.",
+  },
+];
+
+const PAPER_TRAIL = [
+  ["Approved tools only", "Platforms cleared under the applicable technology, security, procurement and privacy requirements. That is a list someone maintains, not a judgement call at 6pm."],
+  ["What never gets uploaded", "Confidential information, personal information, biometric source material, talent recordings, licensed content, or third-party assets whose AI-processing rights have not been confirmed — unless that specific system is authorised for it."],
+  ["Retain the real source", "Where AI materially assists final product imagery, the authentic source frame stays in the asset-management system and stays traceable to the delivered creative. If you cannot produce the original, you cannot defend the final."],
+  ["The record", "Platform or vendor, what the AI component actually was, the approved source asset, confirmation of commercial-use rights, talent consent where relevant, and any specific exception granted. Meaningful provenance — not a log of every routine retouch."],
+  ["Accountability does not transfer", "Marketing, agency and production partners own the finished asset whether or not AI touched it. There is no version of this where the model is responsible."],
+];
+
+const TESTS = [
+  {
+    label: "Product fidelity",
+    q: "If someone bought this because of this ad, would what arrives reasonably match what they were shown?",
+    then: "Uncertain is a no. Escalate to Legal or Regulatory.",
+  },
+  {
+    label: "The catch-all",
+    q: "Could a reasonable consumer be materially misled about who or what they are seeing or hearing, what they are buying, what it does, or whether a real person took part or endorsed it?",
+    then: "Yes or unsure — stop and escalate before publication.",
+  },
+];
+
+/** Policy is only real where a mechanism enforces it. */
+const ENFORCED_HERE = [
+  ["Prices are never invented", "Vision autofill returns an empty field rather than a guess when no price is legible on the pack, and the UI flags it as needing a human. A wrong price is a compliance failure, not a typo."],
+  ["Reconstructed angles are labelled", "Packshot views the model extrapolated rather than grounded in a supplied reference are marked for label QA, so nobody mistakes a plausible back-of-pack for a photographed one."],
+  ["The prompt ships with the asset", "Every generated output exposes the prompt that made it, which is the provenance record the guidelines ask for, produced as a by-product rather than as homework."],
+  ["Product identity is pinned, not hoped for", "Reference-to-video binds the pack to a supplied still and instructs against drift, because a product that morphs mid-shot fails the fidelity test even when nobody intended it to."],
+  ["The demo states its own limits", "Where the pipeline cannot guarantee something — music that is not frame-synced, a take that needs an alignment pass — it says so in the interface rather than in a footnote."],
+];
+
+const CHECKLIST: { group: string; items: string[] }[] = [
+  {
+    group: "Before you generate",
+    items: [
+      "The platform is on the approved list for this kind of work",
+      "Nothing confidential, personal, biometric or third-party-licensed is going into the prompt or the references",
+      "Source assets are ours, or the rights to process them are confirmed in writing",
+      "If a real person appears, consent and usage rights exist and are documented",
+    ],
+  },
+  {
+    group: "If a real product is shown",
+    items: [
+      "The product in frame originates from authentic capture of the actual item",
+      "AI work is confined to the surroundings — no synthetic substitution of the product",
+      "Nothing has been added, enlarged, improved or made more appetising than the real thing",
+      "The authentic source file is filed and traceable to this final asset",
+    ],
+  },
+  {
+    group: "If a person appears",
+    items: [
+      "Synthetic talent is original and not a recognisable individual",
+      "Not presented as a customer, employee, expert or regulated professional unless true and documented",
+      "No manufactured testimonial, endorsement or before-and-after",
+      "Broadcast or OLV on-camera synthetic talent has specific approval",
+      "Any voice is original synthetic, non-impersonative, and rights-cleared",
+    ],
+  },
+  {
+    group: "Before it ships",
+    items: [
+      "Both tests answered — fidelity, and the catch-all",
+      "Child-directed and food-advertising requirements checked, unchanged by AI being involved",
+      "Material AI use is disclosed internally in the approval workflow",
+      "External disclosure decided against channel, platform and regulatory requirements",
+      "The provenance record is complete: platform, component, source, rights, consent, exceptions",
+      "A named human has approved it",
+    ],
+  },
 ];
 
 const METRICS = [
@@ -294,27 +428,163 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
             </div>
           </section>
 
-          {/* 06 Responsible AI */}
-          <section id="responsible" className="scroll-mt-28">
+          {/* 06 Guardrails */}
+          <section id="guardrails" className="scroll-mt-28">
             <SectionHead
               num="06"
-              title="Responsible AI"
-              lede="Guardrails that let the studio move fast, because the risky questions are already answered."
+              title="Guardrails"
+              lede="The generative-AI guidelines this work is held to, restated as decisions rather than clauses. They exist so the studio can move fast — the risky questions are answered before anyone is mid-render."
             />
-            <dl className="divide-y divide-border-soft border-y border-border-soft">
-              {RESPONSIBLE.map(([term, def]) => (
-                <div key={term} className="grid gap-2 py-4 md:grid-cols-[160px_1fr] md:gap-6">
+
+            {/* The permission, before the restrictions. */}
+            <div className="rounded-[6px] border border-accent/30 bg-accent/[0.04] p-5">
+              <p className="label !text-accent">The standing permission</p>
+              <p className="mt-2.5 text-base leading-relaxed">{STANDING_PERMISSION}</p>
+            </div>
+
+            <h3 className="mt-10 text-xl tracking-[-0.02em]">Three lines that do not move</h3>
+            <div className="mt-4 space-y-4">
+              {HARD_STOPS.map((r) => (
+                <div key={r.h} className="border-l-2 border-danger/50 pl-5">
+                  <h4 className="font-semibold">{r.h}</h4>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted">{r.p}</p>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="mt-10 text-xl tracking-[-0.02em]">
+              On a real product, where the line actually falls
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+              This is the most specific rule in the set, so it gets the most
+              specific treatment. Everything on the left is production craft.
+              Everything on the right changes what the customer thinks they are
+              buying.
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="rounded-[6px] border border-success/30 bg-success/[0.05] p-5">
+                <p className="label !text-success">AI may</p>
+                <ul className="mt-3 space-y-1.5">
+                  {PRODUCT_TRUTH.may.map((x) => (
+                    <li key={x} className="text-sm leading-relaxed">{x}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-[6px] border border-danger/30 bg-danger/[0.05] p-5">
+                <p className="label !text-danger">AI may not</p>
+                <ul className="mt-3 space-y-1.5">
+                  {PRODUCT_TRUTH.mustNot.map((x) => (
+                    <li key={x} className="text-sm leading-relaxed">{x}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <h3 className="mt-10 text-xl tracking-[-0.02em]">Depicting people</h3>
+            <div className="mt-4 grid gap-5 md:grid-cols-2">
+              {PEOPLE.map((r) => (
+                <div key={r.h}>
+                  <h4 className="font-semibold">{r.h}</h4>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted">{r.p}</p>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="mt-10 text-xl tracking-[-0.02em]">What has to survive an audit</h3>
+            <dl className="mt-4 divide-y divide-border-soft border-y border-border-soft">
+              {PAPER_TRAIL.map(([term, def]) => (
+                <div key={term} className="grid gap-2 py-4 md:grid-cols-[200px_1fr] md:gap-6">
                   <dt className="font-semibold">{term}</dt>
                   <dd className="text-sm leading-relaxed text-muted">{def}</dd>
                 </div>
               ))}
             </dl>
+
+            <h3 className="mt-10 text-xl tracking-[-0.02em]">
+              Two questions that settle most of it
+            </h3>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {TESTS.map((t) => (
+                <blockquote
+                  key={t.label}
+                  className="rounded-[6px] border border-border-soft bg-surface-2 p-5"
+                >
+                  <p className="label !text-accent">{t.label}</p>
+                  <p className="mt-2.5 text-base font-semibold leading-snug">{t.q}</p>
+                  <p className="mt-2.5 text-sm leading-relaxed text-muted">{t.then}</p>
+                </blockquote>
+              ))}
+            </div>
+
+            <h3 className="mt-10 text-xl tracking-[-0.02em]">
+              Where this is enforced rather than promised
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+              A guideline nothing implements is a hope. These are the places
+              the studio in this demo makes the rule structural — so following
+              it is the default path, not the disciplined one.
+            </p>
+            <dl className="mt-4 divide-y divide-border-soft border-y border-border-soft">
+              {ENFORCED_HERE.map(([term, def]) => (
+                <div key={term} className="grid gap-2 py-4 md:grid-cols-[240px_1fr] md:gap-6">
+                  <dt className="font-semibold">{term}</dt>
+                  <dd className="text-sm leading-relaxed text-muted">{def}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <h3 className="mt-10 text-xl tracking-[-0.02em]">
+              Two things that are not exceptions
+            </h3>
+            <div className="mt-4 grid gap-5 md:grid-cols-2">
+              <div>
+                <h4 className="font-semibold">Food, and anything aimed at children</h4>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                  Every existing food-advertising, regulatory and
+                  child-directed requirement applies exactly as before. Extra
+                  care where creative is child-directed, where children are
+                  synthesised, where child-oriented characters appear, or where
+                  the media buy is aimed at children. AI does not create an
+                  exemption from rules that already exist.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold">Saying so</h4>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                  Material AI use is disclosed internally, in the approval
+                  workflow, always. External disclosure is decided by context —
+                  channel, platform, contract, regulation. The one hard case:
+                  where staying quiet about AI would itself make the ad
+                  misleading, it goes to Legal before it goes out.
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-8 rounded-[6px] border border-warning/40 bg-warning/[0.07] p-4 text-sm leading-relaxed text-warning">
+              <span className="font-bold">This page expires.</span> These
+              guidelines get reviewed against regulation, platform and
+              broadcaster requirements, talent agreements, campaign learnings
+              and the quality of synthetic media itself. The clause most likely
+              to move first is the broadcast one — synthetic on-camera talent
+              is a conservative default about consumer and legal acceptance,
+              not a permanent technical judgement.
+            </p>
           </section>
 
-          {/* 07 Teaching */}
-          <section id="teaching" className="scroll-mt-28">
+          {/* 07 Pre-flight */}
+          <section id="preflight" className="scroll-mt-28">
             <SectionHead
               num="07"
+              title="Pre-flight"
+              lede="The guardrails above, as something you run against an actual asset. Tick it before the asset ships, not after someone asks."
+            />
+            <PreflightChecklist groups={CHECKLIST} />
+          </section>
+
+          {/* 08 Teaching */}
+          <section id="teaching" className="scroll-mt-28">
+            <SectionHead
+              num="08"
               title="Teaching"
               lede="Built to be handed over, not held onto."
             />
@@ -332,10 +602,10 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
             </blockquote>
           </section>
 
-          {/* 08 Measurement */}
+          {/* 09 Measurement */}
           <section id="measure" className="scroll-mt-28">
             <SectionHead
-              num="08"
+              num="09"
               title="Measurement"
               lede="What the studio is accountable for, and what good looks like."
             />

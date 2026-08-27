@@ -9,7 +9,7 @@ const MANDATES = [
     jd: "“Ability to produce finished creative content independently across stills, motion, video — not just direct others to do so.”",
     answer:
       "Everything here is a working tool, not a case-study screenshot. Upload a product photo and it produces finished stills, bilingual promo tiles, GS1 packshots and scored video ads — live, in the browser, in minutes.",
-    proof: [{ label: "Open the Studio", href: "/studio" }],
+    proof: [{ label: "Open the Studio", href: "/ai-studio/studio" }],
   },
   {
     n: "02",
@@ -17,7 +17,7 @@ const MANDATES = [
     jd: "“Stand up the AI Content Studio's tools, workflows, standards, intake processes, and quality gates.”",
     answer:
       "The pipeline is the point: self-filling intake, one brief driving every deliverable, model routing by job and price, and named quality gates. The playbook documents all of it so it scales past one person.",
-    proof: [{ label: "Read the playbook", href: "/playbook" }],
+    proof: [{ label: "Read the playbook", href: "/ai-studio/playbook" }],
   },
   {
     n: "03",
@@ -26,8 +26,8 @@ const MANDATES = [
     answer:
       "Thirteen models from six labs are wired in behind two APIs, swappable from one config file, with a written point of view on what's ready, what's emerging and what isn't viable — plus a one-pager on suites vs. aggregators vs. direct APIs.",
     proof: [
-      { label: "Model landscape", href: "/models" },
-      { label: "Build vs. buy", href: "/build-vs-buy" },
+      { label: "Model landscape", href: "/ai-studio/models" },
+      { label: "Build vs. buy", href: "/ai-studio/build-vs-buy" },
     ],
   },
   {
@@ -35,35 +35,35 @@ const MANDATES = [
     mandate: "Teach it, and govern it",
     jd: "“Build reusable playbooks, prompt approaches… support responsible AI use, including rights/IP, brand safety, disclosure and approval.”",
     answer:
-      "Every asset exposes the prompt that made it. Reconstructed packshot angles are flagged for label QA. Prices are never invented. The demo states its own limits — because knowing what AI can't do yet is the job.",
-    proof: [{ label: "See the packshot QA flags", href: "/packshots" }],
+      "The generative-AI guidelines this work is held to are written up as decisions rather than clauses, with a pre-flight checklist you tick against an actual asset. Then they are enforced rather than promised: every asset exposes the prompt that made it, reconstructed packshot angles are flagged for label QA, prices are never invented, and the demo states its own limits — because knowing what AI can't do yet is the job.",
+    proof: [{ label: "See the packshot QA flags", href: "/ai-studio/packshots" }],
   },
 ];
 
 const TOOLS = [
   {
-    href: "/studio",
+    href: "/ai-studio/studio",
     name: "Campaign Studio",
     line: "One photo → a full multi-format pack",
     body: "Vision analysis, an AI-written editable brief, then six stills and two videos across formats, languages and seasons — each routed to the right model at the right price.",
     tags: ["Stills", "Motion", "EN/FR versioning"],
   },
   {
-    href: "/packshots",
+    href: "/ai-studio/packshots",
     name: "Packshot Studio",
     line: "GS1 planogram angles without the reshoot",
     body: "Upload the reference angles a SKU already has, generate the missing product-on-white views with GS1 filenames — grounded angles marked, reconstructed ones flagged for label QA.",
     tags: ["Product on white", "A/B bake-offs", "Governance"],
   },
   {
-    href: "/ads",
+    href: "/ai-studio/ads",
     name: "Ad Lab",
     line: "Preset ad recipes any SKU can run through",
     body: "Deconstructed concepts — aesthetics, beat-by-beat action, overlay spec, sound design — every part of it editable, with the product swapped in from a photo and held still by reference-to-video. Sound is built in layers: effects from the model, spot effects generated one at a time, music scored separately.",
     tags: ["Short-form video", "Prompt systems", "Sound design"],
   },
   {
-    href: "/prompts",
+    href: "/ai-studio/prompts",
     name: "Prompt Builder",
     line: "The anatomy of a reference prompt, as a form",
     body: "Register, subject, what each reference is FOR, then a timeline that makes you spend the seconds on purpose. Every part says what goes wrong without it, and it catches the mistakes that fail silently — a beat sheet that overruns the render, a reference bound by filename instead of token.",
