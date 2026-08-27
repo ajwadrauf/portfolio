@@ -540,12 +540,14 @@ export function composeFromRecipe(
   p: Record<string, string>,
   audioMode: AudioMode,
   musicBrief: string,
+  /** The shape and length actually being rendered, when they differ. */
+  format?: { aspect?: string; durationSeconds?: number },
 ): string {
   const clean = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
+  const aspect = format?.aspect ?? preset.aspect;
+  const seconds = format?.durationSeconds ?? preset.durationSeconds;
 
-  const parts: string[] = [
-    `A ${preset.durationSeconds}-second ${preset.aspect} product ad.`,
-  ];
+  const parts: string[] = [`A ${seconds}-second ${aspect} product ad.`];
 
   const look = clean(recipe.aesthetics);
   if (look.length) parts.push(`Look and camera: ${look.join(" ")}`);

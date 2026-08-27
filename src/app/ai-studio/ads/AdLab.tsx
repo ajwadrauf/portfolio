@@ -35,7 +35,11 @@ import {
 } from "@/lib/music";
 import { MODELS, estimateCost, usesTokenPricing } from "@/lib/models";
 import {
+  ASPECTS,
   VIDEO_RESOLUTIONS,
+  aspectRatioValue,
+  aspectsFor,
+  frameSize,
   videoToVideoRatio,
   type VideoResolution,
 } from "@/lib/videoCost";
@@ -54,7 +58,11 @@ const POLL_INTERVAL_MS = 12_000;
 const POLL_DEADLINE_MS = 10 * 60 * 1000;
 const ASPECT_CLASS: Record<string, string> = {
   "9:16": "aspect-[9/16]",
+  "3:4": "aspect-[3/4]",
+  "1:1": "aspect-square",
+  "4:3": "aspect-[4/3]",
   "16:9": "aspect-[16/9]",
+  "21:9": "aspect-[21/9]",
 };
 
 const REF_ACCEPT =
@@ -156,6 +164,12 @@ export function AdLab() {
    * and on a token-billed model pixel area is most of the bill.
    */
   const [resolution, setResolution] = useState<VideoResolution>("720p");
+  /**
+   * The preset ships a designed shape, but one concept usually has to deliver
+   * several — a vertical for Reels and a square for feed off the same idea.
+   * null means "whatever the preset intended".
+   */
+  const [aspectOverride, setAspectOverride] = useState<string | null>(null);
   const refInput = useRef<HTMLInputElement>(null);
 
   /**
@@ -206,13 +220,20 @@ export function AdLab() {
   const secondsCap = maxAdSeconds(modelId);
   const duration = Math.min(seconds ?? preset.durationSeconds, secondsCap);
   const tokenBilled = usesTokenPricing(modelId);
+  const allowedAspects = aspectsFor(modelId);
+  /** Falling back keeps a Seedance-only shape from being sent to Veo. */
+  const aspect =
+    allowedAspects.find((a) => a.id === (aspectOverride ?? preset.aspect))?.id ??
+    preset.aspect;
+  const aspectChanged = aspect !== preset.aspect;
+  const frame = frameSize(resolution, aspect);
   /** Reference clips are billed as input duration too, at ~5s apiece. */
   const inputVideoSeconds =
     refs.filter((r) => r.media === "video").length * VIDEO_REF_LIMITS.idealSeconds;
   const videoCost = estimateCost(modelId, {
     seconds: duration,
     resolution,
-    aspect: preset.aspect,
+    aspect,
     hasVideoInputs: inputVideoSeconds > 0,
     inputVideoSeconds,
   });
@@ -336,6 +357,7 @@ export function AdLab() {
       setMusicAsTimingRef(false);
       setSfxTracks({});
       setSeconds(null);
+      setAspectOverride(null);
       setRefs([]);
       setRefError(null);
       setRefUrl("");
@@ -390,6 +412,8 @@ export function AdLab() {
           audioMode,
           musicStyleId,
           modelId,
+          aspect,
+          durationSeconds: duration,
           // Only sent when edited — an untouched preset keeps the hand-tuned
           // prompt it was written as.
           recipe: recipeEdited ? recipe : undefined,
@@ -407,8 +431,10 @@ export function AdLab() {
       setPhase("idle");
     }
   }, [
+    aspect,
     audioMode,
     composeRefs,
+    duration,
     modelId,
     musicStyleId,
     params,
@@ -596,7 +622,7 @@ export function AdLab() {
           prompt: finalPrompt,
           negativePrompt,
           modelId,
-          aspect: preset.aspect,
+          aspect,
           durationSeconds: duration,
           resolution,
           imageDataUrl: productImage ?? undefined,
@@ -656,6 +682,7 @@ export function AdLab() {
     }
   }, [
     addSpend,
+    aspect,
     audioMode,
     audioRefUrls,
     cost,
@@ -1040,81 +1067,140 @@ export function AdLab() {
         </Step>
 
         {/* ---------- 4. model & shot ---------- */}
-        <Step n={4} title="Model and shot">
-          <div className="mt-4 grid gap-5 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block label">Video model</span>
-              <select
-                className="input"
-                value={modelId}
-                onChange={(e) => {
-                  setModelId(e.target.value);
-                  setSeconds(null);
-                  invalidatePrompt();
-                }}
-              >
-                {AD_VIDEO_MODELS.map((m) => (
-                  <option key={m} value={m}>
-                    {MODELS[m].label} —{" "}
-                    {usesTokenPricing(m)
-                      ? `~$${MODELS[m].unitCost}/s at 720p, by token`
-                      : `$${MODELS[m].unitCost}/s`}
-                  </option>
-                ))}
-              </select>
-              <span className="mt-2 block text-xs leading-relaxed text-muted">
-                {supportsRefs
-                  ? "Reference-to-video: every uploaded reference is addressed positionally in the prompt ([Image1], [Video1], [Audio1]…), which is what stops the product drifting as the camera moves."
-                  : "Single grounding frame: the product photo conditions the first frame, then the model extrapolates. Cheaper, but the pack can drift as the camera moves."}
-              </span>
-            </label>
+        <Step
+          n={4}
+          title="Format and cost"
+          aside={
+            <span className="chip border-accent/40 !text-accent">
+              {frame.width}×{frame.height} · {duration}s · ~${videoCost.toFixed(2)}
+            </span>
+          }
+        >
+          <label className="mt-4 block">
+            <span className="mb-1 block label">Video model</span>
+            <select
+              className="input"
+              value={modelId}
+              onChange={(e) => {
+                setModelId(e.target.value);
+                setSeconds(null);
+                invalidatePrompt();
+              }}
+            >
+              {AD_VIDEO_MODELS.map((m) => (
+                <option key={m} value={m}>
+                  {MODELS[m].label} —{" "}
+                  {usesTokenPricing(m)
+                    ? `~$${MODELS[m].unitCost}/s at 720p, by token`
+                    : `$${MODELS[m].unitCost}/s`}
+                </option>
+              ))}
+            </select>
+            <span className="mt-2 block max-w-3xl text-xs leading-relaxed text-muted">
+              {supportsRefs
+                ? "Reference-to-video: every uploaded reference is addressed positionally in the prompt ([Image1], [Video1], [Audio1]…), which is what stops the product drifting as the camera moves."
+                : "Single grounding frame: the product photo conditions the first frame, then the model extrapolates. Cheaper, but the pack can drift as the camera moves."}
+            </span>
+          </label>
 
-            {/* Duration — Seedance 2.5 does native 30s takes */}
-            <label className="block">
-              <span className="mb-1 flex items-center justify-between label">
-                <span>Duration</span>
-                <span className="!text-foreground">{duration}s</span>
-              </span>
-              <input
-                type="range"
-                min={4}
-                max={secondsCap}
-                step={1}
-                value={duration}
-                onChange={(e) => setSeconds(Number(e.target.value))}
-                className="w-full accent-[var(--accent)]"
-              />
-              <span className="mt-2 block text-xs leading-relaxed text-muted">
-                {secondsCap >= 30
-                  ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
-                  : `This model caps at ${secondsCap}s.`}{" "}
-                {preset.aspect} · {preset.durationSeconds}s is the concept&apos;s
-                designed length.
-              </span>
-            </label>
+          {/* Shape — one concept usually has to ship in several. */}
+          <div className="mt-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="label">Shape</span>
+              {aspectChanged && (
+                <span className="label-sm !text-warning">
+                  Preset was designed for {preset.aspect}
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {allowedAspects.map((a) => {
+                const active = aspect === a.id;
+                const r = aspectRatioValue(a.id);
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => {
+                      setAspectOverride(a.id);
+                      invalidatePrompt();
+                    }}
+                    title={a.use}
+                    className={`flex items-center gap-2.5 rounded-[6px] border px-3 py-2 text-left transition ${
+                      active
+                        ? "border-accent bg-accent/[0.05]"
+                        : "border-border-soft bg-surface hover:border-accent/40"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`shrink-0 rounded-[2px] border ${active ? "border-accent bg-accent/25" : "border-border-strong"}`}
+                      style={{
+                        width: r >= 1 ? 26 : Math.round(26 * r),
+                        height: r >= 1 ? Math.round(26 / r) : 26,
+                      }}
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold leading-tight">
+                        {a.label}
+                      </span>
+                      <span className="block text-[11px] leading-tight text-muted">
+                        {a.use}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {allowedAspects.length < ASPECTS.length && (
+              <p className="mt-2 text-xs text-muted">
+                {modelName} renders {allowedAspects.length} shapes. Seedance 2.5
+                adds square, portrait, 4:3 and cinematic — useful when one
+                concept has to ship as a vertical and a feed tile.
+              </p>
+            )}
           </div>
 
-          {tokenBilled && (
+          {/* Length */}
+          <label className="mt-5 block max-w-md">
+            <span className="mb-1 flex items-center justify-between label">
+              <span>Length</span>
+              <span className="!text-foreground">{duration}s</span>
+            </span>
+            <input
+              type="range"
+              min={4}
+              max={secondsCap}
+              step={1}
+              value={duration}
+              onChange={(e) => setSeconds(Number(e.target.value))}
+              className="w-full accent-[var(--accent)]"
+            />
+            <span className="mt-1 block text-xs leading-relaxed text-muted">
+              {secondsCap >= 30
+                ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
+                : `This model caps at ${secondsCap}s.`}{" "}
+              The concept is designed for {preset.durationSeconds}s.
+            </span>
+          </label>
+
+          {/* Resolution + live cost */}
+          {tokenBilled ? (
             <div className="mt-5 border-t border-border-soft pt-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="label">Resolution — the real cost lever</span>
-                <span className="label-sm">
-                  {duration}s · ~${videoCost.toFixed(2)}
-                </span>
-              </div>
+              <span className="label">Resolution — the real cost lever</span>
               <div className="mt-2 grid gap-2 md:grid-cols-3">
                 {VIDEO_RESOLUTIONS.map((r) => {
                   const at = estimateCost(modelId, {
                     seconds: duration,
                     resolution: r.id,
-                    aspect: preset.aspect,
+                    aspect,
                     hasVideoInputs: inputVideoSeconds > 0,
                     inputVideoSeconds,
                   });
+                  const size = frameSize(r.id, aspect);
                   return (
                     <label
                       key={r.id}
-                      className={`flex cursor-pointer gap-2 rounded-[6px] border p-3 transition ${
+                      className={`flex cursor-pointer items-start gap-2 rounded-[6px] border p-3 transition ${
                         resolution === r.id
                           ? "border-accent bg-accent/[0.04]"
                           : "border-border-soft bg-surface hover:border-accent/40"
@@ -1134,6 +1220,9 @@ export function AdLab() {
                             ~${at.toFixed(2)}
                           </span>
                         </span>
+                        <span className="mt-0.5 block font-mono text-[10px] text-muted">
+                          {size.width}×{size.height}
+                        </span>
                         <span className="mt-1 block text-xs leading-relaxed text-muted">
                           {r.note}
                         </span>
@@ -1142,26 +1231,43 @@ export function AdLab() {
                   );
                 })}
               </div>
-              <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
-                <span className="font-semibold text-foreground">
-                  Seedance bills by token, not by second.
-                </span>{" "}
-                The token count is roughly width × height × seconds × 24 ÷ 1024,
-                so pixel area matters as much as length — 1080p is about five
-                times the cost of 480p for the same cut, and is billed at a
-                higher rate per token on top of that. Draft at 480p until the
-                take is right.
-                {inputVideoSeconds > 0 && (
-                  <>
-                    {" "}
-                    Your {refs.filter((r) => r.media === "video").length} clip
-                    reference
-                    {refs.filter((r) => r.media === "video").length === 1 ? "" : "s"}{" "}
-                    also add billed duration, discounted by 0.6.
-                  </>
-                )}
-              </p>
+              <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                  How this is priced — {frame.width}×{frame.height} × {duration}s
+                  = ~${videoCost.toFixed(2)}
+                </summary>
+                <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+                  <span className="font-semibold text-foreground">
+                    Seedance bills by token, not by second.
+                  </span>{" "}
+                  Tokens ≈ width × height × seconds × 24 ÷ 1024, so pixel area
+                  matters as much as length. That is why the shape you pick
+                  changes the price as well as the crop: at the same resolution
+                  a 21:9 frame has more than twice the pixels of a 1:1 one.
+                  1080p is also billed at a higher rate per token on top of
+                  having four times the pixels of 480p. Draft at 480p until the
+                  take is right.
+                  {inputVideoSeconds > 0 && (
+                    <>
+                      {" "}
+                      Your {refs.filter((r) => r.media === "video").length} clip
+                      reference
+                      {refs.filter((r) => r.media === "video").length === 1
+                        ? ""
+                        : "s"}{" "}
+                      add billed duration too, discounted by 0.6.
+                    </>
+                  )}
+                </p>
+              </details>
             </div>
+          ) : (
+            <p className="mt-5 border-t border-border-soft pt-4 text-xs leading-relaxed text-muted">
+              {modelName} is billed per second — ${MODELS[modelId].unitCost}/s ×{" "}
+              {duration}s = <span className="font-bold text-accent">${videoCost.toFixed(2)}</span>.
+              Resolution is fixed by the model, so shape and length are the only
+              cost levers here. Seedance 2.5 exposes resolution as a third one.
+            </p>
           )}
         </Step>
 
@@ -1186,7 +1292,7 @@ export function AdLab() {
             {audioChoices.map((c) => (
               <label
                 key={c.id}
-                className={`flex cursor-pointer gap-2 rounded-[6px] border p-3 transition ${
+                className={`flex cursor-pointer items-start gap-2 rounded-[6px] border p-3 transition ${
                   audioMode === c.id
                     ? "border-accent bg-accent/[0.04]"
                     : "border-border-soft bg-surface hover:border-accent/40"
@@ -1244,23 +1350,155 @@ export function AdLab() {
                 )}
               </span>
               {musicStyleId !== NO_MUSIC_ID && (
-                <span className="mt-2 block rounded-[6px] border border-border-soft bg-surface-2 p-2.5 text-xs leading-relaxed text-muted">
-                  {MUSIC_STYLES.find((m) => m.id === musicStyleId)?.prompt}
-                </span>
+                <details className="mt-2 rounded-[6px] border border-border-soft bg-surface-2 p-2.5">
+                  <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                    The brief this sends
+                  </summary>
+                  <span className="mt-1.5 block text-xs leading-relaxed text-muted">
+                    {MUSIC_STYLES.find((m) => m.id === musicStyleId)?.prompt}
+                  </span>
+                </details>
               )}
             </label>
           )}
 
           {/* Spot effects — available whenever effects are being built outside
               the video model, which is both layered and silent. */}
-          {audioMode !== "native" && recipe.sfx.length > 0 && (
+          {scoringSeparately && (
             <div className="mt-4 border-t border-border-soft pt-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-sm font-semibold">
-                  Spot effects — {MODELS[SFX_MODEL_ID].label.split(" (")[0]}
-                </h3>
-                <span className="label-sm">~${sfxCost.toFixed(3)} each</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  className="btn-secondary !px-3 !py-1.5 text-xs"
+                  onClick={() => void generateMusic()}
+                  disabled={musicBusy}
+                >
+                  {musicBusy
+                    ? "Composing…"
+                    : musicUrl
+                      ? "Regenerate music"
+                      : `Generate music (${duration + MUSIC_HANDLE_SECONDS}s, ~$${musicCost.toFixed(2)})`}
+                </button>
+                {musicUrl && <span className="chip border-success/40 !text-success">track ready</span>}
               </div>
+
+              {musicUrl && (
+                <div className="mt-3 max-w-md">
+                  <audio src={musicUrl} controls className="w-full" />
+                  <a
+                    href={musicUrl}
+                    download={`${preset.id}-music`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
+                  >
+                    Download track
+                  </a>
+                  <p className="mt-1 text-xs text-muted">
+                    Generated {MUSIC_HANDLE_SECONDS}s longer than the cut for
+                    trim handles — slide a downbeat onto the price stamp in
+                    the edit.
+                  </p>
+                </div>
+              )}
+
+              {/* The Seedance-only move: the bed becomes an input. */}
+              {timingRefAvailable && (
+                <div
+                  className={`mt-4 rounded-[6px] border p-3 ${
+                    musicAsTimingRef
+                      ? "border-accent/50 bg-accent/[0.05]"
+                      : "border-border-soft bg-surface-2"
+                  }`}
+                >
+                  <label className="flex cursor-pointer items-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-1 accent-[var(--accent)]"
+                      checked={musicAsTimingRef}
+                      onChange={(e) => {
+                        setMusicAsTimingRef(e.target.checked);
+                        invalidatePrompt();
+                      }}
+                    />
+                    <span>
+                      <span className="text-sm font-semibold">
+                        Cut the picture to this track ({modelName} only)
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-muted">
+                        The bed is handed back to the model as{" "}
+                        <span className="font-mono text-accent">[Audio1]</span>{" "}
+                        and read as a timing signal in the same pass that makes
+                        the picture. This is the difference between beats you
+                        nudge into place afterwards and cuts the render was
+                        built around.
+                      </span>
+                    </span>
+                  </label>
+                  {musicAsTimingRef && !musicUrl && (
+                    <p className="mt-2 rounded-[6px] border border-warning/40 bg-warning/10 p-2 text-xs leading-relaxed text-warning">
+                      Compose the bed first — the reference has to exist before
+                      the render starts.
+                    </p>
+                  )}
+                  {musicAsTimingRef && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                        What this does and doesn&apos;t do
+                      </summary>
+                      <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed text-muted">
+                        {TIMING_REF_NOTES.map((c) => (
+                          <li key={c}>{c}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              )}
+
+              {preset.beatSensitive && !timingRefActive && (
+                <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                  <span className="font-bold">Beat-sensitive concept.</span>{" "}
+                  This preset cuts its action to a musical pulse, but the bed
+                  is composed without the model seeing it — the beats will not
+                  line up on their own.{" "}
+                  {cap.refAudio
+                    ? "Tick the box above to hand the track back as a timing reference, or budget an alignment pass in the editor."
+                    : "Budget an alignment pass in the editor, switch to Seedance 2.5 Reference to feed the track back as a timing signal, or pick a pad-like style that hides drift."}
+                </p>
+              )}
+
+              {!timingRefActive && (
+                <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                    What layered audio does and doesn&apos;t guarantee
+                  </summary>
+                  <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-muted">
+                    {SYNC_CAVEATS.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+
+          {audioMode !== "native" && recipe.sfx.length > 0 && (
+            <details className="group mt-4 border-t border-border-soft pt-4">
+              <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2 [&::-webkit-details-marker]:hidden">
+                <span className="flex items-baseline gap-2 text-sm font-semibold">
+                  <span
+                    aria-hidden
+                    className="font-mono text-[10px] text-accent transition group-open:rotate-90"
+                  >
+                    ▶
+                  </span>
+                  Spot effects — {MODELS[SFX_MODEL_ID].label.split(" (")[0]}
+                </span>
+                <span className="label-sm">
+                  {Object.keys(sfxTracks).length} of {recipe.sfx.length} generated ·
+                  ~${sfxCost.toFixed(3)} each
+                </span>
+              </summary>
               <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted">
                 {cap.native && audioMode === "layered"
                   ? `${modelName} already renders effects from the picture it is making, which is why they land on the right frame — but it approximates a described effect rather than producing it. These are the hero hits: generated exactly as described, delivered as separate files, and placed by you in the edit.`
@@ -1346,120 +1584,7 @@ export function AdLab() {
                   ))}
                 </ul>
               </details>
-            </div>
-          )}
-
-          {scoringSeparately && (
-            <div className="mt-4 border-t border-border-soft pt-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  className="btn-secondary !px-3 !py-1.5 text-xs"
-                  onClick={() => void generateMusic()}
-                  disabled={musicBusy}
-                >
-                  {musicBusy
-                    ? "Composing…"
-                    : musicUrl
-                      ? "Regenerate music"
-                      : `Generate music (${duration + MUSIC_HANDLE_SECONDS}s, ~$${musicCost.toFixed(2)})`}
-                </button>
-                {musicUrl && <span className="chip border-success/40 !text-success">track ready</span>}
-              </div>
-
-              {musicUrl && (
-                <div className="mt-3 max-w-md">
-                  <audio src={musicUrl} controls className="w-full" />
-                  <a
-                    href={musicUrl}
-                    download={`${preset.id}-music`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 inline-block text-xs font-semibold text-accent hover:underline"
-                  >
-                    Download track
-                  </a>
-                  <p className="mt-1 text-xs text-muted">
-                    Generated {MUSIC_HANDLE_SECONDS}s longer than the cut for
-                    trim handles — slide a downbeat onto the price stamp in
-                    the edit.
-                  </p>
-                </div>
-              )}
-
-              {/* The Seedance-only move: the bed becomes an input. */}
-              {timingRefAvailable && (
-                <div
-                  className={`mt-4 rounded-[6px] border p-3 ${
-                    musicAsTimingRef
-                      ? "border-accent/50 bg-accent/[0.05]"
-                      : "border-border-soft bg-surface-2"
-                  }`}
-                >
-                  <label className="flex cursor-pointer items-start gap-2">
-                    <input
-                      type="checkbox"
-                      className="mt-1 accent-[var(--accent)]"
-                      checked={musicAsTimingRef}
-                      onChange={(e) => {
-                        setMusicAsTimingRef(e.target.checked);
-                        invalidatePrompt();
-                      }}
-                    />
-                    <span>
-                      <span className="text-sm font-semibold">
-                        Cut the picture to this track ({modelName} only)
-                      </span>
-                      <span className="mt-1 block text-xs leading-relaxed text-muted">
-                        The bed is handed back to the model as{" "}
-                        <span className="font-mono text-accent">[Audio1]</span>{" "}
-                        and read as a timing signal in the same pass that makes
-                        the picture. This is the difference between beats you
-                        nudge into place afterwards and cuts the render was
-                        built around.
-                      </span>
-                    </span>
-                  </label>
-                  {musicAsTimingRef && !musicUrl && (
-                    <p className="mt-2 rounded-[6px] border border-warning/40 bg-warning/10 p-2 text-xs leading-relaxed text-warning">
-                      Compose the bed first — the reference has to exist before
-                      the render starts.
-                    </p>
-                  )}
-                  {musicAsTimingRef && (
-                    <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-muted">
-                      {TIMING_REF_NOTES.map((c) => (
-                        <li key={c}>{c}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-              {preset.beatSensitive && !timingRefActive && (
-                <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
-                  <span className="font-bold">Beat-sensitive concept.</span>{" "}
-                  This preset cuts its action to a musical pulse, but the bed
-                  is composed without the model seeing it — the beats will not
-                  line up on their own.{" "}
-                  {cap.refAudio
-                    ? "Tick the box above to hand the track back as a timing reference, or budget an alignment pass in the editor."
-                    : "Budget an alignment pass in the editor, switch to Seedance 2.5 Reference to feed the track back as a timing signal, or pick a pad-like style that hides drift."}
-                </p>
-              )}
-
-              {!timingRefActive && (
-                <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
-                  <summary className="cursor-pointer text-xs font-semibold text-foreground">
-                    What layered audio does and doesn&apos;t guarantee
-                  </summary>
-                  <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-muted">
-                    {SYNC_CAVEATS.map((c) => (
-                      <li key={c}>{c}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </div>
+            </details>
           )}
         </Step>
 
@@ -1819,7 +1944,7 @@ export function AdLab() {
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
             <div className="text-sm text-muted">
-              {duration}s · {preset.aspect} ·{" "}
+              {duration}s · {aspect} · {frame.width}×{frame.height} ·{" "}
               <span className="font-bold text-accent">~${cost.toFixed(2)}</span>
               {scoringSeparately && (
                 <span className="block text-xs">
@@ -1853,7 +1978,7 @@ export function AdLab() {
         {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed") && (
           <div className="card overflow-hidden">
             <div className="mx-auto w-full max-w-md">
-              <div className={`relative w-full bg-surface-2 ${ASPECT_CLASS[preset.aspect]}`}>
+              <div className={`relative w-full bg-surface-2 ${ASPECT_CLASS[aspect] ?? "aspect-[16/9]"}`}>
                 {videoUrl ? (
                   <video
                     ref={videoRef}

@@ -59,10 +59,22 @@ export async function POST(req: Request) {
       musicStyleId?: string;
       modelId?: string;
       references?: ReferenceSpec[];
+      /** Chosen delivery shape and length, which may differ from the preset's. */
+      aspect?: string;
+      durationSeconds?: number;
       /** Present only when the user edited the recipe away from the preset. */
       recipe?: unknown;
     };
     const preset = getAdPreset(body.presetId);
+    // The prompt names the shape and length, so it has to name the ones being
+    // rendered — not the ones the concept was originally drawn for.
+    const aspect = /^\d{1,2}:\d{1,2}$/.test(body.aspect ?? "")
+      ? body.aspect!
+      : preset.aspect;
+    const durationSeconds = Math.min(
+      Math.max(Math.round(body.durationSeconds ?? preset.durationSeconds), 4),
+      30,
+    );
     const params = Object.fromEntries(
       preset.fields.map((f) => [f.key, (body.params?.[f.key] ?? "").trim() || f.placeholder]),
     );
@@ -83,9 +95,17 @@ export async function POST(req: Request) {
       );
     }
     const draft = edited?.success
-      ? composeFromRecipe(preset, edited.data, params, audioMode, musicBrief)
+      ? composeFromRecipe(preset, edited.data, params, audioMode, musicBrief, { aspect, durationSeconds })
       : preset.template(params, audioMode, musicBrief);
-    const baseline = draft + referenceBlock(refs);
+    // A preset's hand-tuned paragraph is written for the shape it was drawn
+    // for. Reframing a 16:9 grid into 9:16 is not a crop — the staging has to
+    // restack — so when the shape changes, say so in the prompt as well as in
+    // the API parameter.
+    const reframe =
+      aspect !== preset.aspect
+        ? ` Deliver this as a ${aspect} frame. The concept was staged for ${preset.aspect}, so recompose it for ${aspect} rather than cropping: restack the arrangement, keep the product and every line of text fully inside the frame with comfortable margins, and hold the same rhythm.`
+        : "";
+    const baseline = draft + reframe + referenceBlock(refs);
 
     if (!hasGeminiKey() || isDryRun() || !unlocked(req)) {
       return NextResponse.json({
@@ -105,7 +125,7 @@ export async function POST(req: Request) {
     const result = await reasonJson({
       prompt: `You are a creative director finalizing a short-form product ad prompt for a generative video model with native synchronized audio (text in quotes renders as on-screen or spoken content).
 
-The ad concept is ${edited?.success ? "a preset recipe the user has EDITED — treat their edits as the brief and follow them exactly, even where they depart from convention" : "a fixed preset — do NOT change its concept, camera style, structure or audio design"}. Your job is to polish the draft prompt below into the strongest possible ${preset.durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, and keep it as one flowing prompt of 4-8 sentences. Preserve the Audio: cue's instructions exactly in spirit — ${audioRule}. No real-world brand names other than the quoted brand text.${
+The ad concept is ${edited?.success ? "a preset recipe the user has EDITED — treat their edits as the brief and follow them exactly, even where they depart from convention" : "a fixed preset — do NOT change its concept, camera style, structure or audio design"}. Your job is to polish the draft prompt below into the strongest possible ${durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, and keep it as one flowing prompt of 4-8 sentences.${aspect !== preset.aspect ? ` The draft asks for a ${aspect} frame although the concept was staged for ${preset.aspect} — keep that reframing instruction and make the staging genuinely work in ${aspect}.` : ""} Preserve the Audio: cue's instructions exactly in spirit — ${audioRule}. No real-world brand names other than the quoted brand text.${
         refs.length > 0
           ? "\n\nThe draft ends with a reference-usage block addressing references positionally as [Image1], [Video1], [Audio1] and so on. Keep every one of those bracketed tokens EXACTLY as written and keep the instruction that the product must not drift — the video model resolves them against the uploaded reference files."
           : ""
