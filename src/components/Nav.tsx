@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/ai-studio/studio", label: "Studio" },
   { href: "/ai-studio/packshots", label: "Packshots" },
   { href: "/ai-studio/ads", label: "Ad Lab" },
+  { href: "/ai-studio/prompts", label: "Prompts" },
   { href: "/ai-studio/models", label: "Models" },
   { href: "/ai-studio/build-vs-buy", label: "Build vs. Buy" },
   { href: "/ai-studio/playbook", label: "Playbook" },

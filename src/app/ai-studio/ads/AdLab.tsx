@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AD_NEGATIVE_PROMPT,
   AD_PRESETS,
   AD_VIDEO_MODELS,
   AUDIO_REF_LIMITS,
@@ -138,6 +139,8 @@ export function AdLab() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** True when the prompt arrived from the library rather than the recipe. */
+  const [imported, setImported] = useState(false);
   const [sessionSpend, setSessionSpend] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -285,6 +288,24 @@ export function AdLab() {
     [productImage, refs, timingRefActive],
   );
 
+  /**
+   * A prompt handed over from the Prompts tab. Landing it straight in the
+   * composed-prompt box is the point: the library is a study set you can run,
+   * not a list you copy out of.
+   */
+  useEffect(() => {
+    try {
+      const handed = sessionStorage.getItem("adlab-imported-prompt");
+      if (handed) {
+        sessionStorage.removeItem("adlab-imported-prompt");
+        setFinalPrompt(handed);
+        setNegativePrompt(AD_NEGATIVE_PROMPT);
+        setPhase("ready");
+        setImported(true);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
@@ -425,6 +446,7 @@ export function AdLab() {
       if (!res.ok) throw new Error(json.error ?? "Compose failed");
       setFinalPrompt(json.finalPrompt);
       setNegativePrompt(json.negativePrompt);
+      setImported(false);
       setPhase("ready");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Compose failed");
@@ -1893,6 +1915,14 @@ export function AdLab() {
                 : "Compose the prompt →"}
           </button>
 
+          {imported && (
+            <p className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.05] p-3 text-xs leading-relaxed text-muted">
+              <span className="font-bold text-accent">From the prompt library.</span>{" "}
+              This is someone else&apos;s prompt, loaded to run as-is. It has
+              no recipe behind it and no references attached — composing from
+              the recipe above will replace it.
+            </p>
+          )}
           {finalPrompt && (
             <>
               <label className="mt-5 block">
