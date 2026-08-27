@@ -59,11 +59,7 @@ export function PromptLibrary({ library }: { library: Library }) {
         <div className="card mt-6 border-warning/40 bg-warning/[0.06] p-6">
           <p className="label !text-warning">Not yet ingested</p>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-            The library is built from a local copy of the dataset rather than
-            fetched at runtime, so nothing here depends on a third party
-            staying up. Download{" "}
-            <code className="font-mono text-xs text-foreground">metadata.jsonl</code>{" "}
-            from{" "}
+            The library is built once from{" "}
             <a
               href={library.source.url}
               target="_blank"
@@ -71,12 +67,22 @@ export function PromptLibrary({ library }: { library: Library }) {
               className="text-accent hover:underline"
             >
               the dataset
-            </a>
-            , then run:
+            </a>{" "}
+            and committed, so the page depends on no third party staying up.
+            Either page the dataset server directly:
           </p>
           <pre className="mt-4 overflow-x-auto rounded-[6px] border border-border-soft bg-surface-2 p-4 font-mono text-xs">
-node scripts/ingest-prompts.mjs --inspect metadata.jsonl   # check the schema
-node scripts/ingest-prompts.mjs metadata.jsonl             # build the library
+node scripts/ingest-prompts.mjs --from-api --inspect   # check the schema
+node scripts/ingest-prompts.mjs --from-api             # build the library
+          </pre>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+            …or, where huggingface.co is unreachable, download{" "}
+            <code className="font-mono text-xs text-foreground">metadata.jsonl</code>{" "}
+            and pass it as a file:
+          </p>
+          <pre className="mt-3 overflow-x-auto rounded-[6px] border border-border-soft bg-surface-2 p-4 font-mono text-xs">
+node scripts/ingest-prompts.mjs --inspect metadata.jsonl
+node scripts/ingest-prompts.mjs metadata.jsonl
           </pre>
         </div>
       </div>

@@ -3,9 +3,15 @@
  * Turns the GokuScraper Seedance 2 metadata.jsonl into the studio's prompt
  * library.
  *
- * Two modes:
+ * Sources — a local file, or the dataset server directly:
  *   node scripts/ingest-prompts.mjs --inspect <file>   print the schema it found
  *   node scripts/ingest-prompts.mjs <file>             write the library JSON
+ *   node scripts/ingest-prompts.mjs --from-api         page the API, no download
+ *   node scripts/ingest-prompts.mjs --from-api --inspect
+ *
+ * --from-api needs network access to huggingface.co, so it runs on your
+ * machine rather than in a sandbox that blocks it. It pages the rows
+ * endpoint 100 at a time, which is the cap that endpoint enforces.
  *
  * The dataset's exact field names are not documented, so nothing here is
  * hard-coded to one shape: the prompt, author, url, aspect and duration are
@@ -17,6 +23,10 @@ import path from "node:path";
 import readline from "node:readline";
 
 const OUT = path.join(process.cwd(), "src/data/prompt-library.json");
+const DATASET = "GokuScraper/seedance-2-prompts-datasets";
+const API = "https://datasets-server.huggingface.co";
+/** The rows endpoint refuses more than 100 per call. */
+const PAGE = 100;
 const SOURCE_URL = "https://huggingface.co/datasets/GokuScraper/seedance-2-prompts-datasets";
 
 // --- field detection -------------------------------------------------------
@@ -86,6 +96,58 @@ function classify(text) {
 const fingerprint = (t) =>
   t.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 24).join(" ");
 
+/**
+ * Pages the dataset server. Each item is {row_idx, row, truncated_cells};
+ * the actual record is `.row`, and a truncated cell means the server
+ * shortened a long value — those rows are skipped rather than ingested
+ * half-complete.
+ */
+async function* rowsFromApi(split = "train", config = "default") {
+  let offset = 0;
+  let total = Infinity;
+  while (offset < total) {
+    const url =
+      `${API}/rows?dataset=${encodeURIComponent(DATASET)}` +
+      `&config=${encodeURIComponent(config)}&split=${encodeURIComponent(split)}` +
+      `&offset=${offset}&length=${PAGE}`;
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (e) {
+      // A network-level failure is a different problem from an HTTP error,
+      // and the usual cause is a sandbox or corporate proxy refusing the host.
+      throw new Error(
+        `Could not reach ${API} — ${e instanceof Error ? e.message : e}.\n` +
+          "Run this on a machine that can reach huggingface.co, or download\n" +
+          "metadata.jsonl and pass it as a file argument instead.",
+      );
+    }
+    if (!res.ok) {
+      const hint =
+        res.status === 404
+          ? `Check the config and split names:\n  curl "${API}/splits?dataset=${encodeURIComponent(DATASET)}"`
+          : res.status === 403 || res.status === 407
+            ? "That is a network policy refusing the host, not the dataset server.\n" +
+              "Run this where huggingface.co is reachable, or download metadata.jsonl\n" +
+              "and pass it as a file argument instead."
+            : res.status === 429
+              ? "Rate limited. Wait a minute and re-run — it resumes from scratch but is cheap."
+              : "Try again shortly — the server rebuilds its indexes periodically.";
+      throw new Error(`Dataset server returned ${res.status}.\n${hint}`);
+    }
+    const json = await res.json();
+    total = json.num_rows_total ?? json.rows?.length ?? 0;
+    if (!json.rows?.length) break;
+    for (const item of json.rows) {
+      if (item.truncated_cells?.length) continue;
+      if (item.row) yield item.row;
+    }
+    offset += json.rows.length;
+    process.stderr.write(`\r  fetched ${Math.min(offset, total)} / ${total}`);
+  }
+  process.stderr.write("\n");
+}
+
 async function* rows(file) {
   const rl = readline.createInterface({
     input: fs.createReadStream(file, "utf8"),
@@ -102,11 +164,11 @@ async function* rows(file) {
   }
 }
 
-async function inspect(file) {
+async function inspect(source) {
   const counts = new Map();
   let n = 0;
   const samples = [];
-  for await (const row of rows(file)) {
+  for await (const row of source) {
     n++;
     for (const k of Object.keys(row)) counts.set(k, (counts.get(k) ?? 0) + 1);
     if (samples.length < 2) samples.push(row);
@@ -125,7 +187,7 @@ async function inspect(file) {
   console.log(JSON.stringify(samples[0], null, 2).slice(0, 1400));
 }
 
-async function build(file) {
+async function build(source) {
   const seen = new Set();
   const kept = [];
   let considered = 0;
@@ -133,7 +195,7 @@ async function build(file) {
   let tooShort = 0;
   let dupes = 0;
 
-  for await (const row of rows(file)) {
+  for await (const row of source) {
     considered++;
     const text = pick(row, KEYS.prompt);
     if (typeof text !== "string") continue;
@@ -207,13 +269,31 @@ async function build(file) {
 
 const args = process.argv.slice(2);
 const doInspect = args.includes("--inspect");
+const fromApi = args.includes("--from-api");
 const file = args.find((a) => !a.startsWith("--"));
-if (!file) {
-  console.error("usage: node scripts/ingest-prompts.mjs [--inspect] <metadata.jsonl>");
+
+let source;
+if (fromApi) {
+  console.error(`Paging ${DATASET} from ${API} …`);
+  source = rowsFromApi();
+} else if (file) {
+  if (!fs.existsSync(file)) {
+    console.error(`No such file: ${file}`);
+    process.exit(1);
+  }
+  source = rows(file);
+} else {
+  console.error(
+    "usage:\n" +
+      "  node scripts/ingest-prompts.mjs [--inspect] <metadata.jsonl>\n" +
+      "  node scripts/ingest-prompts.mjs --from-api [--inspect]",
+  );
   process.exit(1);
 }
-if (!fs.existsSync(file)) {
-  console.error(`No such file: ${file}`);
+
+try {
+  await (doInspect ? inspect(source) : build(source));
+} catch (e) {
+  console.error(`\n${e instanceof Error ? e.message : e}`);
   process.exit(1);
 }
-await (doInspect ? inspect(file) : build(file));
