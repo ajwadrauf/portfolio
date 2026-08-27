@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Ajwad Rauf — AI production systems",
   description:
-    "Toronto creative producer and creative technologist. AI production pipelines that take a product photo, a selfie or a campaign brief and return finished, reviewed, deployable output.",
+    "Applied AI across marketing and CRM. I build production AI end to end — finding where it changes the economics, prototyping fast, and shipping systems built on real data for a specific context.",
 };
 
 type Project = {
@@ -17,6 +17,8 @@ type Project = {
   cta: string;
   arrow: string;
   note: string;
+  /** Why it is gated and who to ask — rendered as prose, not as a mono label. */
+  access?: { text: string; linkLabel: string; href: string; after: string };
   body: string[];
   tags: string[];
 };
@@ -31,7 +33,13 @@ const PROJECTS: Project[] = [
     href: "/ai-studio",
     cta: "Open the live studio",
     arrow: "↗",
-    note: "Browsable in free demo mode — no signup",
+    note: "Browsable end to end · live generation gated",
+    access: {
+      text: "Every render spends real credits, so generation is behind a passcode. Internal colleagues can reach out directly; recruiters, ",
+      linkLabel: "message me on LinkedIn",
+      href: "https://www.linkedin.com/in/ajwadrauf",
+      after: " and I will open it up.",
+    },
     body: [
       "A campaign studio that turns one product photo into stills, bilingual EN/FR promo tiles and video. A packshot generator that produces GS1 planogram angles without a reshoot. An Ad Lab of preset ad recipes — editable, reference-locked, with the sound built in layers the way a studio actually does it. And a prompt builder that teaches the structure rather than handing over a prompt.",
       "Thirteen models from six labs behind two APIs, routed by what each is actually good at: reference-to-video where the packaging must not drift, a cheap draft tier where it does not matter yet. Costed per render before you spend — including the token-billed models, where resolution moves the price more than length does.",
@@ -41,7 +49,7 @@ const PROJECTS: Project[] = [
   {
     n: "02",
     kind: "Consumer AI product",
-    status: { label: "In market", tone: "live" },
+    status: { label: "Market ready", tone: "live" },
     name: "Persopot",
     lede: "Selfies in, studio headshots and outfit try-ons out.",
     href: "https://persopot.com",
@@ -88,6 +96,23 @@ const APPROACH = [
     p: "Design, build, deploy, support. All three projects here went from idea to live users without a hand-off, including one through enterprise SSO and review.",
     short: "Design, build, deploy, support — no hand-off.",
   },
+];
+
+/**
+ * The marquee list. Duplicated in the markup so the track can travel exactly
+ * -50% and rejoin itself without a seam.
+ */
+const SKILLS = [
+  "Built & shipped",
+  "Agentic workflows",
+  "Production AI",
+  "Marketing & CRM",
+  "Conversational analytics",
+  "Generative media",
+  "Data infrastructure",
+  "Text-to-SQL",
+  "Personalization",
+  "Prompt systems",
 ];
 
 const LINKS = [
@@ -143,18 +168,38 @@ export default function Home() {
         </div>
         <div className="lg:pb-3.5">
           <p className="text-[15px] leading-[1.7] text-muted sm:text-[17px]">
-            Creative producer and creative technologist. I work where content
-            production meets AI: pipelines that take a product photo, a selfie
-            or a campaign brief and return finished, reviewed, deployable
-            output. Three of them are below. Two are live right now — one is
-            running inside Loblaw.
+            Applied AI, mostly across marketing and CRM. I look for where AI
+            changes the economics of a job, prototype fast, then ship something
+            built on real data for a specific context — end to end, through
+            security review, into people&apos;s hands. Built by hand, not bought
+            off a shelf. Three of those systems are below.
           </p>
           <div className="mt-7 flex flex-wrap gap-2.5">
             <span className="chip">Toronto</span>
+            <span className="chip">AI · Marketing &amp; CRM</span>
             <span className="chip">Solo builds, shipped</span>
           </div>
         </div>
       </section>
+
+      {/* ---------------- Skills marquee ---------------- */}
+      <div className="marquee" aria-hidden="true">
+        <div className="marquee-track">
+          {[0, 1].map((copy) => (
+            <div key={copy} className="flex">
+              {SKILLS.map((skill) => (
+                <span key={`${copy}-${skill}`} className="marquee-item">
+                  {skill}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* The loop is decorative; the same list, readable, for screen readers. */}
+      <p className="sr-only">
+        Focus areas: {SKILLS.join(", ")}.
+      </p>
 
       {/* ---------------- Selected work ---------------- */}
       <div
@@ -194,6 +239,20 @@ export default function Home() {
                 </Link>
               </div>
               <p className="label-sm mt-3.5">{p.note}</p>
+              {p.access && (
+                <p className="mt-3 max-w-[46ch] text-[13px] leading-[1.65] text-muted">
+                  {p.access.text}
+                  <a
+                    href={p.access.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-accent hover:underline"
+                  >
+                    {p.access.linkLabel}
+                  </a>
+                  {p.access.after}
+                </p>
+              )}
             </div>
 
             <div>

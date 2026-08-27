@@ -121,3 +121,55 @@ h3 {
 .input {
   @apply w-full rounded-[6px] border border-border-soft bg-surface px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted/60 focus:border-accent;
 }
+
+/*
+ * Skills marquee.
+ *
+ * The track holds the list twice and travels exactly -50%, so the second copy
+ * lands where the first began and the loop has no seam. Pauses on hover so a
+ * term can actually be read, and stops entirely for anyone who has asked the
+ * OS for less motion — a decorative loop is the first thing that should go.
+ */
+.marquee {
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 42s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 26px;
+  white-space: nowrap;
+  padding: 14px 26px;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.marquee-item::after {
+  content: "✶";
+  color: var(--accent);
+  font-size: 10px;
+}
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    /* Without the loop the duplicate copy is just noise off-screen. */
+    width: 100%;
+    overflow-x: auto;
+  }
+}
