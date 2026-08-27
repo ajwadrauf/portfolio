@@ -1,4 +1,8 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { NextResponse } from "next/server";
+import { isStarterClipPath } from "@/lib/referenceClips";
+import { falUpload } from "@/lib/fal";
 import { VIDEO_RESOLUTIONS, type VideoResolution } from "@/lib/videoCost";
 import { consume, liveJson, unlocked } from "@/lib/auth";
 import {
@@ -16,6 +20,49 @@ import { mockImageDataUrl } from "@/lib/mock";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+/** Hosts fal cannot reach from its own network. */
+const PRIVATE_HOST =
+  /^(localhost|127\.|0\.0\.0\.0|\[::1\]|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i;
+
+/** One upload per starter clip per process, not one per generation. */
+const starterClipUrls = new Map<string, string>();
+
+/**
+ * Turns a starter clip's site-relative path into something fal can fetch.
+ *
+ * fal pulls reference URLs from its own servers, so "/references/x.mp4" means
+ * nothing to it and localhost means less. On a deployed site the public URL
+ * is enough. On a laptop it is not, so the file is read off disk and pushed
+ * to fal's storage instead — the same path a user upload takes.
+ */
+async function resolveClipUrl(pathname: string, origin: string): Promise<string> {
+  const cached = starterClipUrls.get(pathname);
+  if (cached) return cached;
+
+  const host = (() => {
+    try {
+      return new URL(origin).host;
+    } catch {
+      return "";
+    }
+  })();
+
+  if (host && !PRIVATE_HOST.test(host)) {
+    const url = new URL(pathname, origin).toString();
+    starterClipUrls.set(pathname, url);
+    return url;
+  }
+
+  // Not publicly reachable — hand the bytes to fal directly.
+  const file = path.join(process.cwd(), "public", pathname.replace(/^\//, ""));
+  const bytes = await fs.readFile(file);
+  const { url } = await falUpload(
+    new Blob([new Uint8Array(bytes)], { type: "video/mp4" }),
+  );
+  starterClipUrls.set(pathname, url);
+  return url;
+}
 
 /** Starts a mini-ad video job from a composed prompt. Polled via /api/generate/video/status. */
 export async function POST(req: Request) {
@@ -103,7 +150,26 @@ export async function POST(req: Request) {
     const allRefs = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter(
       (u): u is string => Boolean(u),
     );
-    const videoRefs = multiRef ? (body.referenceVideoUrls ?? []) : [];
+    const rawVideoRefs = multiRef ? (body.referenceVideoUrls ?? []) : [];
+    // Starter clips arrive as site-relative paths and have to be made
+    // fetchable before they are any use to the model.
+    const origin = new URL(req.url).origin;
+    const videoRefs: string[] = [];
+    for (const u of rawVideoRefs) {
+      try {
+        videoRefs.push(isStarterClipPath(u) ? await resolveClipUrl(u, origin) : u);
+      } catch (e) {
+        return NextResponse.json(
+          {
+            error:
+              `Could not make the starter clip ${u} reachable by the generation provider. ` +
+              `On a deployed site its public URL is used directly; locally it has to be uploaded first, which needs fal storage. ` +
+              (e instanceof Error ? e.message : ""),
+          },
+          { status: 400 },
+        );
+      }
+    }
     // Audio references are a Seedance Reference feature — sending them to an
     // endpoint that doesn't define the field would just fail validation.
     const audioRefs = AUDIO_REF_MODELS.includes(body.modelId)

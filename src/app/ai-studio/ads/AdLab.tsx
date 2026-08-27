@@ -35,6 +35,7 @@ import {
   musicLengthFor,
 } from "@/lib/music";
 import { MODELS, estimateCost, usesTokenPricing } from "@/lib/models";
+import { REFERENCE_CLIPS } from "@/lib/referenceClips";
 import {
   ASPECTS,
   VIDEO_RESOLUTIONS,
@@ -127,7 +128,7 @@ function Step({
   );
 }
 
-export function AdLab() {
+export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }) {
   const [health, setHealth] = useState<{ gemini: boolean; fal: boolean; live: boolean } | null>(null);
   const [presetId, setPresetId] = useState<string>(AD_PRESETS[0].id);
   const [params, setParams] = useState<Record<string, string>>({});
@@ -1809,8 +1810,94 @@ export function AdLab() {
               )}
             </div>
 
+            {/* Starter clips — motion you can borrow without shooting it. */}
+            <div className="mt-5 border-t border-border-soft pt-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="label">Starter motion clips</span>
+                <span className="label-sm">or upload your own below</span>
+              </div>
+              <p className="mt-1.5 max-w-3xl text-xs leading-relaxed text-muted">
+                Abstract on purpose. The model reads a clip&apos;s camera move,
+                cutting rhythm and energy and applies them to your product, so
+                a reference with no subject in it has nothing to leak into the
+                render — only motion.
+              </p>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {REFERENCE_CLIPS.map((clip) => {
+                  const ready = availableClipIds.includes(clip.id);
+                  const added = refs.some((r) => r.url === clip.file);
+                  return (
+                    <div
+                      key={clip.id}
+                      className={`rounded-[6px] border ${
+                        added ? "border-accent bg-accent/[0.04]" : "border-border-soft bg-surface"
+                      }`}
+                    >
+                      <div className="relative aspect-video overflow-hidden rounded-t-[5px] bg-surface-2">
+                        {ready ? (
+                          <video
+                            src={clip.file}
+                            poster={clip.poster}
+                            muted
+                            loop
+                            playsInline
+                            preload="none"
+                            className="h-full w-full object-cover"
+                            onMouseEnter={(e) => void e.currentTarget.play().catch(() => {})}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.pause();
+                              e.currentTarget.currentTime = 0;
+                            }}
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center px-2 text-center">
+                            <span className="label-sm !text-[10px]">Not added yet</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="text-xs font-semibold">{clip.name}</p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                          {clip.brief}
+                        </p>
+                        <button
+                          className="btn-secondary mt-2.5 w-full !px-2 !py-1 text-[11px]"
+                          disabled={!ready || added}
+                          onClick={() => {
+                            setRefs((prev) => [
+                              ...prev,
+                              {
+                                url: clip.file,
+                                media: "video",
+                                role: clip.suggestedRole as ReferenceRole,
+                                name: clip.name,
+                              },
+                            ]);
+                            invalidatePrompt();
+                          }}
+                        >
+                          {added ? "Added" : ready ? "Use as reference" : "Unavailable"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {availableClipIds.length === 0 && (
+                <p className="mt-3 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                  <span className="font-bold">No starter clips installed.</span>{" "}
+                  Drop the four files into{" "}
+                  <code className="font-mono">public/references/</code> using the
+                  names above and they appear here. They are served from this
+                  site, so unlike an upload they cost nothing and never expire.
+                </p>
+              )}
+            </div>
+
             <button
-              className="btn-secondary mt-3 !px-3 !py-1.5 text-xs"
+              className="btn-secondary mt-4 !px-3 !py-1.5 text-xs"
               onClick={() => refInput.current?.click()}
               disabled={uploading}
             >
