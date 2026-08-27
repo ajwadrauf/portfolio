@@ -302,6 +302,20 @@ export function AdLab() {
         setNegativePrompt(AD_NEGATIVE_PROMPT);
         setPhase("ready");
         setImported(true);
+        // A prompt addressing [Image1] or [Video1] only means anything on the
+        // endpoint that resolves them. Landing it on a first-frame model would
+        // read the tokens as literal text — the exact silent failure the
+        // builder warns about — so route it to the model it was written for.
+        if (/\[(?:Image|Video|Audio)\d+\]/.test(handed)) {
+          setModelId("seedance-2.5-ref");
+        }
+      }
+      // A timeline written for 14 seconds is wrong at 8, so the length comes
+      // across with it rather than being left at the preset's.
+      const handedDuration = Number(sessionStorage.getItem("adlab-imported-duration"));
+      if (Number.isFinite(handedDuration) && handedDuration >= 4) {
+        sessionStorage.removeItem("adlab-imported-duration");
+        setSeconds(handedDuration);
       }
     } catch {}
   }, []);
@@ -1918,9 +1932,10 @@ export function AdLab() {
           {imported && (
             <p className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.05] p-3 text-xs leading-relaxed text-muted">
               <span className="font-bold text-accent">From the prompt library.</span>{" "}
-              This is someone else&apos;s prompt, loaded to run as-is. It has
-              no recipe behind it and no references attached — composing from
-              the recipe above will replace it.
+              Loaded to run as-is, with the length it was written for. It has
+              no recipe behind it and no references attached yet — attach them
+              in the References step so its tokens resolve, and note that
+              composing from the recipe above will replace it.
             </p>
           )}
           {finalPrompt && (

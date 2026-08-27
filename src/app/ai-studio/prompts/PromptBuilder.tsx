@@ -3,14 +3,27 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  BLOCKS,
+  BEAT_ROLES,
+  DURATION_BOUNDS,
+  EXAMPLE_BEATS,
+  EXAMPLE_DURATION,
   EXAMPLE_SLOTS,
+  EXAMPLE_THROUGHLINE,
+  HEAD_BLOCKS,
   RULES,
   SYNTAX_NOTE,
+  TAIL_BLOCKS,
   assemble,
+  beatTimes,
+  beatsTotal,
   exampleValues,
+  mmss,
+  timelineIssues,
   tokenFor,
+  type Beat,
+  type BeatRole,
   type BlockId,
+  type BuilderBlock,
   type Slot,
   type SlotMedia,
 } from "@/lib/promptBuilder";
@@ -45,18 +58,32 @@ export function PromptBuilder() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [slots, setSlots] = useState<Slot[]>([]);
   const [copied, setCopied] = useState(false);
-  const [openWhy, setOpenWhy] = useState<BlockId | null>("register");
+  /** Which reasoning panel is open — a block id, or the timeline. */
+  const [openWhy, setOpenWhy] = useState<string | null>("register");
+  const [duration, setDuration] = useState(14);
+  const [beats, setBeats] = useState<Beat[]>([]);
+  /** The sound that runs under the whole take, not tied to one beat. */
+  const [throughline, setThroughline] = useState("");
   /** The last textarea touched, so a token chip knows where to insert. */
-  const focused = useRef<{ id: BlockId; el: HTMLTextAreaElement } | null>(null);
+  const focused = useRef<
+    { kind: "block"; id: BlockId; el: HTMLTextAreaElement }
+    | { kind: "beat"; index: number; el: HTMLTextAreaElement }
+    | null
+  >(null);
 
-  const prompt = useMemo(() => assemble(values), [values]);
-  const filled = BLOCKS.filter((b) => (values[b.id] ?? "").trim()).length;
-  /** Tokens the prompt uses but no slot defines — a silent failure otherwise. */
-  const dangling = useMemo(() => {
-    const defined = new Set(slots.map((_, i) => tokenFor(slots, i)));
-    const used = new Set(prompt.match(/\[(?:Image|Video|Audio)\d+\]/g) ?? []);
-    return [...used].filter((t) => !defined.has(t));
-  }, [prompt, slots]);
+  const prompt = useMemo(
+    () => assemble(values, beats, duration, throughline),
+    [values, beats, duration, throughline],
+  );
+  const times = useMemo(() => beatTimes(beats), [beats]);
+  const total = beatsTotal(beats);
+  const written = [...HEAD_BLOCKS, ...TAIL_BLOCKS].filter((b) =>
+    (values[b.id] ?? "").trim(),
+  ).length;
+  const issues = useMemo(
+    () => timelineIssues(beats, duration, prompt, slots),
+    [beats, duration, prompt, slots],
+  );
 
   const set = (id: BlockId, v: string) => setValues((p) => ({ ...p, [id]: v }));
 
@@ -68,7 +95,8 @@ export function PromptBuilder() {
     const start = el.selectionStart ?? el.value.length;
     const end = el.selectionEnd ?? start;
     const next = `${el.value.slice(0, start)}${token}${el.value.slice(end)}`;
-    set(f.id, next);
+    if (f.kind === "beat") setBeat(f.index, { action: next });
+    else set(f.id, next);
     requestAnimationFrame(() => {
       el.focus();
       el.setSelectionRange(start + token.length, start + token.length);
@@ -78,7 +106,13 @@ export function PromptBuilder() {
   const loadExample = () => {
     setValues(exampleValues());
     setSlots(EXAMPLE_SLOTS.map((s) => ({ ...s })));
+    setBeats(EXAMPLE_BEATS.map((b) => ({ ...b })));
+    setDuration(EXAMPLE_DURATION);
+    setThroughline(EXAMPLE_THROUGHLINE);
   };
+
+  const setBeat = (i: number, patch: Partial<Beat>) =>
+    setBeats((p) => p.map((b, j) => (j === i ? { ...b, ...patch } : b)));
 
   const copy = async () => {
     try {
@@ -91,6 +125,9 @@ export function PromptBuilder() {
   const sendToAdLab = () => {
     try {
       sessionStorage.setItem(HANDOFF_KEY, prompt);
+      // The timeline only means anything if the render is the length it was
+      // written for, so the duration travels with the prompt.
+      sessionStorage.setItem("adlab-imported-duration", String(duration));
     } catch {}
     router.push("/ai-studio/ads");
   };
@@ -100,29 +137,33 @@ export function PromptBuilder() {
       <h1 className="text-[1.75rem] tracking-[-0.03em]">Prompt builder</h1>
       <p className="mt-2 max-w-3xl text-muted">
         A reference-to-video prompt is not a sentence you write, it is a
-        structure you fill. Every prompt that works on these models has the
-        same nine parts in the same order — and the part almost everyone skips
-        is the one that stops the product drifting. Fill it in, or load the
-        worked example and take it apart.
+        structure you fill. Set the frame, say what each reference is for,
+        then spend the seconds deliberately — the two parts people skip are
+        the one that stops the product drifting and the one that decides how
+        long the payoff gets. Fill it in, or load the worked example and take
+        it apart.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={loadExample}>
           Load the worked example
         </button>
-        {filled > 0 && (
+        {(written > 0 || beats.length > 0) && (
           <button
             className="text-xs font-semibold text-muted hover:text-foreground"
             onClick={() => {
               setValues({});
               setSlots([]);
+              setBeats([]);
+              setThroughline("");
             }}
           >
             Clear
           </button>
         )}
         <span className="label-sm ml-auto">
-          {filled} of {BLOCKS.length} parts
+          {written} of {HEAD_BLOCKS.length + TAIL_BLOCKS.length} parts ·{" "}
+          {beats.length} beat{beats.length === 1 ? "" : "s"}
         </span>
       </div>
 
@@ -207,9 +248,9 @@ export function PromptBuilder() {
         )}
       </section>
 
-      {/* The nine parts */}
+      {/* The parts before the timeline */}
       <div className="mt-6 space-y-4">
-        {BLOCKS.map((b) => {
+        {HEAD_BLOCKS.map((b) => {
           const open = openWhy === b.id;
           return (
             <section key={b.id} className="card p-5">
@@ -240,7 +281,7 @@ export function PromptBuilder() {
                 placeholder={b.placeholder}
                 value={values[b.id] ?? ""}
                 onFocus={(e) => {
-                  focused.current = { id: b.id, el: e.currentTarget };
+                  focused.current = { kind: "block", id: b.id, el: e.currentTarget };
                 }}
                 onChange={(e) => set(b.id, e.target.value)}
               />
@@ -265,6 +306,234 @@ export function PromptBuilder() {
         })}
       </div>
 
+      {/* ---------------- 05 The timeline ---------------- */}
+      <section className="card mt-4 p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="flex items-baseline gap-3 font-semibold">
+            <span className="font-mono text-[11px] text-accent">05</span>
+            Timeline — how the seconds are spent
+          </h2>
+          <button
+            className="text-xs font-semibold text-accent hover:underline"
+            onClick={() => setOpenWhy(openWhy === "timeline" ? null : "timeline")}
+          >
+            {openWhy === "timeline" ? "Hide why" : "Why this part"}
+          </button>
+        </div>
+
+        {openWhy === "timeline" && (
+          <p className="mt-3 max-w-3xl rounded-[6px] border border-accent/25 bg-accent/[0.04] p-3 text-xs leading-relaxed text-muted">
+            <span className="font-bold text-foreground">
+              The prompt does not set the duration — the API does.
+            </span>{" "}
+            Writing &ldquo;14 seconds&rdquo; into a prompt does not make a
+            14-second video; the duration parameter does, and if the two
+            disagree the model compresses or pads to fill the real length.
+            Timestamps are a proportional plan, not a frame-accurate cue sheet:
+            models have no clock. What they genuinely buy you is explicit
+            ordering and relative weight — and, more usefully, they force the
+            arithmetic into the open. Five beats in eight seconds is 1.6
+            seconds each, which is too fast to read, and this is the only
+            moment noticing that is free.
+          </p>
+        )}
+
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-3">
+            <span className="label">Render length</span>
+            <input
+              type="range"
+              min={DURATION_BOUNDS.min}
+              max={DURATION_BOUNDS.max}
+              step={1}
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              className="w-40 accent-[var(--accent)]"
+            />
+            <span className="font-mono text-xs text-foreground">{duration}s</span>
+          </label>
+          <span
+            className={`label-sm ${
+              beats.length && Math.abs(total - duration) > 0.01
+                ? "!text-danger"
+                : beats.length
+                  ? "!text-success"
+                  : ""
+            }`}
+          >
+            beats total {total}s
+          </span>
+        </div>
+
+        {/* Proportional bar — the allocation, seen rather than computed. */}
+        {beats.length > 0 && (
+          <div className="mt-3 flex h-7 w-full overflow-hidden rounded-[4px] border border-border-soft">
+            {beats.map((b, i) => (
+              <div
+                key={i}
+                className={`flex items-center justify-center border-r border-border-soft text-[10px] font-semibold last:border-r-0 ${
+                  b.role === "climax"
+                    ? "bg-accent/25 text-accent"
+                    : "bg-surface-2 text-muted"
+                }`}
+                style={{ width: `${(b.seconds / Math.max(total, 1)) * 100}%` }}
+                title={`${b.role} · ${b.seconds}s`}
+              >
+                {b.seconds >= 2 ? `${b.seconds}s` : ""}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-4 space-y-3">
+          {beats.map((b, i) => (
+            <div key={i} className="rounded-[6px] border border-border-soft bg-surface p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="w-24 shrink-0 font-mono text-[11px] text-accent">
+                  {mmss(times[i].start)}–{mmss(times[i].end)}
+                </span>
+                <select
+                  className="input !w-auto !py-1 text-xs"
+                  value={b.role}
+                  onChange={(e) => setBeat(i, { role: e.target.value as BeatRole })}
+                  title={BEAT_ROLES.find((r) => r.id === b.role)?.guidance}
+                >
+                  {BEAT_ROLES.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={0.5}
+                    max={30}
+                    step={0.5}
+                    className="input !w-20 !py-1 text-xs"
+                    value={b.seconds}
+                    onChange={(e) => setBeat(i, { seconds: Number(e.target.value) })}
+                  />
+                  <span className="label-sm">sec</span>
+                </label>
+                <button
+                  className="ml-auto font-mono text-xs text-danger"
+                  aria-label={`Remove beat ${i + 1}`}
+                  onClick={() => setBeats((p) => p.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <textarea
+                className="input mt-2 min-h-16 text-sm leading-relaxed"
+                placeholder={BEAT_ROLES.find((r) => r.id === b.role)?.guidance}
+                value={b.action}
+                onFocus={(e) => {
+                  focused.current = { kind: "beat", index: i, el: e.currentTarget };
+                }}
+                onChange={(e) => setBeat(i, { action: e.target.value })}
+              />
+
+              <input
+                className="input mt-2 !py-1 text-xs"
+                placeholder="Effect landing in this beat — timestamped automatically, e.g. a plastic snap for the lid"
+                value={b.audio}
+                onChange={(e) => setBeat(i, { audio: e.target.value })}
+              />
+
+              {slots.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="label-sm">Insert:</span>
+                  {slots.map((sl, si) => (
+                    <button
+                      key={si}
+                      className="rounded border border-border-soft bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-accent transition hover:border-accent"
+                      title={sl.job || "no job set"}
+                      onClick={() => insertToken(tokenFor(slots, si))}
+                    >
+                      {tokenFor(slots, si)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          className="btn-secondary mt-3 !px-3 !py-1.5 text-xs"
+          onClick={() =>
+            setBeats((p) => [
+              ...p,
+              {
+                seconds: 3,
+                role: p.length === 0 ? "open" : "build",
+                action: "",
+                audio: "",
+              },
+            ])
+          }
+        >
+          + Add a beat
+        </button>
+
+        <label className="mt-4 block max-w-2xl">
+          <span className="mb-1 block label">Sound running under the whole take</span>
+          <input
+            className="input text-sm"
+            placeholder="e.g. rewind reverse-playback whoosh throughout, backwards food movement"
+            value={throughline}
+            onChange={(e) => setThroughline(e.target.value)}
+          />
+          <span className="mt-1 block text-xs text-muted">
+            Effects tied to a moment go on the beat above and get their
+            timestamp automatically. This is the bed of ambience that is
+            present the whole time.
+          </span>
+        </label>
+      </section>
+
+      {/* The parts after the timeline */}
+      <div className="mt-4 space-y-4">
+        {TAIL_BLOCKS.map((b) => {
+          const open = openWhy === b.id;
+          return (
+            <section key={b.id} className="card p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="flex items-baseline gap-3 font-semibold">
+                  <span className="font-mono text-[11px] text-accent">{b.n}</span>
+                  {b.label}
+                  {b.optional && (
+                    <span className="label-sm !normal-case">optional</span>
+                  )}
+                </h2>
+                <button
+                  className="text-xs font-semibold text-accent hover:underline"
+                  onClick={() => setOpenWhy(open ? null : b.id)}
+                >
+                  {open ? "Hide why" : "Why this part"}
+                </button>
+              </div>
+              {open && (
+                <p className="mt-3 max-w-3xl rounded-[6px] border border-accent/25 bg-accent/[0.04] p-3 text-xs leading-relaxed text-muted">
+                  {b.why}
+                </p>
+              )}
+              <textarea
+                className="input mt-3 min-h-20 text-sm leading-relaxed"
+                placeholder={b.placeholder}
+                value={values[b.id] ?? ""}
+                onFocus={(e) => {
+                  focused.current = { kind: "block", id: b.id, el: e.currentTarget };
+                }}
+                onChange={(e) => set(b.id, e.target.value)}
+              />
+            </section>
+          );
+        })}
+      </div>
+
       {/* Assembled */}
       <section className="card mt-6 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -274,17 +543,22 @@ export function PromptBuilder() {
           </span>
         </div>
 
-        {dangling.length > 0 && (
-          <p className="mt-3 rounded-[6px] border border-warning/50 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
-            <span className="font-bold">
-              {dangling.join(", ")} {dangling.length === 1 ? "is" : "are"} referenced
-              but not declared.
-            </span>{" "}
-            The model resolves tokens positionally against the files you
-            actually attach, so a token pointing at nothing fails quietly —
-            you get a plausible take built on the wrong reference. Add the
-            slot above, or renumber.
-          </p>
+        {/* Everything worth catching before the render is paid for. */}
+        {issues.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {issues.map((iss, i) => (
+              <li
+                key={i}
+                className={`rounded-[6px] border p-3 text-xs leading-relaxed ${
+                  iss.level === "error"
+                    ? "border-danger/50 bg-danger/10 text-danger"
+                    : "border-warning/50 bg-warning/10 text-warning"
+                }`}
+              >
+                {iss.text}
+              </li>
+            ))}
+          </ul>
         )}
 
         <div className="mt-3 min-h-24 rounded-[6px] border border-border-soft bg-surface-2 p-4 text-sm leading-relaxed">
