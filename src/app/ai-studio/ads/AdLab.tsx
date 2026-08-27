@@ -227,6 +227,21 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
    */
   const [pendingJob, setPendingJob] = useState<PendingJob | null>(null);
   const [checking, setChecking] = useState(false);
+  /** The "find a render I already paid for" panel. */
+  const [recoverOpen, setRecoverOpen] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [recoverError, setRecoverError] = useState<string | null>(null);
+  const [pastedId, setPastedId] = useState("");
+  const [recent, setRecent] = useState<
+    | {
+        requestId: string;
+        endpoint: string;
+        status: string;
+        endedAt?: string;
+        videoUrl?: string;
+      }[]
+    | null
+  >(null);
   /** True when the prompt arrived from the library rather than the recipe. */
   const [imported, setImported] = useState(false);
   const [sessionSpend, setSessionSpend] = useState(0);
@@ -479,6 +494,63 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
       setChecking(false);
     }
   }, [pendingJob, rememberJob]);
+
+  /** Ask fal what this key has actually rendered lately. */
+  const loadRecent = useCallback(async () => {
+    setRecovering(true);
+    setRecoverError(null);
+    try {
+      const res = await fetch("/api/ad/recent");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Could not read render history");
+      setRecent(json.requests ?? []);
+    } catch (e) {
+      setRecent(null);
+      setRecoverError(e instanceof Error ? e.message : "Could not read render history");
+    } finally {
+      setRecovering(false);
+    }
+  }, []);
+
+  /** Collect a specific past render by its provider request id. */
+  const collectById = useCallback(
+    async (requestId: string, forModelId = modelId) => {
+      const id = requestId.trim();
+      if (!id) return;
+      setRecovering(true);
+      setRecoverError(null);
+      try {
+        const res = await fetch("/api/generate/video/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider: "fal", falRequestId: id, modelId: forModelId }),
+        });
+        const status = (await res.json()) as {
+          status?: string;
+          videoUrl?: string;
+          error?: string;
+        };
+        if (status.status === "done" && status.videoUrl) {
+          setVideoUrl(status.videoUrl);
+          setPhase("done");
+          setRecoverOpen(false);
+          rememberJob(null);
+          return;
+        }
+        setRecoverError(
+          status.status === "pending"
+            ? "That render is still going. Try again in a minute."
+            : (status.error ??
+              "No render found under that id on the model selected above. If it was made with a different model, switch to it and try again."),
+        );
+      } catch {
+        setRecoverError("Could not reach the provider.");
+      } finally {
+        setRecovering(false);
+      }
+    },
+    [modelId, rememberJob],
+  );
 
   const addSpend = useCallback((amount: number) => {
     setSessionSpend((prev) => {
@@ -961,6 +1033,116 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
         </div>
         <span className="chip">Session spend: ${sessionSpend.toFixed(2)}</span>
       </div>
+
+      {/* Recovery: a render that was paid for but never made it onto the page. */}
+      <div className="mt-3">
+        <button
+          className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-foreground"
+          onClick={() => {
+            setRecoverOpen((v) => !v);
+            if (!recent && !recovering) void loadRecent();
+          }}
+        >
+          {recoverOpen ? "Hide past renders" : "Looking for a render you already paid for?"}
+        </button>
+      </div>
+
+      {recoverOpen && (
+        <div className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-4">
+          <p className="label">Past renders on this fal key</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted">
+            A render that timed out, or one started before this page began
+            remembering job handles, still exists on the provider. Collecting
+            it costs nothing — the work is already done and billed.
+          </p>
+
+          {recovering && !recent && (
+            <p className="mt-3 text-xs text-muted">Reading your request history…</p>
+          )}
+
+          {recent && recent.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {recent.map((r) => (
+                <li
+                  key={r.requestId}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-border-soft bg-surface p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-foreground">
+                      {r.endpoint}
+                    </p>
+                    <p className="truncate font-mono text-[10px] text-muted">
+                      {r.requestId}
+                      {r.endedAt ? ` · ${new Date(r.endedAt).toLocaleString()}` : ""}
+                    </p>
+                  </div>
+                  {r.videoUrl ? (
+                    <button
+                      className="btn-secondary !py-1 !text-xs"
+                      onClick={() => {
+                        setVideoUrl(r.videoUrl!);
+                        setPhase("done");
+                        setRecoverOpen(false);
+                      }}
+                    >
+                      View
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-secondary !py-1 !text-xs"
+                      disabled={recovering}
+                      onClick={() => void collectById(r.requestId)}
+                    >
+                      Collect
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {recent && recent.length === 0 && (
+            <p className="mt-3 text-xs text-muted">
+              No recent video requests on this key.
+            </p>
+          )}
+
+          {/* Always available: the history API needs a permission the render
+              key may not carry, but a request id from the fal dashboard is
+              enough on its own. */}
+          <div className="mt-4 border-t border-border-soft pt-3">
+            <label className="label-sm" htmlFor="paste-request-id">
+              Or paste a request ID
+            </label>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              fal dashboard → Requests. Collected against{" "}
+              <span className="font-semibold text-foreground">{modelName}</span>,
+              the model selected above — switch models first if the render was
+              made with a different one.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                id="paste-request-id"
+                className="input flex-1 min-w-[16rem] font-mono text-xs"
+                placeholder="e.g. 7f3c1a2e-8b90-4d6f-..."
+                value={pastedId}
+                onChange={(e) => setPastedId(e.target.value)}
+              />
+              <button
+                className="btn-secondary"
+                disabled={!pastedId.trim() || recovering}
+                onClick={() => void collectById(pastedId)}
+              >
+                {recovering ? "Checking…" : "Collect"}
+              </button>
+            </div>
+          </div>
+
+          {recoverError && (
+            <p className="mt-3 text-xs leading-relaxed text-warning">{recoverError}</p>
+          )}
+        </div>
+      )}
 
       {/* A paid render from a previous visit that was never collected. */}
       {pendingJob && phase === "idle" && (

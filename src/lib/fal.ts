@@ -261,3 +261,69 @@ export async function falPollVideo(opts: {
   if (!url) return { status: "failed", error: "fal job completed without a video URL" };
   return { status: "done", videoUrl: url };
 }
+
+/**
+ * Recent video requests on this account, newest first.
+ *
+ * The queue API can only answer "is request X done?" — you have to already
+ * know X. When the id was lost (a timeout, a closed tab, a render started
+ * before the app remembered handles), the platform API is the only way back
+ * to it: it lists what this key actually submitted, so a finished render can
+ * be found without knowing anything about it beforehand.
+ *
+ * Deliberately tolerant about the response shape. This is a recovery path —
+ * returning three of five fields is far better than throwing because fal
+ * renamed a key.
+ */
+export type FalRecentRequest = {
+  requestId: string;
+  endpoint: string;
+  status: string;
+  /** ISO timestamp, when fal reports one. */
+  endedAt?: string;
+  /** Present when the request finished and produced a video. */
+  videoUrl?: string;
+};
+
+export async function falRecentVideoRequests(
+  endpoints: string[],
+): Promise<FalRecentRequest[]> {
+  const key = process.env.FAL_KEY;
+  if (!key) throw new Error("FAL_KEY is not set");
+
+  const url = new URL("https://api.fal.ai/v1/models/requests/by-endpoint");
+  for (const e of endpoints) url.searchParams.append("endpoint_id", e);
+  url.searchParams.set("expand", "payloads");
+  url.searchParams.set("limit", "20");
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Key ${key}` },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(
+      `fal request history returned ${res.status}. ${
+        res.status === 401 || res.status === 403
+          ? "This key may not carry platform-API permission — the dashboard's Requests tab shows the same list."
+          : await res.text().catch(() => "")
+      }`,
+    );
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const json = (await res.json()) as any;
+  const rows: unknown[] = json?.data ?? json?.requests ?? json?.items ?? [];
+  return rows
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((r: any) => {
+      const out = r?.json_output ?? r?.output ?? r?.payload?.output;
+      return {
+        requestId: r?.request_id ?? r?.requestId ?? "",
+        endpoint: r?.endpoint_id ?? r?.endpoint ?? "",
+        status: String(r?.status ?? r?.status_code ?? "unknown"),
+        endedAt: r?.ended_at ?? r?.endedAt ?? r?.sent_at,
+        videoUrl: out?.video?.url ?? out?.videos?.[0]?.url,
+      };
+    })
+    .filter((r) => r.requestId);
+}
