@@ -133,7 +133,14 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
   const [presetId, setPresetId] = useState<string>(AD_PRESETS[0].id);
   const [params, setParams] = useState<Record<string, string>>({});
   const [productImage, setProductImage] = useState<string | null>(null);
-  const [modelId, setModelId] = useState<string>("veo-3.1-fast");
+  /**
+   * Reference-to-video is the default because it is the thing this lab is
+   * for: holding a real product still while the camera moves. Landing on a
+   * first-frame model means the References step is hidden and the reference
+   * recipes have nothing to attach to, which teaches the wrong lesson before
+   * anyone has clicked anything.
+   */
+  const [modelId, setModelId] = useState<string>("seedance-2.5-ref");
   const [finalPrompt, setFinalPrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -388,7 +395,7 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
       setRecipe(editableRecipeOf(next));
       setEditingRecipe(false);
       setMusicStyleId(next.musicStyleId);
-      if (next.preferredModelId) setModelId(next.preferredModelId);
+      setModelId(next.preferredModelId ?? "seedance-2.5-ref");
       setMusicUrl(null);
       setMusicAsTimingRef(false);
       setSfxTracks({});
@@ -1892,6 +1899,9 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
                   <code className="font-mono">public/references/</code> using the
                   names above and they appear here. They are served from this
                   site, so unlike an upload they cost nothing and never expire.
+                  Which files exist is read at build time — in dev that is every
+                  request, but a production server needs a rebuild to see a
+                  newly added clip.
                 </p>
               )}
             </div>

@@ -16,6 +16,12 @@ Expected files — the names are matched exactly by `src/lib/referenceClips.ts`:
 Anything missing shows as a labelled gap in the picker rather than a broken
 player, so partial installs are fine.
 
+**Which files exist is read at build time**, because the Ad Lab prerenders.
+`npm run dev` re-checks on every request so a clip appears as soon as you drop
+it in, but a production server needs a rebuild — deploying picks it up because
+the build runs then anyway. If a clip you have added is still showing as
+missing, that is why.
+
 ## What makes a good one
 
 Abstract, and that is the whole point. The model reads a clip's camera move,
