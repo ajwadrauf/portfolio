@@ -9,7 +9,7 @@ const LINKS = [
   { href: "/ai-studio/studio", label: "Studio" },
   { href: "/ai-studio/packshots", label: "Packshots" },
   { href: "/ai-studio/ads", label: "Ad Lab" },
-  { href: "/ai-studio/prompts", label: "Prompts" },
+  { href: "/ai-studio/prompts", label: "Prompt builder" },
   { href: "/ai-studio/models", label: "Models" },
   { href: "/ai-studio/build-vs-buy", label: "Build vs. Buy" },
   { href: "/ai-studio/playbook", label: "Playbook" },
@@ -44,7 +44,7 @@ export function Nav() {
           </span>
         </div>
 
-        <nav className="no-scrollbar -mx-6 flex min-w-0 items-center gap-1 overflow-x-auto px-6 text-sm lg:mx-0 lg:overflow-visible lg:px-0">
+        <nav className="no-scrollbar -mx-6 flex min-w-0 items-center gap-1 overflow-x-auto px-6 text-sm xl:mx-0 xl:overflow-visible xl:px-0">
           {LINKS.map((l) => {
             const active = pathname === l.href;
             return (

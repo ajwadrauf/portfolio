@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
-import library from "@/data/prompt-library.json";
-import type { PromptLibrary as Library } from "@/lib/promptLibrary";
-import { PromptLibrary } from "./PromptLibrary";
+import { PromptBuilder } from "./PromptBuilder";
 
 export const metadata: Metadata = {
-  title: "Prompt datasets — AI Content Studio",
+  title: "Prompt builder — AI Content Studio",
   description:
-    "A filtered study set of product-focused prompts from the public Seedance 2 corpus, with the filter shown.",
+    "The anatomy of a reference-to-video prompt, as a form you fill: register, subject, reference bindings, arrangement, beats, climax, text, sound.",
 };
 
 export default function PromptsPage() {
-  return <PromptLibrary library={library as Library} />;
+  return <PromptBuilder />;
 }
