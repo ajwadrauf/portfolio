@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LiveGate } from "@/components/LiveGate";
 import { DELIVERABLES, type DeliverableSpec } from "@/lib/deliverables";
 import { MODELS, estimateCost } from "@/lib/models";
 import type {
@@ -427,7 +428,9 @@ function StatusBar({
         <span className="chip">
           <Dot ok={health?.fal ?? false} /> fal.ai {health?.fal ? "connected" : "not configured"}
         </span>
-        {health && !health.live && (
+        {/* Live-mode state sits with the other connection chips, not in the nav. */}
+        <LiveGate />
+        {health && !health.live && !health.gemini && !health.fal && (
           <span className="chip border-warning/40 text-warning">
             Demo mode — zero-cost mocks; add API keys to go live
           </span>

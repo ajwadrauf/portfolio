@@ -77,16 +77,9 @@ export function LiveGate() {
   // No passcode configured and no keys: nothing meaningful to show.
   if (health.gate === "disabled" && !health.live) return null;
 
-  if (health.ungated) {
-    return (
-      <span
-        className="rounded-full border border-danger/50 bg-danger/10 px-2.5 py-0.5 text-xs font-bold text-danger"
-        title="Live keys with no passcode — anyone with this URL can spend your credits. Set LIVE_PASSCODE."
-      >
-        ⚠ Ungated live
-      </span>
-    );
-  }
+  // The ungated warning is not a pill any more — it is the banner under the
+  // nav, which is both harder to miss and impossible to collide with a link.
+  if (health.ungated) return null;
 
   if (health.gate === "disabled") {
     return (
@@ -161,5 +154,52 @@ export function LiveGate() {
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Live API keys with no passcode in front of them: anyone who can load this
+ * URL can spend real money.
+ *
+ * This used to be a pill in the nav, where it was both easy to miss and wide
+ * enough to overlap the last link. It is a full-width strip under the nav
+ * instead — it cannot collide with anything, and a warning about strangers
+ * spending your credits deserves more than a chip.
+ */
+export function UngatedBanner() {
+  const [ungated, setUngated] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    const read = async () => {
+      try {
+        const r = await fetch("/api/health", { cache: "no-store" });
+        const h = (await r.json()) as Health;
+        if (live) setUngated(Boolean(h.ungated));
+      } catch {
+        /* leave as-is */
+      }
+    };
+    void read();
+    const t = setInterval(read, 30_000);
+    return () => {
+      live = false;
+      clearInterval(t);
+    };
+  }, []);
+
+  if (!ungated) return null;
+
+  return (
+    <div className="border-b border-danger/40 bg-danger/10">
+      <p className="mx-auto max-w-6xl px-6 py-2 text-xs leading-relaxed text-danger">
+        <span className="font-bold">⚠ Ungated live keys.</span> Generation is
+        billing a real account with no passcode in front of it — anyone who can
+        open this URL can spend your credits. Set{" "}
+        <code className="font-mono">LIVE_PASSCODE</code> in{" "}
+        <code className="font-mono">.env.local</code> and restart to put the
+        gate back.
+      </p>
+    </div>
   );
 }

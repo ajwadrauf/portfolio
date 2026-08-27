@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LiveGate } from "@/components/LiveGate";
 import { MODELS, estimateCost } from "@/lib/models";
 import {
   PACKSHOT_MODELS,
@@ -199,7 +200,9 @@ export function PackshotStudio() {
             <span className={`inline-block h-2 w-2 rounded-full ${health?.fal ? "bg-success" : "bg-muted/50"}`} />
             fal.ai {health?.fal ? "connected" : "not configured"}
           </span>
-          {health && !health.live && (
+          {/* Live-mode state sits with the other connection chips, not in the nav. */}
+          <LiveGate />
+          {health && !health.live && !health.gemini && !health.fal && (
             <span className="chip border-warning/40 text-warning">
               Demo mode — zero-cost mocks; add API keys to go live
             </span>

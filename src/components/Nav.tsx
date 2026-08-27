@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LiveGate } from "./LiveGate";
+import { UngatedBanner } from "./LiveGate";
 
 const LINKS = [
   { href: "/ai-studio", label: "Overview" },
@@ -33,15 +33,6 @@ export function Nav() {
           <Link href="/ai-studio" className="label !text-foreground whitespace-nowrap">
             AI Content Studio
           </Link>
-          <span className="sm:hidden">
-            <LiveGate />
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 sm:order-last">
-          <span className="hidden sm:block">
-            <LiveGate />
-          </span>
         </div>
 
         <nav className="no-scrollbar -mx-6 flex min-w-0 items-center gap-1 overflow-x-auto px-6 text-sm xl:mx-0 xl:overflow-visible xl:px-0">
@@ -63,6 +54,7 @@ export function Nav() {
           })}
         </nav>
       </div>
+      <UngatedBanner />
     </header>
   );
 }
