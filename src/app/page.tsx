@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Ajwad Rauf — AI production systems",
   description:
-    "Creative producer and creative technologist. Pipelines that take a product photo, a selfie or a campaign brief and return finished, reviewed, deployable output.",
+    "Toronto creative producer and creative technologist. AI production pipelines that take a product photo, a selfie or a campaign brief and return finished, reviewed, deployable output.",
 };
 
 type Project = {
@@ -19,8 +19,6 @@ type Project = {
   note: string;
   body: string[];
   tags: string[];
-  /** Open question to resolve before this reads at full strength. */
-  todo?: string;
 };
 
 const PROJECTS: Project[] = [
@@ -35,8 +33,8 @@ const PROJECTS: Project[] = [
     arrow: "↗",
     note: "Browsable in free demo mode — no signup",
     body: [
-      "Three production tools in one system. A campaign studio that turns a single product photo into stills, bilingual EN/FR promo tiles and video. A packshot generator that produces GS1 planogram angles without a reshoot. And an Ad Lab of preset short-form ad recipes with AI-composed prompts and generated music beds.",
-      "Nine AI models across three vendors, with cost governance and quality gates built in.",
+      "A campaign studio that turns one product photo into stills, bilingual EN/FR promo tiles and video. A packshot generator that produces GS1 planogram angles without a reshoot. An Ad Lab of preset ad recipes — editable, reference-locked, with the sound built in layers the way a studio actually does it. And a prompt builder that teaches the structure rather than handing over a prompt.",
+      "Thirteen models from six labs behind two APIs, routed by what each is actually good at: reference-to-video where the packaging must not drift, a cheap draft tier where it does not matter yet. Costed per render before you spend — including the token-billed models, where resolution moves the price more than length does.",
     ],
     tags: ["Generative AI", "Video", "Production systems", "Next.js"],
   },
@@ -71,7 +69,6 @@ const PROJECTS: Project[] = [
       "It generates PDF briefs, handles bilingual EN and FR copy, builds UTM links, and validates subject lines with AI (Gemini 2.5 Flash). Transactional email fires at each stage and scheduled jobs send the reminders: daily digest, link-plan and UTM nudges, rejection follow-ups. Next.js App Router on Firebase App Hosting with Firestore and Storage. Solo build at LA Digital.",
     ],
     tags: ["Internal tooling", "Workflow automation", "Next.js + Firebase"],
-    todo: "Placeholder — confirm the manual process it replaced and any time saved",
   },
 ];
 
@@ -94,9 +91,8 @@ const APPROACH = [
 ];
 
 const LINKS = [
-  { label: "LinkedIn", href: "#" },
-  { label: "GitHub", href: "#" },
-  { label: "Résumé", href: "#" },
+  { label: "LinkedIn", href: "https://www.linkedin.com/in/ajwadrauf" },
+  { label: "GitHub", href: "https://github.com/ajwadrauf" },
 ];
 
 function StatusDot({ status }: { status: Project["status"] }) {
@@ -209,11 +205,6 @@ export default function Home() {
                   {para}
                 </p>
               ))}
-              {p.todo && (
-                <p className="label-sm mt-5 rounded-[6px] border border-dashed border-border-strong px-4 py-3.5 !leading-[1.6] !text-warning">
-                  {p.todo}
-                </p>
-              )}
               <div className="label-sm mt-7 flex flex-wrap items-center gap-2 border-t border-border-soft pt-5">
                 {p.tags.map((t, i) => (
                   <span key={t} className="flex items-center gap-2">
@@ -255,10 +246,10 @@ export default function Home() {
             <span className="label !tracking-[0.16em]">Contact</span>
             <div className="mt-4 text-2xl tracking-[-0.02em] sm:text-4xl lg:mt-5 lg:text-[44px] lg:tracking-[-0.03em]">
               <a
-                href="mailto:hello@ajwadrauf.com"
+                href="mailto:ajwadrauf@gmail.com"
                 className="border-b border-accent/40 pb-1 transition hover:border-accent"
               >
-                hello@ajwadrauf.com
+                ajwadrauf@gmail.com
               </a>
             </div>
           </div>
@@ -267,6 +258,8 @@ export default function Home() {
               <a
                 key={l.label}
                 href={l.href}
+                target="_blank"
+                rel="noreferrer"
                 className="label !tracking-[0.12em] text-accent transition hover:text-accent-soft"
               >
                 {l.label} ↗

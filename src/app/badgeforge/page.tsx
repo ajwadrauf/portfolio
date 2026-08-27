@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 const META = [
   { k: "Role", v: "Design & build — solo" },
   { k: "Timeline", v: "2025–2026" },
-  { k: "Client", v: "Confidential — under NDA" },
+  { k: "Client", v: "Loblaw Companies — internal" },
   { k: "Type", v: "Internal web app, in production" },
 ];
 
@@ -203,8 +203,8 @@ export default function BadgeForgePage() {
             aria-hidden
             className="mt-[7px] h-[7px] w-[7px] shrink-0 rounded-full bg-warning"
           />
-          Client and proprietary details withheld under NDA. Full walkthrough
-          available on request.
+          Built inside Loblaw. Proprietary process detail and internal metrics
+          are withheld; a full walkthrough is available on request.
         </p>
       </section>
 
@@ -360,8 +360,8 @@ export default function BadgeForgePage() {
               aria-hidden
               className="absolute left-0 top-[21px] h-[9px] w-[9px] rounded-full border border-border-strong"
             />
-            Quantified impact (turnaround time, volume, error rate) available on
-            request under NDA.
+            Quantified impact — turnaround time, volume, error rate — available
+            on request rather than published.
           </li>
         </ul>
       </section>
@@ -375,17 +375,16 @@ export default function BadgeForgePage() {
             <span className="label !tracking-[0.16em]">Contact</span>
             <div className="mt-4 text-2xl tracking-[-0.02em] sm:text-4xl lg:mt-5 lg:text-[44px] lg:tracking-[-0.03em]">
               <a
-                href="mailto:hello@ajwadrauf.com"
+                href="mailto:ajwadrauf@gmail.com"
                 className="border-b border-accent/40 pb-1 transition hover:border-accent"
               >
-                hello@ajwadrauf.com
+                ajwadrauf@gmail.com
               </a>
             </div>
             <p className="mt-5 max-w-[60ch] text-sm leading-[1.65] text-muted">
-              This case study describes work delivered for a confidential client
-              under NDA. Client identity, proprietary process detail and
-              internal metrics are withheld; a deeper walkthrough is available
-              on request.
+              This case study describes internal work delivered at Loblaw.
+              Proprietary process detail and internal metrics are withheld; a
+              deeper walkthrough is available on request.
             </p>
           </div>
           <Link

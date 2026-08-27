@@ -24,7 +24,7 @@ const MANDATES = [
     mandate: "Evaluate tools and build-vs-buy",
     jd: "“Evaluate AI tools, platforms, vendor relationships, and build-vs-buy decisions as the production model evolves.”",
     answer:
-      "Nine models across three vendors are wired in and swappable from one config file, with a written point of view on what's ready, what's emerging and what isn't viable — plus a one-pager on suites vs. aggregators vs. direct APIs.",
+      "Thirteen models from six labs are wired in behind two APIs, swappable from one config file, with a written point of view on what's ready, what's emerging and what isn't viable — plus a one-pager on suites vs. aggregators vs. direct APIs.",
     proof: [
       { label: "Model landscape", href: "/models" },
       { label: "Build vs. buy", href: "/build-vs-buy" },
@@ -59,8 +59,15 @@ const TOOLS = [
     href: "/ads",
     name: "Ad Lab",
     line: "Preset ad recipes any SKU can run through",
-    body: "Deconstructed concepts — aesthetics, beat-by-beat action, overlay spec, sound design — with the product swapped in from a photo, then scored with a real composed music bed.",
+    body: "Deconstructed concepts — aesthetics, beat-by-beat action, overlay spec, sound design — every part of it editable, with the product swapped in from a photo and held still by reference-to-video. Sound is built in layers: effects from the model, spot effects generated one at a time, music scored separately.",
     tags: ["Short-form video", "Prompt systems", "Sound design"],
+  },
+  {
+    href: "/prompts",
+    name: "Prompt Builder",
+    line: "The anatomy of a reference prompt, as a form",
+    body: "Register, subject, what each reference is FOR, then a timeline that makes you spend the seconds on purpose. Every part says what goes wrong without it, and it catches the mistakes that fail silently — a beat sheet that overruns the render, a reference bound by filename instead of token.",
+    tags: ["Teaching", "Prompt structure", "Timing"],
   },
 ];
 
@@ -99,10 +106,9 @@ export default function Home() {
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
           Not a gallery of outputs — a functioning AI content studio in
-          miniature. Three production tools you can run right now, built on
-          nine models across three vendors, with the routing, cost governance
-          and quality gates that make AI production survivable at retail
-          volume.
+          miniature. Production tools you can run right now, built on thirteen
+          models from six labs, with the routing, cost governance and quality
+          gates that make AI production survivable at retail volume.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/ai-studio/studio" className="btn-primary">
@@ -163,22 +169,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------- The three tools ---------- */}
+      {/* ---------- The tools ---------- */}
       <section className="border-t border-border-soft py-16">
         <div className="max-w-3xl">
           <p className="label !text-accent">
             The tools
           </p>
           <h2 className="mt-2 text-[clamp(1.6rem,3vw,2rem)] tracking-[-0.03em]">
-            Three surfaces, one production system
+            Four surfaces, one production system
           </h2>
           <p className="mt-3 leading-relaxed text-muted">
             Each covers a different slice of what a retail agency actually
-            ships — and all three share the same intake, routing, cost and
+            ships — and they share the same intake, routing, cost and
             governance layer.
           </p>
         </div>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {TOOLS.map((t) => (
             <Link
               key={t.href}
@@ -271,7 +277,7 @@ export default function Home() {
               Under the hood
             </p>
             <h2 className="mt-2 text-[clamp(1.6rem,3vw,2rem)] tracking-[-0.03em]">
-              Nine models, one routing table
+              Thirteen models, one routing table
             </h2>
           </div>
           <Link href="/ai-studio/models" className="text-sm font-semibold text-accent hover:underline">
