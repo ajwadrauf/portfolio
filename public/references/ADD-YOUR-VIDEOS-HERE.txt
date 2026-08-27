@@ -1,0 +1,57 @@
+ADD YOUR 4 REFERENCE VIDEOS TO THIS FOLDER
+==========================================
+
+You are in the right place. Put the files here, next to this note.
+
+RENAME THEM TO EXACTLY THESE NAMES
+----------------------------------
+The app matches these names literally, so a typo means the clip stays hidden.
+
+  1.  orbital-drift.mp4     + orbital-drift.jpg
+  2.  pulse-grid.mp4        + pulse-grid.jpg
+  3.  liquid-bloom.mp4      + liquid-bloom.jpg
+  4.  light-sweep.mp4       + light-sweep.jpg
+
+The .jpg is a still frame from the clip. It is what shows in the picker
+before someone hovers, so without it the gallery is four grey rectangles on
+load. Any frame will do — screenshot the video and save it.
+
+WHICH CLIP GOES WHERE
+---------------------
+The names describe the MOTION, not the colour, because that is what the
+model actually copies from a reference. Match your Envato clips to these:
+
+  orbital-drift  slow drifting, floating, soft collisions, long easing
+                 -> for products that should feel weightless and premium
+
+  pulse-grid     hard rhythmic pulses on a regular beat
+                 -> for concepts cut to music, where actions land on beats
+
+  liquid-bloom   fluid expansion outward from the centre, organic
+                 -> for pours, splashes, anything spreading or bursting
+
+  light-sweep    a highlight raking across a dark field
+                 -> borrowed for lighting behaviour, not movement
+
+If your four clips do not match these four moods, rename the slots instead:
+edit src/lib/referenceClips.ts and change the id, name, brief and file for
+each. The picker follows that file.
+
+KEEP THEM SMALL
+---------------
+  - 4 to 6 seconds. These models read the camera move, not the content.
+    Longer buys nothing.
+  - Under 4MB, same cap as the upload path.
+  - 720p is plenty. It is a motion reference, not footage.
+  - No text, no faces, no recognisable products — anything in the clip can
+    leak into your ad.
+
+AFTER YOU ADD THEM
+------------------
+  npm run dev     picks them up immediately, no restart
+  npm run build   needed before `npm start`, because the page prerenders
+
+Then open the Ad Lab, scroll to step 6 References, and they appear under
+"Starter motion clips".
+
+You can delete this file once the videos are in.
