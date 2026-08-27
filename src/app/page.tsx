@@ -62,7 +62,7 @@ const PROJECTS: Project[] = [
     status: { label: "Internal · Loblaw", tone: "internal" },
     name: "BadgeForge",
     lede: "A badge brief in, a reviewed, deployment-ready email badge out.",
-    href: "#",
+    href: "/badgeforge",
     cta: "Read the case study",
     arrow: "→",
     note: "No public URL — internal Loblaw tool",
