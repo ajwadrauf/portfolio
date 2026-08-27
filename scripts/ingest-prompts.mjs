@@ -85,40 +85,112 @@ const CATEGORY_TERMS = {
   "set-lighting": ["studio lighting","softbox","rim light","backlit","seamless","cyclorama","gel","key light","gradient background","spotlight","volumetric","caustics","reflection on","glossy surface"],
   "food-craft": ["steam rising","sizzl","melting","drizzl","crumb","sear","garnish","plated","coffee","chocolate","ice cream","juice","cocktail","batter","dough","glaze"],
   "graphic-motion": ["stop motion","stop-motion","kinetic typography","text animates","typography","flat lay","flat-lay","grid of","graphic","on-screen text","title card","isometric"],
+  "camera-craft": ["dolly in","dolly out","push in","pull back","crane shot","orbit","arc shot","tracking shot","handheld","gimbal","whip pan","tilt up","tilt down","rack focus","dutch angle","one-shot","oner","long take","anamorphic","telephoto","wide angle lens","fisheye","top-down shot","low angle","first-person","pov shot","camera slowly"],
+  "vfx-transform": ["morph","match cut","seamless transition","transforms into","dissolves into","particles","disintegrat","assembl","time-lapse","timelapse","speed ramp","freeze frame","liquid simulation","cloth simulation","scale shift","miniature","explodes into","unfolds into"],
 };
 const COMMERCIAL = ["commercial","advertisement","advertising","brand","campaign","premium","luxury","minimalist","clean background","product"];
 const EXCLUDE = ["anime","manga","cartoon character","video game","gameplay","portrait of a woman","portrait of a man","young woman","young man","beautiful girl","handsome","nsfw","nude","bikini","lingerie","war","weapon","gun","blood","gore","zombie","monster","dragon","spaceship","alien","cyberpunk city","samurai","landscape","mountain range","forest","ocean waves","sunset over","cityscape","street scene","crowd","dancing","vlog","selfie","celebrity","politician","president"];
 
-const MIN_SCORE = 3;
-const MAX_PROMPTS = 500;
+const numArg = (flag, fallback) => {
+  const i = process.argv.indexOf(flag);
+  const v = i >= 0 ? Number(process.argv[i + 1]) : NaN;
+  return Number.isFinite(v) ? v : fallback;
+};
+const MIN_SCORE = numArg("--min-score", 3);
+const MAX_PROMPTS = numArg("--max", 500);
 const LEN = { min: 80, max: 1800 };
 
 /** Scores a prompt for retail-product relevance and picks its category. */
-function classify(text) {
+/**
+ * Categories split two ways, and the distinction matters more than it looks.
+ *
+ * SUBJECT categories describe what is being shot — a product, a surface, a
+ * plate of food. CRAFT categories describe how it is shot, and that
+ * vocabulary is everywhere: nearly every prompt in a general corpus names a
+ * camera move. Scored naively, craft terms drown the subject ones and the
+ * library fills up with street-racing shots that happen to say "crane".
+ *
+ * So craft only counts once the prompt is already pointing at commercial
+ * work, and a subject category always wins the label when one is present.
+ */
+/**
+ * Lighting sits with camera and VFX, not with the subjects.
+ *
+ * "Studio lighting" describes how anything at all was lit — a breathing
+ * exercise, a mech, a jar of moisturiser. Treated as a subject it becomes a
+ * skeleton key: one generic phrase unlocks the craft bonus and drags in
+ * whatever the prompt was actually about. Only a real subject — a product, a
+ * surface, food, a physical event, a designed frame — or an explicit
+ * commercial signal earns a prompt its place.
+ */
+const CRAFT = new Set(["set-lighting", "camera-craft", "vfx-transform"]);
+/**
+ * Label priority, most identifying first.
+ *
+ * Hit count alone picks the wrong label: a packshot prompt describes its
+ * lighting in more words than its subject, so counting terms files it under
+ * "set & lighting" and the shelf that should hold product shots ends up
+ * empty. Lighting is a modifier on almost every studio prompt; the subject
+ * is what a reader is actually scanning for.
+ */
+const LABEL_PRIORITY = [
+  "packshot",
+  "food-craft",
+  "macro-texture",
+  "motion-physics",
+  "graphic-motion",
+  "set-lighting",
+  "camera-craft",
+  "vfx-transform",
+];
+const rank = (cat) => {
+  const i = LABEL_PRIORITY.indexOf(cat);
+  return i === -1 ? LABEL_PRIORITY.length : i;
+};
+
+function classify(text, { ignoreThreshold = false } = {}) {
   const t = text.toLowerCase();
   for (const bad of EXCLUDE) if (t.includes(bad)) return null;
 
-  const signals = [];
-  let best = null;
-  let bestHits = 0;
-  let score = 0;
+  const commercialHits = COMMERCIAL.filter((term) => t.includes(term));
 
+  const subject = [];
+  const craft = [];
   for (const [cat, terms] of Object.entries(CATEGORY_TERMS)) {
     const hits = terms.filter((term) => t.includes(term));
     if (hits.length === 0) continue;
-    // Two points per category term: these are the ones that mean something.
+    (CRAFT.has(cat) ? craft : subject).push({ cat, hits });
+  }
+
+  // Modifier language alone says nothing about retail usefulness — it has to
+  // be attached to a real subject, or to an explicit commercial signal.
+  const craftQualifies = subject.length > 0 || commercialHits.length > 0;
+
+  const signals = [];
+  let score = 0;
+  for (const { hits } of subject) {
     score += hits.length * 2;
     signals.push(...hits);
-    if (hits.length > bestHits) {
-      bestHits = hits.length;
-      best = cat;
+  }
+  if (craftQualifies) {
+    for (const { hits } of craft) {
+      score += hits.length * 2;
+      signals.push(...hits);
     }
   }
-  const commercialHits = COMMERCIAL.filter((term) => t.includes(term));
   score += commercialHits.length; // one point — weak on its own
   signals.push(...commercialHits);
 
-  if (!best || score < MIN_SCORE) return null;
+  // A subject label tells a reader more than a modifier one, so subject wins
+  // even where a modifier matched more terms. Within the subjects, the most
+  // evidence wins and priority only breaks ties — a prompt about condensation
+  // on a bottle is macro work that happens to name a bottle, not a packshot.
+  const pool = subject.length > 0 ? subject : craftQualifies ? craft : [];
+  const best =
+    pool.sort((a, b) => b.hits.length - a.hits.length || rank(a.cat) - rank(b.cat))[0]?.cat ??
+    null;
+
+  if (!best || (!ignoreThreshold && score < MIN_SCORE)) return null;
   return { category: best, score, signals: [...new Set(signals)].slice(0, 8) };
 }
 
@@ -218,7 +290,7 @@ async function inspect(source) {
   console.log(JSON.stringify(samples[0], null, 2).slice(0, 1400));
 }
 
-async function build(source) {
+async function build(source, { dryRun = false } = {}) {
   const seen = new Set();
   const kept = [];
   let considered = 0;
@@ -226,6 +298,7 @@ async function build(source) {
   let tooShort = 0;
   let dupes = 0;
   let nonEnglish = 0;
+  const nearMisses = [];
 
   for await (const raw of source) {
     considered++;
@@ -253,6 +326,12 @@ async function build(source) {
     const verdict = classify(text);
     if (!verdict) {
       excluded++;
+      // Keep the strongest rejects so a dry run can show what the threshold
+      // is costing, rather than only what it let through.
+      if (dryRun) {
+        const near = classify(text, { ignoreThreshold: true });
+        if (near && near.score > 0) nearMisses.push({ score: near.score, text, cat: near.category });
+      }
       continue;
     }
     seen.add(fp);
@@ -295,8 +374,10 @@ async function build(source) {
     },
   };
 
-  fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  fs.writeFileSync(OUT, JSON.stringify(library, null, 1));
+  if (!dryRun) {
+    fs.mkdirSync(path.dirname(OUT), { recursive: true });
+    fs.writeFileSync(OUT, JSON.stringify(library, null, 1));
+  }
 
   const byCat = {};
   for (const p of prompts) byCat[p.category] = (byCat[p.category] ?? 0) + 1;
@@ -306,10 +387,31 @@ async function build(source) {
   console.log(`  non-English ${nonEnglish}`);
   console.log(`  duplicates  ${dupes}`);
   console.log(`Passed        ${kept.length}`);
-  console.log(`Written       ${prompts.length} -> ${path.relative(process.cwd(), OUT)}`);
+  console.log(
+    dryRun
+      ? `Would write   ${prompts.length}  (dry run — nothing written)`
+      : `Written       ${prompts.length} -> ${path.relative(process.cwd(), OUT)}`,
+  );
+  console.log(`Threshold     score >= ${MIN_SCORE}, cap ${MAX_PROMPTS}`);
   console.log("\nBy category:");
   for (const [c, n] of Object.entries(byCat).sort((a, b) => b[1] - a[1])) {
     console.log(`  ${c.padEnd(16)} ${n}`);
+  }
+  if (dryRun && nearMisses.length) {
+    const seenNear = new Set();
+    const unique = nearMisses.filter((m) => {
+      const fp = fingerprint(m.text);
+      if (seenNear.has(fp)) return false;
+      seenNear.add(fp);
+      return true;
+    });
+    unique.sort((a, b) => b.score - a.score);
+    nearMisses.length = 0;
+    nearMisses.push(...unique);
+    console.log(`\nClosest rejects (raise --min-score to cut more, lower it to keep these):`);
+    for (const m of nearMisses.slice(0, 8)) {
+      console.log(`  [${String(m.score).padStart(2)}] ${m.cat.padEnd(15)} ${m.text.replace(/\s+/g, " ").slice(0, 90)}…`);
+    }
   }
 }
 
@@ -318,6 +420,8 @@ const doInspect = args.includes("--inspect");
 const fromApi = args.includes("--from-api");
 /** The rubric cannot read Chinese; opt in only if you intend to hand-check. */
 const includeCjk = args.includes("--include-cjk");
+/** Report what would happen without writing anything. */
+const dryRun = args.includes("--report");
 const file = args.find((a) => !a.startsWith("--"));
 
 let source;
@@ -336,13 +440,16 @@ if (fromApi) {
       "  node scripts/ingest-prompts.mjs [--inspect] <metadata.jsonl>\n" +
       "  node scripts/ingest-prompts.mjs --from-api [--inspect]\n" +
       "\noptions:\n" +
+      "  --report        show what would be kept, and the closest rejects\n" +
+      "  --min-score N   selectivity, default 3 (higher = stricter)\n" +
+      "  --max N         cap on entries, default 500\n" +
       "  --include-cjk   keep Chinese prompts (the rubric is English-only)",
   );
   process.exit(1);
 }
 
 try {
-  await (doInspect ? inspect(source) : build(source));
+  await (doInspect ? inspect(source) : build(source, { dryRun }));
 } catch (e) {
   console.error(`\n${e instanceof Error ? e.message : e}`);
   process.exit(1);

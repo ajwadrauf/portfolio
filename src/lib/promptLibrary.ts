@@ -20,7 +20,9 @@ export type PromptCategory =
   | "motion-physics"
   | "set-lighting"
   | "food-craft"
-  | "graphic-motion";
+  | "graphic-motion"
+  | "camera-craft"
+  | "vfx-transform";
 
 export const CATEGORIES: {
   id: PromptCategory;
@@ -56,6 +58,16 @@ export const CATEGORIES: {
     id: "graphic-motion",
     label: "Graphic & type",
     blurb: "Stop-motion, kinetic layout, on-screen text. Where the ad is a designed object, not a filmed one.",
+  },
+  {
+    id: "camera-craft",
+    label: "Camera craft",
+    blurb: "Move, lens and framing language. The subject is rarely a product, but the vocabulary transfers directly — this is how you ask for an orbit rather than hope for one.",
+  },
+  {
+    id: "vfx-transform",
+    label: "Transitions & VFX",
+    blurb: "Morphs, match cuts, scale shifts, particles. The connective tissue of an ad, and the part a model either nails or fudges.",
   },
 ];
 
@@ -133,6 +145,23 @@ export const RUBRIC = {
       "typography", "flat lay", "flat-lay", "grid of", "graphic",
       "on-screen text", "title card", "isometric",
     ],
+    // The two below are craft rather than subject: the prompt may be about
+    // anything at all, but the language is directly reusable on a product.
+    "camera-craft": [
+      "dolly in", "dolly out", "push in", "pull back", "crane shot",
+      "orbit", "arc shot", "tracking shot", "handheld", "gimbal",
+      "whip pan", "tilt up", "tilt down", "rack focus", "dutch angle",
+      "one-shot", "oner", "long take", "anamorphic", "telephoto",
+      "wide angle lens", "fisheye", "top-down shot", "low angle",
+      "first-person", "pov shot", "camera slowly",
+    ],
+    "vfx-transform": [
+      "morph", "match cut", "seamless transition", "transforms into",
+      "dissolves into", "particles", "disintegrat", "assembl",
+      "time-lapse", "timelapse", "speed ramp", "freeze frame",
+      "liquid simulation", "cloth simulation", "scale shift",
+      "miniature", "explodes into", "unfolds into",
+    ],
   } satisfies Record<PromptCategory, string[]>,
 
   /** Generic commercial signals — weak on their own, useful as tie-breakers. */
@@ -155,6 +184,17 @@ export const RUBRIC = {
 } as const;
 
 /** Minimum score to make the cut. Tuned so the set stays genuinely on-brief. */
+/**
+ * Lighting, camera and VFX terms describe HOW anything was shot, so they only
+ * score once a real subject or an explicit commercial signal is present —
+ * otherwise "studio lighting" alone lets any prompt through.
+ */
+export const MODIFIER_CATEGORIES: PromptCategory[] = [
+  "set-lighting",
+  "camera-craft",
+  "vfx-transform",
+];
+
 export const MIN_SCORE = 3;
 export const MAX_PROMPTS = 500;
 /** Below this a "prompt" is a fragment, above it it is usually a transcript. */

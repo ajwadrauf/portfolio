@@ -130,14 +130,27 @@ node scripts/ingest-prompts.mjs metadata.jsonl
         <p className="mt-3 max-w-3xl text-xs leading-relaxed text-muted">
           A general video corpus is mostly character work, landscapes and
           anime — almost none of it is retail. Each prompt is scored against
-          six category vocabularies drawn from how a photographer actually
-          briefs a shot (packshot, macro, physics, lighting, food, graphic),
-          two points a term. Generic commercial words score one, as
-          tie-breakers only. Anything matching an off-brief subject is dropped
-          outright, anything under {MIN_SCORE} points is dropped, near-duplicates
-          are collapsed on their first 24 words, and the rest is ranked by
-          score. Every entry below shows the signals that got it in, so the
-          filter can be argued with rather than trusted.
+          category vocabularies drawn from how a shot actually gets briefed,
+          two points a term, with generic commercial words worth one as
+          tie-breakers.
+          <br />
+          <br />
+          The part that took two passes to get right: lighting, camera and
+          VFX terms describe how <em>anything</em> was shot. Scored as
+          subjects they become a skeleton key — one mention of &ldquo;studio
+          lighting&rdquo; was enough to admit a breathing exercise, and camera
+          vocabulary alone filled 97% of an early build with street racing.
+          So those three only score once a real subject or an explicit
+          commercial signal is already present, and a subject always wins the
+          label over a modifier.
+          <br />
+          <br />
+          Off-brief subjects are dropped outright, Chinese prompts are counted
+          and skipped since the rubric cannot read them, anything under{" "}
+          {MIN_SCORE} points is dropped, near-duplicates collapse on their
+          first 24 words, and the rest ranks by score. Every entry shows the
+          signals that got it in, so the filter can be argued with rather than
+          trusted.
         </p>
       </details>
 
@@ -197,7 +210,8 @@ node scripts/ingest-prompts.mjs metadata.jsonl
                 {CATEGORIES.find((c) => c.id === p.category)?.label}
               </span>
               <span className="label-sm">
-                {p.author ? `by ${p.author}` : "author not recorded"}
+                {p.sourceCategory ? `${p.sourceCategory} · ` : ""}
+                {p.sourceId ?? (p.author ? `by ${p.author}` : "id not recorded")}
                 {p.aspect ? ` · ${p.aspect}` : ""}
                 {p.durationSeconds ? ` · ${p.durationSeconds}s` : ""}
               </span>
