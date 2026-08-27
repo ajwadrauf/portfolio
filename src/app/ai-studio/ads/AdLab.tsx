@@ -55,7 +55,36 @@ import {
 
 type Phase = "idle" | "composing" | "ready" | "starting" | "polling" | "done" | "failed" | "mock";
 
+/**
+ * Everything needed to ask "is it done yet?" about a render that has already
+ * been paid for. The status endpoint is stateless — given this handle it can
+ * fetch the result at any point — so the only way a paid render becomes
+ * unrecoverable is if we throw the handle away. We used to. It lived in a
+ * closure, so a timeout, a reload or a closed tab lost the video while fal
+ * finished it anyway.
+ */
+type PendingJob = {
+  provider: "gemini" | "fal";
+  operationName?: string;
+  falRequestId?: string;
+  modelId: string;
+  /** Shown back to the user so a long render reads as long, not stuck. */
+  startedAt: number;
+  /** For the resume prompt, so it says what is waiting rather than "a job". */
+  label: string;
+  aspect: string;
+};
+
 const SPEND_KEY = "studio-session-spend";
+const JOB_KEY = "adlab-pending-job";
+
+/** "12 minutes ago" — a render that reads as recent is worth waiting on. */
+function relativeTime(then: number) {
+  const mins = Math.max(1, Math.round((Date.now() - then) / 60000));
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hrs = Math.round(mins / 60);
+  return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+}
 const POLL_INTERVAL_MS = 12_000;
 const POLL_DEADLINE_MS = 10 * 60 * 1000;
 const ASPECT_CLASS: Record<string, string> = {
@@ -191,6 +220,13 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * A render that has been started and paid for but not yet collected. Held in
+   * state so the timeout screen can offer to check again, and mirrored to
+   * localStorage so closing the tab does not throw the money away.
+   */
+  const [pendingJob, setPendingJob] = useState<PendingJob | null>(null);
+  const [checking, setChecking] = useState(false);
   /** True when the prompt arrived from the library rather than the recipe. */
   const [imported, setImported] = useState(false);
   const [sessionSpend, setSessionSpend] = useState(0);
@@ -380,7 +416,69 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
     try {
       setSessionSpend(Number(localStorage.getItem(SPEND_KEY) ?? 0));
     } catch {}
+    // A render left running when the tab closed. Offer it back rather than
+    // letting a paid job disappear because the browser did.
+    try {
+      const raw = localStorage.getItem(JOB_KEY);
+      if (raw) {
+        const job = JSON.parse(raw) as PendingJob;
+        // fal keeps results for a day; older than that and the handle is dead.
+        if (Date.now() - job.startedAt < 24 * 60 * 60 * 1000) setPendingJob(job);
+        else localStorage.removeItem(JOB_KEY);
+      }
+    } catch {}
   }, []);
+
+  const rememberJob = useCallback((job: PendingJob | null) => {
+    setPendingJob(job);
+    try {
+      if (job) localStorage.setItem(JOB_KEY, JSON.stringify(job));
+      else localStorage.removeItem(JOB_KEY);
+    } catch {}
+  }, []);
+
+  /**
+   * One status check against an already-paid render. Free — it reads a result
+   * fal has already produced — so the button that calls it says so.
+   */
+  const checkPendingJob = useCallback(async () => {
+    if (!pendingJob) return;
+    setChecking(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate/video/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: pendingJob.provider,
+          operationName: pendingJob.operationName,
+          falRequestId: pendingJob.falRequestId,
+          modelId: pendingJob.modelId,
+        }),
+      });
+      const status = (await res.json()) as {
+        status?: string;
+        videoUrl?: string;
+        error?: string;
+      };
+      if (status.status === "done" && status.videoUrl) {
+        setVideoUrl(status.videoUrl);
+        setPhase("done");
+        rememberJob(null);
+        return;
+      }
+      if (status.status === "failed") {
+        setError(status.error ?? "The provider reported this render as failed.");
+        rememberJob(null);
+        return;
+      }
+      setError("Still rendering on the provider side. Check again in a minute.");
+    } catch {
+      setError("Could not reach the provider. Check again in a moment.");
+    } finally {
+      setChecking(false);
+    }
+  }, [pendingJob, rememberJob]);
 
   const addSpend = useCallback((amount: number) => {
     setSessionSpend((prev) => {
@@ -733,6 +831,18 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
         return;
       }
       addSpend(json.cost ?? 0);
+      // Save the handle before the first poll, not after the last one: from
+      // here on the render is paid for, and every path out of this function
+      // has to leave it recoverable.
+      rememberJob({
+        provider: json.provider,
+        operationName: json.operationName,
+        falRequestId: json.falRequestId,
+        modelId,
+        startedAt: Date.now(),
+        label: `${preset.name} · ${duration}s`,
+        aspect,
+      });
       setPhase("polling");
       const deadline = Date.now() + POLL_DEADLINE_MS;
       while (Date.now() < deadline) {
@@ -757,13 +867,19 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
         if (status?.status === "done") {
           setVideoUrl(status.videoUrl!);
           setPhase("done");
+          rememberJob(null);
           return;
         }
         if (status?.status === "failed") {
+          rememberJob(null);
           throw new Error(status.error ?? "Generation failed");
         }
       }
-      throw new Error("Timed out after 10 minutes — the job may still finish on the provider side.");
+      // Deliberately leaves the handle in place — the render is still running
+      // and already paid for, so the failed screen offers to collect it.
+      throw new Error(
+        "Still rendering after 10 minutes. Nothing is lost — the job is finishing on the provider side and you can collect it below.",
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed");
       setPhase("failed");
@@ -782,6 +898,7 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
     musicUrl,
     negativePrompt,
     preset,
+    rememberJob,
     resolution,
     productImage,
     refs,
@@ -844,6 +961,39 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
         </div>
         <span className="chip">Session spend: ${sessionSpend.toFixed(2)}</span>
       </div>
+
+      {/* A paid render from a previous visit that was never collected. */}
+      {pendingJob && phase === "idle" && (
+        <div className="mt-4 rounded-[6px] border border-accent/40 bg-accent/5 p-4">
+          <p className="label">Unfinished render</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+            <span className="font-semibold">{pendingJob.label}</span> was started{" "}
+            {relativeTime(pendingJob.startedAt)} and never collected. It was
+            already paid for, so fetching it costs nothing.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              className="btn-primary"
+              disabled={checking}
+              onClick={() => void checkPendingJob()}
+            >
+              {checking ? "Checking…" : "Collect it"}
+            </button>
+            <button
+              className="text-xs font-semibold text-muted hover:text-foreground"
+              onClick={() => rememberJob(null)}
+            >
+              Discard
+            </button>
+            {pendingJob.falRequestId && (
+              <code className="font-mono text-[10px] text-muted">
+                {pendingJob.falRequestId}
+              </code>
+            )}
+          </div>
+          {error && <p className="mt-2 text-xs text-warning">{error}</p>}
+        </div>
+      )}
 
       <h1 className="mt-6 text-[1.75rem] tracking-[-0.03em]">Ad Lab</h1>
       <p className="mt-2 max-w-3xl text-muted">
@@ -2174,7 +2324,24 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted">
                     {phase === "failed" ? (
-                      <p className="max-w-[80%] text-center text-danger">{error}</p>
+                      <div className="max-w-[85%] text-center">
+                        <p className="text-danger">{error}</p>
+                        {pendingJob && (
+                          <div className="mt-4">
+                            <button
+                              className="btn-primary"
+                              disabled={checking}
+                              onClick={() => void checkPendingJob()}
+                            >
+                              {checking ? "Checking…" : "Collect the render"}
+                            </button>
+                            <p className="mt-2 text-xs leading-relaxed text-muted">
+                              Free — the render is already paid for and this
+                              just reads the result.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <>
                         <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-muted/40 border-t-accent" />
