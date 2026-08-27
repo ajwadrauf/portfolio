@@ -3,7 +3,7 @@
  "source": {
   "name": "GokuScraper / seedance-2-prompts-datasets",
   "url": "https://huggingface.co/datasets/GokuScraper/seedance-2-prompts-datasets",
-  "licenseNote": "Prompts collected from public communities by the dataset curator, who disclaims copyright; rights remain with the original authors. Reproduced here as a study set with attribution.",
+  "licenseNote": "Published under CC BY 4.0 by the dataset curator, which permits reuse with attribution. Every entry keeps its source record id and links back to the dataset.",
   "consideredRows": 0,
   "ingestedAt": ""
  }

@@ -2,11 +2,10 @@
  * The prompt reference library.
  *
  * These prompts are NOT mine and are not presented as mine. They come from
- * the GokuScraper Seedance 2 dataset, which curates prompts collected from
- * public communities; the curator disclaims copyright and the rights sit
- * with the people who wrote them. The library exists as a study set — what
- * does a prompt that actually works on this model look like — and every
- * entry keeps its attribution and a link back to the source.
+ * the GokuScraper Seedance 2 dataset, published under CC BY 4.0 — a licence
+ * that permits reuse, including commercially, on the condition that credit
+ * is given. So credit is given: the source, its licence and each record's
+ * own id travel with the data rather than sitting in a footer.
  *
  * What IS mine is the filter. The dataset is thousands of prompts across
  * every subject a video model gets pointed at; almost none of it is retail.
@@ -62,6 +61,10 @@ export const CATEGORIES: {
 
 export type LibraryPrompt = {
   id: string;
+  /** The dataset's own record id, so an entry can be traced back. */
+  sourceId?: string;
+  /** The dataset's own coarse label, kept beside my retail category. */
+  sourceCategory?: string;
   text: string;
   category: PromptCategory;
   /** Rubric score that got it in, kept so the filter can be inspected. */

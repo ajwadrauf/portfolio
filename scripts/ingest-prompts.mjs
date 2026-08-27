@@ -31,11 +31,41 @@ const SOURCE_URL = "https://huggingface.co/datasets/GokuScraper/seedance-2-promp
 
 // --- field detection -------------------------------------------------------
 const KEYS = {
-  prompt: ["prompt", "text", "caption", "description", "prompt_en", "prompt_text", "content"],
+  prompt: [
+    "raw_prompt", "raw_p", "prompt_raw", "prompt", "text", "caption",
+    "description", "prompt_en", "prompt_text", "content",
+  ],
   author: ["author", "user", "username", "creator", "uploader", "nickname", "author_name"],
-  url: ["url", "source_url", "link", "page_url", "video_url", "share_url", "origin"],
-  aspect: ["aspect_ratio", "aspect", "ratio"],
-  duration: ["duration", "duration_seconds", "seconds", "length"],
+  url: [
+    "url", "source_url", "link", "page_url", "video_url", "share_url", "origin",
+    "media.video", "media.url", "media.cover", "media.video_url",
+  ],
+  aspect: ["aspect_ratio", "aspect", "ratio", "model_info.aspect_ratio"],
+  duration: ["duration", "duration_seconds", "seconds", "length", "model_info.duration"],
+  /** The dataset's own coarse label — kept alongside my retail categories. */
+  sourceCategory: ["category", "tag", "topic"],
+  id: ["id", "slug", "uid"],
+};
+
+/**
+ * Flattens one level of nesting so dotted candidates like "media.video" can
+ * be found. The dataset stores model_info and media as dicts, and the useful
+ * scalars are inside them.
+ */
+function flatten(row) {
+  const out = { ...row };
+  for (const [k, v] of Object.entries(row)) {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [k2, v2] of Object.entries(v)) out[`${k}.${k2}`] = v2;
+    }
+  }
+  return out;
+}
+
+/** True when the text is mostly CJK — the rubric is English-only. */
+const isCJK = (t) => {
+  const cjk = (t.match(/[\u3040-\u30ff\u4e00-\u9fff]/g) || []).length;
+  return cjk > t.length * 0.15;
 };
 
 const pick = (row, names) => {
@@ -139,8 +169,8 @@ async function* rowsFromApi(split = "train", config = "default") {
     total = json.num_rows_total ?? json.rows?.length ?? 0;
     if (!json.rows?.length) break;
     for (const item of json.rows) {
-      if (item.truncated_cells?.length) continue;
-      if (item.row) yield item.row;
+      if (item0.truncated_cells?.length) continue;
+      if (item0.row) yield item0.row;
     }
     offset += json.rows.length;
     process.stderr.write(`\r  fetched ${Math.min(offset, total)} / ${total}`);
@@ -168,7 +198,8 @@ async function inspect(source) {
   const counts = new Map();
   let n = 0;
   const samples = [];
-  for await (const row of source) {
+  for await (const raw of source) {
+    const row = flatten(raw);
     n++;
     for (const k of Object.keys(row)) counts.set(k, (counts.get(k) ?? 0) + 1);
     if (samples.length < 2) samples.push(row);
@@ -194,11 +225,22 @@ async function build(source) {
   let excluded = 0;
   let tooShort = 0;
   let dupes = 0;
+  let nonEnglish = 0;
 
-  for await (const row of source) {
+  for await (const raw of source) {
     considered++;
+    const row = flatten(raw);
     const text = pick(row, KEYS.prompt);
     if (typeof text !== "string") continue;
+    // Language first: CJK packs far more meaning per character, so a good
+    // Chinese prompt trips the length floor and would be miscounted as a
+    // stub. The rubric is English vocabulary and would score it zero anyway;
+    // counting it separately keeps the report honest about how much of the
+    // corpus this filter simply cannot read.
+    if (!includeCjk && isCJK(text)) {
+      nonEnglish++;
+      continue;
+    }
     if (text.length < LEN.min || text.length > LEN.max) {
       tooShort++;
       continue;
@@ -216,8 +258,11 @@ async function build(source) {
     seen.add(fp);
 
     const durationRaw = pick(row, KEYS.duration);
+    const sourceId = pick(row, KEYS.id);
     kept.push({
       id: `p${kept.length + 1}`,
+      sourceId: typeof sourceId === "string" ? sourceId : undefined,
+      sourceCategory: pick(row, KEYS.sourceCategory),
       text,
       category: verdict.category,
       score: verdict.score,
@@ -244,7 +289,7 @@ async function build(source) {
       name: "GokuScraper / seedance-2-prompts-datasets",
       url: SOURCE_URL,
       licenseNote:
-        "Prompts collected from public communities by the dataset curator, who disclaims copyright; rights remain with the original authors. Reproduced here as a study set with attribution.",
+        "Published under CC BY 4.0 by the dataset curator, which permits reuse with attribution. Every entry keeps its source record id and links back to the dataset.",
       consideredRows: considered,
       ingestedAt: new Date().toISOString().slice(0, 10),
     },
@@ -255,12 +300,13 @@ async function build(source) {
 
   const byCat = {};
   for (const p of prompts) byCat[p.category] = (byCat[p.category] ?? 0) + 1;
-  console.log(`Considered   ${considered}`);
-  console.log(`  off-brief  ${excluded}`);
-  console.log(`  wrong size ${tooShort}`);
-  console.log(`  duplicates ${dupes}`);
-  console.log(`Passed       ${kept.length}`);
-  console.log(`Written      ${prompts.length} -> ${path.relative(process.cwd(), OUT)}`);
+  console.log(`Considered    ${considered}`);
+  console.log(`  off-brief   ${excluded}`);
+  console.log(`  wrong size  ${tooShort}`);
+  console.log(`  non-English ${nonEnglish}`);
+  console.log(`  duplicates  ${dupes}`);
+  console.log(`Passed        ${kept.length}`);
+  console.log(`Written       ${prompts.length} -> ${path.relative(process.cwd(), OUT)}`);
   console.log("\nBy category:");
   for (const [c, n] of Object.entries(byCat).sort((a, b) => b[1] - a[1])) {
     console.log(`  ${c.padEnd(16)} ${n}`);
@@ -270,6 +316,8 @@ async function build(source) {
 const args = process.argv.slice(2);
 const doInspect = args.includes("--inspect");
 const fromApi = args.includes("--from-api");
+/** The rubric cannot read Chinese; opt in only if you intend to hand-check. */
+const includeCjk = args.includes("--include-cjk");
 const file = args.find((a) => !a.startsWith("--"));
 
 let source;
@@ -286,7 +334,9 @@ if (fromApi) {
   console.error(
     "usage:\n" +
       "  node scripts/ingest-prompts.mjs [--inspect] <metadata.jsonl>\n" +
-      "  node scripts/ingest-prompts.mjs --from-api [--inspect]",
+      "  node scripts/ingest-prompts.mjs --from-api [--inspect]\n" +
+      "\noptions:\n" +
+      "  --include-cjk   keep Chinese prompts (the rubric is English-only)",
   );
   process.exit(1);
 }

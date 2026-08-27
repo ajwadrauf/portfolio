@@ -104,7 +104,7 @@ node scripts/ingest-prompts.mjs metadata.jsonl
 
       {/* Provenance, stated before the content rather than in a footer. */}
       <div className="card mt-6 border-warning/30 bg-warning/[0.05] p-4">
-        <p className="label !text-warning">Source and rights</p>
+        <p className="label !text-warning">Source and licence</p>
         <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
           {library.source.licenseNote} Curated by{" "}
           <a
@@ -117,7 +117,7 @@ node scripts/ingest-prompts.mjs metadata.jsonl
           </a>
           . Ingested {library.source.ingestedAt}. Nothing here is my writing,
           and none of it is presented as a preset — the presets in the Ad Lab
-          are mine and are structured differently.
+          are mine and are structured differently. What is mine is the filter.
         </p>
       </div>
 
