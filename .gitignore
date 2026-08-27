@@ -40,3 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# Reference GIFs: a poster is always static, so these render frame one and
+# nothing more — at 20-35MB each. Git keeps every version of a binary forever,
+# so keep them out rather than discover it later. The MP4 is the preview.
+public/references/*.gif

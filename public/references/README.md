@@ -6,12 +6,15 @@ they cost nothing per use and never expire the way a storage URL does.
 
 Expected files — the names are matched exactly by `src/lib/referenceClips.ts`:
 
-| Clip | Video | Poster |
-|---|---|---|
-| Orbital drift | `orbital-drift.mp4` | `orbital-drift.jpg` |
-| Pulse grid | `pulse-grid.mp4` | `pulse-grid.jpg` |
-| Liquid bloom | `liquid-bloom.mp4` | `liquid-bloom.jpg` |
-| Light sweep | `light-sweep.mp4` | `light-sweep.jpg` |
+| Clip | Video |
+|---|---|
+| Orbital drift | `orbital-drift.mp4` |
+| Pulse grid | `pulse-grid.mp4` |
+| Liquid bloom | `liquid-bloom.mp4` |
+| Light sweep | `light-sweep.mp4` |
+
+The MP4 is the only file needed. Cards autoplay muted once they scroll into
+view, so the clip is its own preview.
 
 Anything missing shows as a labelled gap in the picker rather than a broken
 player, so partial installs are fine.
@@ -36,11 +39,27 @@ holding a bottle will put their hand in your ad.
 - **720p is plenty.** It is a motion reference, not footage.
 - **No text, no faces, no recognisable products.**
 
-## Posters
+## Do not add GIFs
 
-A single representative frame, same aspect as the clip. The picker shows it
-before hover so the grid is not four black rectangles on load, and sets
-`preload="none"` so nothing downloads until someone actually hovers.
+A GIF of the clip seems like the obvious preview and is the one thing that
+cannot work: the `poster` attribute renders a **static** image whatever you
+hand it, so a browser draws frame one of the GIF and stops. You would pay
+20-35MB per clip to display what a 40KB JPG displays.
+
+It is also the wrong direction on size. A GIF has no interframe compression,
+which is why the same few seconds runs 20MB as a GIF and 2MB as an MP4 — the
+format you already have is the smaller one and the only one that moves.
+
+An optional `<name>.jpg` still frame is supported and covers the instant
+before the first frame decodes, but it is genuinely optional; without it the
+video shows its own opening frame.
+
+## Weight
+
+Nothing loads until a card scrolls into view, and playback pauses when it
+leaves, so a visitor who never reaches the References step downloads none of
+it. Still worth keeping each clip near 2-3MB: on a Mac, QuickTime's
+File > Export As > 720p re-encodes a heavy file down in one step.
 
 ## Licensing
 

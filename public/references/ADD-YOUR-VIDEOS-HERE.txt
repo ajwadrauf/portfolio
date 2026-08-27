@@ -7,14 +7,30 @@ RENAME THEM TO EXACTLY THESE NAMES
 ----------------------------------
 The app matches these names literally, so a typo means the clip stays hidden.
 
-  1.  orbital-drift.mp4     + orbital-drift.jpg
-  2.  pulse-grid.mp4        + pulse-grid.jpg
-  3.  liquid-bloom.mp4      + liquid-bloom.jpg
-  4.  light-sweep.mp4       + light-sweep.jpg
+  1.  orbital-drift.mp4
+  2.  pulse-grid.mp4
+  3.  liquid-bloom.mp4
+  4.  light-sweep.mp4
 
-The .jpg is a still frame from the clip. It is what shows in the picker
-before someone hovers, so without it the gallery is four grey rectangles on
-load. Any frame will do — screenshot the video and save it.
+The MP4 is the only file you need. Cards autoplay muted once they scroll
+into view, so the clip previews itself.
+
+DO NOT ADD GIFs
+---------------
+A GIF seems like the obvious way to show motion and is the one thing that
+cannot work here: a poster image is always STATIC, so the browser draws
+frame one of the GIF and stops. You pay 20-35MB to show what a 40KB JPG
+would show.
+
+It is backwards on size too. GIF has no interframe compression, which is why
+the same clip is 20MB as a GIF and 2MB as an MP4. The file you already have
+is both the smaller one and the only one that moves.
+
+If you made GIFs, delete them — especially before committing, since git
+keeps every version of a binary forever and 90MB of them will make the repo
+slow to clone for good.
+
+An optional <name>.jpg still is supported but not needed.
 
 WHICH CLIP GOES WHERE
 ---------------------
@@ -41,7 +57,11 @@ KEEP THEM SMALL
 ---------------
   - 4 to 6 seconds. These models read the camera move, not the content.
     Longer buys nothing.
-  - Under 4MB, same cap as the upload path.
+  - Aim for 2-3MB. The 4MB cap shown on the upload button does NOT apply to
+    these — that limit exists because a browser upload passes through a
+    serverless request, and these never do. But they are served to every
+    visitor who scrolls to them, so size still matters.
+    On a Mac: QuickTime > File > Export As > 720p re-encodes a heavy one.
   - 720p is plenty. It is a motion reference, not footage.
   - No text, no faces, no recognisable products — anything in the clip can
     leak into your ad.

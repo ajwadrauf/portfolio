@@ -23,8 +23,12 @@ export type ReferenceClip = {
   suggestedRole: "motion" | "rhythm" | "style" | "composition";
   /** File under public/references. */
   file: string;
-  /** Still frame under public/references, shown before hover. */
-  poster: string;
+  /**
+   * Optional still frame. The clip animates itself once in view, so this only
+   * covers the moment before the first frame decodes. A GIF is no use here —
+   * `poster` renders a static image whatever you give it.
+   */
+  poster?: string;
   seconds: number;
 };
 
@@ -36,7 +40,6 @@ export const REFERENCE_CLIPS: ReferenceClip[] = [
       "Slow orbital motion with soft collisions and long easing. Point a product at this when it should feel weightless and premium — it lengthens every move and removes urgency. The wrong choice for anything cut to a beat.",
     suggestedRole: "motion",
     file: "/references/orbital-drift.mp4",
-    poster: "/references/orbital-drift.jpg",
     seconds: 5,
   },
   {
@@ -46,7 +49,6 @@ export const REFERENCE_CLIPS: ReferenceClip[] = [
       "Hard rhythmic pulses on a regular interval. This is the one to use when the concept cuts to music — it gives the model an explicit tempo to land actions on, which is the difference between a grid that fills on the beat and one that fills whenever.",
     suggestedRole: "rhythm",
     file: "/references/pulse-grid.mp4",
-    poster: "/references/pulse-grid.jpg",
     seconds: 5,
   },
   {
@@ -56,7 +58,6 @@ export const REFERENCE_CLIPS: ReferenceClip[] = [
       "Fluid expansion outward from centre, dense and organic. Reads as pour, splash and bloom physics. Use it for food and drink where the payoff is something spreading or bursting rather than something moving.",
     suggestedRole: "motion",
     file: "/references/liquid-bloom.mp4",
-    poster: "/references/liquid-bloom.jpg",
     seconds: 5,
   },
   {
@@ -66,7 +67,6 @@ export const REFERENCE_CLIPS: ReferenceClip[] = [
       "A raking highlight travelling across a dark field. Borrow this for lighting behaviour rather than movement — it teaches the model how a specular hit should travel over a surface, which is most of what makes packaging look expensive.",
     suggestedRole: "style",
     file: "/references/light-sweep.mp4",
-    poster: "/references/light-sweep.jpg",
     seconds: 5,
   },
 ];

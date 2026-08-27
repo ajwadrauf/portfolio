@@ -100,6 +100,50 @@ async function toProcessedDataUrl(file: File): Promise<string> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * A starter clip that plays itself while it is on screen.
+ *
+ * Hover was the wrong trigger twice over: a motion reference is unreadable as
+ * a frozen frame, so the thing being chosen was invisible until touched, and
+ * hover does not exist on a phone at all. Playing in view fixes both. The
+ * observer matters as much as the autoplay — four clips is tens of megabytes,
+ * and nobody scrolled to the References step should pay for it on arrival.
+ */
+function ClipPreview({ src, poster }: { src: string; poster?: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.preload = "auto";
+          void el.play().catch(() => {});
+        } else {
+          el.pause();
+        }
+      },
+      { threshold: 0.25 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={ref}
+      src={src}
+      poster={poster}
+      muted
+      loop
+      playsInline
+      preload="none"
+      className="h-full w-full object-cover"
+    />
+  );
+}
+
 /** One numbered card in the single-column flow. */
 function Step({
   n,
@@ -1843,20 +1887,7 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
                     >
                       <div className="relative aspect-video overflow-hidden rounded-t-[5px] bg-surface-2">
                         {ready ? (
-                          <video
-                            src={clip.file}
-                            poster={clip.poster}
-                            muted
-                            loop
-                            playsInline
-                            preload="none"
-                            className="h-full w-full object-cover"
-                            onMouseEnter={(e) => void e.currentTarget.play().catch(() => {})}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.pause();
-                              e.currentTarget.currentTime = 0;
-                            }}
-                          />
+                          <ClipPreview src={clip.file} poster={clip.poster} />
                         ) : (
                           <div className="flex h-full items-center justify-center px-2 text-center">
                             <span className="label-sm !text-[10px]">Not added yet</span>
