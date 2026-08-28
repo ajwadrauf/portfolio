@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "BadgeForge — Case study · Ajwad Rauf",
+  title: "Project Forge — Case study · Ajwad Rauf",
   description:
     "An internal production platform for an enterprise retail CRM email program: a badge brief in, a reviewed, deployment-ready email asset out.",
 };
@@ -12,6 +12,7 @@ const META = [
   { k: "Timeline", v: "2025–2026" },
   { k: "Client", v: "Loblaw Companies — internal" },
   { k: "Type", v: "Internal web app, in production" },
+  { k: "Access", v: "No public URL — internal tool" },
 ];
 
 const TAGS = ["Internal tooling", "Workflow automation", "Next.js + Firebase"];
@@ -147,7 +148,7 @@ function Emphasised({ text, strong }: { text: string; strong: string }) {
   );
 }
 
-export default function BadgeForgePage() {
+export default function ProjectForgePage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="brand-strip" />
@@ -167,7 +168,7 @@ export default function BadgeForgePage() {
       <section className={`${SHELL} pb-14 pt-16 lg:pb-20 lg:pt-24`}>
         <span className="label !text-accent">Case study</span>
         <h1 className="mt-6 text-[clamp(3rem,8vw,5.5rem)] leading-[0.98] tracking-[-0.03em]">
-          BadgeForge
+          Project Forge
         </h1>
         <p className="mt-5 max-w-[24ch] text-[clamp(1.3rem,3.2vw,1.9rem)] leading-[1.28] tracking-[-0.01em]">
           A badge brief in, a reviewed, deployment-ready email asset out.
@@ -203,8 +204,16 @@ export default function BadgeForgePage() {
             aria-hidden
             className="mt-[7px] h-[7px] w-[7px] shrink-0 rounded-full bg-warning"
           />
-          Built inside Loblaw. Proprietary process detail and internal metrics
-          are withheld; a full walkthrough is available on request.
+          <span>
+            <span className="font-semibold">
+              No public URL — this is an internal Loblaw tool.
+            </span>{" "}
+            &ldquo;Project Forge&rdquo; is a stand-in name, and the product
+            name, interface screenshots, campaign data and internal metrics are
+            purposely omitted under NDA. What is here is the architecture and
+            the reasoning behind it, which is the part that is mine to show. A
+            walkthrough can be arranged through the appropriate channel.
+          </span>
         </p>
       </section>
 
@@ -214,7 +223,7 @@ export default function BadgeForgePage() {
           <div>
             <SectionHead n="01" title="What it is" />
             <p className="mt-7 max-w-[64ch] text-[15px] leading-[1.75] sm:text-[17px]">
-              BadgeForge is the system a retail marketing team uses to brief,
+              Project Forge is the system a retail marketing team uses to brief,
               build, review and ship the promotional badges that run in their
               CRM emails — the offer tiles that carry a campaign&apos;s price
               points, dates and calls to action.
@@ -223,7 +232,7 @@ export default function BadgeForgePage() {
               Before a single system, that work lived across briefs, threads and
               spreadsheets. Badges stalled between hand-offs, versions drifted,
               and no one could see where a given badge was in the process.
-              BadgeForge makes it one place with one source of truth, from
+              Project Forge makes it one place with one source of truth, from
               intake to release.
             </p>
           </div>

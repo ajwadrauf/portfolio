@@ -5,7 +5,7 @@ const BASE = "https://ajwadrauf.com";
 /** Every page worth landing on directly. */
 const ROUTES = [
   "",
-  "/badgeforge",
+  "/project-forge",
   "/ai-studio",
   "/ai-studio/studio",
   "/ai-studio/packshots",

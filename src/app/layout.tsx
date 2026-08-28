@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://ajwadrauf.com"),
   title: "Ajwad Rauf — applied AI across marketing and CRM",
   description:
-    "Applied AI across marketing and CRM: AI Content Studio, a live generating tool for product creative; BadgeForge, intake-to-deployment for Loblaw CRM badges; and Persopot.",
+    "Applied AI across marketing and CRM: AI Content Studio, a live generating tool for product creative; Project Forge, intake-to-deployment for an internal Loblaw CRM workflow; and Persopot.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
