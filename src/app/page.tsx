@@ -1,11 +1,15 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HomeNav } from "@/components/HomeNav";
+import { ShowcaseStrip } from "@/components/ShowcaseStrip";
+import { SHOWCASE } from "@/lib/showcase";
 
 export const metadata: Metadata = {
   title: "Ajwad Rauf — AI production systems",
   description:
-    "Applied AI across marketing and CRM. I build production AI end to end — finding where it changes the economics, prototyping fast, and shipping systems built on real data for a specific context.",
+    "Applied AI for content production, mostly in retail marketing. I build the pipelines that close the gap between content demand and what a team can actually make — stills, motion and sound, shipped end to end.",
 };
 
 type Project = {
@@ -97,6 +101,11 @@ const APPROACH = [
     p: "Design, build, deploy, support. All three projects here went from idea to live users without a hand-off, including one through enterprise SSO and review.",
     short: "Design, build, deploy, support — no hand-off.",
   },
+  {
+    h: "Built to hand over",
+    p: "Capability that lives in one person's head isn't a studio — it's a bottleneck with a title. So every asset exposes the prompt that made it, and every workflow is documented well enough that the tenth person can run it.",
+    short: "Every asset exposes its prompt; every workflow is written down.",
+  },
 ];
 
 /**
@@ -105,15 +114,40 @@ const APPROACH = [
  */
 const SKILLS = [
   "Built & shipped",
-  "Agentic workflows",
-  "Production AI",
-  "Marketing & CRM",
-  "Conversational analytics",
+  "Stills",
+  "Motion",
   "Generative media",
-  "Data infrastructure",
-  "Text-to-SQL",
-  "Personalization",
+  "Sound design",
+  "Bilingual EN/FR versioning",
   "Prompt systems",
+  "Model routing",
+  "Quality gates",
+  "Retail content",
+];
+
+/**
+ * Judgment, stated as things that cost something to find out. The full
+ * versions live in the studio; these are the compressed forms, here because a
+ * Director is hired for knowing what is ready and what is not, and that is
+ * only credible when it is specific.
+ */
+const LEARNED = [
+  {
+    h: "The leaderboard flips quarterly",
+    p: "Sora 2's API sunset stranded pipelines built on it. Model IDs and prices sit in one config file with environment overrides, so switching vendor is an edit, not a rebuild.",
+  },
+  {
+    h: "Video models don't write music",
+    p: "They render effects, ambience and dialogue convincingly, then approximate a score. So the layers split: the video model does sound design, a music model composes, the mix stays a finishing step.",
+  },
+  {
+    h: "Text-in-image is a routing decision",
+    p: "Most image models still mangle type. That one constraint is why bilingual tiles route to the pro tier while format adaptations run four times cheaper on flash.",
+  },
+  {
+    h: "AI can't know what it never saw",
+    p: "A generated packshot of a panel no camera captured is a plausible reconstruction, not a record. It gets labelled that way every time — a wrong ingredient list is a recall, not a retouch.",
+  },
 ];
 
 const LINKS = [
@@ -131,6 +165,15 @@ function StatusDot({ status }: { status: Project["status"] }) {
     </span>
   );
 }
+
+const onDisk = (p: string) =>
+  fs.existsSync(path.join(process.cwd(), "public", p.replace(/^\//, "")));
+
+/**
+ * Only work that actually exists. An empty showcase removes the section
+ * rather than rendering broken frames at the top of the page.
+ */
+const showcase = SHOWCASE.filter((i) => onDisk(i.file));
 
 export default function Home() {
   return (
@@ -152,19 +195,23 @@ export default function Home() {
         </div>
         <div className="lg:pb-3.5">
           <p className="text-[15px] leading-[1.7] text-muted sm:text-[17px]">
-            Applied AI, mostly across marketing and CRM. I look for where AI
-            changes the economics of a job, prototype fast, then ship something
-            built on real data for a specific context — end to end, through
-            security review, into people&apos;s hands. Built by hand, not bought
-            off a shelf. Three of those systems are below.
+            Applied AI for content production, mostly in retail marketing.
+            Content demand has outrun what any team can hand-make; I build the
+            pipelines that close that gap — stills, motion and sound — and take
+            them end to end, through security review, into people&apos;s hands.
+            Built by hand, not bought off a shelf. Three of those systems are
+            below.
           </p>
           <div className="mt-7 flex flex-wrap gap-2.5">
             <span className="chip">Toronto</span>
-            <span className="chip">AI · Marketing &amp; CRM</span>
+            <span className="chip">AI · Content production</span>
             <span className="chip">Solo builds, shipped</span>
           </div>
         </div>
       </section>
+
+      {/* ---------------- Output, before the argument ---------------- */}
+      <ShowcaseStrip items={showcase} />
 
       {/* ---------------- Skills marquee ---------------- */}
       <div className="marquee" aria-hidden="true">
@@ -267,7 +314,7 @@ export default function Home() {
         className="mx-auto max-w-[1440px] border-t border-border-soft px-6 py-14 sm:px-12 lg:px-24 lg:pb-24 lg:pt-16"
       >
         <span className="label !tracking-[0.16em]">How I work</span>
-        <div className="mt-8 grid gap-8 lg:mt-11 lg:grid-cols-3 lg:gap-14">
+        <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:mt-11 lg:grid-cols-4 lg:gap-10">
           {APPROACH.map((a) => (
             <div key={a.h}>
               <h3 className="text-xl leading-[1.2] tracking-[-0.02em] sm:text-[26px]">
@@ -277,6 +324,35 @@ export default function Home() {
                 <span className="hidden sm:inline">{a.p}</span>
                 <span className="sm:hidden">{a.short}</span>
               </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------------- Judgment ---------------- */}
+      <section className="mx-auto max-w-[1440px] border-t border-border-soft px-6 py-14 sm:px-12 lg:px-24 lg:pb-24 lg:pt-16">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
+          <span className="label !tracking-[0.16em]">What shipping taught me</span>
+          <Link
+            href="/ai-studio/models"
+            className="text-sm font-semibold text-accent hover:underline"
+          >
+            The full model landscape →
+          </Link>
+        </div>
+        <p className="mt-6 max-w-[62ch] text-[15px] leading-[1.7] text-muted sm:text-[17px]">
+          This field turns over every quarter, so the useful thing is not a
+          list of tools — it is knowing what is ready, what is emerging and
+          what is not viable yet. I know where those lines sit because I hit
+          them myself, on work that had to ship.
+        </p>
+        <div className="mt-9 grid gap-8 sm:grid-cols-2 lg:gap-x-14 lg:gap-y-10">
+          {LEARNED.map((l) => (
+            <div key={l.h} className="border-t border-border-soft pt-5">
+              <h3 className="text-lg leading-[1.25] tracking-[-0.02em] sm:text-xl">
+                {l.h}
+              </h3>
+              <p className="mt-2.5 text-sm leading-[1.7] text-muted">{l.p}</p>
             </div>
           ))}
         </div>
