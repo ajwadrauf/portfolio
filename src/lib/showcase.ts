@@ -12,13 +12,24 @@
  * agency could screenshot proves nothing; a gallery with unit economics
  * attached proves a production system.
  *
- * Files live in `public/showcase/`. Anything whose file is missing at build
- * time is dropped rather than rendered broken, so the strip only ever shows
- * work that exists — see `public/showcase/README.md`.
+ * Files come from one of three places, resolved on the server: an env
+ * override (`SHOWCASE_REVERSE_REWIND=https://…`), an absolute URL written into
+ * the manifest, or a file committed under `public/showcase/`. Anything that
+ * resolves to nothing is dropped rather than rendered broken, so the strip
+ * only ever shows work that exists — see `public/showcase/README.md`.
  */
 
 export type ShowcaseItem = {
-  /** Path under /public. `.mp4` renders as looping motion, everything else as a still. */
+  /** Stable id, and the key for the env override. */
+  id: string;
+  /**
+   * A path under `/public` or an absolute `https://` URL. `.mp4` renders as
+   * looping motion, everything else as a still.
+   *
+   * The hosted form keeps multi-megabyte video out of git, which matters more
+   * here than anywhere else on the site: these load before the rest of the
+   * page, so they will be replaced and re-exported more than once.
+   */
   file: string;
   /** Optional poster for a motion item — a still frame shown before it plays. */
   poster?: string;
@@ -38,6 +49,7 @@ export type ShowcaseItem = {
  */
 export const SHOWCASE: ShowcaseItem[] = [
   {
+    id: "reverse-rewind",
     file: "/showcase/reverse-rewind.mp4",
     poster: "/showcase/reverse-rewind.jpg",
     title: "Reverse Rewind",
@@ -46,6 +58,7 @@ export const SHOWCASE: ShowcaseItem[] = [
     cost: "$6.47",
   },
   {
+    id: "anti-gravity",
     file: "/showcase/anti-gravity.mp4",
     poster: "/showcase/anti-gravity.jpg",
     title: "Anti-Gravity Assembly",
@@ -54,6 +67,7 @@ export const SHOWCASE: ShowcaseItem[] = [
     cost: "$3.70",
   },
   {
+    id: "packshot-grid",
     file: "/showcase/packshot-grid.jpg",
     title: "Planogram angles",
     note: "Shot angles grounded, missing angles reconstructed and flagged for label QA.",
@@ -61,6 +75,7 @@ export const SHOWCASE: ShowcaseItem[] = [
     cost: "$0.14",
   },
   {
+    id: "bilingual-tile",
     file: "/showcase/bilingual-tile.jpg",
     title: "Bilingual promo tile",
     note: "EN/FR from one brief — routed to the pro tier because type is where image models fail.",
@@ -80,4 +95,15 @@ export const SHOWCASE: ShowcaseItem[] = [
  */
 export const TILE_BOX = "aspect-[4/5]";
 
-export const isMotion = (file: string) => file.toLowerCase().endsWith(".mp4");
+export const isMotion = (file: string) =>
+  file.toLowerCase().split("?")[0].endsWith(".mp4");
+
+/** Already reachable by a browser — nothing to look for on disk. */
+export const isHosted = (url: string) => /^https:\/\//.test(url);
+
+/**
+ * Env override key for one item: SHOWCASE_REVERSE_REWIND, SHOWCASE_ANTI_GRAVITY…
+ * Suffix `_POSTER` sets the poster frame for a motion item.
+ */
+export const showcaseEnvKey = (id: string, poster = false) =>
+  `SHOWCASE_${id.toUpperCase().replace(/-/g, "_")}${poster ? "_POSTER" : ""}`;

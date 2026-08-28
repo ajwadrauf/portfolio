@@ -74,7 +74,7 @@ export function ShowcaseStrip({ items }: { items: ShowcaseItem[] }) {
 
       <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {items.map((item) => (
-          <li key={item.file} className="group">
+          <li key={item.id} className="group">
             <div
               className={`relative overflow-hidden rounded-[6px] border border-border-soft bg-surface-2 ${TILE_BOX}`}
             >

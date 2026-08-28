@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { HomeNav } from "@/components/HomeNav";
 import { ShowcaseStrip } from "@/components/ShowcaseStrip";
-import { SHOWCASE } from "@/lib/showcase";
+import { SHOWCASE, isHosted, showcaseEnvKey } from "@/lib/showcase";
 
 export const metadata: Metadata = {
   title: "Ajwad Rauf — AI production systems",
@@ -166,14 +166,28 @@ function StatusDot({ status }: { status: Project["status"] }) {
   );
 }
 
-const onDisk = (p: string) =>
-  fs.existsSync(path.join(process.cwd(), "public", p.replace(/^\//, "")));
+const onDisk = (p: string) => {
+  try {
+    return fs.existsSync(path.join(process.cwd(), "public", p.replace(/^\//, "")));
+  } catch {
+    return false;
+  }
+};
+
+/** A source is usable if it is a URL, or a file that is actually there. */
+const resolve = (src: string | undefined) =>
+  src && (isHosted(src) || onDisk(src)) ? src : undefined;
 
 /**
- * Only work that actually exists. An empty showcase removes the section
+ * Only work that actually exists, from an env override, a URL in the manifest,
+ * or a committed file — in that order. An empty showcase removes the section
  * rather than rendering broken frames at the top of the page.
  */
-const showcase = SHOWCASE.filter((i) => onDisk(i.file));
+const showcase = SHOWCASE.map((i) => {
+  const file = resolve(process.env[showcaseEnvKey(i.id)]?.trim() || i.file);
+  const poster = resolve(process.env[showcaseEnvKey(i.id, true)]?.trim() || i.poster);
+  return file ? { ...i, file, poster } : null;
+}).filter((i): i is NonNullable<typeof i> => i !== null);
 
 export default function Home() {
   return (

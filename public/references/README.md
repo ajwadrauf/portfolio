@@ -77,8 +77,16 @@ preview, and fal, to read the motion. A public URL satisfies both, which means
 the video never has to enter the repo — worth doing, since git keeps every
 version of a binary forever.
 
-Upload the four clips anywhere public (fal storage, S3, Cloudflare R2, any
-CDN) and set one variable per clip:
+Upload the four clips anywhere public and set one variable per clip. Vercel
+Blob is the least effort if the site is already on Vercel:
+
+```bash
+vercel blob put orbital-drift.mp4 --pathname references/orbital-drift.mp4
+```
+
+which returns `https://<store-id>.public.blob.vercel-storage.com/references/orbital-drift.mp4`.
+fal storage, S3 or R2 work identically — the code only cares that the URL is
+public, because fal fetches it from its own network.
 
 ```
 REFERENCE_CLIP_ORBITAL_DRIFT=https://…/orbital-drift.mp4

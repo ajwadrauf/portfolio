@@ -37,12 +37,42 @@ video loads.
 - **Motion plays only while on screen**, and respects `prefers-reduced-motion`
   by showing the poster with a play control instead.
 
-## These have to be committed
+## Two ways to get them live
 
-Vercel builds from git, so a file that only exists on your Mac will never
-appear on the live site. Add them, commit them, push. They are deliberately
-**not** gitignored for that reason — which is also why the size limits below
-matter: git keeps every version of a binary forever.
+**Vercel Blob (recommended).** Upload the files, set one variable per item,
+redeploy. Nothing large enters git — which matters here, because these are the
+assets most likely to be re-exported and swapped, and git keeps every version
+of a binary forever.
+
+```bash
+vercel blob put reverse-rewind.mp4 --pathname showcase/reverse-rewind.mp4
+```
+
+Each upload returns a URL like
+`https://<store-id>.public.blob.vercel-storage.com/showcase/reverse-rewind.mp4`,
+live immediately and CDN-cached. Put those in the project's environment
+variables:
+
+```
+SHOWCASE_REVERSE_REWIND=https://…/reverse-rewind.mp4
+SHOWCASE_REVERSE_REWIND_POSTER=https://…/reverse-rewind.jpg
+SHOWCASE_ANTI_GRAVITY=…
+SHOWCASE_ANTI_GRAVITY_POSTER=…
+SHOWCASE_PACKSHOT_GRID=…
+SHOWCASE_BILINGUAL_TILE=…
+```
+
+The name is the item id uppercased with dashes as underscores; `_POSTER` sets
+the still frame for a clip. An override beats a committed file, so the two can
+be mixed.
+
+**Or commit the files here.** Simpler, no external service, and fine for
+stills. Vercel builds from git, so anything that only exists on your Mac will
+never appear live — add, commit, push. This folder is deliberately not
+gitignored for that reason.
+
+Either way the value is read **at build time**, because the home page is
+prerendered: setting a variable without redeploying does nothing.
 
 ## Keep them small
 
