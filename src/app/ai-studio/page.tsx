@@ -49,6 +49,13 @@ const MANDATES = [
 
 const TOOLS = [
   {
+    href: "/ai-studio/ads",
+    name: "Ad Lab",
+    line: "Preset ad recipes any SKU can run through",
+    body: "Deconstructed concepts — aesthetics, beat-by-beat action, overlay spec, sound design — every part of it editable, with the product swapped in from a photo and held still by reference-to-video. Sound is built in layers: effects from the model, spot effects generated one at a time, music scored separately.",
+    tags: ["Short-form video", "Prompt systems", "Sound design"],
+  },
+  {
     href: "/ai-studio/studio",
     name: "Campaign Studio",
     line: "One photo → a full multi-format pack",
@@ -61,13 +68,6 @@ const TOOLS = [
     line: "GS1 planogram angles without the reshoot",
     body: "Upload the reference angles a SKU already has, generate the missing product-on-white views with GS1 filenames — grounded angles marked, reconstructed ones flagged for label QA.",
     tags: ["Product on white", "A/B bake-offs", "Governance"],
-  },
-  {
-    href: "/ai-studio/ads",
-    name: "Ad Lab",
-    line: "Preset ad recipes any SKU can run through",
-    body: "Deconstructed concepts — aesthetics, beat-by-beat action, overlay spec, sound design — every part of it editable, with the product swapped in from a photo and held still by reference-to-video. Sound is built in layers: effects from the model, spot effects generated one at a time, music scored separately.",
-    tags: ["Short-form video", "Prompt systems", "Sound design"],
   },
   {
     href: "/ai-studio/prompts",
@@ -317,15 +317,33 @@ export default function Home() {
       {/* ---------- CTA ---------- */}
       <section className="border-t border-border-soft py-20 text-center">
         <h2 className="text-3xl font-bold tracking-tight">
-          It runs right now, for free
+          Browse it free. Generating is the part that costs.
         </h2>
-        <p className="mx-auto mt-3 max-w-xl leading-relaxed text-muted">
-          Demo mode exercises the entire pipeline with zero API spend. Add
-          keys and it goes fully live — with a cost estimate and confirmation
-          before a single credit is used.
+        <p className="mx-auto mt-3 max-w-2xl leading-relaxed text-muted">
+          Every page here is open, and demo mode walks the whole pipeline —
+          intake, brief, routing, quality gates — at zero spend. Live
+          rendering is behind a passcode, because each one bills a real
+          account: a 14-second video is roughly $6. Every live run shows its
+          estimated cost and asks before it spends.
         </p>
-        <Link href="/ai-studio/studio" className="btn-primary mt-8">
-          Run the pipeline →
+        <p className="mx-auto mt-3 max-w-2xl leading-relaxed text-muted">
+          If you are reviewing this for the role, I will happily open it up —{" "}
+          <a
+            href="https://www.linkedin.com/in/ajwadrauf"
+            className="font-semibold text-accent hover:underline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            message me on LinkedIn
+          </a>{" "}
+          or email{" "}
+          <a href="mailto:ajwadrauf@gmail.com" className="font-semibold text-accent hover:underline">
+            ajwadrauf@gmail.com
+          </a>
+          .
+        </p>
+        <Link href="/ai-studio/ads" className="btn-primary mt-8">
+          Open the Ad Lab →
         </Link>
       </section>
     </div>

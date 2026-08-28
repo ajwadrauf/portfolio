@@ -6,9 +6,9 @@ import { UngatedBanner } from "./LiveGate";
 
 const LINKS = [
   { href: "/ai-studio", label: "Overview" },
+  { href: "/ai-studio/ads", label: "Ad Lab" },
   { href: "/ai-studio/studio", label: "Studio" },
   { href: "/ai-studio/packshots", label: "Packshots" },
-  { href: "/ai-studio/ads", label: "Ad Lab" },
   { href: "/ai-studio/prompts", label: "Prompt builder" },
   { href: "/ai-studio/models", label: "Models" },
   { href: "/ai-studio/build-vs-buy", label: "Build vs. Buy" },
@@ -18,19 +18,22 @@ const LINKS = [
 export function Nav() {
   const pathname = usePathname();
   return (
-    <header className="sticky top-0 z-40 border-b border-border-soft bg-background/90 backdrop-blur">
+    <header className="nav-bar sticky top-0 z-40 border-b border-accent/20 backdrop-blur">
       <div className="brand-strip" />
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between gap-4 sm:justify-start">
           <Link
             href="/"
-            className="label whitespace-nowrap transition hover:text-foreground"
+            className="label !text-[14px] whitespace-nowrap font-medium transition hover:text-accent"
             title="Back to ajwadrauf.com"
           >
             ← Ajwad Rauf
           </Link>
-          <span className="hidden h-4 w-px bg-border-strong sm:block" />
-          <Link href="/ai-studio" className="label !text-foreground whitespace-nowrap">
+          <span className="hidden h-4 w-px bg-accent/30 sm:block" />
+          <Link
+            href="/ai-studio"
+            className="label !text-[14px] !text-accent whitespace-nowrap font-semibold"
+          >
             AI Content Studio
           </Link>
         </div>
@@ -44,8 +47,8 @@ export function Nav() {
                 href={l.href}
                 className={`whitespace-nowrap rounded-[6px] px-3 py-1.5 transition ${
                   active
-                    ? "bg-surface-2 font-semibold text-foreground"
-                    : "text-muted hover:text-foreground"
+                    ? "bg-accent font-semibold text-white shadow-[0_1px_6px_rgba(142,58,124,0.35)]"
+                    : "text-muted hover:bg-accent/8 hover:text-accent"
                 }`}
               >
                 {l.label}

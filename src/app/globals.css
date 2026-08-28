@@ -57,6 +57,26 @@ h3 {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+/*
+ * The studio nav. A plain translucent bar read as unfinished next to the
+ * work below it, so the accent carries it: a wash of the brand purple over
+ * the page background, deep enough to separate the bar from the content and
+ * light enough that the links stay the loudest thing in it.
+ */
+.nav-bar {
+  background: color-mix(in srgb, var(--accent) 7%, var(--background));
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .nav-bar {
+    background: color-mix(
+      in srgb,
+      var(--accent) 7%,
+      color-mix(in srgb, var(--background) 88%, transparent)
+    );
+  }
+}
+
 /* The one place the full spectrum appears. */
 .brand-strip {
   height: 3px;
