@@ -7,10 +7,11 @@ RENAME THEM TO EXACTLY THESE NAMES
 ----------------------------------
 The app matches these names literally, so a typo means the clip stays hidden.
 
-  1.  orbital-drift.mp4
-  2.  pulse-grid.mp4
-  3.  liquid-bloom.mp4
-  4.  light-sweep.mp4
+  1.  VibrantChurn.mp4
+  2.  SymmetricalPulse.mp4
+  3.  Off-CenterVortex.mp4
+  4.  DirectionalGlide.mp4
+  ExplosiveBloom.mp4
 
 The MP4 is the only file you need. Cards autoplay muted once they scroll
 into view, so the clip previews itself.
@@ -37,21 +38,27 @@ WHICH CLIP GOES WHERE
 The names describe the MOTION, not the colour, because that is what the
 model actually copies from a reference. Match your Envato clips to these:
 
-  orbital-drift  slow drifting, floating, soft collisions, long easing
-                 -> for products that should feel weightless and premium
+  VibrantChurn.mp4       chaotic clustered churn, no fixed focal point
+                         -> creative, energetic, bursting with variety
 
-  pulse-grid     hard rhythmic pulses on a regular beat
-                 -> for concepts cut to music, where actions land on beats
+  SymmetricalPulse.mp4   mirrored vertical rippling on a steady beat
+                         -> audio gear, tech, anything cut to a tempo
 
-  liquid-bloom   fluid expansion outward from the centre, organic
-                 -> for pours, splashes, anything spreading or bursting
+  Off-CenterVortex.mp4   slow rotation dividing the frame, suspended mix
+                         -> skincare, beverages, carefully formulated
 
-  light-sweep    a highlight raking across a dark field
-                 -> borrowed for lighting behaviour, not movement
+  DirectionalGlide.mp4   unbroken velvety wave across a dense surface
+                         -> luxury goods, a sleek premium sweep
 
-If your four clips do not match these four moods, rename the slots instead:
-edit src/lib/referenceClips.ts and change the id, name, brief and file for
-each. The picker follows that file.
+  ExplosiveBloom.mp4     hard outward burst settling into a slow crawl
+                         -> centre-frame reveals, flavour drops
+
+Filenames are matched EXACTLY, capitals included — object storage and Linux
+are both case-sensitive, so vibrantchurn.mp4 is a different file and resolves
+to nothing.
+
+To use different clips, edit src/lib/referenceClips.ts and change the id,
+name, brief and file for each. The picker follows that file.
 
 KEEP THEM SMALL
 ---------------

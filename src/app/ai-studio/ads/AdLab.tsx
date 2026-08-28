@@ -2217,7 +2217,7 @@ export function AdLab({
                 render — only motion.
               </p>
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {REFERENCE_CLIPS.map((clip) => {
                   const ready = availableClipIds.includes(clip.id);
                   // The manifest path is only a default; the server may have
@@ -2273,7 +2273,7 @@ export function AdLab({
                 <p className="mt-3 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
                   <span className="font-bold">No starter clips installed.</span>{" "}
                   Two ways to add them. Host the files anywhere public and set{" "}
-                  <code className="font-mono">REFERENCE_CLIP_ORBITAL_DRIFT</code>{" "}
+                  <code className="font-mono">REFERENCE_CLIP_VIBRANT_CHURN</code>{" "}
                   and friends to their URLs, which keeps multi-megabyte video
                   out of the repo entirely. Or commit the four files to{" "}
                   <code className="font-mono">public/references/</code> under the

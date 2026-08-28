@@ -15,7 +15,7 @@ export const metadata: Metadata = {
  *
  * Three sources, in order of precedence:
  *
- *  1. An environment override — `REFERENCE_CLIP_ORBITAL_DRIFT=https://…`.
+ *  1. An environment override — `REFERENCE_CLIP_VIBRANT_CHURN=https://…`.
  *     This is the one to use in production: the clips live on fal storage or
  *     any CDN, nothing large enters git, and swapping one is an env change
  *     rather than a commit.

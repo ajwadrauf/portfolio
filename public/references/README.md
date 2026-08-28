@@ -1,17 +1,17 @@
 # Starter motion references
 
-Four abstract clips the Ad Lab offers as ready-made motion references, plus a
-still frame for each. They are served from this site rather than uploaded, so
-they cost nothing per use and never expire the way a storage URL does.
+Five abstract clips the Ad Lab offers as ready-made motion references. Served
+from this site rather than uploaded, so they cost nothing per use and never expire the way a storage URL does.
 
 Expected files — the names are matched exactly by `src/lib/referenceClips.ts`:
 
 | Clip | Video |
 |---|---|
-| Orbital drift | `orbital-drift.mp4` |
-| Pulse grid | `pulse-grid.mp4` |
-| Liquid bloom | `liquid-bloom.mp4` |
-| Light sweep | `light-sweep.mp4` |
+| Vibrant churn | `VibrantChurn.mp4` |
+| Symmetrical pulse | `SymmetricalPulse.mp4` |
+| Off-center vortex | `Off-CenterVortex.mp4` |
+| Directional glide | `DirectionalGlide.mp4` |
+| Explosive bloom | `ExplosiveBloom.mp4` |
 
 The MP4 is the only file needed. Cards autoplay muted once they scroll into
 view, so the clip is its own preview.
@@ -77,26 +77,31 @@ preview, and fal, to read the motion. A public URL satisfies both, which means
 the video never has to enter the repo — worth doing, since git keeps every
 version of a binary forever.
 
-Upload the four clips anywhere public and set one variable per clip. Vercel
+Upload the five clips anywhere public and set one variable per clip. Vercel
 Blob is the least effort if the site is already on Vercel:
 
 ```bash
-vercel blob put orbital-drift.mp4 --pathname references/orbital-drift.mp4
+vercel blob put VibrantChurn.mp4 --pathname references/VibrantChurn.mp4 --access public
 ```
 
-which returns `https://<store-id>.public.blob.vercel-storage.com/references/orbital-drift.mp4`.
+which returns `https://<store-id>.public.blob.vercel-storage.com/references/VibrantChurn.mp4`.
 fal storage, S3 or R2 work identically — the code only cares that the URL is
 public, because fal fetches it from its own network.
 
 ```
-REFERENCE_CLIP_ORBITAL_DRIFT=https://…/orbital-drift.mp4
-REFERENCE_CLIP_PULSE_GRID=https://…/pulse-grid.mp4
-REFERENCE_CLIP_LIQUID_BLOOM=https://…/liquid-bloom.mp4
-REFERENCE_CLIP_LIGHT_SWEEP=https://…/light-sweep.mp4
+REFERENCE_CLIP_VIBRANT_CHURN=https://…/VibrantChurn.mp4
+REFERENCE_CLIP_SYMMETRICAL_PULSE=https://…/SymmetricalPulse.mp4
+REFERENCE_CLIP_OFF_CENTER_VORTEX=https://…/Off-CenterVortex.mp4
+REFERENCE_CLIP_DIRECTIONAL_GLIDE=https://…/DirectionalGlide.mp4
+REFERENCE_CLIP_EXPLOSIVE_BLOOM=https://…/ExplosiveBloom.mp4
 ```
 
 The variable name is the clip id uppercased with dashes as underscores. An
 override wins over a committed file, so you can mix the two.
+
+Names are matched exactly, capitals included — object storage is
+case-sensitive, so a lowercased filename is a different file and resolves to
+nothing.
 
 **These are read at build time**, because the Ad Lab page is prerendered. On
 Vercel that means setting the variables and redeploying — changing one without
