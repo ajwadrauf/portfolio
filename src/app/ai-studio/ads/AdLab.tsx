@@ -6,6 +6,7 @@ import { useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
   AD_PRESETS,
+  CUSTOM_PRESET_ID,
   AD_VIDEO_MODELS,
   AUDIO_REF_LIMITS,
   MULTI_REF_MODELS,
@@ -282,7 +283,14 @@ export function AdLab({
    * Resolution was never sent, so the endpoint's default decided the bill —
    * and on a token-billed model pixel area is most of the bill.
    */
-  const [resolution, setResolution] = useState<VideoResolution>("720p");
+  /**
+   * 480p by default. Resolution drives most of the bill on a token-priced
+   * model — the same 8-second cut is $1.64 at 480p and $9.10 at 1080p — and
+   * the first render of a concept is nearly always a test of whether the idea
+   * works, not a deliverable. Starting cheap makes the expensive choice
+   * deliberate.
+   */
+  const [resolution, setResolution] = useState<VideoResolution>("480p");
   /**
    * The preset ships a designed shape, but one concept usually has to deliver
    * several — a vertical for Reels and a square for feed off the same idea.
@@ -616,7 +624,10 @@ export function AdLab({
       const next = getAdPreset(id);
       setPresetId(id);
       setRecipe(editableRecipeOf(next));
-      setEditingRecipe(false);
+      // A blank recipe in read mode is a set of empty headings, which reads as
+      // broken rather than as an invitation. The custom concept opens straight
+      // into the editor; a worked preset is worth reading first.
+      setEditingRecipe(id === CUSTOM_PRESET_ID);
       setMusicStyleId(next.musicStyleId);
       setModelId(next.preferredModelId ?? "seedance-2.5-ref");
       setMusicUrl(null);
@@ -1006,6 +1017,22 @@ export function AdLab({
     timingRefActive,
   ]);
 
+  /**
+   * Step numbers, derived once. Reference-to-video adds a step in the middle,
+   * so everything after it shifts — and the copy cross-references these, which
+   * is how a reorder quietly leaves five sentences pointing at the wrong step.
+   */
+  const STEP = {
+    concept: 1,
+    product: 2,
+    recipe: 3,
+    refs: 4,
+    format: supportsRefs ? 5 : 4,
+    sound: supportsRefs ? 6 : 5,
+    compose: supportsRefs ? 7 : 6,
+    generate: supportsRefs ? 8 : 7,
+  };
+
   /** The bed must exist before a render that keys off it. */
   const blockedOnMusic = timingRefAvailable && musicAsTimingRef && !musicUrl;
 
@@ -1221,7 +1248,7 @@ export function AdLab({
 
       <div className="mt-8 space-y-6">
         {/* ---------- 1. concept ---------- */}
-        <Step n={1} title="Pick a concept">
+        <Step n={STEP.concept} title="Pick a concept">
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {AD_PRESETS.map((p) => (
               <button
@@ -1243,177 +1270,9 @@ export function AdLab({
           </div>
         </Step>
 
-        {/* ---------- 2. the recipe ---------- */}
+        {/* ---------- 2. product — first, because the photo fills in the recipe ---------- */}
         <Step
-          n={2}
-          title={`The recipe — ${preset.name}`}
-          aside={
-            <div className="flex items-center gap-2">
-              {recipeEdited && (
-                <span className="chip border-accent/40 !text-accent">Edited</span>
-              )}
-              {recipeEdited && (
-                <button
-                  className="text-xs font-semibold text-muted hover:text-foreground"
-                  onClick={() => {
-                    setRecipe(editableRecipeOf(preset));
-                    invalidatePrompt();
-                  }}
-                >
-                  Reset to preset
-                </button>
-              )}
-              <button
-                className="btn-secondary !px-3 !py-1.5 text-xs"
-                onClick={() => setEditingRecipe((v) => !v)}
-              >
-                {editingRecipe ? "Done editing" : "Edit recipe"}
-              </button>
-            </div>
-          }
-        >
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
-            {editingRecipe
-              ? "Change anything. An edited recipe is rebuilt into the prompt section by section — your beats, your sound design — instead of using the preset's hand-tuned paragraph."
-              : "The concept, deconstructed into the four things a video model actually reads. Edit any of it to make the concept yours."}
-          </p>
-
-          {editingRecipe ? (
-            <div className="mt-4 grid gap-5 md:grid-cols-2">
-              <div className="space-y-5">
-                <label className="block">
-                  <span className="mb-1 block label !text-accent">Core aesthetics</span>
-                  <textarea
-                    className="input min-h-32 text-sm leading-relaxed"
-                    value={toLines(recipe.aesthetics)}
-                    onChange={(e) => editRecipe({ aesthetics: fromLines(e.target.value) })}
-                  />
-                  <span className="mt-1 block text-xs text-muted">One per line.</span>
-                </label>
-                <label className="block">
-                  <span className="mb-1 block label !text-accent">
-                    Sound design {cap.native ? `(rendered by ${modelName})` : "(built in the edit)"}
-                  </span>
-                  <textarea
-                    className="input min-h-28 text-sm leading-relaxed"
-                    value={toLines(recipe.sfx)}
-                    onChange={(e) => editRecipe({ sfx: fromLines(e.target.value) })}
-                  />
-                  <span className="mt-1 block text-xs text-muted">
-                    Effects and ambience only — music is set in step 5.
-                  </span>
-                </label>
-              </div>
-              <div className="space-y-5">
-                <div>
-                  <span className="mb-1 block label !text-accent">Action sequence</span>
-                  <div className="space-y-2">
-                    {recipe.scenes.map((sc, i) => (
-                      <div key={i} className="rounded-[6px] border border-border-soft bg-surface-2 p-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-accent">{i + 1}</span>
-                          <input
-                            className="input !py-1 text-xs font-semibold"
-                            value={sc.title}
-                            placeholder="Beat name"
-                            onChange={(e) =>
-                              editRecipe({
-                                scenes: recipe.scenes.map((x, j) =>
-                                  j === i ? { ...x, title: e.target.value } : x,
-                                ),
-                              })
-                            }
-                          />
-                          <button
-                            className="shrink-0 font-mono text-xs text-danger"
-                            aria-label={`Remove beat ${i + 1}`}
-                            onClick={() =>
-                              editRecipe({ scenes: recipe.scenes.filter((_, j) => j !== i) })
-                            }
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <textarea
-                          className="input mt-1.5 min-h-14 text-xs leading-relaxed"
-                          value={sc.description}
-                          placeholder="What happens in this beat"
-                          onChange={(e) =>
-                            editRecipe({
-                              scenes: recipe.scenes.map((x, j) =>
-                                j === i ? { ...x, description: e.target.value } : x,
-                              ),
-                            })
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    className="btn-secondary mt-2 !px-3 !py-1.5 text-xs"
-                    onClick={() =>
-                      editRecipe({
-                        scenes: [...recipe.scenes, { title: "", description: "" }],
-                      })
-                    }
-                  >
-                    Add a beat
-                  </button>
-                </div>
-                <label className="block">
-                  <span className="mb-1 block label !text-accent">Text overlay</span>
-                  <textarea
-                    className="input min-h-20 text-sm leading-relaxed"
-                    value={recipe.overlay}
-                    onChange={(e) => editRecipe({ overlay: e.target.value })}
-                  />
-                  <span className="mt-1 block text-xs text-muted">
-                    Describe placement and timing; the actual words come from your
-                    product fields in step 3.
-                  </span>
-                </label>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-5 md:grid-cols-2">
-              <div>
-                <p className="label !text-accent">Core aesthetics</p>
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
-                  {recipe.aesthetics.map((a, i) => (
-                    <li key={i}>{a}</li>
-                  ))}
-                </ul>
-                <p className="mt-4 label !text-accent">
-                  Sound design {cap.native ? `(rendered by ${modelName})` : "(built in the edit)"}
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
-                  {recipe.sfx.map((a, i) => (
-                    <li key={i}>{a}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="label !text-accent">Action sequence</p>
-                <ol className="mt-2 space-y-2">
-                  {recipe.scenes.map((s, i) => (
-                    <li key={i} className="text-sm">
-                      <span className="font-semibold">
-                        {i + 1} · {s.title}:
-                      </span>{" "}
-                      <span className="text-muted">{s.description}</span>
-                    </li>
-                  ))}
-                </ol>
-                <p className="mt-4 label !text-accent">Text overlay</p>
-                <p className="mt-2 text-sm text-muted">{recipe.overlay}</p>
-              </div>
-            </div>
-          )}
-        </Step>
-
-        {/* ---------- 3. product ---------- */}
-        <Step
-          n={3}
+          n={STEP.product}
           title="Your product"
           aside={
             <button
@@ -1515,9 +1374,552 @@ export function AdLab({
           </div>
         </Step>
 
-        {/* ---------- 4. model & shot ---------- */}
+        {/* ---------- 3. the recipe, now populated from the photo ---------- */}
         <Step
-          n={4}
+          n={STEP.recipe}
+          title={`The recipe — ${preset.name}`}
+          aside={
+            <div className="flex items-center gap-2">
+              {recipeEdited && (
+                <span className="chip border-accent/40 !text-accent">Edited</span>
+              )}
+              {recipeEdited && (
+                <button
+                  className="text-xs font-semibold text-muted hover:text-foreground"
+                  onClick={() => {
+                    setRecipe(editableRecipeOf(preset));
+                    invalidatePrompt();
+                  }}
+                >
+                  Reset to preset
+                </button>
+              )}
+              <button
+                className="btn-secondary !px-3 !py-1.5 text-xs"
+                onClick={() => setEditingRecipe((v) => !v)}
+              >
+                {editingRecipe ? "Done editing" : "Edit recipe"}
+              </button>
+            </div>
+          }
+        >
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+            {presetId === CUSTOM_PRESET_ID
+              ? "Write the concept in the four parts a video model actually reads: how it looks, what happens beat by beat, what text appears, and what it sounds like. Nothing here is required — the parts you leave blank are simply not sent."
+              : editingRecipe
+                ? "Change anything. An edited recipe is rebuilt into the prompt section by section — your beats, your sound design — instead of using the preset's hand-tuned paragraph."
+                : "The concept, deconstructed into the four things a video model actually reads. Edit any of it to make the concept yours."}
+          </p>
+
+          {editingRecipe ? (
+            <div className="mt-4 grid gap-5 md:grid-cols-2">
+              <div className="space-y-5">
+                <label className="block">
+                  <span className="mb-1 block label !text-accent">Core aesthetics</span>
+                  <textarea
+                    className="input min-h-32 text-sm leading-relaxed"
+                    value={toLines(recipe.aesthetics)}
+                    onChange={(e) => editRecipe({ aesthetics: fromLines(e.target.value) })}
+                  />
+                  <span className="mt-1 block text-xs text-muted">One per line.</span>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block label !text-accent">
+                    Sound design {cap.native ? `(rendered by ${modelName})` : "(built in the edit)"}
+                  </span>
+                  <textarea
+                    className="input min-h-28 text-sm leading-relaxed"
+                    value={toLines(recipe.sfx)}
+                    onChange={(e) => editRecipe({ sfx: fromLines(e.target.value) })}
+                  />
+                  <span className="mt-1 block text-xs text-muted">
+                    Effects and ambience only — music is set in step {STEP.sound}.
+                  </span>
+                </label>
+              </div>
+              <div className="space-y-5">
+                <div>
+                  <span className="mb-1 block label !text-accent">Action sequence</span>
+                  <div className="space-y-2">
+                    {recipe.scenes.map((sc, i) => (
+                      <div key={i} className="rounded-[6px] border border-border-soft bg-surface-2 p-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-accent">{i + 1}</span>
+                          <input
+                            className="input !py-1 text-xs font-semibold"
+                            value={sc.title}
+                            placeholder="Beat name"
+                            onChange={(e) =>
+                              editRecipe({
+                                scenes: recipe.scenes.map((x, j) =>
+                                  j === i ? { ...x, title: e.target.value } : x,
+                                ),
+                              })
+                            }
+                          />
+                          <button
+                            className="shrink-0 font-mono text-xs text-danger"
+                            aria-label={`Remove beat ${i + 1}`}
+                            onClick={() =>
+                              editRecipe({ scenes: recipe.scenes.filter((_, j) => j !== i) })
+                            }
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <textarea
+                          className="input mt-1.5 min-h-14 text-xs leading-relaxed"
+                          value={sc.description}
+                          placeholder="What happens in this beat"
+                          onChange={(e) =>
+                            editRecipe({
+                              scenes: recipe.scenes.map((x, j) =>
+                                j === i ? { ...x, description: e.target.value } : x,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    className="btn-secondary mt-2 !px-3 !py-1.5 text-xs"
+                    onClick={() =>
+                      editRecipe({
+                        scenes: [...recipe.scenes, { title: "", description: "" }],
+                      })
+                    }
+                  >
+                    Add a beat
+                  </button>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block label !text-accent">Text overlay</span>
+                  <textarea
+                    className="input min-h-20 text-sm leading-relaxed"
+                    value={recipe.overlay}
+                    onChange={(e) => editRecipe({ overlay: e.target.value })}
+                  />
+                  <span className="mt-1 block text-xs text-muted">
+                    Describe placement and timing; the actual words come from your
+                    product fields in step {STEP.product}.
+                  </span>
+                </label>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 grid gap-5 md:grid-cols-2">
+              <div>
+                <p className="label !text-accent">Core aesthetics</p>
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
+                  {recipe.aesthetics.map((a, i) => (
+                    <li key={i}>{a}</li>
+                  ))}
+                </ul>
+                <p className="mt-4 label !text-accent">
+                  Sound design {cap.native ? `(rendered by ${modelName})` : "(built in the edit)"}
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
+                  {recipe.sfx.map((a, i) => (
+                    <li key={i}>{a}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="label !text-accent">Action sequence</p>
+                <ol className="mt-2 space-y-2">
+                  {recipe.scenes.map((s, i) => (
+                    <li key={i} className="text-sm">
+                      <span className="font-semibold">
+                        {i + 1} · {s.title}:
+                      </span>{" "}
+                      <span className="text-muted">{s.description}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-4 label !text-accent">Text overlay</p>
+                <p className="mt-2 text-sm text-muted">{recipe.overlay}</p>
+              </div>
+            </div>
+          )}
+        </Step>
+
+        {/* ---------- 4. references — what the recipe just asked for ---------- */}
+        {supportsRefs && (
+          <Step
+            n={STEP.refs}
+            title="References"
+            aside={
+              <span className="label-sm">
+                {(productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0)} of{" "}
+                {REF_CEILINGS.total}
+              </span>
+            }
+          >
+            {/* Reference recipe — the concept ships with instructions */}
+            {preset.referenceRecipe && (
+              <details open className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-accent">
+                  Reference recipe for {preset.name} — what to add, and why
+                </summary>
+                <ol className="mt-3 grid gap-3 md:grid-cols-2">
+                  {recipeChecklist.map(({ step, satisfied }, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span
+                        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full font-mono text-[9px] ${
+                          satisfied
+                            ? "bg-success text-white"
+                            : step.impact === "critical"
+                              ? "bg-warning text-white"
+                              : "border border-border-strong text-muted"
+                        }`}
+                      >
+                        {satisfied ? "✓" : i + 1}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold leading-snug">
+                          {step.what}
+                        </span>
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent">
+                            {step.media === "video" ? "clip" : step.media === "audio" ? "track" : "still"} ·{" "}
+                            {REFERENCE_ROLES.find((r) => r.id === step.role)?.label}
+                          </span>
+                          {step.impact === "critical" && !satisfied && (
+                            <span className="rounded-full bg-warning/15 px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.1em] text-warning">
+                              Do this one
+                            </span>
+                          )}
+                          {step.impact === "optional" && (
+                            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
+                              optional
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-1 block text-xs leading-relaxed text-muted">
+                          {step.why}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-3 border-t border-accent/20 pt-2 text-xs leading-relaxed text-muted">
+                  Order matters: references are numbered as you add them, and
+                  the prompt addresses them by that number. Add the product
+                  first.
+                </p>
+              </details>
+            )}
+
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {productImage && (
+                <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={productImage}
+                    alt="Product reference"
+                    className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[11px] text-accent">[Image1]</p>
+                    <p className="text-xs text-muted">
+                      Product identity — from your product photo
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {refs.map((r, i) => {
+                // Tokens are numbered per media type, matching how the
+                // model resolves them.
+                const priorSameMedia = refs
+                  .slice(0, i)
+                  .filter((x) => x.media === r.media).length;
+                const n =
+                  r.media === "image"
+                    ? (productImage ? 2 : 1) + priorSameMedia
+                    : 1 + priorSameMedia;
+                const token =
+                  r.media === "image"
+                    ? `[Image${n}]`
+                    : r.media === "video"
+                      ? `[Video${n}]`
+                      : `[Audio${n}]`;
+                const allowed = REFERENCE_ROLES.filter((o) =>
+                  (o.media as readonly string[]).includes(r.media),
+                );
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 rounded-[6px] border border-border-soft bg-surface p-2"
+                  >
+                    {r.media === "image" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={r.url}
+                        alt=""
+                        className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                      />
+                    ) : r.media === "video" ? (
+                      <video
+                        src={r.url}
+                        muted
+                        playsInline
+                        className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-border-soft bg-surface-2 text-base">
+                        ♪
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-[11px] text-accent">
+                        {token}
+                        <span className="ml-1.5 text-muted">
+                          {r.media === "video" ? "clip" : r.media === "audio" ? "track" : "still"}
+                        </span>
+                      </p>
+                      <select
+                        className="mt-0.5 w-full bg-transparent text-xs text-muted outline-none"
+                        value={r.role}
+                        onChange={(e) => {
+                          const role = e.target.value as ReferenceRole;
+                          setRefs((prev) =>
+                            prev.map((x, j) => (j === i ? { ...x, role } : x)),
+                          );
+                          invalidatePrompt();
+                        }}
+                      >
+                        {allowed.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      className="font-mono text-xs text-danger"
+                      onClick={() => {
+                        setRefs((prev) => prev.filter((_, j) => j !== i));
+                        invalidatePrompt();
+                      }}
+                      aria-label="Remove reference"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+
+              {timingRefActive && (
+                <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-border-soft bg-surface-2 text-base">
+                    ♪
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[11px] text-accent">
+                      [Audio{refs.filter((r) => r.media === "audio").length + 1}]
+                      <span className="ml-1.5 text-muted">track</span>
+                    </p>
+                    <p className="text-xs text-muted">
+                      Musical timing — your composed bed, from step {STEP.sound}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Starter clips — motion you can borrow without shooting it. */}
+            <div className="mt-5 border-t border-border-soft pt-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="label">Starter motion clips</span>
+                <span className="label-sm">or upload your own below</span>
+              </div>
+              <p className="mt-1.5 max-w-3xl text-xs leading-relaxed text-muted">
+                Abstract on purpose. The model reads a clip&apos;s camera move,
+                cutting rhythm and energy and applies them to your product, so
+                a reference with no subject in it has nothing to leak into the
+                render — only motion.
+              </p>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {REFERENCE_CLIPS.map((clip) => {
+                  const ready = availableClipIds.includes(clip.id);
+                  // The manifest path is only a default; the server may have
+                  // resolved this clip to a hosted URL instead.
+                  const src = clipSources[clip.id] ?? clip.file;
+                  const added = refs.some((r) => r.url === src);
+                  return (
+                    <div
+                      key={clip.id}
+                      className={`rounded-[6px] border ${
+                        added ? "border-accent bg-accent/[0.04]" : "border-border-soft bg-surface"
+                      }`}
+                    >
+                      <div className="relative aspect-video overflow-hidden rounded-t-[5px] bg-surface-2">
+                        {ready ? (
+                          <ClipPreview src={src} poster={clip.poster} />
+                        ) : (
+                          <div className="flex h-full items-center justify-center px-2 text-center">
+                            <span className="label-sm !text-[10px]">Not added yet</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="text-xs font-semibold">{clip.name}</p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                          {clip.brief}
+                        </p>
+                        <button
+                          className="btn-secondary mt-2.5 w-full !px-2 !py-1 text-[11px]"
+                          disabled={!ready || added}
+                          onClick={() => {
+                            setRefs((prev) => [
+                              ...prev,
+                              {
+                                url: src,
+                                media: "video",
+                                role: clip.suggestedRole as ReferenceRole,
+                                name: clip.name,
+                              },
+                            ]);
+                            invalidatePrompt();
+                          }}
+                        >
+                          {added ? "Added" : ready ? "Use as reference" : "Unavailable"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {availableClipIds.length === 0 && (
+                <p className="mt-3 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                  <span className="font-bold">No starter clips installed.</span>{" "}
+                  Two ways to add them. Host the files anywhere public and set{" "}
+                  <code className="font-mono">REFERENCE_CLIP_VIBRANT_CHURN</code>{" "}
+                  and friends to their URLs, which keeps multi-megabyte video
+                  out of the repo entirely. Or commit the four files to{" "}
+                  <code className="font-mono">public/references/</code> under the
+                  names above. Either way they cost nothing per use and never
+                  expire, unlike an upload — and either way the value is read at
+                  build time, so a new clip needs a redeploy, not just a
+                  restart.
+                </p>
+              )}
+            </div>
+
+            <button
+              className="btn-secondary mt-4 !px-3 !py-1.5 text-xs"
+              onClick={() => refInput.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? "Uploading…" : "Add reference (image, clip or track)"}
+            </button>
+            <input
+              ref={refInput}
+              type="file"
+              accept={REF_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void addReference(f);
+                e.target.value = "";
+              }}
+            />
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                className="input min-w-0 flex-1 basis-64 font-mono text-xs"
+                placeholder="…or paste a direct URL — https://example.com/camera-move.mp4"
+                value={refUrl}
+                onChange={(e) => setRefUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addReferenceUrl();
+                  }
+                }}
+              />
+              <button
+                className="btn-secondary !px-3 !py-1.5 text-xs"
+                onClick={addReferenceUrl}
+                disabled={!refUrl.trim()}
+              >
+                Add from URL
+              </button>
+            </div>
+
+            {/* Reference failures belong here, next to the button that caused
+                them — not in the page banner far above. */}
+            {refError && (
+              <p
+                role="alert"
+                className="mt-3 rounded-[6px] border border-danger/50 bg-danger/10 p-3 text-sm leading-relaxed text-danger"
+              >
+                {refError}
+              </p>
+            )}
+
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="chip">
+                Stills · JPG, PNG, WebP · up to {REF_CEILINGS.image}
+              </span>
+              <span
+                className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
+              >
+                Clips · {VIDEO_REF_LIMITS.formats} · ≤
+                {health?.blob ? VIDEO_REF_LIMITS.maxMBDirect : VIDEO_REF_LIMITS.maxMB}MB ·{" "}
+                ~{VIDEO_REF_LIMITS.idealSeconds}s
+              </span>
+              <span
+                className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
+              >
+                Tracks · {AUDIO_REF_LIMITS.formats} · ≤
+                {health?.blob ? AUDIO_REF_LIMITS.maxMBDirect : AUDIO_REF_LIMITS.maxMB}MB
+              </span>
+            </div>
+
+            {!clipsUploadable && (
+              <p className="mt-2 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                <span className="font-bold">Uploads need live mode.</span>{" "}
+                Images are processed in your browser, but clips and tracks are
+                uploaded to the generation provider. Use the{" "}
+                <span className="font-semibold">Demo mode · Unlock</span> button
+                at the top of this page — or paste a URL above, which skips the
+                upload entirely.
+              </p>
+            )}
+            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-foreground">
+                Uploading and pasting a URL are different paths.
+              </span>{" "}
+              {health?.blob
+                ? "An upload goes from your browser straight to this site's Blob store and comes back as a permanent URL — it never passes through a server function, which is what lifts the size ceiling. "
+                : "An upload goes through fal's storage service, which is permissioned separately from generation — so a key that renders video fine can still be refused a file upload. "}
+              A URL is handed
+              straight to the model, so it needs no upload, no live mode and no
+              storage access. It has to be a direct link to the file (ending in
+              .mp4, .mov, .mp3…) that fal can reach without signing in.
+            </p>
+            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+              Add more angles of the product to tighten the identity lock, a
+              still to borrow a palette from, a <strong>short clip</strong>{" "}
+              whose camera move and cut rhythm you want imitated, or a{" "}
+              <strong>track</strong> whose beats the action should land on. Each
+              gets a job in the prompt — set it in the dropdown.{" "}
+              <strong>Trim clips before uploading</strong> — these models read
+              the camera move, not the content, so anything past a few seconds
+              costs upload time and buys nothing.
+            </p>
+          </Step>
+        )}
+
+        {/* ---------- 7. compose ---------- */}
+        {/* ---------- 5. format — after references, which change the bill ---------- */}
+        <Step
+          n={STEP.format}
           title="Format and cost"
           aside={
             <span className="chip border-accent/40 !text-accent">
@@ -1720,9 +2122,9 @@ export function AdLab({
           )}
         </Step>
 
-        {/* ---------- 5. sound ---------- */}
+        {/* ---------- 6. sound — the bed is cut to the duration set above ---------- */}
         <Step
-          n={5}
+          n={STEP.sound}
           title="Sound"
           aside={
             <span
@@ -2014,7 +2416,7 @@ export function AdLab({
               </ul>
               <p className="mt-2 text-xs leading-relaxed text-muted">
                 These lines come from the recipe&apos;s sound design — edit them
-                in step 2 to change what gets generated.
+                in step {STEP.recipe} to change what gets generated.
               </p>
 
               <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
@@ -2037,380 +2439,7 @@ export function AdLab({
           )}
         </Step>
 
-        {/* ---------- 6. references ---------- */}
-        {supportsRefs && (
-          <Step
-            n={6}
-            title="References"
-            aside={
-              <span className="label-sm">
-                {(productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0)} of{" "}
-                {REF_CEILINGS.total}
-              </span>
-            }
-          >
-            {/* Reference recipe — the concept ships with instructions */}
-            {preset.referenceRecipe && (
-              <details open className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-3">
-                <summary className="cursor-pointer text-xs font-semibold text-accent">
-                  Reference recipe for {preset.name} — what to add, and why
-                </summary>
-                <ol className="mt-3 grid gap-3 md:grid-cols-2">
-                  {recipeChecklist.map(({ step, satisfied }, i) => (
-                    <li key={i} className="flex gap-3">
-                      <span
-                        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full font-mono text-[9px] ${
-                          satisfied
-                            ? "bg-success text-white"
-                            : step.impact === "critical"
-                              ? "bg-warning text-white"
-                              : "border border-border-strong text-muted"
-                        }`}
-                      >
-                        {satisfied ? "✓" : i + 1}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-xs font-semibold leading-snug">
-                          {step.what}
-                        </span>
-                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent">
-                            {step.media === "video" ? "clip" : step.media === "audio" ? "track" : "still"} ·{" "}
-                            {REFERENCE_ROLES.find((r) => r.id === step.role)?.label}
-                          </span>
-                          {step.impact === "critical" && !satisfied && (
-                            <span className="rounded-full bg-warning/15 px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.1em] text-warning">
-                              Do this one
-                            </span>
-                          )}
-                          {step.impact === "optional" && (
-                            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
-                              optional
-                            </span>
-                          )}
-                        </span>
-                        <span className="mt-1 block text-xs leading-relaxed text-muted">
-                          {step.why}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-                <p className="mt-3 border-t border-accent/20 pt-2 text-xs leading-relaxed text-muted">
-                  Order matters: references are numbered as you add them, and
-                  the prompt addresses them by that number. Add the product
-                  first.
-                </p>
-              </details>
-            )}
-
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {productImage && (
-                <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={productImage}
-                    alt="Product reference"
-                    className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[11px] text-accent">[Image1]</p>
-                    <p className="text-xs text-muted">
-                      Product identity — from your product photo
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {refs.map((r, i) => {
-                // Tokens are numbered per media type, matching how the
-                // model resolves them.
-                const priorSameMedia = refs
-                  .slice(0, i)
-                  .filter((x) => x.media === r.media).length;
-                const n =
-                  r.media === "image"
-                    ? (productImage ? 2 : 1) + priorSameMedia
-                    : 1 + priorSameMedia;
-                const token =
-                  r.media === "image"
-                    ? `[Image${n}]`
-                    : r.media === "video"
-                      ? `[Video${n}]`
-                      : `[Audio${n}]`;
-                const allowed = REFERENCE_ROLES.filter((o) =>
-                  (o.media as readonly string[]).includes(r.media),
-                );
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 rounded-[6px] border border-border-soft bg-surface p-2"
-                  >
-                    {r.media === "image" ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={r.url}
-                        alt=""
-                        className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
-                      />
-                    ) : r.media === "video" ? (
-                      <video
-                        src={r.url}
-                        muted
-                        playsInline
-                        className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-border-soft bg-surface-2 text-base">
-                        ♪
-                      </span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="font-mono text-[11px] text-accent">
-                        {token}
-                        <span className="ml-1.5 text-muted">
-                          {r.media === "video" ? "clip" : r.media === "audio" ? "track" : "still"}
-                        </span>
-                      </p>
-                      <select
-                        className="mt-0.5 w-full bg-transparent text-xs text-muted outline-none"
-                        value={r.role}
-                        onChange={(e) => {
-                          const role = e.target.value as ReferenceRole;
-                          setRefs((prev) =>
-                            prev.map((x, j) => (j === i ? { ...x, role } : x)),
-                          );
-                          invalidatePrompt();
-                        }}
-                      >
-                        {allowed.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <button
-                      className="font-mono text-xs text-danger"
-                      onClick={() => {
-                        setRefs((prev) => prev.filter((_, j) => j !== i));
-                        invalidatePrompt();
-                      }}
-                      aria-label="Remove reference"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                );
-              })}
-
-              {timingRefActive && (
-                <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-border-soft bg-surface-2 text-base">
-                    ♪
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[11px] text-accent">
-                      [Audio{refs.filter((r) => r.media === "audio").length + 1}]
-                      <span className="ml-1.5 text-muted">track</span>
-                    </p>
-                    <p className="text-xs text-muted">
-                      Musical timing — your composed bed, from step 5
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Starter clips — motion you can borrow without shooting it. */}
-            <div className="mt-5 border-t border-border-soft pt-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="label">Starter motion clips</span>
-                <span className="label-sm">or upload your own below</span>
-              </div>
-              <p className="mt-1.5 max-w-3xl text-xs leading-relaxed text-muted">
-                Abstract on purpose. The model reads a clip&apos;s camera move,
-                cutting rhythm and energy and applies them to your product, so
-                a reference with no subject in it has nothing to leak into the
-                render — only motion.
-              </p>
-
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {REFERENCE_CLIPS.map((clip) => {
-                  const ready = availableClipIds.includes(clip.id);
-                  // The manifest path is only a default; the server may have
-                  // resolved this clip to a hosted URL instead.
-                  const src = clipSources[clip.id] ?? clip.file;
-                  const added = refs.some((r) => r.url === src);
-                  return (
-                    <div
-                      key={clip.id}
-                      className={`rounded-[6px] border ${
-                        added ? "border-accent bg-accent/[0.04]" : "border-border-soft bg-surface"
-                      }`}
-                    >
-                      <div className="relative aspect-video overflow-hidden rounded-t-[5px] bg-surface-2">
-                        {ready ? (
-                          <ClipPreview src={src} poster={clip.poster} />
-                        ) : (
-                          <div className="flex h-full items-center justify-center px-2 text-center">
-                            <span className="label-sm !text-[10px]">Not added yet</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <p className="text-xs font-semibold">{clip.name}</p>
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted">
-                          {clip.brief}
-                        </p>
-                        <button
-                          className="btn-secondary mt-2.5 w-full !px-2 !py-1 text-[11px]"
-                          disabled={!ready || added}
-                          onClick={() => {
-                            setRefs((prev) => [
-                              ...prev,
-                              {
-                                url: src,
-                                media: "video",
-                                role: clip.suggestedRole as ReferenceRole,
-                                name: clip.name,
-                              },
-                            ]);
-                            invalidatePrompt();
-                          }}
-                        >
-                          {added ? "Added" : ready ? "Use as reference" : "Unavailable"}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {availableClipIds.length === 0 && (
-                <p className="mt-3 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
-                  <span className="font-bold">No starter clips installed.</span>{" "}
-                  Two ways to add them. Host the files anywhere public and set{" "}
-                  <code className="font-mono">REFERENCE_CLIP_VIBRANT_CHURN</code>{" "}
-                  and friends to their URLs, which keeps multi-megabyte video
-                  out of the repo entirely. Or commit the four files to{" "}
-                  <code className="font-mono">public/references/</code> under the
-                  names above. Either way they cost nothing per use and never
-                  expire, unlike an upload — and either way the value is read at
-                  build time, so a new clip needs a redeploy, not just a
-                  restart.
-                </p>
-              )}
-            </div>
-
-            <button
-              className="btn-secondary mt-4 !px-3 !py-1.5 text-xs"
-              onClick={() => refInput.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? "Uploading…" : "Add reference (image, clip or track)"}
-            </button>
-            <input
-              ref={refInput}
-              type="file"
-              accept={REF_ACCEPT}
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void addReference(f);
-                e.target.value = "";
-              }}
-            />
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input
-                className="input min-w-0 flex-1 basis-64 font-mono text-xs"
-                placeholder="…or paste a direct URL — https://example.com/camera-move.mp4"
-                value={refUrl}
-                onChange={(e) => setRefUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addReferenceUrl();
-                  }
-                }}
-              />
-              <button
-                className="btn-secondary !px-3 !py-1.5 text-xs"
-                onClick={addReferenceUrl}
-                disabled={!refUrl.trim()}
-              >
-                Add from URL
-              </button>
-            </div>
-
-            {/* Reference failures belong here, next to the button that caused
-                them — not in the page banner far above. */}
-            {refError && (
-              <p
-                role="alert"
-                className="mt-3 rounded-[6px] border border-danger/50 bg-danger/10 p-3 text-sm leading-relaxed text-danger"
-              >
-                {refError}
-              </p>
-            )}
-
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <span className="chip">
-                Stills · JPG, PNG, WebP · up to {REF_CEILINGS.image}
-              </span>
-              <span
-                className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
-              >
-                Clips · {VIDEO_REF_LIMITS.formats} · ≤
-                {health?.blob ? VIDEO_REF_LIMITS.maxMBDirect : VIDEO_REF_LIMITS.maxMB}MB ·{" "}
-                ~{VIDEO_REF_LIMITS.idealSeconds}s
-              </span>
-              <span
-                className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
-              >
-                Tracks · {AUDIO_REF_LIMITS.formats} · ≤
-                {health?.blob ? AUDIO_REF_LIMITS.maxMBDirect : AUDIO_REF_LIMITS.maxMB}MB
-              </span>
-            </div>
-
-            {!clipsUploadable && (
-              <p className="mt-2 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
-                <span className="font-bold">Uploads need live mode.</span>{" "}
-                Images are processed in your browser, but clips and tracks are
-                uploaded to the generation provider. Use the{" "}
-                <span className="font-semibold">Demo mode · Unlock</span> button
-                at the top of this page — or paste a URL above, which skips the
-                upload entirely.
-              </p>
-            )}
-            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
-              <span className="font-semibold text-foreground">
-                Uploading and pasting a URL are different paths.
-              </span>{" "}
-              {health?.blob
-                ? "An upload goes from your browser straight to this site's Blob store and comes back as a permanent URL — it never passes through a server function, which is what lifts the size ceiling. "
-                : "An upload goes through fal's storage service, which is permissioned separately from generation — so a key that renders video fine can still be refused a file upload. "}
-              A URL is handed
-              straight to the model, so it needs no upload, no live mode and no
-              storage access. It has to be a direct link to the file (ending in
-              .mp4, .mov, .mp3…) that fal can reach without signing in.
-            </p>
-            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
-              Add more angles of the product to tighten the identity lock, a
-              still to borrow a palette from, a <strong>short clip</strong>{" "}
-              whose camera move and cut rhythm you want imitated, or a{" "}
-              <strong>track</strong> whose beats the action should land on. Each
-              gets a job in the prompt — set it in the dropdown.{" "}
-              <strong>Trim clips before uploading</strong> — these models read
-              the camera move, not the content, so anything past a few seconds
-              costs upload time and buys nothing.
-            </p>
-          </Step>
-        )}
-
-        {/* ---------- 7. compose ---------- */}
-        <Step n={supportsRefs ? 7 : 6} title="Compose the prompt">
+        <Step n={STEP.compose} title="Compose the prompt">
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
             {recipeEdited
               ? "Your edited recipe is rebuilt into a prompt section by section, then polished for the target duration. Nothing is generated yet — read it before you spend."
@@ -2460,7 +2489,7 @@ export function AdLab({
         </Step>
 
         {/* ---------- 8. generate ---------- */}
-        <Step n={supportsRefs ? 8 : 7} title="Generate">
+        <Step n={STEP.generate} title="Generate">
           {unmet.length > 0 && (
             <div className="mt-4 rounded-[6px] border border-warning/50 bg-warning/10 p-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning">
@@ -2514,7 +2543,7 @@ export function AdLab({
           )}
           {finalPrompt && blockedOnMusic && (
             <p className="mt-2 text-xs text-warning">
-              Compose the music bed in step 5 — the render is set to cut against it.
+              Compose the music bed in step {STEP.sound} — the render is set to cut against it.
             </p>
           )}
         </Step>

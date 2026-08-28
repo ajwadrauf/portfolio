@@ -197,6 +197,8 @@ const COMMON_FIELDS: AdField[] = [
 const BG_AUTOFILL =
   "Choose ONE bold, saturated background color that complements the packaging's palette and makes the product pop (e.g. a coffee bag in kraft brown suits ultra-bright yellow or teal). Name the color vividly.";
 
+export const CUSTOM_PRESET_ID = "custom";
+
 export const AD_PRESETS: AdPreset[] = [
   {
     id: "reverse-rewind",
@@ -485,6 +487,51 @@ export const AD_PRESETS: AdPreset[] = [
     ],
     template: (p, mode, musicBrief) =>
       `Top-down flat-lay on a ${p.bg} seamless background, static camera, punchy stop-motion rhythm with hard graphic shadows. ${p.product} lands center-frame with a thud; on each beat it duplicates — one, two, four, eight — snapping into a perfect tidy grid that fills the frame edge to edge. The grid scales down slightly and "${p.price}" stamps dead-center on the final beat, with "${p.brand}" small at the top and the tagline "${p.tagline}" beneath it. ${audioCue(["Snappy stop-motion foley on every product landing, rhythmic thuds as the grid multiplies, and a big stamp sound with the price."], mode, musicBrief)}`,
+  },
+  {
+    /**
+     * The empty concept.
+     *
+     * The presets teach a shape — look, beats, overlay, sound — but they also
+     * imply that a concept has to be one of five. It does not. This one starts
+     * blank and is filled in exactly like an edited preset, so someone with
+     * their own idea uses the same structure rather than fighting a recipe
+     * they have to delete first.
+     *
+     * It carries one empty beat rather than none: an empty list gives no clue
+     * that beats are the unit of work here, and a single row does.
+     */
+    id: CUSTOM_PRESET_ID,
+    name: "Create your own",
+    hook: "Start from a blank recipe and write the concept yourself — same structure, none of the content.",
+    aspect: "9:16",
+    durationSeconds: 8,
+    aesthetics: [],
+    scenes: [{ title: "", description: "" }],
+    overlay: "",
+    sfx: [],
+    musicStyleId: "premium-cinematic",
+    preferredModelId: "seedance-2.5-ref",
+    referenceRecipe: BASE_RECIPE,
+    fields: [
+      {
+        key: "product", label: "Product", placeholder: "a bag of dried spaghetti", example: "a bag of dried spaghetti in simple packaging",
+        autofill: "Describe the packaged product exactly as photographed — packaging type, contents, dominant colors, finish.",
+      },
+      {
+        key: "brand", label: "Brand name", placeholder: "No Name", example: "No Name",
+        autofill: "Read the brand name off the packaging. Leave blank if none is legible.",
+      },
+      {
+        key: "tagline", label: "Tagline", placeholder: "Simply good pasta", example: "Simply good pasta",
+        autofill: "Leave blank — a tagline is a brand decision, not something to read off a photo.",
+      },
+      {
+        key: "price", label: "Price", placeholder: "$1.99", example: "$1.99",
+        autofill: "Only if a price is printed on the packaging. Never estimate one.",
+      },
+    ],
+    template: () => "",
   },
 ];
 
