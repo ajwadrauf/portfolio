@@ -20,11 +20,11 @@ export function Nav() {
   return (
     <header className="nav-bar sticky top-0 z-40 border-b border-accent/20 backdrop-blur">
       <div className="brand-strip" />
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex items-center justify-between gap-4 sm:justify-start">
           <Link
             href="/"
-            className="label !text-[14px] whitespace-nowrap font-medium transition hover:text-accent"
+            className="label !text-[12px] whitespace-nowrap font-medium transition hover:text-accent min-[360px]:!text-[14px]"
             title="Back to ajwadrauf.com"
           >
             ← Ajwad Rauf
@@ -32,13 +32,13 @@ export function Nav() {
           <span className="hidden h-4 w-px bg-accent/30 sm:block" />
           <Link
             href="/ai-studio"
-            className="label !text-[14px] !text-accent whitespace-nowrap font-semibold"
+            className="label !text-[12px] !text-accent whitespace-nowrap font-semibold min-[360px]:!text-[14px]"
           >
             AI Content Studio
           </Link>
         </div>
 
-        <nav className="no-scrollbar -mx-6 flex min-w-0 items-center gap-1 overflow-x-auto px-6 text-sm xl:mx-0 xl:overflow-visible xl:px-0">
+        <nav className="no-scrollbar -mx-4 flex min-w-0 items-center gap-1 overflow-x-auto px-4 text-sm sm:-mx-6 sm:px-6 xl:mx-0 xl:overflow-visible xl:px-0">
           {LINKS.map((l) => {
             const active = pathname === l.href;
             return (

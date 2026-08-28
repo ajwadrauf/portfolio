@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { HomeNav } from "@/components/HomeNav";
 
 export const metadata: Metadata = {
   title: "Ajwad Rauf — AI production systems",
@@ -134,25 +135,8 @@ function StatusDot({ status }: { status: Project["status"] }) {
 export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="brand-strip" />
-
-      {/* ---------------- Header ---------------- */}
-      <header className="mx-auto flex max-w-[1440px] items-center justify-between px-6 py-5 sm:px-12 lg:px-24 lg:py-[26px]">
-        <Link href="/" className="label !text-foreground">
-          Ajwad Rauf
-        </Link>
-        <nav className="flex gap-6 sm:gap-8">
-          {["Work", "Approach", "Contact"].map((l) => (
-            <a
-              key={l}
-              href={`#${l.toLowerCase()}`}
-              className="label transition hover:text-foreground"
-            >
-              {l}
-            </a>
-          ))}
-        </nav>
-      </header>
+      {/* Work menu is built from the projects below, so it cannot go stale. */}
+      <HomeNav work={PROJECTS.map((p) => ({ name: p.name, href: p.href }))} />
 
       {/* ---------------- Hero ---------------- */}
       <section className="mx-auto grid max-w-[1440px] items-end gap-10 px-6 pb-16 pt-12 sm:px-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-[88px] lg:px-24 lg:pb-28 lg:pt-24">
