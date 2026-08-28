@@ -16,9 +16,9 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ajwadrauf.com"),
-  title: "Ajwad Rauf — AI production systems",
+  title: "Ajwad Rauf — applied AI across marketing and CRM",
   description:
-    "Creative producer and creative technologist building working AI production pipelines: AI Content Studio, Persopot and BadgeForge.",
+    "Applied AI across marketing and CRM: AI Content Studio, a live generating tool for product creative; BadgeForge, intake-to-deployment for Loblaw CRM badges; and Persopot.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -125,12 +125,54 @@ Needs a Node host — the API routes are server-side, so static hosts
 1. Import the GitHub repo at https://vercel.com/new
 2. Set the production branch under **Settings → Git**
 3. Add environment variables under **Settings → Environment Variables**
+   (see the gate table below — set these *before* the first deploy, so the
+   site is never briefly live with ungated keys)
 4. Add the custom domain under **Settings → Domains** and follow the DNS
    records Vercel shows you
 
 Every route caps at `maxDuration = 60`, which fits Vercel's Hobby tier.
 Video generation is unaffected: the start route returns an operation id
 immediately and the browser polls, so no single request runs long.
+
+### Pointing a Namecheap domain at it
+
+Keeping DNS at Namecheap (rather than moving nameservers to Vercel) leaves
+any email and existing records on the domain untouched. In Namecheap:
+**Domain List → Manage → Advanced DNS**, with **Nameservers** left on
+*Namecheap BasicDNS*.
+
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| A Record | `@` | the IP on Vercel's domain card | Automatic |
+| CNAME Record | `www` | the target on Vercel's domain card | Automatic |
+
+Use the values Vercel shows for *your* project rather than any figure found
+in a blog post. Vercel now assigns per-project anycast addresses, so the
+long-standing `76.76.21.21` / `cname.vercel-dns.com` pair is no longer the
+answer for every project — it still resolves, but the card is the source of
+truth.
+
+Two Namecheap-specific things that waste an afternoon otherwise:
+
+- **Delete the parking records first.** A fresh Namecheap domain ships with
+  a `CNAME @ → parkingpage.namecheap.com` and a URL Redirect record. An
+  apex A record cannot coexist with them, and Namecheap will not always say
+  so clearly.
+- **The host field is `@` and `www`, not the domain.** Namecheap appends
+  the domain itself; typing `ajwadrauf.com` there produces
+  `ajwadrauf.com.ajwadrauf.com`.
+
+Add both the apex (`ajwadrauf.com`) and `www` in Vercel, and set whichever
+you prefer as primary — Vercel redirects the other. HTTPS is issued
+automatically once the records resolve; propagation is usually minutes, but
+give it up to an hour before assuming something is wrong.
+
+Check it from outside your own browser cache with:
+
+```bash
+dig +short ajwadrauf.com
+dig +short www.ajwadrauf.com
+```
 
 ### Protecting your API keys on a public deployment
 
@@ -165,8 +207,10 @@ How it holds up:
   high-entropy passcode.
 - **Every paid route re-checks the gate server-side.** A crafted request
   with no valid cookie receives mocks, never a live generation.
-- If you deploy keys *without* a passcode, the header shows a red
-  **"⚠ Ungated live"** warning so the misconfiguration is obvious.
+- If you deploy keys *without* a passcode, a red **"⚠ Ungated live keys"**
+  banner runs under the nav on every studio page, naming the risk and the
+  fix — the misconfiguration is impossible to miss rather than merely
+  visible.
 
 Still worth setting provider-side caps as a final backstop:
 https://ai.studio/spend for Gemini, and a spending limit in the fal.ai

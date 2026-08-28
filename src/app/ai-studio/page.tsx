@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { MODELS } from "@/lib/models";
+
+export const metadata: Metadata = {
+  title: "AI Content Studio — Ajwad Rauf",
+  description:
+    "A working AI content studio, not a case study: upload a product photo and it produces finished stills, GS1 packshots and scored video ads live in the browser, with the model routing, quality gates and guardrails written down.",
+};
 
 /** The role's four mandates, and what in this portfolio answers each. */
 const MANDATES = [
