@@ -678,14 +678,23 @@ export const audioCapability = (modelId: string): AudioCapability =>
 
 /**
  * Limits on video references, defined once so the upload route and the UI
- * can never drift apart. The size cap comes from the serverless request
- * limit the clip passes through on its way to the provider; the duration
- * guidance is craft, not a limit — these models read the camera move, not
- * the content, so a long clip costs upload time and buys nothing.
+ * can never drift apart.
+ *
+ * Two size caps, because there are two upload paths. `maxBytes` is the small
+ * one: a file posted through our own route rides a serverless request body,
+ * which is capped at 4.5MB. `maxBytesDirect` applies when a Blob store is
+ * attached and the browser uploads straight to storage — no Function in the
+ * middle, so the ceiling is ours to choose, and it exists only to stop
+ * someone parking a feature film in the store.
+ *
+ * The duration guidance is craft, not a limit — these models read the camera
+ * move, not the content, so a long clip costs upload time and buys nothing.
  */
 export const AUDIO_REF_LIMITS = {
   maxBytes: 4 * 1024 * 1024,
   maxMB: 4,
+  maxBytesDirect: 64 * 1024 * 1024,
+  maxMBDirect: 64,
   formats: "MP3, WAV or M4A",
   mimeTypes: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/mp4", "audio/aac"],
   extensions: [".mp3", ".wav", ".m4a", ".aac"],
@@ -694,6 +703,8 @@ export const AUDIO_REF_LIMITS = {
 export const VIDEO_REF_LIMITS = {
   maxBytes: 4 * 1024 * 1024,
   maxMB: 4,
+  maxBytesDirect: 256 * 1024 * 1024,
+  maxMBDirect: 256,
   idealSeconds: 5,
   /** Above this we warn; the model gains nothing from the extra footage. */
   softMaxSeconds: 10,

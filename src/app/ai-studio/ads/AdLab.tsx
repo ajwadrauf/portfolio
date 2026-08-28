@@ -733,26 +733,44 @@ export function AdLab({
           }
           // Check size locally too — no point spending upload time on a file
           // the server is going to reject.
-          if (file.size > limits.maxBytes) {
+          // Which ceiling applies depends on which path the file will take.
+          const cap = health?.blob ? limits.maxBytesDirect : limits.maxBytes;
+          const capMB = health?.blob ? limits.maxMBDirect : limits.maxMB;
+          if (file.size > cap) {
             setRefError(
               isAudio
-                ? `That track is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${limits.maxMB}MB — the reference only needs to be as long as the cut.`
-                : `That clip is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${limits.maxMB}MB — around ${VIDEO_REF_LIMITS.idealSeconds} seconds is all the model reads.`,
+                ? `That track is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${capMB}MB — the reference only needs to be as long as the cut.`
+                : `That clip is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${capMB}MB — around ${VIDEO_REF_LIMITS.idealSeconds} seconds is all the model reads.`,
             );
             return;
           }
           // Clips and tracks upload to the provider once and travel as a URL —
           // inlining them as base64 would blow past the request size limit.
           setUploading(true);
-          const form = new FormData();
-          form.append("file", file);
-          const res = await fetch("/api/upload", { method: "POST", body: form });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json.error ?? "Upload failed");
+          let url: string;
+          if (health?.blob) {
+            // Straight from the browser to Blob. The alternative — posting the
+            // file to our own route — puts it through a Function, whose
+            // request body is capped at 4.5MB, which is under the size of most
+            // of the clips this is for.
+            const { upload } = await import("@vercel/blob/client");
+            const result = await upload(`references/${file.name}`, file, {
+              access: "public",
+              handleUploadUrl: "/api/blob/upload",
+            });
+            url = result.url;
+          } else {
+            const form = new FormData();
+            form.append("file", file);
+            const res = await fetch("/api/upload", { method: "POST", body: form });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? "Upload failed");
+            url = json.url;
+          }
           setRefs((prev) => [
             ...prev,
             {
-              url: json.url,
+              url,
               media,
               role: isAudio ? "rhythm" : "motion",
               name: file.name,
@@ -2344,13 +2362,15 @@ export function AdLab({
               <span
                 className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
               >
-                Clips · {VIDEO_REF_LIMITS.formats} · ≤{VIDEO_REF_LIMITS.maxMB}MB ·{" "}
+                Clips · {VIDEO_REF_LIMITS.formats} · ≤
+                {health?.blob ? VIDEO_REF_LIMITS.maxMBDirect : VIDEO_REF_LIMITS.maxMB}MB ·{" "}
                 ~{VIDEO_REF_LIMITS.idealSeconds}s
               </span>
               <span
                 className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
               >
-                Tracks · {AUDIO_REF_LIMITS.formats} · ≤{AUDIO_REF_LIMITS.maxMB}MB
+                Tracks · {AUDIO_REF_LIMITS.formats} · ≤
+                {health?.blob ? AUDIO_REF_LIMITS.maxMBDirect : AUDIO_REF_LIMITS.maxMB}MB
               </span>
             </div>
 
@@ -2368,9 +2388,10 @@ export function AdLab({
               <span className="font-semibold text-foreground">
                 Uploading and pasting a URL are different paths.
               </span>{" "}
-              An upload goes through fal&apos;s storage service, which is
-              permissioned separately from generation — so a key that renders
-              video fine can still be refused a file upload. A URL is handed
+              {health?.blob
+                ? "An upload goes from your browser straight to this site's Blob store and comes back as a permanent URL — it never passes through a server function, which is what lifts the size ceiling. "
+                : "An upload goes through fal's storage service, which is permissioned separately from generation — so a key that renders video fine can still be refused a file upload. "}
+              A URL is handed
               straight to the model, so it needs no upload, no live mode and no
               storage access. It has to be a direct link to the file (ending in
               .mp4, .mov, .mp3…) that fal can reach without signing in.

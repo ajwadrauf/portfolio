@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { gateEnabled, gateStatus } from "@/lib/auth";
 import { hasFalKey, hasGeminiKey, isDryRun } from "@/lib/models";
+import { blobConfigured } from "@/lib/blob";
 
 export const dynamic = "force-dynamic";
 
@@ -24,5 +25,10 @@ export async function GET(req: Request) {
      * passcode. Anyone with the URL could spend the owner's credits.
      */
     ungated: keysPresent && !dryRun && !gateEnabled(),
+    /**
+     * A Blob store is attached, so uploads can go browser-to-storage and skip
+     * the 4.5MB Function body limit.
+     */
+    blob: blobConfigured(),
   });
 }

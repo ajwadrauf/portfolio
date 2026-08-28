@@ -9,6 +9,8 @@ export type Health = {
   gate: "disabled" | "locked" | "unlocked" | "exhausted";
   remaining: number | null;
   ungated: boolean;
+  /** A Vercel Blob store is attached, so uploads bypass the Function limit. */
+  blob: boolean;
 };
 
 /**
@@ -44,7 +46,7 @@ export function useHealth(pollMs = 30_000) {
       const r = await fetch("/api/health", { cache: "no-store" });
       setHealth(await r.json());
     } catch {
-      setHealth((prev) => prev ?? { gemini: false, fal: false, live: false, gate: "disabled", remaining: null, ungated: false });
+      setHealth((prev) => prev ?? { gemini: false, fal: false, live: false, gate: "disabled", remaining: null, ungated: false, blob: false });
     }
   }, []);
 
