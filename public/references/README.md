@@ -69,3 +69,31 @@ licences distinguish between the two, and some prohibit redistributing the
 original file. Worth a glance at the licence before adding anything bought.
 Abstract motion is also cheap to originate: a few seconds of shader output or
 a simple After Effects loop sidesteps the question entirely.
+
+## Hosting them instead of committing them
+
+These files only have to be reachable by two parties: the browser, for the
+preview, and fal, to read the motion. A public URL satisfies both, which means
+the video never has to enter the repo — worth doing, since git keeps every
+version of a binary forever.
+
+Upload the four clips anywhere public (fal storage, S3, Cloudflare R2, any
+CDN) and set one variable per clip:
+
+```
+REFERENCE_CLIP_ORBITAL_DRIFT=https://…/orbital-drift.mp4
+REFERENCE_CLIP_PULSE_GRID=https://…/pulse-grid.mp4
+REFERENCE_CLIP_LIQUID_BLOOM=https://…/liquid-bloom.mp4
+REFERENCE_CLIP_LIGHT_SWEEP=https://…/light-sweep.mp4
+```
+
+The variable name is the clip id uppercased with dashes as underscores. An
+override wins over a committed file, so you can mix the two.
+
+**These are read at build time**, because the Ad Lab page is prerendered. On
+Vercel that means setting the variables and redeploying — changing one without
+a redeploy does nothing. Same for a committed file.
+
+Whichever route you take, a starter clip costs nothing per use and never
+expires. An uploaded reference goes through fal storage, which is permissioned
+separately from generation and can be refused even when rendering works.

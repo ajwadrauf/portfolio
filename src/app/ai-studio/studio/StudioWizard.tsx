@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
+import { useHealth, type Health } from "@/lib/useHealth";
 import { DELIVERABLES, type DeliverableSpec } from "@/lib/deliverables";
 import { MODELS, estimateCost } from "@/lib/models";
 import type {
@@ -76,7 +77,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function StudioWizard() {
   const [step, setStep] = useState<Step>("upload");
-  const [health, setHealth] = useState<{ gemini: boolean; fal: boolean; live: boolean } | null>(null);
+  /** Shared with the gate control so unlocking takes effect without a reload. */
+  const { health } = useHealth();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -97,10 +99,6 @@ export function StudioWizard() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/health")
-      .then((r) => r.json())
-      .then(setHealth)
-      .catch(() => setHealth({ gemini: false, fal: false, live: false }));
     try {
       setSessionSpend(Number(localStorage.getItem(SPEND_KEY) ?? 0));
     } catch {}
@@ -416,7 +414,7 @@ function StatusBar({
   health,
   sessionSpend,
 }: {
-  health: { gemini: boolean; fal: boolean; live: boolean } | null;
+  health: Health | null;
   sessionSpend: number;
 }) {
   return (

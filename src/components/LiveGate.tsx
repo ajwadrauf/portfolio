@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { announceLiveModeChange, LIVE_MODE_EVENT } from "@/lib/useHealth";
 
 type Health = {
   gate: "disabled" | "locked" | "unlocked" | "exhausted";
@@ -35,7 +36,12 @@ export function LiveGate() {
     void refresh();
     // Other pages consume budget; keep the pill roughly current.
     const t = setInterval(refresh, 30_000);
-    return () => clearInterval(t);
+    const on = () => void refresh();
+    window.addEventListener(LIVE_MODE_EVENT, on);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener(LIVE_MODE_EVENT, on);
+    };
   }, [refresh]);
 
   useEffect(() => {
@@ -58,6 +64,7 @@ export function LiveGate() {
         setCode("");
         setOpen(false);
         await refresh();
+        announceLiveModeChange();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unlock failed");
       } finally {
@@ -70,6 +77,7 @@ export function LiveGate() {
   const lock = useCallback(async () => {
     await fetch("/api/unlock", { method: "DELETE" });
     await refresh();
+    announceLiveModeChange();
   }, [refresh]);
 
   if (!health) return null;

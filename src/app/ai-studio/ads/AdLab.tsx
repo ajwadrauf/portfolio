@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
+import { useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
   AD_PRESETS,
@@ -202,8 +203,19 @@ function Step({
   );
 }
 
-export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }) {
-  const [health, setHealth] = useState<{ gemini: boolean; fal: boolean; live: boolean } | null>(null);
+export function AdLab({
+  availableClipIds = [],
+  /** Resolved source per clip id — a hosted URL or a repo path. */
+  clipSources = {},
+}: {
+  availableClipIds?: string[];
+  clipSources?: Record<string, string>;
+}) {
+  /**
+   * Shared with the gate control, so unlocking live mode updates this page
+   * immediately instead of leaving it convinced it is still in demo mode.
+   */
+  const { health } = useHealth();
   const [presetId, setPresetId] = useState<string>(AD_PRESETS[0].id);
   const [params, setParams] = useState<Record<string, string>>({});
   const [productImage, setProductImage] = useState<string | null>(null);
@@ -425,10 +437,6 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
   }, []);
 
   useEffect(() => {
-    fetch("/api/health")
-      .then((r) => r.json())
-      .then((h) => setHealth({ gemini: h.gemini, fal: h.fal, live: h.live }))
-      .catch(() => setHealth({ gemini: false, fal: false, live: false }));
     try {
       setSessionSpend(Number(localStorage.getItem(SPEND_KEY) ?? 0));
     } catch {}
@@ -719,7 +727,7 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
           // before the upload rather than after a round trip.
           if (health && !health.live) {
             setRefError(
-              `${isAudio ? "Tracks" : "Clips"} upload to the generation provider, so they need live mode — and this session is in demo mode. Unlock live mode in the header, or use image references, which stay in the browser.`,
+              `${isAudio ? "Tracks" : "Clips"} upload to the generation provider, so they need live mode — and this session is in demo mode. Unlock it with the "Demo mode · Unlock" button at the top of this page, or use image references, which stay in the browser.`,
             );
             return;
           }
@@ -2212,7 +2220,10 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {REFERENCE_CLIPS.map((clip) => {
                   const ready = availableClipIds.includes(clip.id);
-                  const added = refs.some((r) => r.url === clip.file);
+                  // The manifest path is only a default; the server may have
+                  // resolved this clip to a hosted URL instead.
+                  const src = clipSources[clip.id] ?? clip.file;
+                  const added = refs.some((r) => r.url === src);
                   return (
                     <div
                       key={clip.id}
@@ -2222,7 +2233,7 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
                     >
                       <div className="relative aspect-video overflow-hidden rounded-t-[5px] bg-surface-2">
                         {ready ? (
-                          <ClipPreview src={clip.file} poster={clip.poster} />
+                          <ClipPreview src={src} poster={clip.poster} />
                         ) : (
                           <div className="flex h-full items-center justify-center px-2 text-center">
                             <span className="label-sm !text-[10px]">Not added yet</span>
@@ -2241,7 +2252,7 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
                             setRefs((prev) => [
                               ...prev,
                               {
-                                url: clip.file,
+                                url: src,
                                 media: "video",
                                 role: clip.suggestedRole as ReferenceRole,
                                 name: clip.name,
@@ -2261,13 +2272,15 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
               {availableClipIds.length === 0 && (
                 <p className="mt-3 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
                   <span className="font-bold">No starter clips installed.</span>{" "}
-                  Drop the four files into{" "}
-                  <code className="font-mono">public/references/</code> using the
-                  names above and they appear here. They are served from this
-                  site, so unlike an upload they cost nothing and never expire.
-                  Which files exist is read at build time — in dev that is every
-                  request, but a production server needs a rebuild to see a
-                  newly added clip.
+                  Two ways to add them. Host the files anywhere public and set{" "}
+                  <code className="font-mono">REFERENCE_CLIP_ORBITAL_DRIFT</code>{" "}
+                  and friends to their URLs, which keeps multi-megabyte video
+                  out of the repo entirely. Or commit the four files to{" "}
+                  <code className="font-mono">public/references/</code> under the
+                  names above. Either way they cost nothing per use and never
+                  expire, unlike an upload — and either way the value is read at
+                  build time, so a new clip needs a redeploy, not just a
+                  restart.
                 </p>
               )}
             </div>
@@ -2345,8 +2358,10 @@ export function AdLab({ availableClipIds = [] }: { availableClipIds?: string[] }
               <p className="mt-2 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
                 <span className="font-bold">Uploads need live mode.</span>{" "}
                 Images are processed in your browser, but clips and tracks are
-                uploaded to the generation provider. Unlock live mode in the
-                header — or paste a URL above, which skips the upload entirely.
+                uploaded to the generation provider. Use the{" "}
+                <span className="font-semibold">Demo mode · Unlock</span> button
+                at the top of this page — or paste a URL above, which skips the
+                upload entirely.
               </p>
             )}
             <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">

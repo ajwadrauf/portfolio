@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
-import { REFERENCE_CLIPS } from "@/lib/referenceClips";
+import { REFERENCE_CLIPS, clipEnvKey, isHostedClip } from "@/lib/referenceClips";
 import { AdLab } from "./AdLab";
 
 export const metadata: Metadata = {
@@ -11,21 +11,42 @@ export const metadata: Metadata = {
 };
 
 /**
- * Which starter clips are actually on disk.
+ * Where each starter clip actually lives, resolved once on the server.
  *
- * Checked here rather than in the browser so a clip that has not been added
- * yet renders as a labelled gap instead of a broken video element.
+ * Three sources, in order of precedence:
+ *
+ *  1. An environment override — `REFERENCE_CLIP_ORBITAL_DRIFT=https://…`.
+ *     This is the one to use in production: the clips live on fal storage or
+ *     any CDN, nothing large enters git, and swapping one is an env change
+ *     rather than a commit.
+ *  2. An `https://` URL written into the manifest.
+ *  3. A file committed under `public/references/`.
+ *
+ * A clip with none of the three is dropped, so it shows as a labelled gap
+ * rather than a broken video element. Resolved here rather than in the
+ * browser because only the server can read the environment.
  */
-function availableClipIds(): string[] {
-  return REFERENCE_CLIPS.filter((c) => {
-    try {
-      return fs.existsSync(path.join(process.cwd(), "public", c.file.replace(/^\//, "")));
-    } catch {
-      return false;
+function resolvedClips(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const c of REFERENCE_CLIPS) {
+    const override = process.env[clipEnvKey(c.id)]?.trim();
+    const src = override || c.file;
+    if (isHostedClip(src)) {
+      out[c.id] = src;
+      continue;
     }
-  }).map((c) => c.id);
+    try {
+      if (fs.existsSync(path.join(process.cwd(), "public", src.replace(/^\//, "")))) {
+        out[c.id] = src;
+      }
+    } catch {
+      /* treated as missing */
+    }
+  }
+  return out;
 }
 
 export default function AdsPage() {
-  return <AdLab availableClipIds={availableClipIds()} />;
+  const clips = resolvedClips();
+  return <AdLab availableClipIds={Object.keys(clips)} clipSources={clips} />;
 }

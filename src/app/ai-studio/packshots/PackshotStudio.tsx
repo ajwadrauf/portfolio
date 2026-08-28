@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
+import { useHealth } from "@/lib/useHealth";
 import { MODELS, estimateCost } from "@/lib/models";
 import {
   PACKSHOT_MODELS,
@@ -54,9 +55,12 @@ async function toProcessedDataUrl(file: File): Promise<string> {
 }
 
 export function PackshotStudio() {
-  const [health, setHealth] = useState<{ gemini: boolean; fal: boolean; live: boolean } | null>(
-    null,
-  );
+  /**
+   * Shared with the gate control. This used to derive `live` from keys alone,
+   * which reported live on a gated deployment where generation was in fact
+   * still returning mocks.
+   */
+  const { health } = useHealth();
   const [sku, setSku] = useState("");
   const [lang, setLang] = useState<(typeof LANGS)[number]>("enfr");
   const [notes, setNotes] = useState("");
@@ -73,12 +77,6 @@ export function PackshotStudio() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/health")
-      .then((r) => r.json())
-      .then((h) =>
-        setHealth({ gemini: h.gemini, fal: h.fal, live: (h.gemini || h.fal) && !h.dryRun }),
-      )
-      .catch(() => setHealth({ gemini: false, fal: false, live: false }));
     try {
       setSessionSpend(Number(localStorage.getItem(SPEND_KEY) ?? 0));
     } catch {}

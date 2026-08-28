@@ -21,7 +21,19 @@ export type ReferenceClip = {
   brief: string;
   /** The reference job this clip is best pointed at. */
   suggestedRole: "motion" | "rhythm" | "style" | "composition";
-  /** File under public/references. */
+  /**
+   * Where the clip lives. Either a path under `public/references/` shipped
+   * with the repo, or an absolute `https://` URL to a hosted file.
+   *
+   * The hosted form exists because these are the one asset that has to be
+   * reachable by two different parties: the browser, to show a preview, and
+   * fal, to read the motion. A repo path satisfies both once deployed, but it
+   * puts multi-megabyte video into git history forever. A URL — fal storage,
+   * S3, any CDN — satisfies both without the repo ever holding the bytes.
+   *
+   * Both are resolved at build time, so either way a change needs a redeploy.
+   * The difference is what git carries, not how fast you can swap one.
+   */
   file: string;
   /**
    * Optional still frame. The clip animates itself once in view, so this only
@@ -78,4 +90,19 @@ export const getClip = (id: string) => REFERENCE_CLIPS.find((c) => c.id === id);
  * has to become something reachable from outside this machine before it is
  * sent. See resolveClipUrl in the start route.
  */
+/** A repo-shipped clip, which the server has to make fetchable before use. */
 export const isStarterClipPath = (url: string) => url.startsWith("/references/");
+
+/** A clip already hosted somewhere fal can reach — nothing to resolve. */
+export const isHostedClip = (url: string) => /^https:\/\//.test(url);
+
+/**
+ * Env overrides, so the starter set can be re-pointed at hosted files without
+ * a code change: REFERENCE_CLIP_ORBITAL_DRIFT=https://…/orbital-drift.mp4
+ *
+ * Read on the server, and this page is prerendered — so the value is baked at
+ * build time. Changing one means changing the variable and redeploying, not
+ * just restarting.
+ */
+export const clipEnvKey = (id: string) =>
+  `REFERENCE_CLIP_${id.toUpperCase().replace(/-/g, "_")}`;
