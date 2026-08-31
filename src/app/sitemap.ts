@@ -11,6 +11,7 @@ const ROUTES = [
   "/ai-studio/packshots",
   "/ai-studio/ads",
   "/ai-studio/prompts",
+  "/ai-studio/blender",
   "/ai-studio/models",
   "/ai-studio/build-vs-buy",
   "/ai-studio/playbook",

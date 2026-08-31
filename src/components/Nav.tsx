@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/ai-studio/studio", label: "Studio" },
   { href: "/ai-studio/packshots", label: "Packshots" },
   { href: "/ai-studio/prompts", label: "Prompt builder" },
+  { href: "/ai-studio/blender", label: "Blender" },
   { href: "/ai-studio/models", label: "Models" },
   { href: "/ai-studio/build-vs-buy", label: "Build vs. Buy" },
   { href: "/ai-studio/playbook", label: "Playbook" },
@@ -20,7 +21,7 @@ export function Nav() {
   return (
     <header className="nav-bar sticky top-0 z-40 border-b border-accent/20 backdrop-blur">
       <div className="brand-strip" />
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex items-center justify-between gap-4 sm:justify-start">
           <Link
             href="/"

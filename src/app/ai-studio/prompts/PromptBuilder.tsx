@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -143,6 +144,28 @@ export function PromptBuilder() {
         long the payoff gets. Fill it in, or load the worked example and take
         it apart.
       </p>
+
+      {/*
+        The escape hatch for the case this page cannot solve. A prompt can
+        describe a camera move; it cannot make the same one twice. When that
+        is what the shot needs, the answer is upstream in geometry, not in
+        better wording here.
+      */}
+      <Link
+        href="/ai-studio/blender"
+        className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[6px] border border-accent/30 bg-accent/[0.05] px-4 py-3 text-sm transition hover:border-accent"
+      >
+        <span className="font-semibold text-accent">
+          Need a prompt to create on Blender?
+        </span>
+        <span className="text-muted">
+          When the camera move has to be exact and repeatable, build it as a clay
+          pass first — then write the prompt against it.
+        </span>
+        <span aria-hidden className="font-semibold text-accent">
+          →
+        </span>
+      </Link>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={loadExample}>
