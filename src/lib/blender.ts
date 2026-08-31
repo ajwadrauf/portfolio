@@ -374,3 +374,62 @@ export function briefIssues(b: BlenderBrief): { text: string; why: string }[] {
 
   return issues;
 }
+
+// ---------------------------------------------------------------------------
+// Vendor tooling that overlaps this workflow
+// ---------------------------------------------------------------------------
+
+/**
+ * Higgsfield shipped a Blender add-on in late August 2026 that automates part
+ * of what this page describes. Saying nothing about it would be the wrong call
+ * for a page arguing that knowing the landscape is the job — but so would
+ * pretending it settles the question. It automates the geometry; it does not
+ * supply the judgment about what the model reads.
+ *
+ * Everything here is from vendor material and secondary coverage rather than
+ * hands-on use, which the page states rather than hides.
+ */
+export const VENDOR_OVERLAP = {
+  name: "Higgsfield for Blender",
+  dated: "Late August 2026",
+  what: "An add-on that prompts an editable blockout into your open .blend, animates a camera from a description as real bones and keyframes, and can trigger Seedance renders — with an MCP bridge so an agent works in the scene directly. Seven tabs, Blender 4.2–5.1, on the same credits as their other plugins.",
+  helps: [
+    {
+      k: "First blockout, faster",
+      v: "Getting to a rough scene is the slowest manual part of this workflow. A prompted blockout that arrives as editable geometry is a real saving.",
+    },
+    {
+      k: "Camera as a rig, not a description",
+      v: "It animates to standard bones and actions, so the curves are tweakable rather than regenerated — the same property that makes a clay pass worth building.",
+    },
+    {
+      k: "Reblocking",
+      v: "Layout changes late are the expensive kind. Re-prompting a previz blockout is cheaper than re-keying one by hand.",
+    },
+  ],
+  doesNotChange: [
+    {
+      k: "A blockout is not automatically a control pass",
+      v: "Neutral grey, one flat ID colour per mapped subject, one unambiguous light direction, contact shadows, 24 fps, no text or gizmos. Geometry arriving faster does not make it legible to the model — the checklist above still decides that.",
+    },
+    {
+      k: "The prompt still has to bind the references",
+      v: "Material roles and the exclusion block are what stop grey plastic and empty void leaking into the result. No plugin writes those for you.",
+    },
+    {
+      k: "Diagnosis is still the scarce skill",
+      v: "Deciding whether a bad take is a clay problem, a prompt problem or a look-reference problem is where the credits are saved or wasted, and that judgment does not ship in an add-on.",
+    },
+    {
+      k: "Their own docs scope it to previz",
+      v: "Blockout is not a production asset — clean topology, UVs and instancing are still modelling work, and reblocking mid-production with cached simulations is explicitly not the easy case.",
+    },
+  ],
+  /** The detail that decides whether it is cheap, and the easiest one to miss. */
+  costCatch:
+    "The unlimited Seedance plans that make Higgsfield look inexpensive are, by their own terms, available only through higgsfield.ai directly — not through MCP, CLI, Canvas or Supercomputer. Drive it from an agent or the API and you are back on per-generation credits.",
+  verdict:
+    "Worth using as a front end to the clay pass. Not a reason to move a production pipeline onto it — this studio generates through fal, where the routing, cost model and quality gates already live, and a vendor suite would trade those for an integration it does not need.",
+  caveat:
+    "Assembled from vendor material and secondary coverage, not hands-on use. Two things worth confirming against the live docs before committing: whether the API exposes Seedance 2.5 reference-to-video with video references, and whether the add-on's blockout is neutral clay or merely untextured geometry.",
+};

@@ -15,15 +15,17 @@ const LAYERS = [
     examples: "Higgsfield · Freepik · Krea",
     price: "$15–150 / seat / mo",
     role: "Exploration",
-    body: "Subscription UIs wrapping 15+ third-party models with presets and editing tools. They own no frontier models — they are a convenience layer over the same APIs anyone can call.",
+    body: "Subscription UIs wrapping 15+ third-party models. They still own no frontier models, but calling them a convenience layer is now only half right: the leaders ship into the tools a team already uses — Higgsfield has a Blender add-on that prompts an editable blockout and animates a camera rig, an MCP bridge so an agent can build in the open scene, plus Premiere, After Effects and Figma plugins and a REST API of its own. What you are buying is the integration, not the model.",
     wins: [
       "Creatives explore and iterate hands-on, daily",
       "Day-one access to every new model",
+      "The tool plugs into an existing craft app and saves real hours there",
       "Small team, modest volume",
     ],
     fails: [
       "Volume scales — per-seat plus credits beats you",
       "You need workflow integration, QA gates, audit trails",
+      "The headline unlimited plan does not extend to the API or MCP, so an automated pipeline is back on credits",
       "Rights and data-governance terms need enterprise review",
     ],
   },

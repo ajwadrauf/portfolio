@@ -8,13 +8,14 @@ import {
   PHASES,
   ROUTING,
   SPECS,
+  VENDOR_OVERLAP,
 } from "@/lib/blender";
 import { seedanceCost } from "@/lib/videoCost";
 
 export const metadata: Metadata = {
   title: "Blender → Seedance — AI Content Studio",
   description:
-    "Using Blender through MCP to produce clay control passes for Seedance 2.5: what it costs to guess versus to specify, how to keep the two reference lanes apart, and a builder for the prompt that goes with the clay.",
+    "Using Blender through MCP to produce clay control passes for Seedance 2.5: what it costs to guess versus to specify, how to keep the two reference lanes apart, where a vendor add-on helps and where it does not, and a builder for the prompt that goes with the clay.",
 };
 
 /**
@@ -264,10 +265,69 @@ export default function BlenderPage() {
         </div>
       </section>
 
-      {/* ---------- 05 The builder ---------- */}
-      <section id="builder" className="scroll-mt-28 py-12">
+      {/* ---------- 05 Vendor tooling ---------- */}
+      <section className="py-12">
         <SectionHead
           n="05"
+          title="What a vendor now does for you, and what it does not"
+          lede="Higgsfield shipped a Blender add-on that automates part of this. A page arguing that knowing the landscape is the job should say so — and should be equally clear that it automates the geometry, not the judgment."
+        />
+
+        <div className="mt-8 rounded-[6px] border border-border-soft bg-surface p-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h3 className="text-lg tracking-[-0.02em]">{VENDOR_OVERLAP.name}</h3>
+            <span className="chip shrink-0">{VENDOR_OVERLAP.dated}</span>
+          </div>
+          <p className="mt-3 max-w-[70ch] text-sm leading-relaxed text-muted">
+            {VENDOR_OVERLAP.what}
+          </p>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <div>
+              <p className="label-sm !text-success">Where it genuinely helps</p>
+              <dl className="mt-3 space-y-3.5">
+                {VENDOR_OVERLAP.helps.map((h) => (
+                  <div key={h.k}>
+                    <dt className="text-sm font-semibold">{h.k}</dt>
+                    <dd className="mt-1 text-xs leading-relaxed text-muted">{h.v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <div>
+              <p className="label-sm !text-warning">What it does not change</p>
+              <dl className="mt-3 space-y-3.5">
+                {VENDOR_OVERLAP.doesNotChange.map((h) => (
+                  <div key={h.k}>
+                    <dt className="text-sm font-semibold">{h.k}</dt>
+                    <dd className="mt-1 text-xs leading-relaxed text-muted">{h.v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+
+          <p className="mt-6 rounded-[6px] border border-warning/40 bg-warning/10 p-4 text-xs leading-relaxed">
+            <span className="font-bold text-warning">The cost catch.</span>{" "}
+            <span className="text-foreground">{VENDOR_OVERLAP.costCatch}</span>
+          </p>
+
+          <div className="mt-5 border-t border-border-soft pt-5">
+            <p className="label-sm !text-accent">Verdict</p>
+            <p className="mt-2 max-w-[70ch] text-sm leading-relaxed">
+              {VENDOR_OVERLAP.verdict}
+            </p>
+            <p className="mt-3 max-w-[70ch] text-xs leading-relaxed text-muted">
+              {VENDOR_OVERLAP.caveat}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- 06 The builder ---------- */}
+      <section id="builder" className="scroll-mt-28 py-12">
+        <SectionHead
+          n="06"
           title="Write the prompt that goes with the clay"
           lede="The clay carries structure; the prompt has to say what each upload is for and what must not be inherited from it. Fill in the shot and it assembles the four-layer prompt — including the exclusion block, which is the part people skip and then wonder why the result is grey plastic people in an empty void."
         />
