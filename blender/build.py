@@ -1089,7 +1089,12 @@ def render_topdown():
     ax, ay = C.final_axis()
     mid = C.RIDGE_X * 0.5
     ob.location = (ax * mid, ay * mid, 3.0)
-    ob.rotation_euler = (0.0, 0.0, -math.radians(C.AZ0 + C.CAM_TRACK[-1][4]) - math.pi / 2)
+    # Roll so the final view axis runs straight DOWN the frame: packs at the top,
+    # cookie at the bottom. The whole point of this still is an unambiguous read
+    # on row spacing and the forced-perspective offset, and it does not give one
+    # with the axis lying across a diagonal.
+    ob.rotation_euler = (0.0, 0.0,
+                         math.radians(C.AZ0 + C.CAM_TRACK[-1][4] - 270.0))
     keep = sc.camera
     sc.camera = ob
     sc.frame_set(C.F_END)
@@ -1390,6 +1395,8 @@ def main():
         render_checkpoints(cam, picked)
         if C.F_END in picked:
             check_layout(os.path.join(OUT, "checks", "chk_%04d.png" % C.F_END))
+    if "--topdown" in argv:
+        render_topdown()
     if "--checkpoints" in argv:
         render_checkpoints(cam)
         check_layout(os.path.join(OUT, "checks", "chk_%04d.png" % C.F_END))

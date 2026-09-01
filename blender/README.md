@@ -73,17 +73,20 @@ against a predicted 15.3%, and the render looked plausible enough to pass by eye
 Measured on the current build:
 
 ```
-cookie       15.3% w   18.1% h   centre x 49.8%     (brief: 15% / 20%, centred)
-pack_chip    12.1% w   21.7% h   centre x 29.6%     (brief: 10% / 21%)
-pack_soft    12.0% w   22.5% h   centre x 43.1%
-pack_pb      11.9% w   21.9% h   centre x 56.7%
-pack_rev     12.3% w   22.1% h   centre x 70.4%
-pack row     52.9% w                                (brief: 50%)
+cookie       15.5% w   21.2% h   centre x 50.0%     (brief: 15% / 20%, centred)
+pack_chip    12.2% w   23.1% h   centre x 29.3%     (brief: 10% / 21%)
+pack_soft    12.1% w   23.1% h   centre x 43.1%
+pack_pb      12.1% w   23.1% h   centre x 56.8%
+pack_rev     12.4% w   23.3% h   centre x 70.5%
+pack row     53.5% w                                (brief: 50%)
 ```
 
-Packs measure ~12% rather than 10% because the brief's figure uses the nominal
-130 mm flat width, and a gusseted bag with a belly bulge is ~12% wider than flat.
-That is the proxy being correct, not the layout being off.
+The packs run ~2 points over the brief's figures in both axes, and both gaps are
+the proxy being right rather than the layout being off. The brief's 10% uses the
+nominal 130 mm flat width; a gusseted bag with a belly bulge is ~12% wider than
+flat. The 21% assumes a flat card, but a 65 mm-deep bag's silhouette runs from
+its NEAR-bottom edge to its FAR-top edge — 1.3 deg to 9.3 deg above the camera
+axis, which projects to 23.5%. Flatten either and the packs stop reading as bags.
 
 ## Where this departs from the brief
 
@@ -130,7 +133,14 @@ GPU, where the same render is minutes.
 
 What *has* been rendered and inspected: all nine checkpoints, the top-down
 blocking still, and the beat stills — at full 960×720, with the exposure and
-layout checks passing on each.
+layout checks passing on each. The guide's 13-point clay-pass checklist runs
+clean against those frames: 4:3 at 24 fps; every mapped subject its own ID
+colour and no other object sharing it; contact shadows throughout; silhouettes
+separable at f204, f246 and f288, which is the range the brief singles out
+because the packs are still rising; no text, gizmos or path curves; peak 0.26%
+of pixels clipped and 0.00% crushed to black on any checkpoint; ground past the
+frame edge at every angle; one fixed light direction; every move inside its
+speed budget; and a composed frame 1.
 
 The Lane B look references (`02_look_chips.png` … `08_look_lighting.png`) are
 **not** generated here. They are photographs and brand assets, not Blender
