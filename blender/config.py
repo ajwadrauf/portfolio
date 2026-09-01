@@ -247,9 +247,18 @@ CLAY_SOURCE = ("https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/"
 # Uploading it invites the model to reproduce an approximation of it.
 _BLOB = "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/PC-Decadent-Example/"
 LOOK_FILES = [
-    ("02_look_chips.png",        "chips",     "macro chocolate chips", None),
+    # Both crops come out of the classic pack front, which is one enlarged hero
+    # cookie sitting on a full bleed of semi-sweet chips — the two references
+    # this shot needs most, in the definitive photograph of the product.
+    #
+    # It must be the CLASSIC. Every SKU has a different background: Soft Baked is
+    # dark chocolate, Reverse Decadent is white, Peanut Butter is a peanut butter
+    # swirl with no chips at all. Crop from any of those and the bed is the wrong
+    # chocolate for all 31,430 chips.
+    ("02_look_chips.png",        "chips",     "macro semi-sweet chips",
+     _BLOB + "the-decadent.png  [CROP: background only, no cookie, no type]"),
     ("03_look_cookie.png",       "cookie",    "classic Decadent hero cookie",
-     _BLOB + "example-cookies.jpg"),
+     _BLOB + "the-decadent.png  [CROP: the cookie only, no pack edge, no type]"),
     ("04_look_pack_chip.png",    "pack_chip", "The Decadent Chocolate Chip",
      _BLOB + "the-decadent.png"),
     ("05_look_pack_soft.png",    "pack_soft", "The Decadent Soft Baked",
@@ -258,7 +267,7 @@ LOOK_FILES = [
      _BLOB + "peanut-butter.png"),
     ("07_look_pack_reverse.png", "pack_rev",  "The Reverse Decadent",
      _BLOB + "reverse-decadent.png"),
-    ("08_look_pack_side.png",    "pack_side", "gusset depth and fin seal, any SKU",
+    ("08_look_pack_side.png",    "pack_side", "gusset depth and fin seal — SHAPE ONLY",
      _BLOB + "side-view-package.png"),
 ]
 
@@ -266,6 +275,9 @@ LOOK_FILES = [
 COMPOSITE_ONLY = [
     (_BLOB + "pc_logo_red-pc_rgb_rev_en.png",
      "PC wordmark — registered mark, composited over the plate after generation"),
+    (_BLOB + "example-cookies.jpg",
+     "three thick soft-baked-style cookies — WRONG SKU and the wrong count; it "
+     "fights both the 8 mm thin proxy and the one-cookie constraint"),
 ]
 
 

@@ -1362,10 +1362,12 @@ def write_prompt():
         "entire opening, which is nothing but chips.",
         "%s defines the cookie's proportions, crumb and chip distribution."
         % C.image_ref("cookie"),
-        "%s defines how the bags are CONSTRUCTED — gusset depth, the belly, and the"
+        "%s defines only how the bags are CONSTRUCTED — gusset depth, the belly,"
         % C.image_ref("pack_side"),
-        "pinched fin seal along the top. It is a shape reference for all four packs,",
-        "not a fifth product and not a front to be copied.",
+        "the shoulder taper and the pinched fin seal along the top. Take the SHAPE",
+        "from it and nothing else: it happens to be the white-chocolate SKU, so",
+        "ignore its colour and its artwork entirely. It is a construction reference",
+        "for all four bags, not a fifth product and not a front to be copied.",
     ]
     d, lens, _e, _a = C.camera_state(C.F_END)
     txt = f"""MODE: {C.GENERATION_MODE}
