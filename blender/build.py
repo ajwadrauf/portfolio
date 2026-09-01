@@ -1098,10 +1098,20 @@ def render_topdown():
 
 
 def export_stills(cam):
+    """Copy from the checkpoints where the frame is already rendered. Every one
+    of these frames is also a CHECKPOINT, and re-rendering four of them costs
+    five minutes a pass on a software GL machine for identical pixels."""
+    import shutil
     sc = bpy.context.scene
     sc.camera = cam
+    os.makedirs(os.path.join(OUT, "stills"), exist_ok=True)
     for name, f in (("first_frame", C.F_START), ("last_frame", C.F_END),
                     ("beat_0144", C.F_PULL_END), ("beat_0204", C.F_ARC_END)):
+        dst = os.path.join(OUT, "stills", name + ".png")
+        src = os.path.join(OUT, "checks", "chk_%04d.png" % f)
+        if os.path.exists(src):
+            shutil.copyfile(src, dst)
+            continue
         sc.frame_set(f)
         _render_to(os.path.join(OUT, "stills", name))
 
