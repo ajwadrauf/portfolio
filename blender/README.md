@@ -15,6 +15,7 @@ most common way this workflow fails.
 
 | File | What it is |
 | --- | --- |
+| `shot_1A_brief.md` | The shot brief, revised against this build. Marks every place the original spec could not be built and gives the resolution. |
 | `config.py` | Every number in the shot. No `bpy` import, so `python3 config.py` prints the full geometry report without launching Blender. |
 | `build.py` | The scene build, the checks, and the export package. One self-contained script. |
 | `out/shot_1A/` | **Generated, and gitignored.** `prompt.txt`, `metadata.json`, `README.txt`, stills, frames, clip. `build.py --no-render` rebuilds the text package in seconds; nothing here is worth keeping in git. |
