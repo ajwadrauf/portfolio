@@ -1357,14 +1357,19 @@ def write_prompt():
         roles.append("The %s form, %s in the row, becomes %s as defined by %s."
                      % (colour, pos, C.PACK_NAMES[k], C.image_ref(k)))
     roles += [
-        "%s defines chocolate colour, sheen and surface character." % C.image_ref("chips"),
-        "%s defines the cookie's proportions, crumb, and chip distribution."
+        "%s defines chocolate colour, sheen and surface character — it governs the"
+        % C.image_ref("chips"),
+        "entire opening, which is nothing but chips.",
+        "%s defines the cookie's proportions, crumb and chip distribution."
         % C.image_ref("cookie"),
-        "%s defines lighting mood and contrast only." % C.image_ref("lighting"),
+        "%s defines how the bags are CONSTRUCTED — gusset depth, the belly, and the"
+        % C.image_ref("pack_side"),
+        "pinched fin seal along the top. It is a shape reference for all four packs,",
+        "not a fifth product and not a front to be copied.",
     ]
     d, lens, _e, _a = C.camera_state(C.F_END)
     txt = f"""MODE: {C.GENERATION_MODE}
-MATERIALS: @Video 1 clay blockout · {C.image_ref("chips")} chips · {C.image_ref("cookie")} cookie · {C.image_ref("pack_chip")}-{C.image_ref("pack_rev").split()[1]} packs · {C.image_ref("lighting")} lighting
+MATERIALS: @Video 1 clay blockout · {C.image_ref("chips")} chips · {C.image_ref("cookie")} cookie · {C.image_ref("pack_chip")}-{C.image_ref("pack_rev").split()[1]} pack fronts · {C.image_ref("pack_side")} bag construction
 SETTINGS: Match @Video 1 duration and camera route · 4:3 · 720p · {C.FPS}fps · {C.DURATION_S:.0f}s
 
 [Reference roles]
@@ -1401,8 +1406,10 @@ Deep focus — everything sharp.
 
 [Exclusions]
 No text, no captions, no subtitles, no on-screen type, no logos, no wordmarks, no
-printed pack graphics, no watermarks, no background music. No hands, no people,
-no extra cookies, no fifth pack. Do not inherit primitive geometry, flat grey
+printed pack graphics, no watermarks, no background music. Leave the pack fronts
+BLANK — the artwork and every mark are composited over the finished plate, so do
+not letter, label or approximate them. No hands, no people, no extra cookies, and
+exactly four bags — {C.image_ref("pack_side")} is a construction reference, not a fifth pack. Do not inherit primitive geometry, flat grey
 materials, blue plastic cones, placeholder shapes, axes, guide lines, path
 curves, camera frustums, or the empty set from @Video 1. Use it only for camera
 movement, blocking, motion paths, timing, occlusion order, and light direction.
@@ -1431,13 +1438,20 @@ def write_readme(draft=False):
         "", "UPLOAD ORDER - most surfaces index by upload order, not filename.", "",
         "  @Video 1   %s" % C.CLAY_FILE,
     ]
-    for i, (fn, _k, desc) in enumerate(C.LOOK_FILES):
+    lines.append("             %s" % C.CLAY_SOURCE)
+    for i, (fn, _k, desc, src) in enumerate(C.LOOK_FILES):
         lines.append("  @Image %-2d  %-26s %s" % (i + 1, fn, desc))
+        lines.append("             %s" % (src if src else
+                     "*** NO SOURCE YET - see MISSING at the foot of this file ***"))
+    lines += ["", "DO NOT UPLOAD - composite over the finished plate instead:", ""]
+    for url, why in C.COMPOSITE_ONLY:
+        lines += ["  %s" % why, "    %s" % url]
     lines += [
         "", "SUBJECT MAPPING - linear base colour, not sRGB hex.", "",
     ]
     labels = dict(C.PACK_NAMES, chips="semi-sweet chocolate chips",
-                  cookie="hero cookie, classic Decadent")
+                  cookie="hero cookie, classic Decadent",
+                  pack_side="bag construction, all four")
     for k, rgb in C.ID_COLORS.items():
         label = labels[k]
         lines.append("  %-10s %-22s -> %-9s %s"
@@ -1476,6 +1490,27 @@ def write_readme(draft=False):
                  "The Decadent logotype", "300 g", "legal line", "superscripts",
                  "end card", "music and sound design"]:
         lines.append("  - %s" % item)
+    missing = [(i + 1, fn, desc) for i, (fn, _k, desc, src)
+               in enumerate(C.LOOK_FILES) if not src]
+    if missing:
+        lines += ["", "MISSING - the generation is not ready to run without these", ""]
+        for n, fn, desc in missing:
+            lines += ["  @Image %d  %s  (%s)" % (n, fn, desc)]
+        lines += [
+            "",
+            "  @Image 1 governs the first three seconds, which are nothing but chips,",
+            "  and 39% chocolate by weight is the actual product claim. Without it the",
+            "  model invents the chocolate, differently on every generation.",
+            "",
+            "  Crop it from the classic pack front. The 1988 pack IS one enlarged hero",
+            "  cookie on a background of chocolate chips, so the chip bed and the hero",
+            "  cookie can both be cropped out of the same asset - which is also the",
+            "  definitive photograph of this exact product.",
+            "",
+            "  DO NOT upload a partial set. Most surfaces index by upload order, so a",
+            "  missing file does not leave a gap - it shifts every later reference up by",
+            "  one and silently rebinds the lot.",
+        ]
     lines += [
         "", "REBUILD", "",
         "  python3 build.py --checkpoints        # stills, layout + exposure checks",
@@ -1533,10 +1568,12 @@ def write_metadata(draft=False):
             "four pack fronts (exact artwork)", "PC wordmark", "The Decadent logotype",
             "300 g", "legal line", "superscripts", "end card", "music"],
         "blender": bpy.app.version_string,
-        "upload_order": ([{"ref": "@Video 1", "file": C.CLAY_FILE}]
+        "upload_order": ([{"ref": "@Video 1", "file": C.CLAY_FILE,
+                           "source": C.CLAY_SOURCE}]
                          + [{"ref": "@Image %d" % (i + 1), "file": fn,
-                             "subject": k, "describes": desc}
-                            for i, (fn, k, desc) in enumerate(C.LOOK_FILES)]),
+                             "subject": k, "describes": desc, "source": src}
+                            for i, (fn, k, desc, src) in enumerate(C.LOOK_FILES)]),
+        "do_not_upload": [{"source": u, "reason": w} for u, w in C.COMPOSITE_ONLY],
     }
     with open(os.path.join(OUT, "metadata.json"), "w") as fh:
         json.dump(meta, fh, indent=2)

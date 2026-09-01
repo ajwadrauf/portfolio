@@ -236,20 +236,42 @@ PACK_NAMES = {
 # the clip is file 01 and is @Video 1, which makes 08_look_lighting.png @Image 7,
 # not @Image 8. Getting that off by one silently rebinds every reference role.
 CLAY_FILE = "01_clay_%s.mp4" % SHOT_ID
+CLAY_SOURCE = ("https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/"
+               "01_clay_1A.mp4")
+
+# (filename, subject key, what it defines, source asset)
+#
+# The PC logo is deliberately absent. It is a registered mark, generative video
+# garbles type reliably and differently on every frame, and the whole post plan
+# depends on compositing artwork over the plate from the identical camera.
+# Uploading it invites the model to reproduce an approximation of it.
+_BLOB = "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/PC-Decadent-Example/"
 LOOK_FILES = [
-    ("02_look_chips.png",        "chips",     "macro chocolate chips"),
-    ("03_look_cookie.png",       "cookie",    "classic Decadent hero cookie"),
-    ("04_look_pack_chip.png",    "pack_chip", "The Decadent Chocolate Chip"),
-    ("05_look_pack_soft.png",    "pack_soft", "The Decadent Soft Baked"),
-    ("06_look_pack_pb.png",      "pack_pb",   "The Decadent Peanut Butter Chunk"),
-    ("07_look_pack_reverse.png", "pack_rev",  "The Reverse Decadent"),
-    ("08_look_lighting.png",     "lighting",  "mood and contrast reference"),
+    ("02_look_chips.png",        "chips",     "macro chocolate chips", None),
+    ("03_look_cookie.png",       "cookie",    "classic Decadent hero cookie",
+     _BLOB + "example-cookies.jpg"),
+    ("04_look_pack_chip.png",    "pack_chip", "The Decadent Chocolate Chip",
+     _BLOB + "the-decadent.png"),
+    ("05_look_pack_soft.png",    "pack_soft", "The Decadent Soft Baked",
+     _BLOB + "soft-baked.png"),
+    ("06_look_pack_pb.png",      "pack_pb",   "The Decadent Peanut Butter Chunk",
+     _BLOB + "peanut-butter.png"),
+    ("07_look_pack_reverse.png", "pack_rev",  "The Reverse Decadent",
+     _BLOB + "reverse-decadent.png"),
+    ("08_look_pack_side.png",    "pack_side", "gusset depth and fin seal, any SKU",
+     _BLOB + "side-view-package.png"),
+]
+
+# Assets that must NOT be uploaded as generation references.
+COMPOSITE_ONLY = [
+    (_BLOB + "pc_logo_red-pc_rgb_rev_en.png",
+     "PC wordmark — registered mark, composited over the plate after generation"),
 ]
 
 
 def image_ref(key):
     """@Image n for a subject, derived from upload order."""
-    for i, (_f, k, _d) in enumerate(LOOK_FILES):
+    for i, (_f, k, _d, _s) in enumerate(LOOK_FILES):
         if k == key:
             return "@Image %d" % (i + 1)
     raise KeyError(key)
