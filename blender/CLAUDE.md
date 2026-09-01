@@ -1,0 +1,1 @@
+@../public/blender/CLAUDE.md

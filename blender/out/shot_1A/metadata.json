@@ -1,0 +1,216 @@
+{
+  "shot": "1A",
+  "name": "The Wall",
+  "product": "PC The Decadent Chocolate Chip (classic)",
+  "surface": "<Dreamina UI / ModelArk API / reseller \u2014 confirm before upload>",
+  "mode": "Clay Renderer / Omni Reference",
+  "delivery": {
+    "resolution": [
+      960,
+      720
+    ],
+    "aspect": "4:3",
+    "fps": 24,
+    "frames": 288,
+    "seconds": 12.0,
+    "locked_tail_frames": 12
+  },
+  "camera": {
+    "sensor_mm": 36.0,
+    "sensor_fit": "HORIZONTAL",
+    "clip_start_m": 0.002,
+    "dof": false,
+    "track": [
+      {
+        "frame": 1,
+        "distance_m": 0.1,
+        "lens_mm": 100.0,
+        "elevation_deg": 2.0,
+        "azimuth_deg": 205.0,
+        "frame_width_mm": 36.0,
+        "frame_height_mm": 27.0
+      },
+      {
+        "frame": 72,
+        "distance_m": 0.1,
+        "lens_mm": 100.0,
+        "elevation_deg": 2.0,
+        "azimuth_deg": 245.0,
+        "frame_width_mm": 36.0,
+        "frame_height_mm": 27.0
+      },
+      {
+        "frame": 144,
+        "distance_m": 0.45,
+        "lens_mm": 100.0,
+        "elevation_deg": 12.0,
+        "azimuth_deg": 245.0,
+        "frame_width_mm": 162.0,
+        "frame_height_mm": 121.5
+      },
+      {
+        "frame": 204,
+        "distance_m": 0.72,
+        "lens_mm": 85.0,
+        "elevation_deg": 22.0,
+        "azimuth_deg": 300.0,
+        "frame_width_mm": 304.9,
+        "frame_height_mm": 228.7
+      },
+      {
+        "frame": 276,
+        "distance_m": 1.55,
+        "lens_mm": 45.0,
+        "elevation_deg": 22.0,
+        "azimuth_deg": 300.0,
+        "frame_width_mm": 1240.0,
+        "frame_height_mm": 930.0
+      },
+      {
+        "frame": 288,
+        "distance_m": 1.55,
+        "lens_mm": 45.0,
+        "elevation_deg": 22.0,
+        "azimuth_deg": 300.0,
+        "frame_width_mm": 1240.0,
+        "frame_height_mm": 930.0
+      }
+    ]
+  },
+  "beats": {
+    "orbit_end": 72,
+    "pull_end": 144,
+    "cookie_touch": 164,
+    "arc_end": 204,
+    "lock": 276,
+    "end": 288
+  },
+  "id_colors_linear": {
+    "chips": [
+      0.05,
+      0.2,
+      0.8,
+      1.0
+    ],
+    "cookie": [
+      0.9,
+      0.35,
+      0.02,
+      1.0
+    ],
+    "pack_chip": [
+      0.1,
+      0.6,
+      0.15,
+      1.0
+    ],
+    "pack_soft": [
+      0.75,
+      0.05,
+      0.55,
+      1.0
+    ],
+    "pack_pb": [
+      0.95,
+      0.8,
+      0.05,
+      1.0
+    ],
+    "pack_rev": [
+      0.05,
+      0.7,
+      0.75,
+      1.0
+    ]
+  },
+  "clay_neutral_linear": [
+    0.18,
+    0.18,
+    0.18,
+    1.0
+  ],
+  "roughness": 0.55,
+  "metallic": 0.0,
+  "final_frame": {
+    "cookie_distance_mm": 450.0,
+    "cookie_lean_deg": 58.1,
+    "cookie_pct_frame_w": 15.3,
+    "cookie_pct_frame_h": 20.4,
+    "pack_pct_frame_w": 10.5,
+    "pack_pct_frame_h": 21.5,
+    "pack_row_pct_frame_w": 50.4,
+    "pack_order_left_to_right": [
+      "pack_chip",
+      "pack_soft",
+      "pack_pb",
+      "pack_rev"
+    ]
+  },
+  "speed_budget_ms": {
+    "camera macro orbit": 0.028,
+    "camera pull back": 0.12,
+    "camera arc and rise": 0.25,
+    "camera crane out": 0.24,
+    "cookie descent": 0.22,
+    "cookie ridge glide": 0.38
+  },
+  "composite_after_generation": [
+    "four pack fronts (exact artwork)",
+    "PC wordmark",
+    "The Decadent logotype",
+    "300 g",
+    "legal line",
+    "superscripts",
+    "end card",
+    "music"
+  ],
+  "blender": "5.0.1",
+  "upload_order": [
+    {
+      "ref": "@Video 1",
+      "file": "01_clay_1A.mp4"
+    },
+    {
+      "ref": "@Image 1",
+      "file": "02_look_chips.png",
+      "subject": "chips",
+      "describes": "macro chocolate chips"
+    },
+    {
+      "ref": "@Image 2",
+      "file": "03_look_cookie.png",
+      "subject": "cookie",
+      "describes": "classic Decadent hero cookie"
+    },
+    {
+      "ref": "@Image 3",
+      "file": "04_look_pack_chip.png",
+      "subject": "pack_chip",
+      "describes": "The Decadent Chocolate Chip"
+    },
+    {
+      "ref": "@Image 4",
+      "file": "05_look_pack_soft.png",
+      "subject": "pack_soft",
+      "describes": "The Decadent Soft Baked"
+    },
+    {
+      "ref": "@Image 5",
+      "file": "06_look_pack_pb.png",
+      "subject": "pack_pb",
+      "describes": "The Decadent Peanut Butter Chunk"
+    },
+    {
+      "ref": "@Image 6",
+      "file": "07_look_pack_reverse.png",
+      "subject": "pack_rev",
+      "describes": "The Reverse Decadent"
+    },
+    {
+      "ref": "@Image 7",
+      "file": "08_look_lighting.png",
+      "subject": "lighting",
+      "describes": "mood and contrast reference"
+    }
+  ]
+}
