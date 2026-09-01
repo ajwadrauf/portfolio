@@ -159,10 +159,18 @@ def set_visibility_window(obj, start, end):
 # ==========================================================================
 # MATERIALS
 # ==========================================================================
+def _ensure_nodes(datablock):
+    """`use_nodes` is deprecated for removal in Blender 6.0, and on 5.x the node
+    tree already exists the moment you call .new() — which is why it is going.
+    Only touch it on builds old enough to actually need it."""
+    if datablock.node_tree is None:
+        datablock.use_nodes = True
+    return datablock.node_tree
+
+
 def make_clay(name, rgb):
     m = bpy.data.materials.new(name)
-    m.use_nodes = True
-    bsdf = m.node_tree.nodes["Principled BSDF"]
+    bsdf = _ensure_nodes(m).nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = rgb
     bsdf.inputs["Roughness"].default_value = C.CLAY_ROUGHNESS
     bsdf.inputs["Metallic"].default_value = C.CLAY_METALLIC
@@ -205,9 +213,9 @@ def setup_render_settings(draft=False):
     sc.render.image_settings.color_mode = "RGB"
     # opaque, near-18% grey world so nothing floats in a void
     world = bpy.data.worlds.new("clay_world")
-    world.use_nodes = True
-    world.node_tree.nodes["Background"].inputs[0].default_value = (0.055, 0.055, 0.062, 1.0)
-    world.node_tree.nodes["Background"].inputs[1].default_value = 1.0
+    bg = _ensure_nodes(world).nodes["Background"]
+    bg.inputs[0].default_value = (0.055, 0.055, 0.062, 1.0)
+    bg.inputs[1].default_value = 1.0
     sc.world = world
     log("render: %s %dx%d @%dfps  view_transform=%s"
         % (C.ENGINE, res[0], res[1], C.FPS, sc.view_settings.view_transform))
@@ -595,8 +603,7 @@ def build_cyc(material):
     me = mesh_from_arrays("M_cyc", np.array(verts, dtype=np.float32), faces)
 
     mat = bpy.data.materials.new("clay_cyc_emit")
-    mat.use_nodes = True
-    nt = mat.node_tree
+    nt = _ensure_nodes(mat)
     for n in list(nt.nodes):
         if n.type != "OUTPUT_MATERIAL":
             nt.nodes.remove(n)
