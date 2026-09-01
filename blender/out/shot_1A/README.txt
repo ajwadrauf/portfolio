@@ -5,7 +5,7 @@ Clay control pass for Seedance 2.5. Lane A only: this clip carries camera
 path, blocking, timing, occlusion order and light direction. It carries no
 brand colour, no material and no type - those are Lane B stills and post.
 
-DELIVERY   640x480 - 4:3 - 24 fps - 288 frames - 12.0 s - last 12 frames locked
+DELIVERY   960x720 - 4:3 - 24 fps - 288 frames - 12.0 s - last 12 frames locked
 SURFACE    <Dreamina UI / ModelArk API / reseller — confirm before upload>
 MODE       Clay Renderer / Omni Reference
 

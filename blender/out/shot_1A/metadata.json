@@ -6,8 +6,8 @@
   "mode": "Clay Renderer / Omni Reference",
   "delivery": {
     "resolution": [
-      640,
-      480
+      960,
+      720
     ],
     "aspect": "4:3",
     "fps": 24,
