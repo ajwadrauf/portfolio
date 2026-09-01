@@ -41,6 +41,8 @@ export type ShowcaseItem = {
   model: string;
   /** What this render cost, to the cent. Omit where it genuinely does not apply. */
   cost?: string;
+  /** Where the tile leads, when there is a case study behind it. */
+  href?: string;
 };
 
 /**
@@ -48,6 +50,23 @@ export type ShowcaseItem = {
  * change them freely; only `file` has to match what is on disk.
  */
 export const SHOWCASE: ShowcaseItem[] = [
+  {
+    /*
+     * A clay control pass, not a generated frame — which is why the strip no
+     * longer claims everything in it came out of the pipeline. It earns the
+     * lead position because it is the piece with a case study behind it, and
+     * because "here is the geometry I built so the model could not improvise"
+     * is a harder thing to claim than a nice render.
+     */
+    id: "the-wall",
+    file: "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/01_clay_1A.mp4",
+    poster: "/the-wall/f288.jpg",
+    title: "The Wall",
+    note: "A clay control pass: 12s of untextured geometry that settles every camera decision before a credit is spent.",
+    model: "Blender → Seedance 2.5",
+    cost: "0 credits",
+    href: "/ai-studio/blender/the-wall",
+  },
   {
     id: "reverse-rewind",
     file: "/showcase/reverse-rewind.mp4",

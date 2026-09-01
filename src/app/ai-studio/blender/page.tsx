@@ -11,6 +11,7 @@ import {
   VENDOR_OVERLAP,
 } from "@/lib/blender";
 import { seedanceCost } from "@/lib/videoCost";
+import { WALL, WALL_COST } from "@/lib/theWall";
 
 export const metadata: Metadata = {
   title: "Blender → Seedance — AI Content Studio",
@@ -108,6 +109,46 @@ export default function BlenderPage() {
             Download the working guide (.md)
           </a>
         </div>
+      </section>
+
+      {/* ---------- Worked example ---------- */}
+      <section className="pb-12">
+        <Link
+          href="/ai-studio/blender/the-wall"
+          className="group block overflow-hidden rounded-[6px] border border-accent/30 bg-accent/[0.04] transition hover:border-accent"
+        >
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={WALL.poster}
+              alt="Final frame of the clay control pass — four ID-coloured packs behind a cookie"
+              className="h-full w-full object-cover"
+            />
+            <div className="p-6 sm:p-8">
+              <p className="label !text-accent">Worked example</p>
+              <h2 className="mt-3 text-2xl tracking-[-0.02em] sm:text-[28px]">
+                {WALL.title}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted">{WALL.lede}</p>
+              <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3">
+                {WALL_COST.map((c) => (
+                  <div key={c.k}>
+                    <p className="text-lg font-semibold text-accent">
+                      {c.v}
+                      {c.unit && <span className="ml-0.5 text-xs text-muted">{c.unit}</span>}
+                    </p>
+                    <p className="text-[11px] leading-snug text-muted">
+                      {c.k.split(" — ")[0].split(",")[0]}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-5 text-sm font-semibold text-accent">
+                Read the shot, including the frame that could not be built →
+              </p>
+            </div>
+          </div>
+        </Link>
       </section>
 
       {/* ---------- 01 What moves upstream ---------- */}

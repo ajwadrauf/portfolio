@@ -12,6 +12,7 @@ const ROUTES = [
   "/ai-studio/ads",
   "/ai-studio/prompts",
   "/ai-studio/blender",
+  "/ai-studio/blender/the-wall",
   "/ai-studio/models",
   "/ai-studio/build-vs-buy",
   "/ai-studio/playbook",
