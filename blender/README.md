@@ -44,7 +44,12 @@ those is worth knowing about before it costs a generation, not after.
 
 ### Watching it
 
-With Blender installed (uses your GPU, encodes in-process):
+With Blender installed — renders on your GPU. Add `ffmpeg` for the encode, since
+recent desktop builds cannot write video themselves:
+
+```bash
+brew install ffmpeg     # macOS; apt install ffmpeg on Linux
+```
 
 ```bash
 blender --background --python build.py -- --animation
@@ -63,6 +68,12 @@ seconds, and the whole clip is four times that:
 
 ```bash
 blender --background --python build.py -- --draft --animation --range 1,72
+```
+
+If the frames are already rendered, stitch them without re-rendering:
+
+```bash
+blender --background --python build.py -- --encode-only
 ```
 
 Without Blender, the pip wheel works but needs Python 3.11 and an `ffmpeg` on
@@ -93,12 +104,16 @@ here would each have failed silently inside a long script:
 - **`OCIO` must be set before `import bpy`**, or the view transform enum contains
   only `NONE`, `"Standard"` is unavailable, and every clay value renders wrong.
   `build.py` points it at the wheel's own `config.ocio` at import time.
-- **The pip wheel has no FFMPEG writer**, so the H.264 encode needs an external
-  `ffmpeg`. Official Blender builds do have it and encode in-process. Note *how*
-  that has to be tested: `bpy.types.ImageFormatSettings.bl_rna` lists `FFMPEG`
-  either way — the class-level enum is not the instance's. This is the same trap
-  as the view transform, which introspects as `["NONE"]` while `"Standard"`
-  assigns fine, in the opposite direction. Assign and catch; never read the enum.
+- **No FFMPEG writer**, so the H.264 encode needs an external `ffmpeg` binary.
+  Confirmed on both the pip wheel and Blender **5.2.1 LTS on macOS arm64**, whose
+  supported list is `AVIF, JPEG, OPEN_EXR, PNG, WEBP, BMP, CINEON, DPX, IRIS,
+  JPEG2000, HDR, TARGA, TARGA_RAW, TIFF` — no video format at all. Do not assume
+  a desktop build can write video; `brew install ffmpeg` is the fix, not a
+  workaround. Note *how* this has to be tested: `ImageFormatSettings.bl_rna`
+  lists `FFMPEG` either way, because the class-level enum is not the instance's.
+  Same trap as the view transform, which introspects as `["NONE"]` while
+  `"Standard"` assigns fine — in the opposite direction. Assign and catch the
+  `TypeError`, whose message enumerates what the build really supports.
 
 ## Checks that run on every build
 
