@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   EMPTY_BRIEF,
@@ -11,6 +12,8 @@ import {
 } from "@/lib/blender";
 
 const ASPECTS = ["1:1", "16:9", "9:16", "4:5", "21:9"];
+
+const clean = (s: string) => s.trim();
 
 function Field({
   label,
@@ -42,6 +45,7 @@ function Field({
  * with no look reference to hold it steady between takes.
  */
 export function BlenderBriefBuilder() {
+  const router = useRouter();
   const [b, setB] = useState<BlenderBrief>(EMPTY_BRIEF);
   const [copied, setCopied] = useState(false);
 
@@ -62,10 +66,39 @@ export function BlenderBriefBuilder() {
     }
   };
 
+  /**
+   * A prompt is worth keeping next to the .blend file it belongs to. Saving it
+   * as text also means it can come back into the lab later without being
+   * retyped — the lab reads .txt and .md.
+   */
+  const download = () => {
+    const name = `seedance-${clean(b.shotId) || "shot"}.txt`;
+    const url = URL.createObjectURL(new Blob([prompt], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  /**
+   * Straight into the lab, with the length it was written for. The lab does
+   * the sigil conversion on the way in — @Image 1 here, [Image1] there — so
+   * the tokens actually resolve against the uploaded files.
+   */
+  const openInLab = () => {
+    try {
+      sessionStorage.setItem("adlab-imported-prompt", prompt);
+      sessionStorage.setItem("adlab-lane", "blender");
+      if (clean(b.seconds)) sessionStorage.setItem("adlab-imported-duration", clean(b.seconds));
+    } catch {}
+    router.push("/ai-studio/ads");
+  };
+
   return (
     <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       {/* ---------- the form ---------- */}
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="label">The shot</span>
           <div className="flex gap-2">
@@ -224,7 +257,7 @@ export function BlenderBriefBuilder() {
             {b.beats.map((beat, i) => (
               <div key={i} className="flex items-start gap-2">
                 <input
-                  className="input w-16 shrink-0 text-center font-mono text-xs"
+                  className="input !w-16 shrink-0 text-center font-mono text-xs"
                   value={beat.from}
                   aria-label={`Beat ${i + 1} start`}
                   onChange={(e) =>
@@ -233,7 +266,7 @@ export function BlenderBriefBuilder() {
                 />
                 <span className="pt-2 text-xs text-muted">–</span>
                 <input
-                  className="input w-16 shrink-0 text-center font-mono text-xs"
+                  className="input !w-16 shrink-0 text-center font-mono text-xs"
                   value={beat.to}
                   aria-label={`Beat ${i + 1} end`}
                   onChange={(e) =>
@@ -241,7 +274,10 @@ export function BlenderBriefBuilder() {
                   }
                 />
                 <input
-                  className="input flex-1"
+                  // A flex item keeps min-width:auto, and an input's intrinsic
+                  // minimum is wide enough to push the whole page sideways on a
+                  // phone. min-w-0 lets it shrink to the row it is in.
+                  className="input min-w-0 flex-1"
                   placeholder="What changes, and what the frame looks like when it has"
                   value={beat.action}
                   onChange={(e) =>
@@ -284,13 +320,27 @@ export function BlenderBriefBuilder() {
       </div>
 
       {/* ---------- the output ---------- */}
-      <div className="lg:sticky lg:top-28 lg:self-start">
+      <div className="min-w-0 lg:sticky lg:top-28 lg:self-start">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="label">The prompt</span>
-          <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => void copy()}>
-            {copied ? "Copied" : "Copy"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => void copy()}>
+              {copied ? "Copied" : "Copy"}
+            </button>
+            <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={download}>
+              Save .txt
+            </button>
+            <button className="btn-primary !px-3 !py-1.5 text-xs" onClick={openInLab}>
+              Open in Ad Lab →
+            </button>
+          </div>
         </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          The lab opens in its Blender lane: no concept, no recipe, just the
+          references and the render. It rewrites <code className="font-mono">@Image 1</code>{" "}
+          to <code className="font-mono">[Image1]</code> on the way in, which is
+          the form the API resolves.
+        </p>
         <textarea
           readOnly
           value={prompt}

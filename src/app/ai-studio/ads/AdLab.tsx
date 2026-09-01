@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
 import { useHealth } from "@/lib/useHealth";
@@ -38,6 +39,13 @@ import {
   musicLengthFor,
 } from "@/lib/music";
 import { MODELS, estimateCost, usesTokenPricing } from "@/lib/models";
+import {
+  MAX_PROMPT_FILE_BYTES,
+  PROMPT_FILE_ACCEPT,
+  importPrompt,
+  isPromptFile,
+  refSlots,
+} from "@/lib/promptImport";
 import { REFERENCE_CLIPS } from "@/lib/referenceClips";
 import {
   ASPECTS,
@@ -57,6 +65,19 @@ import {
 } from "@/lib/sfx";
 
 type Phase = "idle" | "composing" | "ready" | "starting" | "polling" | "done" | "failed" | "mock";
+
+/**
+ * Where the prompt comes from.
+ *
+ * The recipe lane is the lab as designed: a concept preset, product fields and
+ * a composed prompt. The Blender lane is for work where the prompt already
+ * exists because the shot was blocked out in 3D first — the clay pass has
+ * already settled camera, timing and blocking, so a concept preset would only
+ * fight it, and the product fields would compose a prompt nobody is going to
+ * use. Those three steps are not hidden to tidy the page up; they are hidden
+ * because running them would produce the wrong prompt.
+ */
+type Lane = "recipe" | "blender";
 
 /**
  * Everything needed to ask "is it done yet?" about a render that has already
@@ -258,6 +279,10 @@ export function AdLab({
   >(null);
   /** True when the prompt arrived from the library rather than the recipe. */
   const [imported, setImported] = useState(false);
+  const [lane, setLane] = useState<Lane>("recipe");
+  /** What the importer changed on the way in — shown rather than applied quietly. */
+  const [importNotes, setImportNotes] = useState<string[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
   const [sessionSpend, setSessionSpend] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -298,6 +323,7 @@ export function AdLab({
    */
   const [aspectOverride, setAspectOverride] = useState<string | null>(null);
   const refInput = useRef<HTMLInputElement>(null);
+  const promptFileInput = useRef<HTMLInputElement>(null);
 
   /**
    * Audio settings and recipe edits are baked into the composed prompt, so
@@ -419,10 +445,23 @@ export function AdLab({
    */
   useEffect(() => {
     try {
+      // The Blender page hands over a prompt and asks for its own lane, so the
+      // page it lands on is not the eight-step one it just made irrelevant.
+      const handedLane = sessionStorage.getItem("adlab-lane");
+      if (handedLane === "blender") {
+        sessionStorage.removeItem("adlab-lane");
+        setLane("blender");
+        setProductImage(null);
+        setModelId("seedance-2.5-ref");
+      }
+
       const handed = sessionStorage.getItem("adlab-imported-prompt");
       if (handed) {
         sessionStorage.removeItem("adlab-imported-prompt");
-        setFinalPrompt(handed);
+        // Same conversion as a file import: a prompt written with playground
+        // sigils resolves to nothing through the API, and does it silently.
+        const result = importPrompt(handed);
+        setFinalPrompt(result.prompt);
         setNegativePrompt(AD_NEGATIVE_PROMPT);
         setPhase("ready");
         setImported(true);
@@ -430,9 +469,15 @@ export function AdLab({
         // endpoint that resolves them. Landing it on a first-frame model would
         // read the tokens as literal text — the exact silent failure the
         // builder warns about — so route it to the model it was written for.
-        if (/\[(?:Image|Video|Audio)\d+\]/.test(handed)) {
+        if (/\[(?:Image|Video|Audio)\d+\]/.test(result.prompt)) {
           setModelId("seedance-2.5-ref");
         }
+        const notes = [...result.notes];
+        if (result.aspect && ASPECTS.some((a) => a.id === result.aspect)) {
+          setAspectOverride(result.aspect);
+          notes.push(`The prompt states ${result.aspect}, so the shape is set to match the blockout.`);
+        }
+        setImportNotes(notes);
       }
       // A timeline written for 14 seconds is wrong at 8, so the length comes
       // across with it rather than being left at the preset's.
@@ -675,6 +720,98 @@ export function AdLab({
     setAutofilledKeys(new Set());
     setAutofillRationale(null);
   }, [preset]);
+
+  /**
+   * Takes a prompt written elsewhere — the Blender page, a text file, a note —
+   * and lands it in the composed-prompt box ready to run.
+   *
+   * The conversion it does on the way in is the point. A prompt written for a
+   * playground addresses references as `@Image 1`; this lab calls the API,
+   * where the same reference is `[Image1]`. Pasted through unconverted the
+   * token is read as prose, the reference is silently ignored, and you pay for
+   * a plausible video built on nothing. Everything it changed is listed back
+   * rather than done quietly.
+   */
+  const takePrompt = useCallback((raw: string) => {
+    const result = importPrompt(raw);
+    if (!result.prompt.trim()) {
+      setImportError("That file had no prompt in it.");
+      return;
+    }
+    setImportError(null);
+    setFinalPrompt(result.prompt);
+    setNegativePrompt(AD_NEGATIVE_PROMPT);
+    setImported(true);
+    setPhase("ready");
+    if (result.seconds) setSeconds(result.seconds);
+    // A prompt written for a square clay pass rendered at 9:16 does not
+    // letterbox — the model reframes, and the blocking the blockout settled is
+    // gone. Only applied when the endpoint actually offers that shape, and
+    // only narrated when it was applied.
+    const notes = [...result.notes];
+    if (result.aspect && ASPECTS.some((a) => a.id === result.aspect)) {
+      setAspectOverride(result.aspect);
+      notes.push(`The prompt states ${result.aspect}, so the shape is set to match the blockout.`);
+    } else if (result.aspect) {
+      notes.push(`The prompt states ${result.aspect}, which this model does not render. Pick the closest shape below.`);
+    }
+    setImportNotes(notes);
+    // A prompt addressing [Video1] only means anything on an endpoint that
+    // resolves positional references. On a first-frame model the token is
+    // literal text — the same silent failure, one step further along.
+    if ((result.slots.video > 0 || result.slots.image > 1) && !MULTI_REF_MODELS.includes(modelId)) {
+      setModelId("seedance-2.5-ref");
+    }
+  }, [modelId]);
+
+  const readPromptFile = useCallback(
+    async (file: File) => {
+      if (!isPromptFile(file)) {
+        setImportError("Pick a .txt or .md file — anything else arrives as gibberish.");
+        return;
+      }
+      if (file.size > MAX_PROMPT_FILE_BYTES) {
+        setImportError(
+          `That file is ${Math.round(file.size / 1024)}KB. A prompt is a few KB — this looks like the wrong file.`,
+        );
+        return;
+      }
+      try {
+        takePrompt(await file.text());
+      } catch {
+        setImportError("Could not read that file.");
+      }
+    },
+    [takePrompt],
+  );
+
+  /**
+   * Switching into the Blender lane clears the product photo, and says so.
+   *
+   * The photo is not merely unused here — it is actively wrong. The API
+   * prepends it to the reference list, so it becomes `[Image1]` and every
+   * index in the prompt shifts by one: the package reference resolves to the
+   * hand, the hand to the set. That failure is invisible until the render
+   * comes back, so it has to be impossible rather than warned about.
+   */
+  const switchLane = useCallback((next: Lane) => {
+    setLane(next);
+    setImportError(null);
+    if (next === "blender") {
+      setProductImage((prev) => {
+        if (prev) {
+          setImportNotes((n) => [
+            ...n,
+            "Removed the product photo. In this lane the API would send it as [Image1] and shift every reference index in your prompt by one.",
+          ]);
+        }
+        return null;
+      });
+      setAutofilledKeys(new Set());
+      setAutofillRationale(null);
+      setModelId((m) => (MULTI_REF_MODELS.includes(m) ? m : "seedance-2.5-ref"));
+    }
+  }, []);
 
   const compose = useCallback(async () => {
     setError(null);
@@ -1022,16 +1159,81 @@ export function AdLab({
    * so everything after it shifts — and the copy cross-references these, which
    * is how a reorder quietly leaves five sentences pointing at the wrong step.
    */
-  const STEP = {
-    concept: 1,
-    product: 2,
-    recipe: 3,
-    refs: 4,
-    format: supportsRefs ? 5 : 4,
-    sound: supportsRefs ? 6 : 5,
-    compose: supportsRefs ? 7 : 6,
-    generate: supportsRefs ? 8 : 7,
-  };
+  const blenderLane = lane === "blender";
+  const STEP = blenderLane
+    ? // The prompt comes first here: it decides how many references are
+      // needed and how long the render has to be, so everything below reads
+      // off it. Concept, product and recipe do not exist in this lane, and
+      // are given 0 so any copy that still points at them is obvious.
+      { concept: 0, product: 0, recipe: 0, prompt: 1, refs: 2, format: 3, sound: 4, generate: 5 }
+    : {
+        concept: 1,
+        product: 2,
+        recipe: 3,
+        refs: 4,
+        format: supportsRefs ? 5 : 4,
+        sound: supportsRefs ? 6 : 5,
+        prompt: supportsRefs ? 7 : 6,
+        generate: supportsRefs ? 8 : 7,
+      };
+
+  /**
+   * One import control, used by both lanes. A prompt is a text file; there is
+   * no reason the only way in should be retyping it.
+   */
+  const importControl = (
+    <>
+      <button
+        className="text-xs font-semibold text-accent hover:underline"
+        onClick={() => promptFileInput.current?.click()}
+      >
+        Import from .txt or .md
+      </button>
+      <input
+        ref={promptFileInput}
+        type="file"
+        accept={PROMPT_FILE_ACCEPT}
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void readPromptFile(f);
+          e.target.value = "";
+        }}
+      />
+    </>
+  );
+
+  /**
+   * What the prompt asks for against what has been uploaded.
+   *
+   * A prompt saying `[Image3]` with two images attached is not a warning the
+   * surface gives you — it resolves what it can and invents the rest. Counting
+   * is cheap and the mismatch is the single most expensive mistake in this
+   * lane, so it is checked before the spend button rather than after.
+   */
+  const promptSlots = useMemo(() => refSlots(finalPrompt), [finalPrompt]);
+  const attached = useMemo(
+    () => ({
+      image: (productImage ? 1 : 0) + refs.filter((r) => r.media === "image").length,
+      video: refs.filter((r) => r.media === "video").length,
+      audio: audioRefUrls.length,
+    }),
+    [productImage, refs, audioRefUrls],
+  );
+  const slotGaps = useMemo(
+    () =>
+      (["video", "image", "audio"] as const)
+        .filter((k) => promptSlots[k] > attached[k])
+        .map((k) => ({
+          kind: k,
+          wants: promptSlots[k],
+          has: attached[k],
+        })),
+    [promptSlots, attached],
+  );
+
+  /** Something was flagged above the spend button, whichever lane raised it. */
+  const flagged = blenderLane ? slotGaps.length > 0 : unmet.length > 0;
 
   /** The bed must exist before a render that keys off it. */
   const blockedOnMusic = timingRefAvailable && musicAsTimingRef && !musicUrl;
@@ -1235,19 +1437,162 @@ export function AdLab({
 
       <h1 className="mt-6 text-[1.75rem] tracking-[-0.03em]">Ad Lab</h1>
       <p className="mt-2 max-w-3xl text-muted">
-        Mini product ads as <span className="font-semibold text-foreground">preset recipes</span>:
-        each concept is a structured, deconstructed prompt — aesthetics, beat-by-beat
-        action, text overlay spec, sound design — with the product swappable per
-        SKU. Design the concept once; run any product through it, and edit any
-        part of it when the brief moves.
+        {blenderLane ? (
+          <>
+            Running a prompt written against a{" "}
+            <span className="font-semibold text-foreground">clay control pass</span>. The
+            blockout has already decided camera, timing and blocking, so the
+            lab does not ask about them again — it attaches the references,
+            picks the shape and length, and spends.
+          </>
+        ) : (
+          <>
+            Mini product ads as{" "}
+            <span className="font-semibold text-foreground">preset recipes</span>: each
+            concept is a structured, deconstructed prompt — aesthetics,
+            beat-by-beat action, text overlay spec, sound design — with the
+            product swappable per SKU. Design the concept once; run any product
+            through it, and edit any part of it when the brief moves.
+          </>
+        )}
       </p>
 
       {error && (
         <div className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">{error}</div>
       )}
 
+      {/*
+        Which lane you are in changes which steps exist, so it is the first
+        decision on the page rather than a toggle buried in the format step.
+      */}
+      <div className="mt-7 grid gap-3 sm:grid-cols-2">
+        {(
+          [
+            {
+              id: "recipe" as Lane,
+              title: "Start from a concept",
+              body: "Pick a recipe, upload the pack, and the lab writes the prompt. Eight steps, nothing needed beforehand.",
+            },
+            {
+              id: "blender" as Lane,
+              title: "I already have a prompt",
+              body: "For a shot blocked out in Blender first. Skips concept, product and recipe — the clay pass already settled all three. Five steps.",
+            },
+          ]
+        ).map((l) => (
+          <button
+            key={l.id}
+            onClick={() => switchLane(l.id)}
+            aria-pressed={lane === l.id}
+            className={`rounded-[6px] border p-4 text-left transition ${
+              lane === l.id
+                ? "border-accent bg-accent/[0.05] ring-1 ring-accent"
+                : "border-border-soft hover:border-accent/50"
+            }`}
+          >
+            <h2 className="text-sm font-semibold">{l.title}</h2>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted">{l.body}</p>
+          </button>
+        ))}
+      </div>
+
+      {blenderLane && (
+        <p className="mt-3 max-w-3xl text-xs leading-relaxed text-muted">
+          Concept, product and recipe are not hidden to shorten the page — they
+          are hidden because running them here would produce a prompt you are
+          not going to use, and a product photo that shifts every reference
+          index in the one you are.{" "}
+          <Link href="/ai-studio/blender" className="font-semibold text-accent hover:underline">
+            Write the prompt on the Blender page →
+          </Link>
+        </p>
+      )}
+
       <div className="mt-8 space-y-6">
+        {/* ---------- the Blender lane opens on the prompt itself ---------- */}
+        {blenderLane && (
+          <Step n={STEP.prompt} title="Your prompt" aside={importControl}>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+              Paste the prompt the Blender page composed, or import the{" "}
+              <code className="font-mono text-xs">.txt</code> you saved next to
+              the .blend. Reference tokens are converted to the bracketed form
+              the API resolves on the way in — <code className="font-mono text-xs">@Image 1</code>{" "}
+              becomes <code className="font-mono text-xs">[Image1]</code>.
+            </p>
+
+            {importError && (
+              <p className="mt-3 rounded-[6px] border border-warning/50 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                {importError}
+              </p>
+            )}
+
+            <label className="mt-4 block">
+              <span className="mb-1 block label">Video prompt</span>
+              <textarea
+                className="input min-h-64 font-mono text-xs leading-relaxed"
+                placeholder={"MODE: Clay Renderer / Omni Reference\nMATERIALS: [Video1] clay blockout · [Image1] product package…"}
+                value={finalPrompt}
+                onChange={(e) => {
+                  setFinalPrompt(e.target.value);
+                  setPhase(e.target.value ? "ready" : "idle");
+                }}
+                onBlur={(e) => {
+                  // Typed or pasted rather than imported: convert on the way
+                  // out of the box, so the same silent failure is impossible
+                  // whichever route the prompt took in.
+                  const fixed = importPrompt(e.target.value);
+                  if (fixed.prompt !== e.target.value.trim() && e.target.value.trim()) {
+                    setFinalPrompt(fixed.prompt);
+                    setImportNotes(fixed.notes);
+                    if (fixed.seconds) setSeconds(fixed.seconds);
+                  }
+                }}
+              />
+            </label>
+            <label className="mt-3 block">
+              <span className="mb-1 block label">Negative prompt</span>
+              <input
+                className="input font-mono text-xs"
+                placeholder={AD_NEGATIVE_PROMPT}
+                value={negativePrompt}
+                onChange={(e) => setNegativePrompt(e.target.value)}
+              />
+            </label>
+
+            {importNotes.length > 0 && (
+              <div className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.05] p-3">
+                <p className="label !text-accent">What came in with it</p>
+                <ul className="mt-2 space-y-1.5">
+                  {importNotes.map((n, i) => (
+                    <li key={i} className="text-xs leading-relaxed text-muted">
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {finalPrompt && (promptSlots.video > 0 || promptSlots.image > 0) && (
+              <p className="mt-3 text-xs leading-relaxed text-muted">
+                This prompt addresses{" "}
+                <span className="font-semibold text-foreground">
+                  {[
+                    promptSlots.video && `${promptSlots.video} clip${promptSlots.video === 1 ? "" : "s"}`,
+                    promptSlots.image && `${promptSlots.image} still${promptSlots.image === 1 ? "" : "s"}`,
+                    promptSlots.audio && `${promptSlots.audio} track${promptSlots.audio === 1 ? "" : "s"}`,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </span>
+                . Add them below in that order — references are numbered as they
+                are uploaded, not by what the files are called.
+              </p>
+            )}
+          </Step>
+        )}
+
         {/* ---------- 1. concept ---------- */}
+        {!blenderLane && (
         <Step n={STEP.concept} title="Pick a concept">
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {AD_PRESETS.map((p) => (
@@ -1269,8 +1614,10 @@ export function AdLab({
             ))}
           </div>
         </Step>
+        )}
 
         {/* ---------- 2. product — first, because the photo fills in the recipe ---------- */}
+        {!blenderLane && (
         <Step
           n={STEP.product}
           title="Your product"
@@ -1373,8 +1720,10 @@ export function AdLab({
             ))}
           </div>
         </Step>
+        )}
 
         {/* ---------- 3. the recipe, now populated from the photo ---------- */}
+        {!blenderLane && (
         <Step
           n={STEP.recipe}
           title={`The recipe — ${preset.name}`}
@@ -1543,12 +1892,13 @@ export function AdLab({
             </div>
           )}
         </Step>
+        )}
 
         {/* ---------- 4. references — what the recipe just asked for ---------- */}
         {supportsRefs && (
           <Step
             n={STEP.refs}
-            title="References"
+            title={blenderLane ? "References — the clay pass and the look" : "References"}
             aside={
               <span className="label-sm">
                 {(productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0)} of{" "}
@@ -1556,8 +1906,48 @@ export function AdLab({
               </span>
             }
           >
+            {/*
+              In the Blender lane the preset's reference recipe is the wrong
+              checklist — it describes a concept nobody chose. What matters
+              instead is that the files go in the order the prompt numbers
+              them, because the surface indexes by upload order and nothing
+              tells you when that is off by one.
+            */}
+            {blenderLane && (
+              <div className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-4">
+                <p className="label !text-accent">Upload in prompt order</p>
+                <ol className="mt-3 space-y-2">
+                  <li className="flex gap-3 text-xs leading-relaxed">
+                    <span className="font-mono font-semibold text-accent">[Video1]</span>
+                    <span className="min-w-0 text-muted">
+                      <span className="font-semibold text-foreground">The clay control pass.</span>{" "}
+                      Camera, blocking, timing, occlusion order and light
+                      direction come from here — which is why nothing in this
+                      lane asks you to describe them.
+                    </span>
+                  </li>
+                  <li className="flex gap-3 text-xs leading-relaxed">
+                    <span className="whitespace-nowrap font-mono font-semibold text-accent">
+                      [Image1…{Math.max(promptSlots.image, 1)}]
+                    </span>
+                    <span className="min-w-0 text-muted">
+                      <span className="font-semibold text-foreground">The look references</span>, one
+                      per mapped ID colour, in the same order the prompt names
+                      them. Stills and clips are numbered in separate series,
+                      so the clay pass does not consume [Image1].
+                    </span>
+                  </li>
+                </ol>
+                <p className="mt-3 border-t border-accent/20 pt-2 text-xs leading-relaxed text-muted">
+                  Bind by token, never by filename. The model resolves
+                  references positionally and has never seen what your file is
+                  called.
+                </p>
+              </div>
+            )}
+
             {/* Reference recipe — the concept ships with instructions */}
-            {preset.referenceRecipe && (
+            {!blenderLane && preset.referenceRecipe && (
               <details open className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-accent">
                   Reference recipe for {preset.name} — what to add, and why
@@ -2416,7 +2806,9 @@ export function AdLab({
               </ul>
               <p className="mt-2 text-xs leading-relaxed text-muted">
                 These lines come from the recipe&apos;s sound design — edit them
-                in step {STEP.recipe} to change what gets generated.
+                {blenderLane
+                  ? " in your prompt to change what gets generated."
+                  : ` in step ${STEP.recipe} to change what gets generated.`}
               </p>
 
               <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
@@ -2439,7 +2831,12 @@ export function AdLab({
           )}
         </Step>
 
-        <Step n={STEP.compose} title="Compose the prompt">
+        {!blenderLane && (
+        <Step
+          n={STEP.prompt}
+          title="Compose the prompt"
+          aside={importControl}
+        >
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
             {recipeEdited
               ? "Your edited recipe is rebuilt into a prompt section by section, then polished for the target duration. Nothing is generated yet — read it before you spend."
@@ -2487,10 +2884,39 @@ export function AdLab({
             </>
           )}
         </Step>
+        )}
 
         {/* ---------- 8. generate ---------- */}
         <Step n={STEP.generate} title="Generate">
-          {unmet.length > 0 && (
+          {blenderLane && slotGaps.length > 0 && (
+            <div className="mt-4 rounded-[6px] border border-warning/50 bg-warning/10 p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning">
+                Before you spend ${cost.toFixed(2)}
+              </p>
+              <p className="mt-1.5 text-xs font-semibold leading-snug text-foreground">
+                The prompt addresses references that are not attached.
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {slotGaps.map((g) => (
+                  <li key={g.kind} className="text-xs leading-relaxed text-muted">
+                    It refers to{" "}
+                    <span className="font-mono font-semibold text-foreground">
+                      [{g.kind === "image" ? "Image" : g.kind === "video" ? "Video" : "Audio"}
+                      {g.wants}]
+                    </span>
+                    , but {g.has === 0 ? "no" : `only ${g.has}`}{" "}
+                    {g.kind === "image" ? "still" : g.kind === "video" ? "clip" : "track"}
+                    {g.has === 1 ? " is" : "s are"} attached.{" "}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                An unresolved token is read as prose rather than rejected — the
+                render comes back looking fine and built on nothing.
+              </p>
+            </div>
+          )}
+          {!blenderLane && unmet.length > 0 && (
             <div className="mt-4 rounded-[6px] border border-warning/50 bg-warning/10 p-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning">
                 Before you spend ${cost.toFixed(2)}
@@ -2529,13 +2955,13 @@ export function AdLab({
               )}
             </div>
             <button
-              className={unmet.length > 0 ? "btn-secondary !border-warning !text-warning" : "btn-primary"}
+              className={flagged ? "btn-secondary !border-warning !text-warning" : "btn-primary"}
               disabled={
                 !finalPrompt || blockedOnMusic || phase === "starting" || phase === "polling"
               }
               onClick={() => void generate()}
             >
-              {unmet.length > 0 ? "Generate anyway →" : "Generate ad →"}
+              {flagged ? "Generate anyway →" : "Generate ad →"}
             </button>
           </div>
           {!finalPrompt && (

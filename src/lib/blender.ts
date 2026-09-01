@@ -304,7 +304,10 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
   out.push(
     `MODE: Clay Renderer / Omni Reference`,
     `MATERIALS: @Video 1 clay blockout${materials.length ? ` · ${materials.join(" · ")}` : ""}`,
-    `SETTINGS: Match @Video 1 duration and camera route · ${b.aspect} · 720p`,
+    // The stated length is not redundant with "match @Video 1": it is what
+    // lets the lab set its own slider on import. A 12s timeline rendered at 8s
+    // does not compress, it loses its last beat.
+    `SETTINGS: Match @Video 1 duration and camera route${has(b.seconds) ? ` · ${clean(b.seconds)}s` : ""} · ${b.aspect} · 720p`,
     "",
     "[Reference roles]",
     "@Video 1 is a clay blockout. Inherit only camera movement, shot-size transitions, subject trajectories, blocking, timing, occlusion order, and the direction of the light.",
