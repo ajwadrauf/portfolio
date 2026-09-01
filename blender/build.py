@@ -1250,8 +1250,10 @@ def _encode_via_vse(frames, png):
     ff.gopsize, ff.audio_codec = 12, "NONE"
     sc.render.filepath = os.path.join(OUT, C.CLAY_FILE[:-4])
     se = sc.sequence_editor_create()
-    # 5.x renamed SequenceEditor.sequences to .strips
-    coll = getattr(se, "strips", None) or se.sequences
+    # 5.x renamed SequenceEditor.sequences to .strips. Test with hasattr, not
+    # `getattr(...) or ...`: the collection is EMPTY on a fresh editor, an empty
+    # collection is falsy, so the `or` always fell through to the 4.x name.
+    coll = se.strips if hasattr(se, "strips") else se.sequences
     strip = coll.new_image("clay", os.path.join(frames, png[0]), 1, 1)
     for f in png[1:]:
         strip.elements.append(f)
