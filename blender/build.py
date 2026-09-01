@@ -1233,6 +1233,53 @@ def encode_sequence():
     log("encoded %s in %.1f s" % (C.CLAY_FILE, time.time() - t))
 
 
+def _encode_via_vse(frames, png):
+    """Encode existing stills with Blender's own sequencer. No re-render, and no
+    external ffmpeg binary — which matters on macOS, where Blender ships FFmpeg
+    but the CLI is not installed by default."""
+    sc = bpy.data.scenes.new("encode_%s" % C.SHOT_ID)
+    im = bpy.data.images.load(os.path.join(frames, png[0]))
+    sc.render.resolution_x, sc.render.resolution_y = im.size
+    bpy.data.images.remove(im)
+    sc.render.fps, sc.render.fps_base = C.FPS, 1.0
+    sc.frame_start, sc.frame_end = 1, len(png)
+    sc.render.image_settings.file_format = "FFMPEG"
+    ff = sc.render.ffmpeg
+    ff.format, ff.codec = "MPEG4", "H264"
+    ff.constant_rate_factor, ff.ffmpeg_preset = "HIGH", "GOOD"
+    ff.gopsize, ff.audio_codec = 12, "NONE"
+    sc.render.filepath = os.path.join(OUT, C.CLAY_FILE[:-4])
+    se = sc.sequence_editor_create()
+    # 5.x renamed SequenceEditor.sequences to .strips
+    coll = getattr(se, "strips", None) or se.sequences
+    strip = coll.new_image("clay", os.path.join(frames, png[0]), 1, 1)
+    for f in png[1:]:
+        strip.elements.append(f)
+    bpy.ops.render.render(animation=True, scene=sc.name)
+    _tidy_movie_name()
+
+
+def encode_existing():
+    """Stitch an already-rendered PNG sequence into the clip.
+
+    Rendering 288 frames and then finding no encoder is a bad place to end up,
+    and re-rendering to fix it is worse: the frames are the expensive part and
+    they are already on disk."""
+    frames = os.path.join(OUT, "frames")
+    png = sorted(f for f in os.listdir(frames)
+                 if f.endswith(".png")) if os.path.isdir(frames) else []
+    if not png:
+        log("no frames in %s — render first with --animation --sequence" % frames)
+        return
+    if _has_ffmpeg_writer(bpy.context.scene):
+        log("encoding %d frames with Blender's own FFMPEG writer" % len(png))
+        _encode_via_vse(frames, png)
+    else:
+        log("this build has no FFMPEG writer; trying an external ffmpeg")
+        encode_sequence()
+    probe_clip()
+
+
 def probe_clip():
     """Read the finished clip back and report what an uploader will see. The
     spec limits are real: 300-6000 px, aspect 0.4-2.5, under 200 MB, 24 fps."""
@@ -1477,6 +1524,11 @@ DRAFT = "--draft" in argv
 def main():
     t0 = time.time()
     os.makedirs(OUT, exist_ok=True)
+
+    if "--encode-only" in argv:      # frames already exist; skip the whole build
+        encode_existing()
+        return
+
     clear_scene()
     setup_render_settings(draft=DRAFT)
     mats = setup_clay_materials()
