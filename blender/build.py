@@ -741,6 +741,20 @@ def animate_cookie(cookie):
     def centre_z(ground, tilt):
         return ground + (C.COOKIE_T / 2) * math.cos(tilt) + (C.COOKIE_D / 2) * math.sin(tilt)
 
+    # Distribute the ridge climb by ARC LENGTH, not by distance along the ground.
+    # Advancing "along" uniformly makes the cookie sprint through the steep middle
+    # of the ridge, where it is gaining height as fast as it is moving forward:
+    # peak speed hit 0.91 m/s against a 0.40 mean. Resampling by path length keeps
+    # the speed even and leaves the easing to the ends where it belongs.
+    _s = np.linspace(0.0, 1.0, 400)
+    _pts = np.array([[ax * C.RIDGE_X * u, ay * C.RIDGE_X * u,
+                      centre_z(C.bed_height(ax * C.RIDGE_X * u, ay * C.RIDGE_X * u),
+                               tilt_end * u)] for u in _s])
+    _cum = np.concatenate([[0.0], np.cumsum(
+        np.linalg.norm(np.diff(_pts, axis=0), axis=1))])
+    _path_len = float(_cum[-1])
+    _cum = _cum / _path_len
+
     frames = []
     for f in range(C.F_COOKIE_IN, C.F_END + 1):
         if f <= C.F_COOKIE_TOUCH:                       # descent
@@ -756,9 +770,10 @@ def animate_cookie(cookie):
             tilt = rock
         else:                                           # climb the ridge, tilt up
             t = C._smoothstep(min(1.0, (f - C.F_ARC_END) / (C.F_LOCK - C.F_ARC_END)))
-            along = C.RIDGE_X * t
+            u = float(np.interp(t, _cum, _s))           # arc-length reparameterised
+            along = C.RIDGE_X * u
             x, y = ax * along, ay * along
-            tilt = tilt_end * t
+            tilt = tilt_end * u
             z = centre_z(C.bed_height(x, y), tilt)
         frames.append((f, x, y, z, tilt))
 
@@ -781,8 +796,10 @@ def animate_cookie(cookie):
     for path in ("location", "rotation_euler"):
         set_interpolation(cookie, path, "LINEAR")
     set_visibility_window(cookie, C.F_COOKIE_IN, C.F_END)
-    log("cookie: lands f%d, ends %.0f mm from camera leaning %.1f deg"
-        % (C.F_COOKIE_TOUCH, final["distance"] * 1000, final["tilt_deg"]))
+    log("cookie: lands f%d, climbs a %.0f mm path, ends %.0f mm from camera "
+        "leaning %.1f deg"
+        % (C.F_COOKIE_TOUCH, _path_len * 1000, final["distance"] * 1000,
+           final["tilt_deg"]))
 
 
 def animate_packs(packs):
@@ -1064,10 +1081,14 @@ def render_topdown():
     sc = bpy.context.scene
     data = bpy.data.cameras.new("C_topdown")
     data.type = "ORTHO"
-    data.ortho_scale = 1.9
+    data.ortho_scale = 2.05
     ob = bpy.data.objects.new("C_topdown", data)
     sc.collection.objects.link(ob)
-    ob.location = (0.0, 0.0, 3.0)
+    # centred on the composition (packs at bed centre, cookie out on the ridge),
+    # not on bed centre — otherwise the cookie sits in the corner of the diagram
+    ax, ay = C.final_axis()
+    mid = C.RIDGE_X * 0.5
+    ob.location = (ax * mid, ay * mid, 3.0)
     ob.rotation_euler = (0.0, 0.0, -math.radians(C.AZ0 + C.CAM_TRACK[-1][4]) - math.pi / 2)
     keep = sc.camera
     sc.camera = ob

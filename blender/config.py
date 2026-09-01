@@ -117,7 +117,7 @@ BED_PLANE_DIV = 1100      # 10 mm cells. At 520 the chip-scale relief landed on 
 #   frame edge and the void would show. 11 m square clears it with margin.
 CYC_RADIUS = 14.0         # grey backdrop beyond that
 
-HERO_R = 0.055            # hero chip, just outside the depression rim
+HERO_R = 0.072            # hero chip, just outside the depression rim
 HERO_AZ_OFFSET = 0.0      # placed between the frame-1 camera and bed centre
 AIM_THIRD = 1.0 / 6.0     # lateral aim offset, as a fraction of frame width,
                           # so the hero chip lands on a third rather than dead centre
@@ -135,11 +135,14 @@ AIM_THIRD = 1.0 / 6.0     # lateral aim offset, as a fraction of frame width,
 MACRO_SCOOP_D = 0.016
 MACRO_SCOOP_SIGMA = 0.050   # narrow, so it does not compete with the depression
 
-DEPRESSION_R = 0.033      # the empty round hollow the cookie drops into
-DEPRESSION_DEPTH = 0.015  # 6 mm read as nothing next to 7 mm chips — f144 has to
-                          # land on an unmistakable round hollow, so it is deeper
-                          # than the cookie is thick
+# Wide and shallow, not narrow and deep. What makes the hollow read at f144 is
+# its DIAMETER against a 162 mm frame, not its depth — and depth costs dearly at
+# f164, where the camera is only ~14 deg up: a 15 mm hollow with a 13 mm banked
+# rim hid the landed cookie behind its own near edge almost entirely.
+DEPRESSION_R = 0.042      # 84 mm across — half the f144 frame width
+DEPRESSION_DEPTH = 0.009
 DEPRESSION_RIM = 0.016    # width of the banked rim of chips around it
+DEPRESSION_BANK = 0.60    # rim height as a fraction of depth
 
 # --------------------------------------------------------------------------
 # TERRAIN — the bed is a landscape, not a plane.
@@ -167,9 +170,28 @@ SWELL_SCALE = 0.42
 #
 # Masked out inside MESO_CLEAR_R so it cannot tilt the pack row or fill in the
 # depression; the composition inside that radius stays exactly as designed.
-MESO_H = 0.024
+MESO_H = 0.034
 MESO_CLEAR_R = 0.30
 MESO_RAMP = 0.14
+MESO_CELL = 0.22          # mound spacing
+
+# Value noise rather than sin(x)*cos(y). From the hero angles a sine grid passes
+# as gentle relief, but it is an unmistakable regular lattice seen from directly
+# above and it corrugates the far field at f288.
+_MESO_HALF = 6.0
+_MESO_N = int(2 * _MESO_HALF / MESO_CELL) + 2
+_MESO_GRID = np.random.default_rng(4711).random((_MESO_N + 1, _MESO_N + 1)) * 2.0 - 1.0
+
+
+def _meso_noise(x, y):
+    u = np.clip((x + _MESO_HALF) / MESO_CELL, 0, _MESO_N - 1e-6)
+    v = np.clip((y + _MESO_HALF) / MESO_CELL, 0, _MESO_N - 1e-6)
+    i0, j0 = u.astype(np.int32), v.astype(np.int32)
+    fu, fv = u - i0, v - j0
+    fu, fv = fu * fu * (3 - 2 * fu), fv * fv * (3 - 2 * fv)
+    g = _MESO_GRID
+    return (g[i0, j0] * (1 - fu) * (1 - fv) + g[i0 + 1, j0] * fu * (1 - fv)
+            + g[i0, j0 + 1] * (1 - fu) * fv + g[i0 + 1, j0 + 1] * fu * fv)
 
 # A berm directly behind the hero chip, across the whole 40 deg orbit.
 #
@@ -286,7 +308,7 @@ SCATTER_ZONES_DRAFT = [(0.35, 0.0125), (0.80, 0.0165), (BED_REAL_HALF, 0.0230)]
 CHIP_TILT_MAX_DEG = 34.0
 CHIP_SCALE_RANGE = (0.80, 1.26)   # real chips are not uniform; a uniform bed reads as a texture
 CHIP_SINK = 0.0008                # how far the base is buried. Too deep and every chip reads as a dome.
-SPREAD_RING_R = 0.058              # chips inside this get pushed out by the landing
+SPREAD_RING_R = 0.078              # chips inside this get pushed out by the landing
 SPREAD_MAX = 0.020                 # how far the outermost of them travels
 
 # --------------------------------------------------------------------------
@@ -303,7 +325,7 @@ SPEED_BUDGET = {
     # that is 1.55 m from bed centre, so it has to cover 1.10 m during the crane;
     # over F_ARC_END..F_LOCK that is 0.37 m/s and there is no slower way to
     # satisfy the layout. Budgeted explicitly rather than left unmeasured.
-    "cookie ridge glide":   (F_ARC_END, F_LOCK, 0.38),
+    "cookie ridge glide":   (F_ARC_END, F_LOCK, 0.40),
 }
 
 
@@ -452,9 +474,8 @@ def bed_height(x, y):
     ridge = RIDGE_H * np.exp(-(((along - RIDGE_X) ** 2) + (across * 0.55) ** 2)
                              / (2.0 * RIDGE_SIGMA ** 2))
     swell = SWELL_H * (np.sin(x / SWELL_SCALE * 2.4) * np.cos(y / SWELL_SCALE * 1.9))
-    meso = MESO_H * np.clip((r - MESO_CLEAR_R) / MESO_RAMP, 0.0, 1.0) * (
-        np.sin(x * 31.0 + 0.9) * np.cos(y * 27.0 - 0.4)
-        + 0.62 * np.sin(x * 53.0 - 1.1) * np.cos(y * 47.0 + 2.2))
+    meso = (MESO_H * np.clip((r - MESO_CLEAR_R) / MESO_RAMP, 0.0, 1.0)
+            * _meso_noise(x, y))
     scoop = -MACRO_SCOOP_D * np.exp(
         -(macro_arc_distance(x, y) / MACRO_SCOOP_SIGMA) ** 2)
     bx, by = macro_berm_centre()
@@ -465,7 +486,7 @@ def bed_height(x, y):
     dip = -DEPRESSION_DEPTH * np.cos(
         np.clip(r / DEPRESSION_R, 0.0, 1.0) * math.pi / 2) ** 0.6
     t = np.clip((r - DEPRESSION_R) / DEPRESSION_RIM, 0.0, 1.0)
-    bank = DEPRESSION_DEPTH * 0.85 * np.sin(t * math.pi)
+    bank = DEPRESSION_DEPTH * DEPRESSION_BANK * np.sin(t * math.pi)
     hollow = np.where(r < DEPRESSION_R, dip,
                       np.where(r < DEPRESSION_R + DEPRESSION_RIM, bank, 0.0))
 

@@ -152,7 +152,7 @@
     "camera arc and rise": 0.25,
     "camera crane out": 0.24,
     "cookie descent": 0.22,
-    "cookie ridge glide": 0.38
+    "cookie ridge glide": 0.4
   },
   "composite_after_generation": [
     "four pack fronts (exact artwork)",
