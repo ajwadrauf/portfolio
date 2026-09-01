@@ -226,6 +226,60 @@ export const EXAMPLE_BRIEF: BlenderBrief = {
 
 const clean = (s: string) => s.trim();
 
+/**
+ * A swatch for an ID colour written in words.
+ *
+ * The mapping is by colour, so the one error worth making impossible is
+ * believing two subjects are distinct when they are not. Showing the colours
+ * beside the slot numbers turns that from something you reason about into
+ * something you see.
+ */
+const SWATCHES: Record<string, string> = {
+  red: "#d92b2b", orange: "#e07a10", amber: "#e0a010", yellow: "#e5d016",
+  lime: "#8bc722", green: "#1f9d3f", teal: "#12a99a", cyan: "#18b6d8",
+  blue: "#2456d6", indigo: "#4437c4", violet: "#7b2fc9", purple: "#8e3a7c",
+  magenta: "#cf2b8e", pink: "#e0629e", brown: "#8a5a2b", white: "#f2f2f2",
+  black: "#1a1a1a", grey: "#8a8a8a", gray: "#8a8a8a",
+};
+
+/** Best-effort swatch: the last recognised colour word wins ("neutral grey"). */
+export function swatchFor(name: string): string | null {
+  const words = clean(name).toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  for (let i = words.length - 1; i >= 0; i--) {
+    if (SWATCHES[words[i]]) return SWATCHES[words[i]];
+  }
+  return null;
+}
+
+/**
+ * The upload manifest: what goes into the surface, in what order.
+ *
+ * Most surfaces index references by upload order, so the numbers in the prompt
+ * are only correct if the files go in the same sequence. This is the list to
+ * check against before uploading anything.
+ */
+export function uploadPlan(b: BlenderBrief) {
+  const mapped = b.subjects.filter((s) => has(s.color) && has(s.becomes));
+  return [
+    {
+      slot: "@Video 1",
+      order: 1,
+      color: null as string | null,
+      colorName: "",
+      what: "The clay control pass",
+      role: "Camera, blocking, timing, occlusion, light direction",
+    },
+    ...mapped.map((s, i) => ({
+      slot: `@${has(s.ref) ? clean(s.ref) : `Image ${i + 1}`}`,
+      order: i + 2,
+      color: swatchFor(s.color),
+      colorName: clean(s.color),
+      what: clean(s.becomes),
+      role: has(s.proxy) ? `Replaces the ${clean(s.color)} ${clean(s.proxy)}` : "Look and finish",
+    })),
+  ];
+}
+
 /** "a rectangular box" → "rectangular box", so "The orange a box" cannot happen. */
 const dropArticle = (s: string) => clean(s).replace(/^(a|an|the)\s+/i, "");
 const has = (s: string) => clean(s).length > 0;
@@ -243,10 +297,13 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
   const beats = b.beats.filter((x) => has(x.action));
   const out: string[] = [];
 
-  const refs = mapped.map((s, i) => (has(s.ref) ? s.ref : `Image ${i + 1}`));
+  const refs = mapped.map((s, i) => (has(s.ref) ? clean(s.ref) : `Image ${i + 1}`));
+  const materials = mapped.map(
+    (s, i) => `@${refs[i]} ${clean(s.becomes).replace(/^(a|an|the)\s+/i, "")}`,
+  );
   out.push(
     `MODE: Clay Renderer / Omni Reference`,
-    `MATERIALS: @Video 1 clay blockout${refs.length ? ` · ${refs.map((r) => `@${r}`).join(" · ")}` : ""}`,
+    `MATERIALS: @Video 1 clay blockout${materials.length ? ` · ${materials.join(" · ")}` : ""}`,
     `SETTINGS: Match @Video 1 duration and camera route · ${b.aspect} · 720p`,
     "",
     "[Reference roles]",
@@ -329,6 +386,10 @@ export function briefIssues(b: BlenderBrief): { text: string; why: string }[] {
     }
   }
 
+  // Grey is legitimate for exactly one entry — the environment, which is what
+  // every unmapped surface already wears. A second grey is what breaks it, and
+  // the duplicate check below catches that without flagging the documented
+  // pattern.
   const colors = mapped.map((s) => clean(s.color).toLowerCase());
   const dupe = colors.find((c, i) => colors.indexOf(c) !== i);
   if (dupe) {

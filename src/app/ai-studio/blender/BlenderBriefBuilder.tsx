@@ -6,6 +6,7 @@ import {
   EXAMPLE_BRIEF,
   briefIssues,
   composeBlenderPrompt,
+  uploadPlan,
   type BlenderBrief,
 } from "@/lib/blender";
 
@@ -48,6 +49,7 @@ export function BlenderBriefBuilder() {
     setB((prev) => ({ ...prev, [k]: v }));
 
   const prompt = useMemo(() => composeBlenderPrompt(b), [b]);
+  const plan = useMemo(() => uploadPlan(b), [b]);
   const issues = useMemo(() => briefIssues(b), [b]);
 
   const copy = async () => {
@@ -295,6 +297,53 @@ export function BlenderBriefBuilder() {
           aria-label="Assembled Seedance prompt"
           className="input mt-3 min-h-[420px] whitespace-pre font-mono text-[11px] leading-[1.7]"
         />
+
+        {/*
+          The upload manifest. Slot numbers in the prompt are only correct if
+          the files go in this order, and a colour you can see beats a colour
+          you have to remember.
+        */}
+        {plan.length > 1 && (
+          <div className="mt-4 rounded-[6px] border border-border-soft bg-surface p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="label !text-accent">Upload in this order</span>
+              <span className="text-[11px] text-muted">
+                Most surfaces number references by upload order
+              </span>
+            </div>
+            <ol className="mt-3 space-y-2">
+              {plan.map((r) => (
+                <li key={r.slot} className="flex items-start gap-3">
+                  <span className="mt-0.5 w-5 shrink-0 text-right font-mono text-[11px] text-muted">
+                    {r.order}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="mt-1 h-3.5 w-3.5 shrink-0 rounded-full border border-border-strong"
+                    style={{
+                      background: r.color ?? "transparent",
+                      backgroundImage: r.color
+                        ? undefined
+                        : "repeating-linear-gradient(45deg,var(--border-strong) 0 2px,transparent 2px 4px)",
+                    }}
+                  />
+                  <span className="min-w-0">
+                    <span className="font-mono text-xs font-semibold text-accent">
+                      {r.slot}
+                    </span>{" "}
+                    <span className="text-xs font-semibold">{r.what}</span>
+                    {r.colorName && (
+                      <span className="text-xs text-muted"> · {r.colorName}</span>
+                    )}
+                    <span className="mt-0.5 block text-[11px] leading-snug text-muted">
+                      {r.role}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         {issues.length > 0 ? (
           <div className="mt-4 rounded-[6px] border border-warning/40 bg-warning/10 p-4">
