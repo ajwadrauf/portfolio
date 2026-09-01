@@ -1121,31 +1121,133 @@ def export_stills(cam):
         _render_to(os.path.join(OUT, "stills", name))
 
 
-def render_clay(cam, draft=False):
+def _has_ffmpeg_writer(sc):
+    """Ask by assigning, not by reading the enum.
+
+    bpy.types.ImageFormatSettings.bl_rna lists FFMPEG whether or not the build
+    can actually write it — the same class-vs-instance trap as the view transform
+    enum, which introspects as ["NONE"] while "Standard" assigns fine. The only
+    honest test is to try it. The pip `bpy` wheel ships no FFMPEG writer; official
+    Blender builds do.
+    """
+    keep = sc.render.image_settings.file_format
+    try:
+        sc.render.image_settings.file_format = "FFMPEG"
+        return True
+    except TypeError:
+        return False
+    finally:
+        sc.render.image_settings.file_format = keep
+
+
+def render_clay(cam, draft=False, sequence=False):
+    """Render the clay pass.
+
+    Straight to H.264 in ONE pass by default. The previous version rendered a PNG
+    sequence and then called render(animation=True) a SECOND time with the format
+    switched to FFMPEG — which re-rendered all 288 frames to produce pixels that
+    were already sitting on disk, for exactly double the wall time.
+
+    --sequence writes PNGs instead, for when you want individual frames to grade
+    or re-encode; encode those with encode_sequence() or any external ffmpeg.
+    """
     sc = bpy.context.scene
     sc.camera = cam
-    sc.render.image_settings.file_format = "PNG"
-    sc.render.filepath = os.path.join(OUT, "frames", "f_")
-    os.makedirs(os.path.join(OUT, "frames"), exist_ok=True)
+    can_encode = _has_ffmpeg_writer(sc)
+    if sequence or not can_encode:
+        if not can_encode:
+            log("this build has no FFMPEG writer — rendering a PNG sequence instead")
+        os.makedirs(os.path.join(OUT, "frames"), exist_ok=True)
+        sc.render.image_settings.file_format = "PNG"
+        sc.render.filepath = os.path.join(OUT, "frames", "f_")
+    else:
+        sc.render.image_settings.file_format = "FFMPEG"
+        ff = sc.render.ffmpeg
+        ff.format = "MPEG4"
+        ff.codec = "H264"
+        ff.constant_rate_factor = "HIGH"
+        ff.ffmpeg_preset = "GOOD"
+        ff.gopsize = 12
+        ff.audio_codec = "NONE"
+        sc.render.filepath = os.path.join(OUT, C.CLAY_FILE[:-4])
     t = time.time()
     bpy.ops.render.render(animation=True)
-    log("clay pass rendered in %.1f min" % ((time.time() - t) / 60.0))
+    mins = (time.time() - t) / 60.0
+    if sc.render.image_settings.file_format == "FFMPEG":
+        # Blender appends the frame range to movie filenames (name0001-0288.mp4).
+        _tidy_movie_name()
+        out = os.path.join(OUT, C.CLAY_FILE)
+        size = os.path.getsize(out) / 1e6 if os.path.exists(out) else 0.0
+        log("clay pass: %s  %.1f MB  in %.1f min" % (C.CLAY_FILE, size, mins))
+    else:
+        n = len([f for f in os.listdir(os.path.join(OUT, "frames"))
+                 if f.endswith(".png")])
+        log("clay pass: %d PNG frames in %.1f min" % (n, mins))
+        encode_sequence()
 
 
-def encode_clay():
-    """This build ships FFMPEG (probed), so the H.264 encode happens in Blender
-    and no external ffmpeg binary is needed."""
-    sc = bpy.context.scene
-    sc.render.image_settings.file_format = "FFMPEG"
-    sc.render.ffmpeg.format = "MPEG4"
-    sc.render.ffmpeg.codec = "H264"
-    sc.render.ffmpeg.constant_rate_factor = "HIGH"
-    sc.render.ffmpeg.ffmpeg_preset = "GOOD"
-    sc.render.ffmpeg.gopsize = 12
-    sc.render.ffmpeg.audio_codec = "NONE"
-    sc.render.filepath = os.path.join(OUT, "01_clay_%s" % C.SHOT_ID)
-    bpy.ops.render.render(animation=True)
-    sc.render.image_settings.file_format = "PNG"
+def _tidy_movie_name():
+    """Blender names movie output <filepath><start>-<end>.<ext>. Rename it to the
+    plain name the export package and prompt.txt both refer to."""
+    stem = C.CLAY_FILE[:-4]
+    for fn in os.listdir(OUT):
+        if fn.startswith(stem) and fn.endswith(".mp4") and fn != C.CLAY_FILE:
+            os.replace(os.path.join(OUT, fn), os.path.join(OUT, C.CLAY_FILE))
+            return
+
+
+def encode_sequence():
+    """Encode the PNG sequence with an external ffmpeg, if one is on PATH.
+    Settings straight from CLAUDE.md §9 — yuv420p needs even dimensions."""
+    import shutil as _sh
+    import subprocess
+    frames = os.path.join(OUT, "frames")
+    out = os.path.join(OUT, C.CLAY_FILE)
+    png = sorted(f for f in os.listdir(frames) if f.endswith(".png"))
+    if not png:
+        log("no frames to encode")
+        return
+    # -start_number matters: the demuxer looks for index 0 by default and gives
+    # up after a few misses, so a range render starting at f_0200 finds nothing.
+    start = int(png[0][2:-4])
+    cmd = ["ffmpeg", "-y", "-framerate", str(C.FPS),
+           "-start_number", str(start), "-i", os.path.join(frames, "f_%04d.png"),
+           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18",
+           "-movflags", "+faststart", out]
+    if not _sh.which("ffmpeg"):
+        log("no ffmpeg on PATH. Encode the sequence with:")
+        log("  " + " ".join(cmd))
+        return
+    t = time.time()
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        log("ffmpeg failed:\n%s" % r.stderr[-600:])
+        return
+    log("encoded %s in %.1f s" % (C.CLAY_FILE, time.time() - t))
+
+
+def probe_clip():
+    """Read the finished clip back and report what an uploader will see. The
+    spec limits are real: 300-6000 px, aspect 0.4-2.5, under 200 MB, 24 fps."""
+    path = os.path.join(OUT, C.CLAY_FILE)
+    if not os.path.exists(path):
+        return
+    size = os.path.getsize(path) / 1e6
+    clip = bpy.data.movieclips.load(path)
+    w, h = clip.size
+    frames, fps = clip.frame_duration, clip.fps
+    bpy.data.movieclips.remove(clip)
+    log("clip: %dx%d  aspect %.3f  %d frames @ %.0f fps  %.1f s  %.1f MB"
+        % (w, h, w / h, frames, fps, frames / max(fps, 1), size))
+    for ok, msg in (
+        (w % 2 == 0 and h % 2 == 0, "dimensions must be even for yuv420p"),
+        (300 <= min(w, h) and max(w, h) <= 6000, "dimensions outside 300-6000 px"),
+        (0.4 <= w / h <= 2.5, "aspect outside 0.4-2.5"),
+        (size < 200, "over the 200 MB ceiling"),
+        (abs(fps - C.FPS) < 0.5, "frame rate is not %d" % C.FPS),
+    ):
+        if not ok:
+            log("  WARNING: %s" % msg)
 
 
 def write_prompt():
@@ -1387,6 +1489,11 @@ def main():
     write_metadata(draft=DRAFT)
     write_readme(draft=DRAFT)
 
+    if "--range" in argv:
+        lo, hi = (int(v) for v in argv[argv.index("--range") + 1].split(","))
+        bpy.context.scene.frame_start, bpy.context.scene.frame_end = lo, hi
+        log("frame range clamped to %d-%d" % (lo, hi))
+
     if "--no-render" in argv:
         log("built, no render requested")
         return
@@ -1403,8 +1510,8 @@ def main():
         render_topdown()
         export_stills(cam)
     if "--animation" in argv:
-        render_clay(cam, draft=DRAFT)
-        encode_clay()
+        render_clay(cam, draft=DRAFT, sequence="--sequence" in argv)
+        probe_clip()
     log("done in %.1f min" % ((time.time() - t0) / 60.0))
 
 

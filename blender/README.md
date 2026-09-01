@@ -26,11 +26,51 @@ prompt cannot drift apart.
 ## Running it
 
 ```bash
-python3 build.py --no-render        # build + all checks, no pixels
-python3 build.py --checkpoints      # 9 checkpoint stills, top-down, beat stills
-python3 build.py --frames 1,288     # just those frames
-python3 build.py --draft --animation
-python3 build.py --animation        # 960x720, 288 frames, H.264
+python3 build.py --no-render          # build + all checks, no pixels
+python3 build.py --checkpoints        # 9 checkpoint stills, top-down, beat stills
+python3 build.py --frames 1,288       # just those frames
+python3 build.py --topdown            # just the blocking diagram
+python3 build.py --animation          # 960x720, 288 frames -> out/shot_1A/01_clay_1A.mp4
+python3 build.py --draft --animation  # same at 640x480
+python3 build.py --animation --range 1,72   # one beat only, to time a full run
+python3 build.py --animation --sequence     # PNG frames rather than a clip
+```
+
+`--animation` writes the clip in a single pass where the build can encode, and
+falls back to a PNG sequence plus an external `ffmpeg` where it cannot. Either
+way it finishes by reading the clip back and reporting the dimensions, aspect,
+frame count and file size against the uploader's limits — a clip that fails
+those is worth knowing about before it costs a generation, not after.
+
+### Watching it
+
+With Blender installed (uses your GPU, encodes in-process):
+
+```bash
+blender --background --python build.py -- --animation
+open out/shot_1A/01_clay_1A.mp4          # xdg-open on Linux, start on Windows
+```
+
+On macOS the binary is inside the app bundle, so either add it to `PATH` or call
+it directly:
+
+```bash
+/Applications/Blender.app/Contents/MacOS/Blender --background --python build.py -- --animation
+```
+
+Time one beat before committing to all 288 frames — `--range 1,72` renders three
+seconds, and the whole clip is four times that:
+
+```bash
+blender --background --python build.py -- --draft --animation --range 1,72
+```
+
+Without Blender, the pip wheel works but needs Python 3.11 and an `ffmpeg` on
+`PATH` for the encode:
+
+```bash
+python3.11 -m pip install bpy==5.0.1
+python3.11 build.py --animation
 ```
 
 On a machine with no GPU, EEVEE still needs a GL context — prefix with:
@@ -53,8 +93,12 @@ here would each have failed silently inside a long script:
 - **`OCIO` must be set before `import bpy`**, or the view transform enum contains
   only `NONE`, `"Standard"` is unavailable, and every clay value renders wrong.
   `build.py` points it at the wheel's own `config.ocio` at import time.
-- The wheel ships FFMPEG, so the H.264 encode happens inside Blender and no
-  external `ffmpeg` binary is needed.
+- **The pip wheel has no FFMPEG writer**, so the H.264 encode needs an external
+  `ffmpeg`. Official Blender builds do have it and encode in-process. Note *how*
+  that has to be tested: `bpy.types.ImageFormatSettings.bl_rna` lists `FFMPEG`
+  either way — the class-level enum is not the instance's. This is the same trap
+  as the view transform, which introspects as `["NONE"]` while `"Standard"`
+  assigns fine, in the opposite direction. Assign and catch; never read the enum.
 
 ## Checks that run on every build
 
