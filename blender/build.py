@@ -22,18 +22,34 @@ Probed on Blender 5.0.1 (bpy wheel, Python 3.11). Notes on this build:
 """
 
 import os
+import glob
 import sys
 
-# Must precede `import bpy`. Without it Blender finds no colour-management
-# config, "Standard" is unavailable, and every clay value renders wrong.
+# Belt-and-braces, NOT a requirement — measured, after an earlier version of this
+# comment claimed otherwise. With OCIO unset the view-transform enum introspects
+# as ['NONE'], which looks alarming, but "Standard" still assigns, reads back
+# correctly, and renders byte-identical pixels (max channel delta 0 over a
+# controlled A/B). Blender locates its own config. The enum is just the
+# class-level RNA again.
+#
+# The real risk this guards is the opposite one: OCIO inherited from another
+# application. Nuke, Resolve and Houdini all set it globally, and Blender would
+# then grade the clay through a config meant for something else. That is why the
+# check below is `not in os.environ` — an inherited value is left alone and
+# surfaced by the view-transform assertion in setup_render_settings, which tests
+# the outcome rather than the mechanism.
+#
+# Globbed over sys.path rather than hardcoded: this pinned bpy/5.0/ under
+# python3.11's dist-packages, so any other wheel version or interpreter missed it.
+_OCIO_INHERITED = "OCIO" in os.environ
 if "OCIO" not in os.environ:
-    for _base in (os.path.join(os.path.dirname(os.__file__), "site-packages"),
-                  "/usr/local/lib/python3.11/dist-packages",
-                  "/usr/lib/python3/dist-packages"):
-        _c = os.path.join(_base, "bpy", "5.0", "datafiles", "colormanagement", "config.ocio")
-        if os.path.exists(_c):
-            os.environ["OCIO"] = _c
-            break
+    _hits = []
+    for _base in sys.path:
+        if _base:
+            _hits += glob.glob(os.path.join(_base, "bpy", "*", "datafiles",
+                                            "colormanagement", "config.ocio"))
+    if _hits:
+        os.environ["OCIO"] = sorted(_hits)[-1]       # highest version present
 
 import math
 import json
@@ -217,8 +233,19 @@ def setup_render_settings(draft=False):
     bg.inputs[0].default_value = (0.055, 0.055, 0.062, 1.0)
     bg.inputs[1].default_value = 1.0
     sc.world = world
-    log("render: %s %dx%d @%dfps  view_transform=%s"
-        % (C.ENGINE, res[0], res[1], C.FPS, sc.view_settings.view_transform))
+    # Print what actually resolved, not what was requested. A wrong view
+    # transform is invisible in the console and ruinous in the render.
+    log("Blender %s · Python %s · %s%s"
+        % (bpy.app.version_string, sys.version.split()[0],
+           "module" if not bpy.app.binary_path else "desktop build",
+           "  OCIO=inherited" if _OCIO_INHERITED else ""))
+    log("render: %s %dx%d @%dfps  view_transform=%s  look=%s"
+        % (C.ENGINE, res[0], res[1], C.FPS,
+           sc.view_settings.view_transform, sc.view_settings.look))
+    if sc.view_settings.view_transform != C.VIEW_TRANSFORM:
+        log("WARNING: view transform is %r, not %r — colour management did not "
+            "load and every clay value will render wrong"
+            % (sc.view_settings.view_transform, C.VIEW_TRANSFORM))
 
 
 def _ground_dir(az_deg):

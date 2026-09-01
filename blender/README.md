@@ -102,9 +102,15 @@ here would each have failed silently inside a long script:
   through `action.layers[…].strips[…].channelbag(slot).fcurves`.
   `fcurve_ensure_for_datablock` exists on the *instance* even though `hasattr`
   on `bpy.types.Action` returns `False` — read the live object, not the type.
-- **`OCIO` must be set before `import bpy`**, or the view transform enum contains
-  only `NONE`, `"Standard"` is unavailable, and every clay value renders wrong.
-  `build.py` points it at the wheel's own `config.ocio` at import time.
+- **The view-transform enum introspects as `["NONE"]` with `OCIO` unset** — but
+  that is the class-level RNA lying again. `"Standard"` still assigns, reads back
+  correctly, and renders *byte-identical* pixels (max channel delta 0 in a
+  controlled A/B). Blender finds its own config; setting `OCIO` is belt-and-
+  braces, not a requirement. The real hazard is the reverse: `OCIO` inherited
+  from Nuke, Resolve or Houdini, which all set it globally and would grade the
+  clay through the wrong config. `build.py` leaves an inherited value alone,
+  flags it in the run banner, and asserts on the resulting view transform —
+  testing the outcome, not the mechanism.
 - **No FFMPEG writer**, so the H.264 encode needs an external `ffmpeg` binary.
   Confirmed on both the pip wheel and Blender **5.2.1 LTS on macOS arm64**, whose
   supported list is `AVIF, JPEG, OPEN_EXR, PNG, WEBP, BMP, CINEON, DPX, IRIS,

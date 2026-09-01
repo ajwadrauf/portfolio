@@ -603,9 +603,14 @@ Probed, not remembered. Each of these fails silently or late.
   video format at all. Install `ffmpeg` **before** you render 288 frames, not
   after. When you do encode from a frame range, pass `-start_number`: the image2
   demuxer looks for index 0 and gives up after a few misses.
-- **The pip wheel needs `OCIO` set before `import bpy`**, or there is no colour
-  management config, `"Standard"` is unavailable, and every clay value renders
-  wrong. Real Blender builds find their own.
+- **Do not trust the view-transform enum, and do not chase `OCIO`.** With it
+  unset the enum introspects as `["NONE"]`, which looks like broken colour
+  management. It is not: `"Standard"` assigns, reads back, and renders
+  byte-identical pixels either way. The genuine hazard runs the other direction
+  — `OCIO` inherited from Nuke, Resolve or Houdini, all of which set it globally,
+  grading your clay through a config meant for something else. Leave an inherited
+  value alone, log that it was inherited, and **assert on the resulting view
+  transform** rather than on the mechanism.
 
 ### REVISED — render once, encode once
 
