@@ -17,7 +17,7 @@ most common way this workflow fails.
 | --- | --- |
 | `config.py` | Every number in the shot. No `bpy` import, so `python3 config.py` prints the full geometry report without launching Blender. |
 | `build.py` | The scene build, the checks, and the export package. One self-contained script. |
-| `out/shot_1A/` | Generated: `prompt.txt`, `metadata.json`, `README.txt`, stills, frames, clip. |
+| `out/shot_1A/` | **Generated, and gitignored.** `prompt.txt`, `metadata.json`, `README.txt`, stills, frames, clip. `build.py --no-render` rebuilds the text package in seconds; nothing here is worth keeping in git. |
 
 `build.py` reads every constant from `config.py`, and `write_prompt()` emits
 `prompt.txt` from those same constants — so the clay render and the Seedance

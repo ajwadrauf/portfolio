@@ -46,14 +46,14 @@ next-env.d.ts
 # so keep them out rather than discover it later. The MP4 is the preview.
 public/references/*.gif
 
-# Blender clay renders. A 288-frame PNG sequence plus checkpoint stills runs to
-# hundreds of MB, and git keeps every version of a binary forever. build.py
-# regenerates all of it; the text artifacts beside it are what get reviewed.
-blender/out/**/frames/
-blender/out/**/checks/
-blender/out/**/stills/
-blender/out/**/*.mp4
-blender/out/**/*.blend
+# Blender clay renders, and the export package beside them. A 288-frame PNG
+# sequence runs to hundreds of MB, and git keeps every version of a binary
+# forever. The text artifacts were tracked at first, which was a mistake:
+# build.py rewrites prompt.txt, metadata.json and README.txt on every run and
+# stamps them with the local Blender version, so they came back modified after
+# any local run and blocked the next git pull. They are outputs. `build.py
+# --no-render` regenerates the whole package in seconds.
+blender/out/
 
 # Python bytecode from the Blender build scripts
 __pycache__/
