@@ -2029,6 +2029,14 @@ export function AdLab({
             {blenderLane && (
               <div className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-4">
                 <p className="label !text-accent">Upload in prompt order</p>
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  Order is the only thing here the model reads. The job
+                  dropdown on each reference feeds the recipe composer, which
+                  this lane skips — what each slot is for is already stated in
+                  your prompt&apos;s{" "}
+                  <span className="font-mono text-[11px]">[Reference roles]</span>{" "}
+                  block.
+                </p>
                 <ol className="mt-3 space-y-2">
                   <li className="flex gap-3 text-xs leading-relaxed">
                     <span className="font-mono font-semibold text-accent">[Video1]</span>
@@ -2182,7 +2190,21 @@ export function AdLab({
                           {r.media === "video" ? "clip" : r.media === "audio" ? "track" : "still"}
                         </span>
                       </p>
+                      {/*
+                        The role feeds the prompt composer, and nothing else —
+                        it is not sent with the render. In the Blender lane
+                        there is no composer, so the dropdown is a label for
+                        the person and the [Reference roles] block in the
+                        prompt is what the model actually reads. Saying so
+                        beats leaving a control that looks load-bearing.
+                      */}
                       <select
+                        aria-label={`Job for ${token}`}
+                        title={
+                          blenderLane
+                            ? "A label for you — your prompt's [Reference roles] block is what the model reads."
+                            : "Sets how the composer describes this reference in the prompt."
+                        }
                         className="mt-0.5 w-full bg-transparent text-xs text-muted outline-none"
                         value={r.role}
                         onChange={(e) => {
