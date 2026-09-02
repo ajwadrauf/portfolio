@@ -248,6 +248,16 @@ export async function falStartVideo(opts: {
   aspectRatio: string;
   referenceImageDataUrl?: string;
   /**
+   * The frame to land on, for endpoints that interpolate between two stills.
+   *
+   * This is the capability that makes the non-reference endpoint worth
+   * choosing rather than merely cheaper: given a first and a last frame it
+   * solves the move between them, so both ends of the shot are decided before
+   * a credit is spent instead of one end being decided and the other hoped
+   * for.
+   */
+  endImageDataUrl?: string;
+  /**
    * Multiple positional references for reference-to-video endpoints
    * (Seedance 2.5). The prompt addresses them as [Image1], [Image2]… in
    * order, which is what holds product identity while the camera moves.
@@ -302,6 +312,7 @@ export async function falStartVideo(opts: {
   // Single-image endpoints take one grounding frame under `image_url`. Only
   // ever set for those: the reference endpoint does not define it.
   if (opts.referenceImageDataUrl) input.image_url = opts.referenceImageDataUrl;
+  if (opts.endImageDataUrl) input.end_image_url = opts.endImageDataUrl;
   if (opts.negativePrompt) input.negative_prompt = opts.negativePrompt;
 
   try {

@@ -149,8 +149,8 @@ export const MODELS: Record<string, ModelInfo> = {
     unitCost: 0.46,
     unit: "second",
     strengths:
-      "Native 30-second single takes, audio generated jointly with the picture, strong multi-shot consistency.",
-    bestFor: "Short-form product ads at volume; longer cuts no other model does in one pass.",
+      "First-and-last-frame control: supply both ends and it generates only the move between them. Native 30-second single takes, audio generated jointly with the picture, and no input footage on the bill.",
+    bestFor: "A move between two frames you have already approved — and the cheapest Seedance route, since nothing is billed as input duration.",
   },
   "seedance-2.5-ref": {
     id: "seedance-2.5-ref",

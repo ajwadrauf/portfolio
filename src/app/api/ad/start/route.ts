@@ -12,6 +12,7 @@ import {
   REF_CEILINGS,
   audioCapability,
   maxAdSeconds,
+  supportsEndFrame,
 } from "@/lib/adPresets";
 import { falStartVideo } from "@/lib/fal";
 import { dataUrlToInline, startVeo } from "@/lib/gemini";
@@ -93,6 +94,8 @@ export async function POST(req: Request) {
       resolution?: VideoResolution;
       /** Measured total duration of the supplied clips, which is billed too. */
       inputVideoSeconds?: number;
+      /** Optional frame to land on, for endpoints that interpolate two stills. */
+      endImageDataUrl?: string;
       presetName?: string;
     };
 
@@ -216,6 +219,9 @@ export async function POST(req: Request) {
       durationSeconds: seconds,
       aspectRatio: body.aspect,
       referenceImageDataUrl: multiRef ? undefined : body.imageDataUrl,
+      // Only the single-image endpoints define an end frame; sending it to a
+      // reference endpoint that has no such field is a 422.
+      endImageDataUrl: supportsEndFrame(body.modelId) ? body.endImageDataUrl : undefined,
       referenceImageDataUrls: multiRef ? allRefs.slice(0, REF_CEILINGS.image) : undefined,
       referenceVideoUrls: videoRefs.slice(0, REF_CEILINGS.video),
       referenceAudioUrls: audioRefs.slice(0, REF_CEILINGS.audio),

@@ -649,6 +649,20 @@ export const AD_VIDEO_MODELS = [
 export const MULTI_REF_MODELS = ["seedance-2.5-ref"];
 
 /**
+ * Models that accept a frame to finish on as well as one to start from.
+ *
+ * Seedance's single-image endpoint takes `end_image_url` alongside
+ * `image_url` and solves the move between them. That is the thing the
+ * non-reference endpoint does that the reference endpoint does not: rather
+ * than describing where a shot should end up and paying to find out, both
+ * ends are fixed and only the travel is generated.
+ */
+export const END_FRAME_MODELS = ["seedance-2.5"];
+
+export const supportsEndFrame = (modelId: string) =>
+  END_FRAME_MODELS.includes(modelId);
+
+/**
  * Models whose endpoint accepts reference AUDIO (`audio_urls`) alongside the
  * visual references. Seedance 2.5 generates sound and picture jointly in one
  * latent space, which is what makes a supplied track usable as a timing

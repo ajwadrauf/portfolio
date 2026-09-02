@@ -11,6 +11,7 @@ import {
   AD_VIDEO_MODELS,
   AUDIO_REF_LIMITS,
   MULTI_REF_MODELS,
+  supportsEndFrame,
   REFERENCE_ROLES,
   REF_CEILINGS,
   audioCapability,
@@ -350,6 +351,8 @@ export function AdLab({
   const [renderStartedAt, setRenderStartedAt] = useState<number | null>(null);
   /** Measured durations of supplied clips, by URL. */
   const [clipSeconds, setClipSeconds] = useState<Record<string, number>>({});
+  /** The frame to land on, where the endpoint interpolates between two stills. */
+  const [endImage, setEndImage] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   /** What the importer changed on the way in — shown rather than applied quietly. */
   const [importNotes, setImportNotes] = useState<string[]>([]);
@@ -395,6 +398,7 @@ export function AdLab({
   const [aspectOverride, setAspectOverride] = useState<string | null>(null);
   const refInput = useRef<HTMLInputElement>(null);
   const promptFileInput = useRef<HTMLInputElement>(null);
+  const endFrameInput = useRef<HTMLInputElement>(null);
 
   /**
    * Audio settings and recipe edits are baked into the composed prompt, so
@@ -1178,6 +1182,7 @@ export function AdLab({
           // length and the server prices the spend from this.
           inputVideoSeconds,
           imageDataUrl: productImage ?? undefined,
+          endImageDataUrl: endFrameActive ? (endImage ?? undefined) : undefined,
           referenceImageDataUrls: supportsRefs
             ? refs.filter((r) => r.media === "image").map((r) => r.url)
             : undefined,
@@ -1478,6 +1483,9 @@ export function AdLab({
         ? "almost"
         : "running";
   const renderProgress = Math.min(0.94, elapsedMs / TYPICAL_RENDER_MS);
+
+  /** This endpoint interpolates between a first and a last frame. */
+  const endFrameActive = supportsEndFrame(modelId);
 
   /** There is a passcode gate on this deployment, so a code can be entered. */
   const gateable = health?.gate === "locked" || health?.gate === "exhausted";
@@ -1962,6 +1970,78 @@ export function AdLab({
               video as its first frame.
             </p>
           </div>
+
+          {/*
+            The end frame, on the one endpoint that solves for it.
+            
+            This is what the single-image endpoint does that the reference one
+            cannot: given both ends of a shot it generates only the travel
+            between them. It turns "describe where this should end up and pay
+            to find out" into a move between two frames you have already
+            approved — which is also the natural pairing for the packshot tool
+            on this site, since that is where the second frame comes from.
+          */}
+          {endFrameActive && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-4">
+              {endImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={endImage}
+                  alt="End frame"
+                  className="h-16 w-16 rounded-[6px] border border-border-soft object-cover"
+                />
+              )}
+              <div className="flex flex-col gap-2">
+                <button
+                  className="btn-secondary !px-3 !py-1.5 text-xs"
+                  onClick={() => endFrameInput.current?.click()}
+                >
+                  {endImage ? "Replace end frame" : "Add an end frame (optional)"}
+                </button>
+                {endImage && (
+                  <button
+                    className="text-xs font-semibold text-muted hover:text-foreground"
+                    onClick={() => {
+                      setEndImage(null);
+                      invalidatePrompt();
+                    }}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <input
+                ref={endFrameInput}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    try {
+                      setEndImage(await toProcessedDataUrl(f));
+                      invalidatePrompt();
+                    } catch {
+                      setError("Could not read that image");
+                    }
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <p className="min-w-40 flex-1 text-xs leading-relaxed text-muted">
+                <span className="font-semibold text-foreground">
+                  {modelName} can land on a frame as well as start from one.
+                </span>{" "}
+                Give it the last frame and it generates only the move between
+                the two, so both ends of the shot are settled before you spend
+                rather than one end being described and hoped for. Leave it
+                empty and the model decides where the shot ends up.{" "}
+                <Link href="/ai-studio/packshots" className="font-semibold text-accent hover:underline">
+                  Make the second frame in Packshots →
+                </Link>
+              </p>
+            </div>
+          )}
 
           {autofillRationale && (
             <div className="mt-3 rounded-[6px] border border-accent/30 bg-accent/5 p-3 text-xs leading-relaxed text-muted">
@@ -2751,7 +2831,9 @@ export function AdLab({
             <span className="mt-2 block max-w-3xl text-xs leading-relaxed text-muted">
               {supportsRefs
                 ? "Reference-to-video: every uploaded reference is addressed positionally in the prompt ([Image1], [Video1], [Audio1]…), which is what stops the product drifting as the camera moves."
-                : "Single grounding frame: the product photo conditions the first frame, then the model extrapolates. Cheaper, but the pack can drift as the camera moves."}
+                : endFrameActive
+                  ? "First frame and, optionally, last frame: give it both ends and it generates only the move between them, which is the tightest control available without a clay pass. No video input means no input duration on the bill, so it is markedly cheaper than the reference endpoint — the trade is that identity is held by one still rather than several."
+                  : "Single grounding frame: the product photo conditions the first frame, then the model extrapolates. Cheaper, but the pack can drift as the camera moves."}
             </span>
           </label>
 
