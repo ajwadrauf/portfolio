@@ -2406,6 +2406,26 @@ export function AdLab({
               storage access. It has to be a direct link to the file (ending in
               .mp4, .mov, .mp3…) that fal can reach without signing in.
             </p>
+            {/*
+              Worth its own paragraph because the two paths fail differently
+              for stills, and the difference is invisible until a paid render
+              is rejected. A URL-added still is one more thing the provider has
+              to reach across the internet; an uploaded one is carried inside
+              the request and cannot fail that way.
+            */}
+            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-foreground">
+                For stills specifically, uploading is the more reliable path.
+              </span>{" "}
+              An uploaded image is resized and carried inside the request
+              itself, so nothing has to fetch it. A pasted image URL is fetched
+              by the generation provider at render time — and when that fetch
+              fails, the provider does not report a missing file. It reports a
+              content-policy violation about the imagery, which sends you
+              looking for a problem in a picture that was never opened. Use{" "}
+              <span className="font-semibold text-foreground">Check references</span>{" "}
+              above before spending if your stills came from a URL.
+            </p>
             <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
               Add more angles of the product to tighten the identity lock, a
               still to borrow a palette from, a <strong>short clip</strong>{" "}

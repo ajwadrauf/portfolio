@@ -108,7 +108,8 @@ export function describeFalError(e: unknown): string {
       return (
         "The generation provider's content filter rejected the reference files. " +
         "Its wording (\u201clikenesses of real people\u201d) is boilerplate covering several causes, and a file the provider could not download reports the same way as one it looked at and refused \u2014 so it does not mean a face was found. " +
-        "Run Check references above: that separates \u201ccannot be fetched\u201d and \u201coutside the size, dimension or aspect limits\u201d from a genuine filter hit, which is the only one you cannot fix by re-exporting."
+        "Run Check references above: that separates \u201ccannot be fetched\u201d and \u201coutside the size, dimension or aspect limits\u201d from a genuine filter hit, which is the only one you cannot fix by re-exporting. " +
+        "If your stills were added by URL, upload them instead \u2014 an uploaded still travels inside the request, so there is no fetch left to fail."
       );
     }
     const lines = Array.isArray(detail)
