@@ -66,6 +66,10 @@ async function resolveClipUrl(pathname: string, origin: string): Promise<string>
 
 /** Starts a mini-ad video job from a composed prompt. Polled via /api/generate/video/status. */
 export async function POST(req: Request) {
+  // Hoisted so the error path can tell whether the stills were fetched by the
+  // provider or carried inside the request, which changes what a rejection
+  // can possibly mean.
+  let allImageRefs: string[] = [];
   try {
     const body = (await req.json()) as {
       prompt: string;
@@ -153,9 +157,10 @@ export async function POST(req: Request) {
     // Reference-to-video models take every reference positionally; the rest
     // take a single grounding frame.
     const multiRef = MULTI_REF_MODELS.includes(body.modelId);
-    const allRefs = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter(
+    allImageRefs = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter(
       (u): u is string => Boolean(u),
     );
+    const allRefs = allImageRefs;
     const rawVideoRefs = multiRef ? (body.referenceVideoUrls ?? []) : [];
     // Starter clips arrive as site-relative paths and have to be made
     // fetchable before they are any use to the model.
@@ -200,9 +205,23 @@ export async function POST(req: Request) {
     return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, cost });
   } catch (e) {
     console.error("ad start failed", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Ad generation failed to start" },
-      { status: 500 },
-    );
+    let error = e instanceof Error ? e.message : "Ad generation failed to start";
+    /*
+     * The generic content-policy advice tells you to check that the provider
+     * can fetch your references. When every still was sent inline as a data
+     * URL there was no fetch to fail, so that advice is not merely unhelpful,
+     * it is wrong — and the one remaining explanation is the pictures
+     * themselves. Say that instead of sending someone to re-check a URL that
+     * was never used.
+     */
+    const inlinedOnly =
+      allImageRefs.length > 0 && allImageRefs.every((u) => u.startsWith("data:"));
+    if (inlinedOnly && /content filter/i.test(error)) {
+      error =
+        "The generation provider's content filter rejected the reference stills. " +
+        "They were sent inline with the request rather than fetched, and resized, flattened and re-encoded on the way — so a failed download, an alpha channel, the file format, the file size and the dimensions are all ruled out. " +
+        "What is left is the pictures themselves. Stock and other third-party photography is the usual trigger; references you generated yourself are not subject to it.";
+    }
+    return NextResponse.json({ error }, { status: 500 });
   }
 }
