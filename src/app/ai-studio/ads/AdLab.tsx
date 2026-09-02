@@ -48,6 +48,7 @@ import {
 } from "@/lib/promptImport";
 import { REFERENCE_CLIPS } from "@/lib/referenceClips";
 import type { RefFinding } from "@/lib/refCheck";
+import { BLENDER_EXAMPLE } from "@/lib/blenderExample";
 import {
   ASPECTS,
   VIDEO_RESOLUTIONS,
@@ -135,6 +136,46 @@ function relativeTime(then: number) {
   return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
 }
 const POLL_INTERVAL_MS = 12_000;
+
+/*
+ * Render-time landmarks, taken from a measured run rather than a guess: a 12s
+ * 4:3 reference render at 480p came back in 447 seconds and cost $3.05.
+ *
+ * The point of showing these is that a seven-minute wait with a bare spinner
+ * is indistinguishable from a hung request, and the natural response to that
+ * is to reload — which, before the job handle was persisted, threw the render
+ * away. Naming what is normal keeps someone from acting on a wait that is
+ * going fine.
+ */
+const TYPICAL_RENDER_MS = 450_000;
+/** Past here it is nearly always in its last stretch. */
+const ALMOST_READY_MS = 350_000;
+/** Past here something is more likely wrong than slow. */
+const OVERDUE_MS = 500_000;
+
+/** A pre-addressed report for a render that has run long. */
+const STUCK_RENDER_MAILTO = `mailto:hello@ajwadrauf.com?subject=${encodeURIComponent(
+  "Long-running render — AI Content Studio",
+)}&body=${encodeURIComponent(
+  [
+    "Hi Ajwad,",
+    "",
+    "A render in the Ad Lab has been going for longer than the expected few minutes and may be stuck.",
+    "",
+    "What I was generating:",
+    "Roughly when I started it:",
+    "",
+    "Thanks,",
+  ].join("\n"),
+)}`;
+
+/** "6m 12s" — a wait reads better in the units people count it in. */
+function elapsedLabel(ms: number) {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(total / 60);
+  const sec = total % 60;
+  return m > 0 ? `${m}m ${String(sec).padStart(2, "0")}s` : `${sec}s`;
+}
 const POLL_DEADLINE_MS = 10 * 60 * 1000;
 const ASPECT_CLASS: Record<string, string> = {
   "9:16": "aspect-[9/16]",
@@ -305,6 +346,9 @@ export function AdLab({
   /** True when the prompt arrived from the library rather than the recipe. */
   const [imported, setImported] = useState(false);
   const [lane, setLane] = useState<Lane>("recipe");
+  /** When the render in flight was started, so the wait can be described. */
+  const [renderStartedAt, setRenderStartedAt] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
   /** What the importer changed on the way in — shown rather than applied quietly. */
   const [importNotes, setImportNotes] = useState<string[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
@@ -1066,6 +1110,8 @@ export function AdLab({
       if (!ok) return;
     }
     setPhase("starting");
+    setRenderStartedAt(Date.now());
+    setElapsedMs(0);
     setVideoUrl(null);
     setPosterDataUrl(null);
     // Score in parallel with the render — music returns in seconds, video in
@@ -1306,6 +1352,75 @@ export function AdLab({
       setCheckingRefs(false);
     }
   }, [productImage, refs]);
+
+  /**
+   * Loads a brief that is known to render, references and all.
+   *
+   * The settings come with it because they are part of what worked: this
+   * timeline is written for 12 seconds and loses its last beat at eight, the
+   * blockout was rendered 4:3, and the endpoint tops out at 720p. Landing the
+   * prompt alone would leave someone one wrong slider away from paying for a
+   * take that does not match the geometry it was built on.
+   */
+  const loadBlenderExample = useCallback(() => {
+    setLane("blender");
+    setError(null);
+    setImportError(null);
+    setProductImage(null);
+    setModelId(BLENDER_EXAMPLE.modelId);
+    setFinalPrompt(BLENDER_EXAMPLE.prompt.trim());
+    setNegativePrompt(AD_NEGATIVE_PROMPT);
+    setSeconds(BLENDER_EXAMPLE.seconds);
+    setAspectOverride(BLENDER_EXAMPLE.aspect);
+    setResolution(BLENDER_EXAMPLE.resolution);
+    setAudioMode("native");
+    // Replaces rather than appends: loading the example twice should not leave
+    // the clay pass sitting at [Video1] and [Video2].
+    setRefs(
+      BLENDER_EXAMPLE.refs.map((r) => ({
+        url: r.url,
+        media: r.media as ReferenceMedia,
+        role: r.role as ReferenceRole,
+        name: r.name,
+      })),
+    );
+    setRefCheck(null);
+    setImported(true);
+    setImportNotes([
+      `Loaded “${BLENDER_EXAMPLE.label}” — the prompt, both references, and the length, shape and resolution the successful render used.`,
+      ...BLENDER_EXAMPLE.refs.map((r) => `${r.name} — ${r.note}`),
+    ]);
+    setPhase("ready");
+  }, []);
+
+  /*
+   * Ticks once a second while a render is in flight, and only then. A timer
+   * that keeps running after the video arrives is a needless re-render every
+   * second for as long as the tab stays open.
+   */
+  const rendering = phase === "starting" || phase === "polling";
+  useEffect(() => {
+    if (!rendering || renderStartedAt === null) return;
+    const tick = () => setElapsedMs(Date.now() - renderStartedAt);
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [rendering, renderStartedAt]);
+
+  /**
+   * What to say about a wait, and how full to draw the bar.
+   *
+   * The bar is capped below full while the render is still running: a
+   * progress indicator sitting at 100% next to a spinner reads as broken, and
+   * the finish time is an estimate, not a promise.
+   */
+  const renderStage =
+    elapsedMs >= OVERDUE_MS
+      ? "overdue"
+      : elapsedMs >= ALMOST_READY_MS
+        ? "almost"
+        : "running";
+  const renderProgress = Math.min(0.94, elapsedMs / TYPICAL_RENDER_MS);
 
   /** There is a passcode gate on this deployment, so a code can be entered. */
   const gateable = health?.gate === "locked" || health?.gate === "exhausted";
@@ -1586,10 +1701,44 @@ export function AdLab({
         </p>
       )}
 
+      {/*
+        A brief that renders, one click away. Everything else on this page is a
+        claim about how the workflow goes; this is the workflow, loaded.
+      */}
+      {blenderLane && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-4">
+          <p className="min-w-0 flex-1 text-sm leading-relaxed">
+            <span className="font-semibold">New here?</span>{" "}
+            <span className="text-muted">
+              Load a brief that is known to render — the prompt, a clay control
+              pass, a product still, and the exact settings the finished take
+              used.
+            </span>
+          </p>
+          <button className="btn-primary shrink-0" onClick={loadBlenderExample}>
+            Load the worked example →
+          </button>
+        </div>
+      )}
+
       <div className="mt-8 space-y-6">
         {/* ---------- the Blender lane opens on the prompt itself ---------- */}
         {blenderLane && (
-          <Step n={STEP.prompt} title="Your prompt" aside={importControl}>
+          <Step
+            n={STEP.prompt}
+            title="Your prompt"
+            aside={
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  className="text-xs font-semibold text-accent hover:underline"
+                  onClick={loadBlenderExample}
+                >
+                  Load the worked example
+                </button>
+                {importControl}
+              </div>
+            }
+          >
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
               Paste the prompt the Blender page composed, or import the{" "}
               <code className="font-mono text-xs">.txt</code> you saved next to
@@ -1662,8 +1811,10 @@ export function AdLab({
                     .filter(Boolean)
                     .join(", ")}
                 </span>
-                . Add them below in that order — references are numbered as they
-                are uploaded, not by what the files are called.
+                .{" "}
+                {slotGaps.length === 0 && attached.image + attached.video > 0
+                  ? "All of them are attached below."
+                  : "Add them below in that order — references are numbered as they are uploaded, not by what the files are called."}
               </p>
             )}
           </Step>
@@ -3222,10 +3373,71 @@ export function AdLab({
                         )}
                       </div>
                     ) : (
-                      <>
-                        <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-muted/40 border-t-accent" />
-                        <p>{phase === "starting" ? "Starting…" : "Rendering the ad — a few minutes…"}</p>
-                      </>
+                      <div className="w-full max-w-xs px-4">
+                        <div className="flex items-center justify-center gap-2.5">
+                          <span
+                            className={`inline-block h-5 w-5 animate-spin rounded-full border-2 ${
+                              renderStage === "overdue"
+                                ? "border-warning/30 border-t-warning"
+                                : "border-muted/40 border-t-accent"
+                            }`}
+                          />
+                          <p className="font-semibold">
+                            {phase === "starting"
+                              ? "Starting…"
+                              : renderStage === "overdue"
+                                ? "Taking longer than expected"
+                                : renderStage === "almost"
+                                  ? "Almost ready…"
+                                  : "Rendering"}
+                          </p>
+                        </div>
+
+                        {/* A wait you can watch move is a wait you sit through. */}
+                        <div
+                          role="progressbar"
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={Math.round(renderProgress * 100)}
+                          aria-label="Render progress"
+                          className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-border-soft"
+                        >
+                          <div
+                            className={`h-full rounded-full transition-[width] duration-1000 ease-linear ${
+                              renderStage === "overdue" ? "bg-warning" : "bg-accent"
+                            }`}
+                            style={{ width: `${Math.max(2, renderProgress * 100)}%` }}
+                          />
+                        </div>
+
+                        <p className="mt-2 font-mono text-[11px] text-muted">
+                          {elapsedLabel(elapsedMs)} elapsed
+                          {renderStage !== "overdue" && (
+                            <span> · usually about {elapsedLabel(TYPICAL_RENDER_MS)}</span>
+                          )}
+                        </p>
+
+                        {renderStage === "overdue" ? (
+                          <p className="mt-2 text-xs leading-relaxed text-warning">
+                            This has run past the point where it is normally
+                            done. It is still being polled and nothing is lost
+                            — the render is paid for and can be collected later
+                            — but something may be up.{" "}
+                            <a
+                              href={STUCK_RENDER_MAILTO}
+                              className="font-semibold underline"
+                            >
+                              Let Ajwad know
+                            </a>
+                            .
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-xs leading-relaxed text-muted">
+                            Safe to leave this tab — the render is tracked and
+                            can be collected when you come back.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
