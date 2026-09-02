@@ -3,7 +3,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { isStarterClipPath } from "@/lib/referenceClips";
 import { falUpload } from "@/lib/fal";
-import { VIDEO_RESOLUTIONS, type VideoResolution } from "@/lib/videoCost";
+import { resolutionsFor, type VideoResolution } from "@/lib/videoCost";
 import { consume, liveJson, unlocked } from "@/lib/auth";
 import {
   AD_VIDEO_MODELS,
@@ -102,11 +102,17 @@ export async function POST(req: Request) {
       Math.max(body.durationSeconds ?? 8, 4),
       maxAdSeconds(body.modelId),
     );
-    const resolution: VideoResolution = VIDEO_RESOLUTIONS.some(
-      (r) => r.id === body.resolution,
-    )
+    /*
+     * Validated against what THIS endpoint renders, not against the full list.
+     * A resolution the endpoint does not publish is a 422 at submit time,
+     * after the estimate has been shown and the confirm dialog accepted — so
+     * an out-of-range value falls back to the best size this model does
+     * render, which is also the size the cost below is computed from.
+     */
+    const allowed = resolutionsFor(body.modelId);
+    const resolution: VideoResolution = allowed.includes(body.resolution!)
       ? body.resolution!
-      : "720p";
+      : allowed[allowed.length - 1];
     const inputVideoSeconds = (body.referenceVideoUrls?.length ?? 0) * 5;
     const cost = estimateCost(model.id, {
       seconds,

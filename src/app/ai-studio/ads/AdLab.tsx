@@ -47,9 +47,11 @@ import {
   refSlots,
 } from "@/lib/promptImport";
 import { REFERENCE_CLIPS } from "@/lib/referenceClips";
+import type { RefFinding } from "@/lib/refCheck";
 import {
   ASPECTS,
   VIDEO_RESOLUTIONS,
+  resolutionsFor,
   aspectRatioValue,
   aspectsFor,
   frameSize,
@@ -1232,6 +1234,56 @@ export function AdLab({
     [promptSlots, attached],
   );
 
+  /*
+   * Not every endpoint renders every size. The reference endpoint tops out at
+   * 720p, so 1080p is removed rather than offered and rejected — and a
+   * selection left over from another model is pulled back to the best one this
+   * endpoint does render, so the estimate on screen is the one that will be
+   * charged.
+   */
+  const allowedResolutions = useMemo(() => {
+    const ok = resolutionsFor(modelId);
+    return VIDEO_RESOLUTIONS.filter((r) => ok.includes(r.id));
+  }, [modelId]);
+  useEffect(() => {
+    if (!allowedResolutions.some((r) => r.id === resolution)) {
+      setResolution(allowedResolutions[allowedResolutions.length - 1].id);
+    }
+  }, [allowedResolutions, resolution]);
+
+  /*
+   * The provider validates references only at submit time, and reports a
+   * failure in one sentence about content policy that covers everything from
+   * a genuine filter hit to a URL it could not open. Checking the mechanical
+   * constraints here first costs nothing and takes most of those causes off
+   * the table before any credits are committed.
+   */
+  const [refCheck, setRefCheck] = useState<RefFinding[] | null>(null);
+  const [checkingRefs, setCheckingRefs] = useState(false);
+  const checkRefs = useCallback(async () => {
+    setCheckingRefs(true);
+    setRefCheck(null);
+    try {
+      const res = await fetch("/api/ad/check-refs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrls: [
+            ...(productImage ? [productImage] : []),
+            ...refs.filter((r) => r.media === "image").map((r) => r.url),
+          ],
+          videoUrls: refs.filter((r) => r.media === "video").map((r) => r.url),
+        }),
+      });
+      const json = await res.json();
+      setRefCheck(json.findings ?? []);
+    } catch {
+      setError("Could not run the reference check.");
+    } finally {
+      setCheckingRefs(false);
+    }
+  }, [productImage, refs]);
+
   /** Something was flagged above the spend button, whichever lane raised it. */
   const flagged = blenderLane ? slotGaps.length > 0 : unmet.length > 0;
 
@@ -1900,12 +1952,73 @@ export function AdLab({
             n={STEP.refs}
             title={blenderLane ? "References — the clay pass and the look" : "References"}
             aside={
-              <span className="label-sm">
-                {(productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0)} of{" "}
-                {REF_CEILINGS.total}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="label-sm">
+                  {(productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0)} of{" "}
+                  {REF_CEILINGS.total}
+                </span>
+                {(productImage || refs.length > 0) && (
+                  <button
+                    className="text-xs font-semibold text-accent hover:underline disabled:opacity-50"
+                    onClick={() => void checkRefs()}
+                    disabled={checkingRefs}
+                  >
+                    {checkingRefs ? "Checking…" : "Check references"}
+                  </button>
+                )}
+              </div>
             }
           >
+            {refCheck && (
+              <div
+                className={`mt-4 rounded-[6px] border p-4 ${
+                  refCheck.every((f) => f.ok)
+                    ? "border-success/40 bg-success/10"
+                    : "border-warning/50 bg-warning/10"
+                }`}
+              >
+                <p className={`label ${refCheck.every((f) => f.ok) ? "!text-success" : "!text-warning"}`}>
+                  {refCheck.every((f) => f.ok)
+                    ? "Every reference is reachable and within limits"
+                    : `${refCheck.filter((f) => !f.ok).length} reference${
+                        refCheck.filter((f) => !f.ok).length === 1 ? "" : "s"
+                      } would be rejected`}
+                </p>
+                <ul className="mt-3 space-y-2.5">
+                  {refCheck.map((f, i) => (
+                    <li key={i} className="text-xs leading-relaxed">
+                      <span className="font-mono font-semibold text-accent">{f.slot}</span>{" "}
+                      <span className={f.ok ? "text-success" : "text-warning"}>{f.ok ? "✓" : "✕"}</span>
+                      {f.detail?.width && f.detail?.height && (
+                        <span className="text-muted">
+                          {" "}
+                          · {f.detail.width}×{f.detail.height}
+                          {f.detail.bytes
+                            ? ` · ${
+                                f.detail.bytes >= 1024 * 1024
+                                  ? `${(f.detail.bytes / 1024 / 1024).toFixed(1)}MB`
+                                  : `${Math.round(f.detail.bytes / 1024)}KB`
+                              }`
+                            : ""}
+                        </span>
+                      )}
+                      {[...f.problems, ...f.notes].map((line, j) => (
+                        <span key={j} className="mt-0.5 block text-muted">
+                          {line}
+                        </span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+                {!refCheck.every((f) => f.ok) && (
+                  <p className="mt-3 border-t border-warning/30 pt-2 text-xs leading-relaxed text-muted">
+                    These are the causes the provider reports as a content-policy
+                    failure without naming. Clearing them first is cheaper than
+                    another rejected submit.
+                  </p>
+                )}
+              </div>
+            )}
             {/*
               In the Blender lane the preset's reference recipe is the wrong
               checklist — it describes a concept nobody chose. What matters
@@ -2429,7 +2542,7 @@ export function AdLab({
             <div className="mt-5 border-t border-border-soft pt-4">
               <span className="label">Resolution — the real cost lever</span>
               <div className="mt-2 grid gap-2 md:grid-cols-3">
-                {VIDEO_RESOLUTIONS.map((r) => {
+                {allowedResolutions.map((r) => {
                   const at = estimateCost(modelId, {
                     seconds: duration,
                     resolution: r.id,

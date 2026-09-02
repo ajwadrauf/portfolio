@@ -64,7 +64,7 @@ export async function falGenerateImage(opts: {
  * about which of several very different problems you have, and the cost of
  * guessing wrong is topping up an account that was never short of money.
  */
-function describeFalError(e: unknown): string {
+export function describeFalError(e: unknown): string {
   const err = e as { status?: number; message?: string; body?: unknown };
   const status = typeof err?.status === "number" ? err.status : undefined;
   const text = `${err?.message ?? ""} ${JSON.stringify(err?.body ?? "")}`;
@@ -86,6 +86,45 @@ function describeFalError(e: unknown): string {
   }
   if (status === 413) {
     return "fal rejected the file as too large. Trim it and try again.";
+  }
+  /*
+   * 422 is a schema rejection, and fal says exactly what it rejected — in the
+   * response body, not the message. Left unread, every one of these surfaces
+   * as the bare string "Unprocessable Entity", which says only that something
+   * about the request was wrong and gives no way to find out what. The body
+   * carries a `detail` array of {loc, msg}, where `loc` is the path to the
+   * offending field. Reading it turns an unsolvable error into a named one.
+   */
+  if (status === 422) {
+    const detail = (err?.body as { detail?: unknown })?.detail;
+    /*
+     * The content filter runs at the partner, not at fal, and returns one
+     * boilerplate sentence for a range of causes — a file it could not fetch
+     * reads identically to a file it looked at and disliked. Taken at face
+     * value it sends you hunting for a face in a photograph of a biscuit, so
+     * say what it does and does not establish.
+     */
+    if (/content_policy_violation|partner_validation_failed/i.test(text)) {
+      return (
+        "The generation provider's content filter rejected the reference files. " +
+        "Its wording (\u201clikenesses of real people\u201d) is boilerplate covering several causes, and a file the provider could not download reports the same way as one it looked at and refused \u2014 so it does not mean a face was found. " +
+        "Run Check references above: that separates \u201ccannot be fetched\u201d and \u201coutside the size, dimension or aspect limits\u201d from a genuine filter hit, which is the only one you cannot fix by re-exporting."
+      );
+    }
+    const lines = Array.isArray(detail)
+      ? detail
+          .map((d) => {
+            const item = d as { loc?: unknown[]; msg?: string; type?: string };
+            const where = Array.isArray(item.loc)
+              ? item.loc.filter((x) => x !== "body").join(".")
+              : "";
+            return [where, item.msg ?? item.type].filter(Boolean).join(": ");
+          })
+          .filter(Boolean)
+      : [];
+    return lines.length
+      ? `The generation provider rejected the request (422): ${lines.join("; ")}.`
+      : `The generation provider rejected the request (422) without saying which field. Raw body: ${JSON.stringify(err?.body ?? null).slice(0, 500)}`;
   }
   return err?.message ?? "Upload failed";
 }
@@ -208,30 +247,41 @@ export async function falStartVideo(opts: {
     duration: String(opts.durationSeconds), // Kling expects "5" | "10"
     aspect_ratio: opts.aspectRatio,
   };
+  /*
+   * Only documented field names go on the wire.
+   *
+   * This used to send each reference list twice — `image_urls` AND
+   * `reference_image_urls`, and the same for video and audio — on the theory
+   * that an endpoint would read whichever name it knew and ignore the other.
+   * It does not. fal validates its input schema strictly and rejects unknown
+   * fields with a 422, so the alias intended as a safety net was itself a
+   * guaranteed rejection on every endpoint that defines the documented name.
+   * The Seedance reference endpoint reads `image_urls`, `video_urls` and
+   * `audio_urls`; nothing here should send a name that is not in a published
+   * schema.
+   */
   const refs = opts.referenceImageDataUrls?.filter(Boolean) ?? [];
-  if (refs.length > 0) {
-    // Reference endpoints read image_urls; single-image endpoints read
-    // image_url. Send what applies — fal ignores undefined fields.
-    input.image_urls = refs;
-    input.reference_image_urls = refs;
-  }
+  if (refs.length > 0) input.image_urls = refs;
   const videoRefs = opts.referenceVideoUrls?.filter(Boolean) ?? [];
-  if (videoRefs.length > 0) {
-    input.video_urls = videoRefs;
-    input.reference_video_urls = videoRefs;
-  }
+  if (videoRefs.length > 0) input.video_urls = videoRefs;
   const audioRefs = opts.referenceAudioUrls?.filter(Boolean) ?? [];
-  if (audioRefs.length > 0) {
-    input.audio_urls = audioRefs;
-    input.reference_audio_urls = audioRefs;
-  }
+  if (audioRefs.length > 0) input.audio_urls = audioRefs;
+
   if (opts.generateAudio !== undefined) input.generate_audio = opts.generateAudio;
   if (opts.resolution) input.resolution = opts.resolution;
+  // Single-image endpoints take one grounding frame under `image_url`. Only
+  // ever set for those: the reference endpoint does not define it.
   if (opts.referenceImageDataUrl) input.image_url = opts.referenceImageDataUrl;
   if (opts.negativePrompt) input.negative_prompt = opts.negativePrompt;
 
-  const { request_id } = await f.queue.submit(opts.endpoint, { input });
-  return { requestId: request_id };
+  try {
+    const { request_id } = await f.queue.submit(opts.endpoint, { input });
+    return { requestId: request_id };
+  } catch (e) {
+    // Without this the caller reports fal's bare status text — "Unprocessable
+    // Entity" — and throws away the body that names the field at fault.
+    throw new Error(describeFalError(e));
+  }
 }
 
 export type FalPollResult =

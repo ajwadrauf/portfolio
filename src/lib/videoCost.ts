@@ -41,6 +41,19 @@ const VIDEO_INPUT_MULTIPLIER = 0.6;
 
 const FRAME_RATE = 24;
 
+/**
+ * Which resolutions an endpoint actually accepts.
+ *
+ * The reference-to-video endpoint publishes 480p and 720p only — 1080p is a
+ * text-to-video and image-to-video option. Offering it here does not produce a
+ * bigger render; it produces a 422 after the user has picked their references
+ * and read the estimate, which reads as the tool being broken rather than the
+ * option being unavailable. So the list is filtered rather than the error
+ * explained.
+ */
+export const resolutionsFor = (modelId: string): VideoResolution[] =>
+  modelId === "seedance-2.5-ref" ? ["480p", "720p"] : ["480p", "720p", "1080p"];
+
 export const VIDEO_RESOLUTIONS: {
   id: VideoResolution;
   label: string;
