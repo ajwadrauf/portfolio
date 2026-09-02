@@ -62,8 +62,15 @@ function Tile({
   split?: boolean;
   children: React.ReactNode;
 }) {
+  /*
+   * A lone tile is capped rather than stretched. At 4:5 across half a
+   * 1440px page it stood a full screen tall, which turned one piece of work
+   * into a wall and pushed its own caption into the margin — the caption
+   * being the part that carries the claim. Constrained, the frame reads as a
+   * piece of work and the words next to it get room to be read.
+   */
   const cls = split
-    ? "grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:items-center"
+    ? "grid gap-6 sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)] sm:items-center lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]"
     : "block";
   return href ? (
     <Link href={href} className={cls}>
@@ -135,7 +142,7 @@ export function ShowcaseStrip({ items }: { items: ShowcaseItem[] }) {
               )}
             </div>
             <div className={items.length === 1 ? "" : "mt-2.5"}>
-              <p className="text-sm font-semibold leading-snug">
+              <p className={`font-semibold leading-snug ${items.length === 1 ? "text-lg tracking-[-0.02em]" : "text-sm"}`}>
                 {item.title}
                 {item.href && (
                   <span aria-hidden className="ml-1.5 text-accent">
@@ -143,7 +150,15 @@ export function ShowcaseStrip({ items }: { items: ShowcaseItem[] }) {
                   </span>
                 )}
               </p>
-              <p className="mt-1 text-xs leading-[1.55] text-muted">{item.note}</p>
+              <p
+                className={`text-muted ${
+                  items.length === 1
+                    ? "mt-2 max-w-[46ch] text-sm leading-[1.6]"
+                    : "mt-1 text-xs leading-[1.55]"
+                }`}
+              >
+                {item.note}
+              </p>
               <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted/70">
                 {item.model}
                 {item.cost ? ` · ${item.cost}` : ""}

@@ -24,6 +24,15 @@ type Project = {
   note: string;
   /** Why it is gated and who to ask — rendered as prose, not as a mono label. */
   access?: { text: string; linkLabel: string; href: string; after: string };
+  /**
+   * A strip of frames from the work itself.
+   *
+   * A portfolio for a craft role that is three columns of prose asks the
+   * reader to take the work on trust. Omitted where there is nothing honest
+   * to show — an NDA project has no public frames, and a placeholder would
+   * be worse than a card that does not claim one.
+   */
+  frames?: { src: string; alt: string }[];
   body: string[];
   tags: string[];
 };
@@ -48,6 +57,13 @@ const PROJECTS: Project[] = [
     body: [
       "A campaign studio that turns one product photo into stills, bilingual EN/FR promo tiles and video. A packshot generator that produces GS1 planogram angles without a reshoot. An Ad Lab of preset ad recipes — editable, reference-locked, with the sound built in layers the way a studio actually does it. And a prompt builder that teaches the structure rather than handing over a prompt.",
       "Thirteen models from six labs behind two APIs, routed by what each is actually good at: reference-to-video where the packaging must not drift, a cheap draft tier where it does not matter yet. Costed per render before you spend — including the token-billed models, where resolution moves the price more than length does.",
+    ],
+    frames: [
+      { src: "/the-wall/f001.jpg", alt: "Clay control pass, opening frame" },
+      { src: "/the-wall/f072.jpg", alt: "Clay control pass, camera pulling back" },
+      { src: "/the-wall/f144.jpg", alt: "Clay control pass, mid move" },
+      { src: "/the-wall/f204.jpg", alt: "Clay control pass, product settling" },
+      { src: "/the-wall/f288.jpg", alt: "Clay control pass, final frame" },
     ],
     tags: ["Generative AI", "Video", "Production systems", "Next.js"],
   },
@@ -200,7 +216,12 @@ export default function Home() {
             <br className="hidden sm:block" /> AI production
             <br className="hidden sm:block" /> systems.
           </h1>
-          <p className="mt-6 max-w-[20ch] text-xl leading-[1.45] tracking-[-0.01em] sm:text-2xl lg:mt-9">
+          {/*
+            Second half of the headline's sentence, not a separate thought —
+            so it sits close enough to read as one. At lg it had drifted far
+            enough below the last line to look like an orphaned caption.
+          */}
+          <p className="mt-4 max-w-[20ch] text-xl leading-[1.45] tracking-[-0.01em] text-muted sm:text-2xl lg:mt-5">
             Not decks about them.
           </p>
         </div>
@@ -258,7 +279,7 @@ export default function Home() {
             key={p.n}
             className="card grid gap-8 p-7 sm:p-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:px-14 lg:py-13"
           >
-            <div>
+            <div className="min-w-0">
               <div className="label flex flex-wrap items-center gap-x-3.5 gap-y-1">
                 <span className="text-accent">{p.n}</span>
                 <span>{p.kind}</span>
@@ -294,6 +315,43 @@ export default function Home() {
                   </a>
                   {p.access.after}
                 </p>
+              )}
+
+              {/*
+                Frames from the work, under the claim they belong to. A row
+                rather than a hero image: five stills from one continuous move
+                say "this is a shot" in a way one still cannot, and they stay
+                small enough not to outrank the writing beside them.
+              */}
+              {p.frames && (
+                <div className="mt-8">
+                  {/*
+                    Five across fits a desktop column but renders 50px wide on
+                    a phone, which is too small to read as anything. Below sm
+                    it scrolls instead, so each frame stays legible and the
+                    sequence survives — the scroll lives on this container, not
+                    the page.
+                  */}
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {p.frames.map((f) => (
+                      <div
+                        key={f.src}
+                        className="relative aspect-[4/3] min-w-[92px] flex-1 shrink-0 overflow-hidden rounded-[3px] border border-border-soft bg-surface-2"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={f.src}
+                          alt={f.alt}
+                          loading="lazy"
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="label-sm mt-2.5">
+                    Five frames from one 12s clay pass — 0 credits
+                  </p>
+                </div>
               )}
             </div>
 
