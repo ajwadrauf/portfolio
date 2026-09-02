@@ -19,6 +19,9 @@ import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib
 import { mockImageDataUrl } from "@/lib/mock";
 
 export const dynamic = "force-dynamic";
+
+/** Seedance's own ceiling for a reference clip; nothing longer is accepted. */
+const MAX_CLIP_SECONDS = 30.2;
 export const maxDuration = 60;
 
 /** Hosts fal cannot reach from its own network. */
@@ -88,6 +91,8 @@ export async function POST(req: Request) {
       generateAudio?: boolean;
       /** Pixel tier. On token-billed models this drives most of the cost. */
       resolution?: VideoResolution;
+      /** Measured total duration of the supplied clips, which is billed too. */
+      inputVideoSeconds?: number;
       presetName?: string;
     };
 
@@ -117,7 +122,23 @@ export async function POST(req: Request) {
     const resolution: VideoResolution = allowed.includes(body.resolution!)
       ? body.resolution!
       : allowed[allowed.length - 1];
-    const inputVideoSeconds = (body.referenceVideoUrls?.length ?? 0) * 5;
+    /*
+     * Billed input duration. The client measures each clip from its own
+     * metadata and sends the total; this was previously a flat five seconds
+     * per clip, which under-read a 12s clay pass by more than half and put
+     * the difference on the bill without it ever appearing in the estimate.
+     *
+     * The client's figure is clamped rather than trusted outright — it
+     * decides what gets charged against the session budget, so a bad value
+     * should be capped instead of believed. The fallback keeps the old
+     * nominal figure for a clip whose duration could not be read.
+     */
+    const clipCount = body.referenceVideoUrls?.length ?? 0;
+    const claimed = Number(body.inputVideoSeconds);
+    const inputVideoSeconds =
+      Number.isFinite(claimed) && claimed >= 0
+        ? Math.min(claimed, clipCount * MAX_CLIP_SECONDS)
+        : clipCount * 5;
     const cost = estimateCost(model.id, {
       seconds,
       resolution,

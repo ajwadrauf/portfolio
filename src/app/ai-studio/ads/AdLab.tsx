@@ -348,6 +348,8 @@ export function AdLab({
   const [lane, setLane] = useState<Lane>("recipe");
   /** When the render in flight was started, so the wait can be described. */
   const [renderStartedAt, setRenderStartedAt] = useState<number | null>(null);
+  /** Measured durations of supplied clips, by URL. */
+  const [clipSeconds, setClipSeconds] = useState<Record<string, number>>({});
   const [elapsedMs, setElapsedMs] = useState(0);
   /** What the importer changed on the way in — shown rather than applied quietly. */
   const [importNotes, setImportNotes] = useState<string[]>([]);
@@ -449,9 +451,52 @@ export function AdLab({
     preset.aspect;
   const aspectChanged = aspect !== preset.aspect;
   const frame = frameSize(resolution, aspect);
-  /** Reference clips are billed as input duration too, at ~5s apiece. */
-  const inputVideoSeconds =
-    refs.filter((r) => r.media === "video").length * VIDEO_REF_LIMITS.idealSeconds;
+  /*
+   * Supplied clips are billed by their real duration, so the estimate has to
+   * know it. This used to assume a nominal length per clip, which made the
+   * estimate wrong by however far the actual file differed — a 12s clay pass
+   * counted as 5s, and the shortfall went straight onto the bill without ever
+   * appearing on screen. Durations are measured from the file itself and
+   * cached by URL; the nominal figure survives only as the fallback for a clip
+   * whose metadata has not arrived yet.
+   */
+  /*
+   * Reads each clip's duration off its own metadata. `preload="metadata"`
+   * means only the header is fetched, so this costs a few KB per clip rather
+   * than a download — and a clip whose metadata cannot be read (a CORS-blocked
+   * host, an unusual container) simply keeps the fallback rather than
+   * blocking anything.
+   */
+  useEffect(() => {
+    const missing = refs.filter((r) => r.media === "video" && clipSeconds[r.url] === undefined);
+    if (missing.length === 0) return;
+    let live = true;
+    for (const r of missing) {
+      const el = document.createElement("video");
+      el.preload = "metadata";
+      el.muted = true;
+      el.onloadedmetadata = () => {
+        if (live && Number.isFinite(el.duration) && el.duration > 0) {
+          setClipSeconds((prev) => ({ ...prev, [r.url]: el.duration }));
+        }
+        el.src = "";
+      };
+      el.onerror = () => {
+        el.src = "";
+      };
+      el.src = r.url;
+    }
+    return () => {
+      live = false;
+    };
+  }, [refs, clipSeconds]);
+
+  const inputVideoSeconds = refs
+    .filter((r) => r.media === "video")
+    .reduce(
+      (total, r) => total + (clipSeconds[r.url] ?? VIDEO_REF_LIMITS.idealSeconds),
+      0,
+    );
   const videoCost = estimateCost(modelId, {
     seconds: duration,
     resolution,
@@ -1129,6 +1174,9 @@ export function AdLab({
           aspect,
           durationSeconds: duration,
           resolution,
+          // Measured, not assumed — supplied footage is billed by its real
+          // length and the server prices the spend from this.
+          inputVideoSeconds,
           imageDataUrl: productImage ?? undefined,
           referenceImageDataUrls: supportsRefs
             ? refs.filter((r) => r.media === "image").map((r) => r.url)
@@ -1385,6 +1433,15 @@ export function AdLab({
       })),
     );
     setRefCheck(null);
+    // Seed the known clip length so the estimate is correct on the first
+    // paint rather than after the metadata request lands.
+    setClipSeconds(
+      Object.fromEntries(
+        BLENDER_EXAMPLE.refs
+          .filter((r) => r.seconds)
+          .map((r) => [r.url, r.seconds as number]),
+      ),
+    );
     setImported(true);
     setImportNotes([
       `Loaded “${BLENDER_EXAMPLE.label}” — the prompt, both references, and the length, shape and resolution the successful render used.`,

@@ -9,10 +9,13 @@
  *
  * fal's published formula:
  *   tokens ≈ (width × height × durationSeconds × 24) / 1024
- * with the input clip's duration added to durationSeconds when video
- * references are supplied, and the whole price then multiplied by 0.6.
  *
  * The rate per 1000 tokens is $0.0214 at 480p and 720p, ~$0.0234 at 1080p.
+ *
+ * Supplying video references brings a 0.6 multiplier and bills the input
+ * clip's duration too. How those two combine is not something the published
+ * formula settles, and the reading that produced the closest match to a real
+ * bill is in `seedanceCost` below — along with what it was checked against.
  */
 
 export type VideoResolution = "480p" | "720p" | "1080p";
@@ -134,7 +137,26 @@ export function videoTokens(opts: {
   return (width * height * billedSeconds * FRAME_RATE) / 1024;
 }
 
-/** Estimated dollars for one Seedance render. */
+/**
+ * Estimated dollars for one Seedance render.
+ *
+ * Output and input are priced separately, which the earlier version of this
+ * did not do: it summed the two durations and applied the 0.6 multiplier to
+ * the whole thing. Checked against a real bill, that reads far too low — the
+ * discount applies to what the model generates, not to the footage you hand
+ * it, which is billed at the standard rate.
+ *
+ * Calibration, and its limits. One measured render — 12s output, a 12s clay
+ * clip in, 4:3 at 480p — was billed $3.05. The old model predicted $1.57 (it
+ * also assumed a 5s input clip); summing durations under the multiplier gives
+ * $2.22; dropping the multiplier entirely gives $3.70. Pricing them
+ * separately gives $2.96, which is 3% under and much the closest of the four.
+ *
+ * That is a model fitted to a single observation, so treat it as a good
+ * estimate rather than a derivation. If real bills start diverging, this
+ * function and the note above are the place to correct — and the honest thing
+ * is to update both together rather than quietly nudging a constant.
+ */
 export function seedanceCost(opts: {
   resolution: VideoResolution;
   aspect: string;
@@ -142,21 +164,32 @@ export function seedanceCost(opts: {
   inputVideoSeconds?: number;
   hasVideoInputs?: boolean;
 }): number {
-  const tokens = videoTokens(opts);
-  const gross = (tokens / 1000) * RATE_PER_1K[opts.resolution];
-  return opts.hasVideoInputs ? gross * VIDEO_INPUT_MULTIPLIER : gross;
+  const rate = RATE_PER_1K[opts.resolution];
+  const perSecond = (sec: number) =>
+    (videoTokens({ ...opts, durationSeconds: sec, inputVideoSeconds: 0 }) / 1000) * rate;
+
+  const generated = perSecond(opts.durationSeconds);
+  const supplied = perSecond(opts.inputVideoSeconds ?? 0);
+
+  // The multiplier is a discount on generation, and only applies when there
+  // is video input at all.
+  return opts.hasVideoInputs ? generated * VIDEO_INPUT_MULTIPLIER + supplied : generated;
 }
 
 /**
  * Why feeding a finished take back in is not the cheap way to change it.
  *
- * The 0.6 multiplier looks like a discount until you notice the input clip's
- * duration is added to the billed duration. Re-running an 8-second take as
- * video-to-video bills 16 seconds at 0.6 — which is 1.2x the cost of simply
- * generating it again, for a result that is still a fresh render rather than
- * an edit. There is no cheap "change one thing" mode.
+ * The 0.6 multiplier looks like a discount until you notice the input clip is
+ * billed too, and billed at the full rate. Re-running an 8-second take as
+ * video-to-video costs 8s of generation at 0.6 plus 8s of input at 1.0 —
+ * 1.6x simply generating it again, for a result that is still a fresh render
+ * rather than an edit. There is no cheap "change one thing" mode.
  */
 export function videoToVideoRatio(inputSeconds: number, outputSeconds: number): number {
   if (outputSeconds <= 0) return 1;
-  return ((inputSeconds + outputSeconds) * VIDEO_INPUT_MULTIPLIER) / outputSeconds;
+  // Same split as seedanceCost: the discount is on generation, the supplied
+  // clip is billed in full. Re-running an 8s take against itself is 1.6x a
+  // fresh render, not 1.2x — the point the surrounding copy makes only gets
+  // stronger.
+  return (outputSeconds * VIDEO_INPUT_MULTIPLIER + inputSeconds) / outputSeconds;
 }

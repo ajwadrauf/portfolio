@@ -22,6 +22,8 @@ export type ExampleRef = {
   name: string;
   /** What this file is doing, for the panel that lists them. */
   note: string;
+  /** Known duration of a clip, so the estimate is right before metadata loads. */
+  seconds?: number;
 };
 
 /** The clay control pass. Public, and already fetched successfully by fal. */
@@ -46,6 +48,7 @@ export const BLENDER_EXAMPLE = {
       media: "video",
       role: "motion",
       name: "01_clay_1A.mp4",
+      seconds: 12,
       note: "The clay control pass — 12s of untextured geometry that fixes camera, blocking, timing and occlusion before a credit is spent.",
     },
     {
