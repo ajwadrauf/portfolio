@@ -207,20 +207,16 @@ export async function POST(req: Request) {
     console.error("ad start failed", e);
     let error = e instanceof Error ? e.message : "Ad generation failed to start";
     /*
-     * The generic content-policy advice tells you to check that the provider
-     * can fetch your references. When every still was sent inline as a data
-     * URL there was no fetch to fail, so that advice is not merely unhelpful,
-     * it is wrong — and the one remaining explanation is the pictures
-     * themselves. Say that instead of sending someone to re-check a URL that
-     * was never used.
+     * A content-filter rejection already establishes that the files were read,
+     * because fal reports an unreachable file under a different type entirely.
+     * Inlining adds one more thing that cannot be at fault, so it is worth a
+     * clause rather than a different explanation.
      */
     const inlinedOnly =
       allImageRefs.length > 0 && allImageRefs.every((u) => u.startsWith("data:"));
     if (inlinedOnly && /content filter/i.test(error)) {
-      error =
-        "The generation provider's content filter rejected the reference stills. " +
-        "They were sent inline with the request rather than fetched, and resized, flattened and re-encoded on the way — so a failed download, an alpha channel, the file format, the file size and the dimensions are all ruled out. " +
-        "What is left is the pictures themselves. Stock and other third-party photography is the usual trigger; references you generated yourself are not subject to it.";
+      error +=
+        " These stills were also sent inline rather than fetched, and resized, flattened and re-encoded on the way, so nothing about hosting or file handling is involved either.";
     }
     return NextResponse.json({ error }, { status: 500 });
   }

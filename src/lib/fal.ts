@@ -96,33 +96,62 @@ export function describeFalError(e: unknown): string {
    * offending field. Reading it turns an unsolvable error into a named one.
    */
   if (status === 422) {
-    const detail = (err?.body as { detail?: unknown })?.detail;
     /*
-     * The content filter runs at the partner, not at fal, and returns one
-     * boilerplate sentence for a range of causes — a file it could not fetch
-     * reads identically to a file it looked at and disliked. Taken at face
-     * value it sends you hunting for a face in a photograph of a biscuit, so
-     * say what it does and does not establish.
+     * fal publishes a typed error taxonomy, and `type` is the machine-readable
+     * field — `msg` is explicitly documented as something client code should
+     * not parse. Reading `type` matters here because the types are disjoint:
+     * a file that could not be downloaded is `file_download_error`, wrong
+     * dimensions are `image_too_small`/`image_too_large`, too many references
+     * are `sequence_too_long`, a bad format is `unsupported_image_format`.
+     *
+     * That has a consequence worth stating plainly, because this code used to
+     * assume the opposite: `content_policy_violation` is NOT a catch-all that
+     * a fetch failure hides inside. When it comes back, the files were
+     * downloaded, decoded and looked at, and a safety or IP filter refused
+     * them. Telling someone to re-check their URLs at that point sends them
+     * to fix something that already worked.
+     *
+     * https://docs.fal.ai/errors
      */
-    if (/content_policy_violation|partner_validation_failed/i.test(text)) {
+    const detail = (err?.body as { detail?: unknown })?.detail;
+    const items = Array.isArray(detail)
+      ? (detail as {
+          loc?: unknown[];
+          msg?: string;
+          type?: string;
+          ctx?: Record<string, unknown>;
+        }[])
+      : [];
+
+    const policy = items.find((d) => d.type === "content_policy_violation");
+    if (policy) {
+      const field = Array.isArray(policy.loc)
+        ? policy.loc.filter((x) => x !== "body").join(".")
+        : "";
       return (
-        "The generation provider's content filter rejected the reference files. " +
-        "Its wording (\u201clikenesses of real people\u201d) is boilerplate covering several causes, and a file the provider could not download reports the same way as one it looked at and refused \u2014 so it does not mean a face was found. " +
-        "Run Check references above: that separates \u201ccannot be fetched\u201d and \u201coutside the size, dimension or aspect limits\u201d from a genuine filter hit, which is the only one you cannot fix by re-exporting. " +
-        "If your stills were added by URL, upload them instead \u2014 an uploaded still travels inside the request, so there is no fetch left to fail."
+        `The generation provider's content filter refused ${field === "prompt" ? "the prompt" : `the files in ${field || "the request"}`}. ` +
+        "This is a filter decision, not a technical one: fal reports an unreachable file as file_download_error, a mis-sized one as image_too_small or image_too_large, and a bad format as unsupported_image_format \u2014 so the files were fetched, decoded and looked at. " +
+        "The wording about likenesses is generic; fal's own list for this error also covers imagery judged to infringe third-party intellectual property, which is what branded commercial packaging and product photography tend to trip. " +
+        "Retrying, re-hosting or re-exporting the same picture will not change the answer. Substitute the reference, or verify the boundary with a plain unbranded image."
       );
     }
-    const lines = Array.isArray(detail)
-      ? detail
-          .map((d) => {
-            const item = d as { loc?: unknown[]; msg?: string; type?: string };
-            const where = Array.isArray(item.loc)
-              ? item.loc.filter((x) => x !== "body").join(".")
-              : "";
-            return [where, item.msg ?? item.type].filter(Boolean).join(": ");
-          })
-          .filter(Boolean)
-      : [];
+
+    // Every other typed 422 names both the field and the limit it broke.
+    const lines = items
+      .map((d) => {
+        const where = Array.isArray(d.loc)
+          ? d.loc.filter((x) => x !== "body").join(".")
+          : "";
+        const ctx = d.ctx
+          ? Object.entries(d.ctx)
+              .filter(([k]) => k !== "extra_info")
+              .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+              .join(", ")
+          : "";
+        return [where, d.msg ?? d.type, ctx && `(${ctx})`].filter(Boolean).join(": ");
+      })
+      .filter(Boolean);
+
     return lines.length
       ? `The generation provider rejected the request (422): ${lines.join("; ")}.`
       : `The generation provider rejected the request (422) without saying which field. Raw body: ${JSON.stringify(err?.body ?? null).slice(0, 500)}`;
