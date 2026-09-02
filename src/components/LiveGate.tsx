@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { announceLiveModeChange, LIVE_MODE_EVENT } from "@/lib/useHealth";
+import {
+  announceLiveModeChange,
+  LIVE_GATE_OPEN_EVENT,
+  LIVE_MODE_EVENT,
+} from "@/lib/useHealth";
 
 type Health = {
   gate: "disabled" | "locked" | "unlocked" | "exhausted";
@@ -22,6 +26,7 @@ export function LiveGate() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -47,6 +52,21 @@ export function LiveGate() {
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50);
   }, [open]);
+
+  /*
+   * Somewhere else on the page asked for the passcode field. Scroll it into
+   * view as well as opening it: this control sits in the header and the thing
+   * that prompted for it is usually a screen or two down, so opening alone
+   * would look like nothing happened.
+   */
+  useEffect(() => {
+    const on = () => {
+      setOpen(true);
+      wrapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    window.addEventListener(LIVE_GATE_OPEN_EVENT, on);
+    return () => window.removeEventListener(LIVE_GATE_OPEN_EVENT, on);
+  }, []);
 
   const submit = useCallback(
     async (e: React.FormEvent) => {
@@ -98,7 +118,7 @@ export function LiveGate() {
   }
 
   return (
-    <>
+    <span ref={wrapRef} className="contents">
       {health.gate === "unlocked" ? (
         <button
           onClick={() => void lock()}
@@ -161,7 +181,7 @@ export function LiveGate() {
           </form>
         </div>
       )}
-    </>
+    </span>
   );
 }
 

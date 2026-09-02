@@ -337,8 +337,8 @@ export default function Home() {
             message me on LinkedIn
           </a>{" "}
           or email{" "}
-          <a href="mailto:ajwadrauf@gmail.com" className="font-semibold text-accent hover:underline">
-            ajwadrauf@gmail.com
+          <a href="mailto:hello@ajwadrauf.com" className="font-semibold text-accent hover:underline">
+            hello@ajwadrauf.com
           </a>
           .
         </p>

@@ -150,10 +150,7 @@ const LEARNED = [
   },
 ];
 
-const LINKS = [
-  { label: "LinkedIn", href: "https://www.linkedin.com/in/ajwadrauf" },
-  { label: "GitHub", href: "https://github.com/ajwadrauf" },
-];
+const LINKS = [{ label: "LinkedIn", href: "https://www.linkedin.com/in/ajwadrauf" }];
 
 function StatusDot({ status }: { status: Project["status"] }) {
   const color = status.tone === "live" ? "text-success" : "text-warning";
@@ -379,10 +376,10 @@ export default function Home() {
             <span className="label !tracking-[0.16em]">Contact</span>
             <div className="mt-4 text-2xl tracking-[-0.02em] sm:text-4xl lg:mt-5 lg:text-[44px] lg:tracking-[-0.03em]">
               <a
-                href="mailto:ajwadrauf@gmail.com"
+                href="mailto:hello@ajwadrauf.com"
                 className="border-b border-accent/40 pb-1 transition hover:border-accent"
               >
-                ajwadrauf@gmail.com
+                hello@ajwadrauf.com
               </a>
             </div>
           </div>

@@ -32,6 +32,23 @@ export const announceLiveModeChange = () => {
 };
 
 /**
+ * Asks the gate control to open its passcode field.
+ *
+ * The gate lives at the top of the page and the reason to use it appears at
+ * the bottom, next to a demo render someone wanted to be a real one. Rather
+ * than lifting the gate's open state into every page that has a reason to
+ * prompt for it, the prompt is an event — the same shape as the change
+ * broadcast above, and the gate is still the only thing that owns the field.
+ */
+export const LIVE_GATE_OPEN_EVENT = "live-gate-open";
+
+export const requestLiveUnlock = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(LIVE_GATE_OPEN_EVENT));
+  }
+};
+
+/**
  * Current provider/gate state, kept current across the whole page.
  *
  * Refreshes on mount, whenever live mode changes anywhere, when the tab is

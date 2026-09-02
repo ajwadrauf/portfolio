@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
-import { useHealth } from "@/lib/useHealth";
+import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
   AD_PRESETS,
@@ -100,6 +100,29 @@ type PendingJob = {
   label: string;
   aspect: string;
 };
+
+/**
+ * A pre-addressed request for an access code.
+ *
+ * Encoded once, at module scope: the subject and body are constants, and a
+ * mailto with a raw newline or an unencoded ampersand in it silently loses
+ * everything after the offending character in some mail clients.
+ */
+const ACCESS_REQUEST_MAILTO = `mailto:hello@ajwadrauf.com?subject=${encodeURIComponent(
+  "Access code request — AI Content Studio",
+)}&body=${encodeURIComponent(
+  [
+    "Hi Ajwad,",
+    "",
+    "I was trying the Ad Lab on ajwadrauf.com and would like to run a live generation rather than a demo one. Could you send me an access code?",
+    "",
+    "Name:",
+    "Company:",
+    "What I am hoping to try:",
+    "",
+    "Thanks,",
+  ].join("\n"),
+)}`;
 
 const SPEND_KEY = "studio-session-spend";
 const JOB_KEY = "adlab-pending-job";
@@ -1284,6 +1307,9 @@ export function AdLab({
     }
   }, [productImage, refs]);
 
+  /** There is a passcode gate on this deployment, so a code can be entered. */
+  const gateable = health?.gate === "locked" || health?.gate === "exhausted";
+
   /** Something was flagged above the spend button, whichever lane raised it. */
   const flagged = blenderLane ? slotGaps.length > 0 : unmet.length > 0;
 
@@ -2122,6 +2148,151 @@ export function AdLab({
               </details>
             )}
 
+            {/*
+              The add controls, at the top of the step and in their own frame.
+              They used to sit below the starter-clip gallery, which put the
+              main action of the step a scroll away from its heading and left
+              anything you added rendering off-screen above you — so an upload
+              looked like it had done nothing. Controls first, then what you
+              have attached, then the gallery you can borrow from.
+            */}
+            <div className="mt-4 rounded-[6px] border border-accent/40 bg-accent/[0.04] p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="label !text-accent">Add your references</span>
+                <span className="text-[11px] text-muted">
+                  Upload a file, or paste a direct link to one
+                </span>
+              </div>
+              <button
+                className="btn-primary"
+                onClick={() => refInput.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? "Uploading…" : "Add reference (image, clip or track)"}
+              </button>
+              <input
+                ref={refInput}
+                type="file"
+                accept={REF_ACCEPT}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void addReference(f);
+                  e.target.value = "";
+                }}
+              />
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  className="input min-w-0 flex-1 basis-64 font-mono text-xs"
+                  placeholder="…or paste a direct URL — https://example.com/camera-move.mp4"
+                  value={refUrl}
+                  onChange={(e) => setRefUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addReferenceUrl();
+                    }
+                  }}
+                />
+                <button
+                  className="btn-secondary !px-3 !py-1.5 text-xs"
+                  onClick={addReferenceUrl}
+                  disabled={!refUrl.trim()}
+                >
+                  Add from URL
+                </button>
+              </div>
+
+              {/* Reference failures belong here, next to the button that caused
+                  them — not in the page banner far above. */}
+              {refError && (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-[6px] border border-danger/50 bg-danger/10 p-3 text-sm leading-relaxed text-danger"
+                >
+                  {refError}
+                </p>
+              )}
+
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="chip">
+                  Stills · JPG, PNG, WebP · up to {REF_CEILINGS.image}
+                </span>
+                <span
+                  className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
+                >
+                  Clips · {VIDEO_REF_LIMITS.formats} · ≤
+                  {health?.blob ? VIDEO_REF_LIMITS.maxMBDirect : VIDEO_REF_LIMITS.maxMB}MB ·{" "}
+                  ~{VIDEO_REF_LIMITS.idealSeconds}s
+                </span>
+                <span
+                  className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
+                >
+                  Tracks · {AUDIO_REF_LIMITS.formats} · ≤
+                  {health?.blob ? AUDIO_REF_LIMITS.maxMBDirect : AUDIO_REF_LIMITS.maxMB}MB
+                </span>
+              </div>
+
+              {!clipsUploadable && (
+                <p className="mt-2 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                  <span className="font-bold">Uploads need live mode.</span>{" "}
+                  Images are processed in your browser, but clips and tracks are
+                  uploaded to the generation provider. Use the{" "}
+                  <span className="font-semibold">Demo mode · Unlock</span> button
+                  at the top of this page — or paste a URL in the field above,
+                  which skips the upload entirely.
+                </p>
+              )}
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                  Uploading and pasting a URL are different paths — how, and which to use
+                </summary>
+                <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+                  <span className="font-semibold text-foreground">
+                    Uploading and pasting a URL are different paths.
+                  </span>{" "}
+                  {health?.blob
+                    ? "An upload goes from your browser straight to this site's Blob store and comes back as a permanent URL — it never passes through a server function, which is what lifts the size ceiling. "
+                    : "An upload goes through fal's storage service, which is permissioned separately from generation — so a key that renders video fine can still be refused a file upload. "}
+                  A URL is handed
+                  straight to the model, so it needs no upload, no live mode and no
+                  storage access. It has to be a direct link to the file (ending in
+                  .mp4, .mov, .mp3…) that fal can reach without signing in.
+                </p>
+                {/*
+                  Worth its own paragraph because the two paths fail differently
+                  for stills, and the difference is invisible until a paid render
+                  is rejected. A URL-added still is one more thing the provider has
+                  to reach across the internet; an uploaded one is carried inside
+                  the request and cannot fail that way.
+                */}
+                <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+                  <span className="font-semibold text-foreground">
+                    For stills specifically, uploading is the more reliable path.
+                  </span>{" "}
+                  An uploaded image is resized and carried inside the request
+                  itself, so nothing has to fetch it. A pasted image URL is fetched
+                  by the generation provider at render time — and when that fetch
+                  fails, the provider does not report a missing file. It reports a
+                  content-policy violation about the imagery, which sends you
+                  looking for a problem in a picture that was never opened. Use{" "}
+                  <span className="font-semibold text-foreground">Check references</span>{" "}
+                  above before spending if your stills came from a URL.
+                </p>
+                <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
+                  Add more angles of the product to tighten the identity lock, a
+                  still to borrow a palette from, a <strong>short clip</strong>{" "}
+                  whose camera move and cut rhythm you want imitated, or a{" "}
+                  <strong>track</strong> whose beats the action should land on. Each
+                  gets a job in the prompt — set it in the dropdown.{" "}
+                  <strong>Trim clips before uploading</strong> — these models read
+                  the camera move, not the content, so anything past a few seconds
+                  costs upload time and buys nothing.
+                </p>
+              </details>
+            </div>
+
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               {productImage && (
                 <div className="flex items-center gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-2">
@@ -2258,7 +2429,7 @@ export function AdLab({
             <div className="mt-5 border-t border-border-soft pt-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="label">Starter motion clips</span>
-                <span className="label-sm">or upload your own below</span>
+                <span className="label-sm">or add your own above</span>
               </div>
               <p className="mt-1.5 max-w-3xl text-xs leading-relaxed text-muted">
                 Abstract on purpose. The model reads a clip&apos;s camera move,
@@ -2335,129 +2506,6 @@ export function AdLab({
               )}
             </div>
 
-            <button
-              className="btn-secondary mt-4 !px-3 !py-1.5 text-xs"
-              onClick={() => refInput.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? "Uploading…" : "Add reference (image, clip or track)"}
-            </button>
-            <input
-              ref={refInput}
-              type="file"
-              accept={REF_ACCEPT}
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void addReference(f);
-                e.target.value = "";
-              }}
-            />
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <input
-                className="input min-w-0 flex-1 basis-64 font-mono text-xs"
-                placeholder="…or paste a direct URL — https://example.com/camera-move.mp4"
-                value={refUrl}
-                onChange={(e) => setRefUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addReferenceUrl();
-                  }
-                }}
-              />
-              <button
-                className="btn-secondary !px-3 !py-1.5 text-xs"
-                onClick={addReferenceUrl}
-                disabled={!refUrl.trim()}
-              >
-                Add from URL
-              </button>
-            </div>
-
-            {/* Reference failures belong here, next to the button that caused
-                them — not in the page banner far above. */}
-            {refError && (
-              <p
-                role="alert"
-                className="mt-3 rounded-[6px] border border-danger/50 bg-danger/10 p-3 text-sm leading-relaxed text-danger"
-              >
-                {refError}
-              </p>
-            )}
-
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <span className="chip">
-                Stills · JPG, PNG, WebP · up to {REF_CEILINGS.image}
-              </span>
-              <span
-                className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
-              >
-                Clips · {VIDEO_REF_LIMITS.formats} · ≤
-                {health?.blob ? VIDEO_REF_LIMITS.maxMBDirect : VIDEO_REF_LIMITS.maxMB}MB ·{" "}
-                ~{VIDEO_REF_LIMITS.idealSeconds}s
-              </span>
-              <span
-                className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
-              >
-                Tracks · {AUDIO_REF_LIMITS.formats} · ≤
-                {health?.blob ? AUDIO_REF_LIMITS.maxMBDirect : AUDIO_REF_LIMITS.maxMB}MB
-              </span>
-            </div>
-
-            {!clipsUploadable && (
-              <p className="mt-2 max-w-3xl rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
-                <span className="font-bold">Uploads need live mode.</span>{" "}
-                Images are processed in your browser, but clips and tracks are
-                uploaded to the generation provider. Use the{" "}
-                <span className="font-semibold">Demo mode · Unlock</span> button
-                at the top of this page — or paste a URL above, which skips the
-                upload entirely.
-              </p>
-            )}
-            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
-              <span className="font-semibold text-foreground">
-                Uploading and pasting a URL are different paths.
-              </span>{" "}
-              {health?.blob
-                ? "An upload goes from your browser straight to this site's Blob store and comes back as a permanent URL — it never passes through a server function, which is what lifts the size ceiling. "
-                : "An upload goes through fal's storage service, which is permissioned separately from generation — so a key that renders video fine can still be refused a file upload. "}
-              A URL is handed
-              straight to the model, so it needs no upload, no live mode and no
-              storage access. It has to be a direct link to the file (ending in
-              .mp4, .mov, .mp3…) that fal can reach without signing in.
-            </p>
-            {/*
-              Worth its own paragraph because the two paths fail differently
-              for stills, and the difference is invisible until a paid render
-              is rejected. A URL-added still is one more thing the provider has
-              to reach across the internet; an uploaded one is carried inside
-              the request and cannot fail that way.
-            */}
-            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
-              <span className="font-semibold text-foreground">
-                For stills specifically, uploading is the more reliable path.
-              </span>{" "}
-              An uploaded image is resized and carried inside the request
-              itself, so nothing has to fetch it. A pasted image URL is fetched
-              by the generation provider at render time — and when that fetch
-              fails, the provider does not report a missing file. It reports a
-              content-policy violation about the imagery, which sends you
-              looking for a problem in a picture that was never opened. Use{" "}
-              <span className="font-semibold text-foreground">Check references</span>{" "}
-              above before spending if your stills came from a URL.
-            </p>
-            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
-              Add more angles of the product to tighten the identity lock, a
-              still to borrow a palette from, a <strong>short clip</strong>{" "}
-              whose camera move and cut rhythm you want imitated, or a{" "}
-              <strong>track</strong> whose beats the action should land on. Each
-              gets a job in the prompt — set it in the dropdown.{" "}
-              <strong>Trim clips before uploading</strong> — these models read
-              the camera move, not the content, so anything past a few seconds
-              costs upload time and buys nothing.
-            </p>
           </Step>
         )}
 
@@ -3188,6 +3236,43 @@ export function AdLab({
                 )}
               </div>
             </div>
+
+            {/*
+              The moment someone learns this was a mock is the moment they want
+              a real one, and until now the only route to that was a pill in
+              the header they had scrolled a long way past. Both ways forward
+              belong here: unlock if you have a code, ask for one if you do not.
+            */}
+            {phase === "mock" && (
+              <div className="border-t border-border-soft bg-warning/[0.06] p-4">
+                <p className="label !text-warning">This was a demo render</p>
+                <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-foreground">
+                  The whole pipeline ran — prompt, references, cost estimate —
+                  but the video above is a mock and nothing was charged. To run
+                  this same brief against the live models, you need an access
+                  code.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {/*
+                    Only offered when there is a gate to open. On a deployment
+                    with no passcode configured the control does not render at
+                    all, and a button that silently does nothing is worse than
+                    one that was never there.
+                  */}
+                  {gateable && (
+                    <button className="btn-primary" onClick={requestLiveUnlock}>
+                      Enter your code →
+                    </button>
+                  )}
+                  <a
+                    className={gateable ? "btn-secondary" : "btn-primary"}
+                    href={ACCESS_REQUEST_MAILTO}
+                  >
+                    {gateable ? "No code? Request one from Ajwad" : "Request access from Ajwad"}
+                  </a>
+                </div>
+              </div>
+            )}
             {videoUrl && (
               <div className="p-4">
                 {musicUrl && scoringSeparately && (
