@@ -33,6 +33,17 @@ type Project = {
    * be worse than a card that does not claim one.
    */
   frames?: { src: string; alt: string }[];
+  /** What the strip shows, since a row of stills does not explain itself. */
+  framesNote?: string;
+  /**
+   * Two or three named capabilities worth pulling out of the prose.
+   *
+   * Some products are not explained by what they generate. Persopot's
+   * differentiator is what happens after the render, and a reader skimming
+   * three paragraphs of stack detail will miss it — so the features that
+   * carry the argument get their own row rather than a parenthetical.
+   */
+  features?: { name: string; what: string }[];
   body: string[];
   tags: string[];
 };
@@ -65,6 +76,7 @@ const PROJECTS: Project[] = [
       { src: "/the-wall/f204.jpg", alt: "Clay control pass, product settling" },
       { src: "/the-wall/f288.jpg", alt: "Clay control pass, final frame" },
     ],
+    framesNote: "Five frames from one 12s clay pass — 0 credits",
     tags: ["Generative AI", "Video", "Production systems", "Next.js"],
   },
   {
@@ -77,11 +89,28 @@ const PROJECTS: Project[] = [
     cta: "persopot.com",
     arrow: "↗",
     note: "Pricing and static try-on demo open — generation needs an account",
-    body: [
-      "Two AI products on one trained identity: studio headshots ($29–$79 one-time) and an outfit try-on subscription that composites any Pinterest pin or retail product image onto the user's trained face ($5/mo, 30 credits).",
-      "Solo build. Two parallel ML pipelines — FLUX.1 for headshots, FLUX.2 for outfits on fal.ai — share a Gemini 2.5-pro validation gate that catches identity drift before users see it. Next.js, Supabase, Stripe, Cloudflare R2 and Trigger.dev: about 95 API routes and 16 migrations across payments, generation and social features (collaborative outfit boards, “ask a bestie” reviews, wishlist with retailer affiliate).",
+    frames: [
+      { src: "/persopot/garment.png", alt: "Source garment — a forest green crew sweater on a hanger" },
+      { src: "/persopot/tryon-1.png", alt: "The same sweater rendered on a trained identity" },
+      { src: "/persopot/tryon-2.png", alt: "The same sweater rendered on a second trained identity" },
     ],
-    tags: ["Consumer AI", "Full-stack", "Production ML"],
+    framesNote: "One garment reference, two trained identities — from a pin in about 30 seconds",
+    body: [
+      "Two AI products on one trained identity: studio headshots ($29–$79 one-time) and an outfit try-on subscription that composites any Pinterest pin, retailer page or screenshot onto the user’s trained face ($5/mo, 30 credits).",
+      "Generating the image is the easy half. What makes it a product is what happens next, and the whole thing is built around a plain fact about buying clothes: almost nobody decides alone. Five dresses before a wedding, a bachelorette party coordinating outfits in one shared pot, a second read from your partner before you walk out the door — the render is the beginning of that conversation, not the end of it.",
+      "Solo build. Two parallel ML pipelines — FLUX.1 for headshots, FLUX.2 for outfits on fal.ai — share a Gemini 2.5-pro validation gate that catches identity drift before a user sees it. Next.js, Supabase, Stripe, Cloudflare R2 and Trigger.dev: about 95 API routes and 16 migrations across payments, generation and the social layer.",
+    ],
+    features: [
+      {
+        name: "Pots",
+        what: "Shared collections. Group the looks you are deciding between, keep them in one place, and open them to the people deciding with you.",
+      },
+      {
+        name: "Ask a bestie",
+        what: "Puts an outfit in front of the person whose opinion was going to settle it anyway — before the purchase, not after the delivery.",
+      },
+    ],
+    tags: ["Consumer AI", "Social product", "Full-stack", "Production ML"],
   },
   {
     n: "03",
@@ -196,6 +225,11 @@ const resolve = (src: string | undefined) =>
  * or a committed file — in that order. An empty showcase removes the section
  * rather than rendering broken frames at the top of the page.
  */
+const projects: Project[] = PROJECTS.map((p) => ({
+  ...p,
+  frames: p.frames?.filter((f) => onDisk(f.src)),
+})).map((p) => ({ ...p, frames: p.frames?.length ? p.frames : undefined }));
+
 const showcase = SHOWCASE.map((i) => {
   const file = resolve(process.env[showcaseEnvKey(i.id)]?.trim() || i.file);
   const poster = resolve(process.env[showcaseEnvKey(i.id, true)]?.trim() || i.poster);
@@ -206,7 +240,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Work menu is built from the projects below, so it cannot go stale. */}
-      <HomeNav work={PROJECTS.map((p) => ({ name: p.name, href: p.href }))} />
+      <HomeNav work={projects.map((p) => ({ name: p.name, href: p.href }))} />
 
       {/* ---------------- Hero ---------------- */}
       <section className="mx-auto grid max-w-[1440px] items-end gap-10 px-6 pb-16 pt-12 sm:px-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-[88px] lg:px-24 lg:pb-28 lg:pt-24">
@@ -274,7 +308,7 @@ export default function Home() {
       </div>
 
       <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-6 pb-20 sm:px-12 lg:gap-7 lg:px-24 lg:pb-26">
-        {PROJECTS.map((p) => (
+        {projects.map((p) => (
           <article
             key={p.n}
             className="card grid gap-8 p-7 sm:p-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:px-14 lg:py-13"
@@ -348,9 +382,7 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                  <p className="label-sm mt-2.5">
-                    Five frames from one 12s clay pass — 0 credits
-                  </p>
+                  {p.framesNote && <p className="label-sm mt-2.5">{p.framesNote}</p>}
                 </div>
               )}
             </div>
@@ -364,6 +396,19 @@ export default function Home() {
                   {para}
                 </p>
               ))}
+              {p.features && (
+                <dl className="mt-7 grid gap-4 border-t border-border-soft pt-5 sm:grid-cols-2">
+                  {p.features.map((f) => (
+                    <div key={f.name}>
+                      <dt className="text-sm font-semibold text-accent">{f.name}</dt>
+                      <dd className="mt-1 ml-0 text-[13px] leading-[1.6] text-muted">
+                        {f.what}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+
               <div className="label-sm mt-7 flex flex-wrap items-center gap-2 border-t border-border-soft pt-5">
                 {p.tags.map((t, i) => (
                   <span key={t} className="flex items-center gap-2">
