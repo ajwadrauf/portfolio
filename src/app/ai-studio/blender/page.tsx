@@ -369,10 +369,20 @@ export default function BlenderPage() {
       <section id="builder" className="scroll-mt-28 py-12">
         <SectionHead
           n="06"
-          title="Write the prompt that goes with the clay"
-          lede="The clay carries structure; the prompt has to say what each upload is for and what must not be inherited from it. Fill in the shot and it assembles the four-layer prompt — including the exclusion block, which is the part people skip and then wonder why the result is grey plastic people in an empty void."
+          title="Write the brief that builds the clay"
+          lede="This is the brief you hand to whatever is driving Blender — scene, camera, ID colours, the beat sheet as keyframes, and how to animate it. It also names what you are not simulating, because a placeholder the video prompt does not know about is what produces a flat object skating across a frozen surface. The Seedance prompt that consumes the finished clip is built from the same shot on the Prompt builder."
         />
-        <BlenderBriefBuilder />
+        <BlenderBriefBuilder mode="build" />
+
+        <p className="mt-8 max-w-3xl text-sm leading-relaxed text-muted">
+          <span className="font-semibold text-foreground">Then write the prompt.</span>{" "}
+          The clip this brief produces becomes{" "}
+          <code className="font-mono text-xs">[Video1]</code> in a Seedance
+          prompt — built from the same shot, so the two cannot drift apart.{" "}
+          <Link href="/ai-studio/prompts" className="font-semibold text-accent hover:underline">
+            Open the prompt builder →
+          </Link>
+        </p>
       </section>
 
       {/* ---------- CTA ---------- */}

@@ -6,10 +6,23 @@ import {
   EMPTY_BRIEF,
   EXAMPLE_BRIEF,
   briefIssues,
+  composeBlenderBuildBrief,
   composeBlenderPrompt,
   uploadPlan,
   type BlenderBrief,
 } from "@/lib/blender";
+
+/**
+ * Which artifact this instance writes.
+ *
+ * One shot description, two readers. `build` goes to whatever is driving
+ * Blender and says what to construct and how to animate it; `seedance` goes to
+ * the video model and says what the finished frame contains. They are
+ * generated from the same brief because a blockout and the prompt that
+ * consumes it have to agree on duration, beats and ID colours, and two
+ * documents kept in agreement by hand do not stay in agreement.
+ */
+export type BuilderMode = "build" | "seedance";
 
 const ASPECTS = ["1:1", "16:9", "9:16", "4:5", "21:9"];
 
@@ -44,15 +57,19 @@ function Field({
  * that overruns the shot, two subjects sharing an ID colour, a mapped subject
  * with no look reference to hold it steady between takes.
  */
-export function BlenderBriefBuilder() {
+export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode }) {
   const router = useRouter();
+  const build = mode === "build";
   const [b, setB] = useState<BlenderBrief>(EMPTY_BRIEF);
   const [copied, setCopied] = useState(false);
 
   const set = <K extends keyof BlenderBrief>(k: K, v: BlenderBrief[K]) =>
     setB((prev) => ({ ...prev, [k]: v }));
 
-  const prompt = useMemo(() => composeBlenderPrompt(b), [b]);
+  const prompt = useMemo(
+    () => (build ? composeBlenderBuildBrief(b) : composeBlenderPrompt(b)),
+    [b, build],
+  );
   const plan = useMemo(() => uploadPlan(b), [b]);
   const issues = useMemo(() => briefIssues(b), [b]);
 
@@ -72,7 +89,9 @@ export function BlenderBriefBuilder() {
    * retyped — the lab reads .txt and .md.
    */
   const download = () => {
-    const name = `seedance-${clean(b.shotId) || "shot"}.txt`;
+    const name = build
+      ? `blender-brief-${clean(b.shotId) || "shot"}.md`
+      : `seedance-${clean(b.shotId) || "shot"}.txt`;
     const url = URL.createObjectURL(new Blob([prompt], { type: "text/plain" }));
     const a = document.createElement("a");
     a.href = url;
@@ -380,29 +399,43 @@ export function BlenderBriefBuilder() {
       {/* ---------- the output ---------- */}
       <div className="min-w-0 lg:sticky lg:top-28 lg:self-start">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="label">The prompt</span>
+          <span className="label">{build ? "The build brief" : "The prompt"}</span>
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => void copy()}>
               {copied ? "Copied" : "Copy"}
             </button>
             <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={download}>
-              Save .txt
+              {build ? "Save .md" : "Save .txt"}
             </button>
-            <button className="btn-primary !px-3 !py-1.5 text-xs" onClick={openInLab}>
-              Open in Ad Lab →
-            </button>
+            {!build && (
+              <button className="btn-primary !px-3 !py-1.5 text-xs" onClick={openInLab}>
+                Open in Ad Lab →
+              </button>
+            )}
           </div>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          The lab opens in its Blender lane: no concept, no recipe, just the
-          references and the render. It rewrites <code className="font-mono">@Image 1</code>{" "}
-          to <code className="font-mono">[Image1]</code> on the way in, which is
-          the form the API resolves.
+          {build ? (
+            <>
+              Hand this to whatever is driving Blender — Claude Code, Cowork, an
+              MCP session. It says what to build, how to animate it, and what to
+              declare as a placeholder. Pair it with the guide below, which it
+              cites by section.
+            </>
+          ) : (
+            <>
+              The lab opens in its Blender lane: no concept, no recipe, just the
+              references and the render. It rewrites{" "}
+              <code className="font-mono">@Image 1</code> to{" "}
+              <code className="font-mono">[Image1]</code> on the way in, which is
+              the form the API resolves.
+            </>
+          )}
         </p>
         <textarea
           readOnly
           value={prompt}
-          aria-label="Assembled Seedance prompt"
+          aria-label={build ? "Assembled Blender build brief" : "Assembled Seedance prompt"}
           className="input mt-3 min-h-[420px] whitespace-pre font-mono text-[11px] leading-[1.7]"
         />
 
@@ -411,7 +444,7 @@ export function BlenderBriefBuilder() {
           the files go in this order, and a colour you can see beats a colour
           you have to remember.
         */}
-        {plan.length > 1 && (
+        {!build && plan.length > 1 && (
           <div className="mt-4 rounded-[6px] border border-border-soft bg-surface p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="label !text-accent">Upload in this order</span>

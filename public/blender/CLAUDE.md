@@ -384,7 +384,117 @@ object and camera. It catches retiming mistakes instantly.
 
 ---
 
-## 7. Gotchas that produce silently wrong output
+## 7. Animating the pass — and being honest about what you did not simulate
+
+The render settings above decide how the clay *looks*. This section decides how
+it *moves*, and it is the part that was missing when the first shots came back
+wrong. A pass can be perfectly lit, correctly scaled and shot on a real camera,
+and still produce a bad generation because the motion in it was a stand-in that
+the prompt then described as gospel.
+
+### The rule that governs everything here
+
+**The clay pass is authoritative about the camera and provisional about
+everything else — and the prompt has to say which is which.**
+
+Camera path, shot-size progression, beat timing, occlusion order and light
+direction are expensive to fix downstream, so settle them in 3D. Granular
+dynamics, cloth, fluid and secondary motion are miserable to simulate and are
+things the video model is already good at. Control is a dial, not a switch.
+
+What goes wrong is not choosing one or the other. It is animating a placeholder
+and then writing a prompt that says *inherit the subject trajectories*. The
+model obeys, faithfully, and you get a flat disc skating across a frozen
+surface at a cost of several dollars a take.
+
+### Subjects must be solids, not stand-ins
+
+Every hero object gets real thickness and a real profile, even in clay:
+
+- Give it depth. A cookie is a domed cylinder with a visible rim, not a plane
+  with a circle on it. A flat proxy reads as a sprite in the generation because
+  it *was* a sprite in the blockout.
+- Rotate it in three axes while it travels. A body that only rotates around Z
+  reads as a cutout being dragged.
+- Ease every move in and out. Constant-velocity translation is the single
+  clearest tell of unedited keyframes; the model copies the easing curve it is
+  shown.
+- Keep the object's contact point consistent with its geometry. If it is
+  half-buried, bury it — do not float it a few millimetres above the surface
+  and rely on the camera angle to hide the gap.
+
+### Granular beds: simulate locally, or declare the placeholder
+
+A bed of loose material — chips, beans, sand, snow, pellets — is where most of
+the realism lives and most of the bake time goes. Three viable strategies:
+
+1. **Full rigid-body sim.** Correct, and usually unnecessary. Baking thousands
+   of instanced bodies is slow and painful to art-direct.
+2. **Local sim.** Simulate a few hundred bodies in the contact region only and
+   leave the rest as static instanced geometry. This is the sweet spot: the
+   displacement reads, the bake finishes, and the camera never sees the edge of
+   the simulated region.
+3. **Static bed, declared as a placeholder.** Perfectly legitimate — as long as
+   the prompt says so. This is the cheapest option and it works, *provided*
+   you take the second half of the deal.
+
+The second half of the deal is not optional. If you did not simulate it, the
+Seedance prompt must contain the physics contract in §11 and must not ask the
+model to inherit subject trajectories.
+
+### If you do simulate: what a moving body actually does to a bed
+
+Worth knowing even when you are leaving it to the model, because it is what you
+are describing to it:
+
+- **On impact:** material displaced outward in a low ring; individual pieces
+  rolling and knocking rather than sliding as a sheet; a few flicked up to
+  bounce once; the rim of the depression cascading inward and settling a beat
+  after the object has stopped.
+- **While travelling:** a bow wave building and spilling at the leading edge;
+  material shearing outward into low banks along both flanks; a furrow opening
+  behind, made of individual pieces catching light — never a smooth dark void;
+  the furrow's walls slumping inward and partly refilling it a beat behind,
+  because loose material cannot hold a steep face.
+- **While rising out:** the surface doming first, then parting; material
+  sheeting off continuously and catching in every recess; a collar avalanching
+  inward against the base as the bed slumps to fill the space; the object
+  finishing *seated* in the bed with an uneven bank against it, not standing on
+  a level waterline and not hovering above one.
+
+### Timing and the beat sheet
+
+- Author beats as real keyframe ranges on the timeline, not as a description
+  you hope the render matches. The Seedance prompt's timeline and the blockout's
+  timeline have to agree to the frame, because the prompt tells the model to
+  match the clip's duration and route.
+- One state change per beat, with a visible end state. Three simultaneous
+  actions in one range produce omissions, not density.
+- Let a settle have follow-through past its beat boundary. Motion that stops
+  dead on a round number reads as keyframed.
+- 24 fps, and check the scene frame rate before you keyframe anything —
+  authoring at 30 and exporting at 24 silently retimes every beat.
+
+### Motion blur: off in the clay, on in the render
+
+Render the clay pass **sharp**. Motion blur in the control pass smears the very
+geometry the model is meant to read for trajectory and occlusion. Ask for
+natural blur in the Seedance prompt instead, where it belongs.
+
+### Before you export, watch it once
+
+Play the blockout back at speed and ask three questions:
+
+1. Does anything move at constant velocity? Fix the easing.
+2. Does anything slide across a surface without disturbing it? Either simulate
+   it locally or write it into the prompt as a placeholder to override.
+3. Does anything end the shot floating, intersecting, or resting on a
+   suspiciously level line? Seat it properly — the generation will amplify it.
+
+A pass that fails any of these is not broken. It just means the prompt now has
+work to do, and §11 is where that work is written down.
+
+## 8. Gotchas that produce silently wrong output
 
 Most are silent: the render succeeds and the generation just comes back wrong.
 
@@ -530,7 +640,7 @@ result = {"fonts": glob.glob("/System/Library/Fonts/**/*.tt*", recursive=True)}
 
 ---
 
-## 8. Phase 4 — verify visually, always
+## 9. Phase 4 — verify visually, always
 
 You cannot judge a render you have not looked at.
 
@@ -566,7 +676,7 @@ have spent credits.
 
 ---
 
-## 9. Phase 5 — the export package
+## 10. Phase 5 — the export package
 
 One self-contained folder per shot. Name files so upload order matches the
 `@Video 1` / `@Image 1` indices the prompt refers to, because most surfaces
@@ -639,7 +749,7 @@ large payloads. Render to a file path and read the file.
 
 ---
 
-## 10. Writing the Seedance prompt from the scene
+## 11. Writing the Seedance prompt from the scene
 
 The script already knows frame ranges, lens, subject list and ID colours. Have
 it emit `prompt.txt` so the prompt and the render cannot drift apart.
@@ -663,9 +773,15 @@ people standing in an empty void.
 ```
 Do not inherit primitive geometry, flat grey materials, placeholder shapes,
 axes, guide lines, path curves, camera frustums, or the empty set from
-@Video 1. Use it only for camera movement, blocking, motion paths, timing,
-occlusion order, and light direction.
+@Video 1. Use it only for camera movement, staging, timing, occlusion order,
+and light direction.
 ```
+
+Note what is deliberately absent from that list: motion paths. An earlier
+version of this guide licensed inheriting them, which is correct only when the
+blockout's motion was genuinely simulated. When it was a placeholder — which is
+the common case, see §7 — it hands the model a sprite and asks it to be
+faithful. Pair the block above with the physics contract below.
 
 ### Template
 
@@ -675,9 +791,14 @@ MATERIALS: @Video 1 clay blockout · @Image 1 product · @Image 2 environment
 SETTINGS: Match @Video 1 duration and camera route · 1:1 · 720p
 
 [Reference roles]
-@Video 1 is a clay blockout. Inherit only camera movement, shot-size
-transitions, subject trajectories, blocking, timing, occlusion order, and the
-direction of the light.
+@Video 1 is a clay blockout. It is a camera and staging reference, not a
+physics reference. Inherit exactly: the camera's path, speed and shot-size
+progression; the duration and order of the beats; which object occludes which;
+the direction of the key light; and where each element sits in the final frame.
+Do not inherit its physics — its subject motion is a placeholder standing in
+for dynamics that were never simulated. Keep only the start point, end point
+and duration of each move, and re-solve everything between them as real
+physical motion.
 The orange box becomes the product defined by @Image 1.
 The grey room becomes the environment defined by @Image 2.
 @Image 1 defines exact package shape, proportions, and finish.
@@ -691,6 +812,27 @@ One sentence. Subject, setting, event, style, governing camera idea.
 4-9s:  <continue from that state, one more change>
 9-14s: <resolution, and what holds on the final frame>
 
+[Physics and secondary motion]
+Every solid subject has real thickness and a visible edge — never a flat disc,
+never a cutout, never a sprite. It rotates in all three axes while travelling,
+with easing rather than constant speed.
+<Loose material> is a granular material, not a surface texture: thousands of
+small loose bodies that roll and knock into each other individually.
+On contact, material is displaced outward in a low ring, a few pieces flicked
+up to bounce once, and the rim of the depression cascades inward and keeps
+settling a beat after the object has stopped.
+Travelling through it displaces material continuously: a bow wave building and
+spilling at the leading edge, banks shearing outward along both flanks, and a
+furrow opening behind made of individual pieces catching light — never a smooth
+dark void — whose walls slump inward and partly refill it a beat behind.
+Rising out of it happens in stages: the surface domes, then parts; material
+sheets off continuously and catches in every recess; a collar avalanches inward
+against the base. Anything emerging finishes seated in the material with an
+uneven bank against it, never standing on a level waterline and never floating
+above one.
+Everything eases in and out. Natural motion blur at a 180-degree shutter.
+Nothing moves through the material without the material reacting to it.
+
 [Global]
 Exactly one product and one hand throughout. Continuous lighting. No cuts other
 than those in @Video 1. Photoreal, shot on 35mm, shallow but not extreme depth
@@ -700,7 +842,34 @@ of field.
 No text, no captions, no subtitles, no on-screen type, no logos, no watermarks,
 no background music. Do not inherit primitive geometry, flat grey materials,
 placeholder shapes, axes, guide lines, or the empty set from @Video 1.
+Do not reproduce the blockout's flat, sliding, sprite-like subject motion or its
+frozen bed — those are placeholders, not direction. Nothing slides across the
+material without sinking into it and moving it. No smooth dark voids standing
+in for a disturbed area. Nothing hovers or hangs in clean air above the
+material, and no level waterline separates an object from what it stands in.
 ```
+
+### The physics contract — required whenever you did not simulate
+
+If §7 left anything as a placeholder — a static bed, a proxy dragged along a
+path, an object with no thickness — the prompt has to say so and supply the
+dynamics instead. Two failures make this non-negotiable, and both cost real
+money to discover:
+
+- Asking the model to inherit *subject trajectories* from a blockout whose
+  subject motion was never simulated. It obeys. You get a flat object skating
+  across a frozen surface, and it looks exactly like a model failure rather
+  than a prompt failure.
+- Describing only what happens at the moment of contact. Displacement is
+  continuous — an object travelling through a bed leaves a wake, and one rising
+  out of it moves material the whole way up. A prompt that covers only the
+  impact produces an object that lands convincingly and then slides like a
+  decal.
+
+Name the failure mode as well as the goal. In practice "never a flat disc,
+never a cutout, never a sprite" does more work than any amount of describing
+what good looks like, because it tells the model which reading of the blockout
+to reject.
 
 ### Timing conventions
 
@@ -734,7 +903,7 @@ approximation of a registered mark.
 
 ---
 
-## 11. Review loop — route each failure to the right layer
+## 12. Review loop — route each failure to the right layer
 
 The most expensive mistake is fixing a Blender problem with prompt edits, or a
 prompt problem with re-renders. Diagnose the layer first.
@@ -760,7 +929,7 @@ tells you nothing about which edit worked.
 
 ---
 
-## 12. Script architecture
+## 13. Script architecture
 
 ```python
 """Project, concept, shot map, ID colour map, proxy notes."""
@@ -818,7 +987,7 @@ Rules:
 
 ---
 
-## 13. Project setup
+## 14. Project setup
 
 Claude Code is the right surface: Blender, the exported files, ffmpeg and git
 all live on the same machine, so a script revision is a file edit and a render
@@ -848,7 +1017,7 @@ prompt.
 
 ---
 
-## 14. Model settings
+## 15. Model settings
 
 **Strongest available model (Opus tier) for:**
 
@@ -877,7 +1046,7 @@ session per shot rather than carrying a long history, and rely on this file plus
 
 ---
 
-## 15. Shot brief template
+## 16. Shot brief template
 
 Fill this in before any building starts.
 
@@ -909,12 +1078,25 @@ TIMELINE (frames at 24fps / seconds)
   96-216  / 4-9s    <state change two>
   216-288 / 9-12s   <resolution, final frame holds>
 
+PHYSICS
+  Loose material:   chocolate chips (granular bed)
+  Simulated:        local rigid body, ~400 bodies in the contact region only
+  NOT simulated:    the wider bed is static instanced geometry
+  Contract:         prompt must declare the bed a placeholder and supply the
+                    dynamics — see section 7 and section 11
+
 COMPOSITE AFTER GENERATION
   wordmark, legal line, pack copy
 
 EXCLUSIONS
   no text, no captions, no logos, no music, no grey plastic, no void
 ```
+
+The `NOT simulated` line is the one that gets skipped, and it is the one that
+decides whether the prompt is right. Fill it in even when the answer is
+"nothing" — an explicit "nothing" tells the next reader the motion in the
+blockout is real and can be inherited, which is exactly the question the prompt
+has to answer.
 
 Second-by-second timing tables remove all ambiguity about pacing and make both
 the animation code and the prompt close to mechanical. They are worth writing.

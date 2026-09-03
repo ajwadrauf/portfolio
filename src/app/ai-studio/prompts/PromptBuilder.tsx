@@ -156,11 +156,12 @@ export function PromptBuilder() {
         className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[6px] border border-accent/30 bg-accent/[0.05] px-4 py-3 text-sm transition hover:border-accent"
       >
         <span className="font-semibold text-accent">
-          Need a prompt to create on Blender?
+          Need the clay pass first?
         </span>
         <span className="text-muted">
-          When the camera move has to be exact and repeatable, build it as a clay
-          pass first — then write the prompt against it.
+          When the camera move has to be exact and repeatable, block it out in
+          3D — the Blender page writes the brief that builds it, and the clip it
+          produces becomes [Video1] below.
         </span>
         <span aria-hidden className="font-semibold text-accent">
           →

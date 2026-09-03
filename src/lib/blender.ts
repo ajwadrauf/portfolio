@@ -358,6 +358,146 @@ const dropArticle = (s: string) => clean(s).replace(/^(a|an|the)\s+/i, "");
 const has = (s: string) => clean(s).length > 0;
 
 /**
+ * The brief that goes to an LLM driving Blender, not to the video model.
+ *
+ * Same shot data, different reader. Seedance is told what the finished frame
+ * contains; Blender is told what to build, in what units, and — the part the
+ * first version of this workflow left out entirely — how to animate it and
+ * what to declare as a placeholder when it does not.
+ *
+ * The two outputs are generated from one brief on purpose. A blockout and the
+ * prompt that consumes it have to agree on duration, beat boundaries, ID
+ * colours and shot progression, and the cheapest way to keep two documents in
+ * agreement is to stop maintaining two documents.
+ */
+export function composeBlenderBuildBrief(b: BlenderBrief): string {
+  const mapped = b.subjects.filter((s) => has(s.color) && has(s.becomes));
+  const beats = b.beats.filter((x) => has(x.action));
+  const out: string[] = [];
+  const dur = has(b.seconds) ? clean(b.seconds) : "12";
+  const frames = Math.round(Number(dur || 12) * 24);
+
+  out.push(
+    `# Clay control pass — shot ${has(b.shotId) ? clean(b.shotId) : "1A"}`,
+    "",
+    "Build this in Blender and export a clay blockout. It is a control pass for a",
+    "video model, not a finished render: its job is to settle camera, staging,",
+    "timing and occlusion so those decisions are made where changing them is free.",
+    "",
+    "Read CLAUDE.md in this folder first — especially §6 (render settings) and §7",
+    "(animating the pass). Probe the API before writing, as §4 describes; do not",
+    "guess enum identifiers for this build.",
+    "",
+    "## Scene",
+    "",
+    `- Duration ${dur}s at 24 fps — frames 1 to ${frames}.`,
+    `- Aspect ${b.aspect}, rendered at 720p on the short edge.`,
+    "- Real-world scale. Set unit scale before modelling, not after.",
+    "- Flat, unlit ID colours. No textures, no reflections, no depth of field —",
+    "  all three obscure the geometry the model is meant to read.",
+    "- Render sharp: no motion blur in the clay. Blur is asked for in the video",
+    "  prompt, where it belongs.",
+    "",
+    "## Camera",
+    "",
+  );
+  if (has(b.lens)) {
+    out.push(
+      `- Real camera: ${clean(b.lens)}mm${has(b.sensor) ? ` on a ${clean(b.sensor)} sensor` : ""}.`,
+    );
+  }
+  if (has(b.rig)) out.push(`- Move: ${clean(b.rig)}.`);
+  if (has(b.startFraming)) out.push(`- Opens on: ${clean(b.startFraming)}.`);
+  if (has(b.endFraming)) out.push(`- Ends on: ${clean(b.endFraming)}.`);
+  out.push(
+    "- One continuous take. Any cut here becomes a cut in the generation.",
+    "",
+    "## Lighting",
+    "",
+  );
+  out.push(
+    has(b.keyLight)
+      ? `- Key: ${clean(b.keyLight)}.`
+      : "- One key light. Direction matters; character does not — the video model",
+  );
+  out.push(
+    "- Direction is inherited by the generation, so fix it here and keep it",
+    "  constant for the whole take.",
+    "",
+    "## Proxy geometry and ID colours",
+    "",
+    "One flat colour per subject, all distinct. The colour is the mapping, so two",
+    "subjects sharing one are indistinguishable downstream.",
+    "",
+  );
+  for (const s of mapped) {
+    out.push(
+      `- **${clean(s.color)}** — ${has(s.proxy) ? clean(s.proxy) : "proxy"}, becomes ${clean(s.becomes)} in the finished frame.`,
+    );
+  }
+  out.push(
+    "",
+    "Give every hero object real thickness and a real profile. A flat proxy reads",
+    "as a sprite in the generation because it was one in the blockout.",
+    "",
+    "## Animation",
+    "",
+  );
+  if (beats.length) {
+    for (const beat of beats) {
+      const range = has(beat.to) ? `${clean(beat.from)}–${clean(beat.to)}s` : `${clean(beat.from)}s`;
+      out.push(`- **${range}** — ${clean(beat.action)}`);
+    }
+    out.push("");
+  }
+  out.push(
+    "- Keyframe the beats as real ranges on the timeline. The video prompt tells",
+    "  the model to match this clip's duration and route, so the two timelines",
+    "  must agree to the frame.",
+    "- Ease every move in and out. Constant-velocity translation is the clearest",
+    "  tell of unedited keyframes, and the model copies the curve it is shown.",
+    "- Rotate travelling objects in all three axes, not just around Z.",
+    "- Seat contacts honestly. Half-buried means buried — do not float an object",
+    "  above a surface and rely on the camera angle to hide the gap.",
+  );
+  if (b.physics === "resolve" && has(b.medium)) {
+    const m = dropArticle(b.medium);
+    out.push(
+      "",
+      `### The ${m} is a placeholder — say so`,
+      "",
+      `This shot has subjects moving through ${m}. Simulating that fully is slow`,
+      "and painful to art-direct, so either simulate a few hundred bodies in the",
+      "contact region only and leave the rest static, or leave the bed static",
+      "entirely.",
+      "",
+      "Either way the deal has a second half, and it is not optional: whatever you",
+      "did not simulate must be declared a placeholder in the video prompt, which",
+      "must not ask the model to inherit subject trajectories. See §7 and §11 of",
+      "CLAUDE.md. The prompt builder writes that contract automatically.",
+    );
+  }
+  out.push(
+    "",
+    "## Before exporting, watch it once",
+    "",
+    "- Does anything move at constant velocity? Fix the easing.",
+    "- Does anything slide across a surface without disturbing it? Simulate it",
+    "  locally, or write it into the video prompt as a placeholder to override.",
+    "- Does anything finish floating, intersecting, or resting on a suspiciously",
+    "  level line? Seat it — the generation amplifies it.",
+    "",
+    "## Export",
+    "",
+    `- MP4 / H.264, ${dur}s, 24 fps, ${b.aspect}, 720p short edge.`,
+    `- Name it by shot: \`${has(b.shotId) ? clean(b.shotId) : "1A"}_clay.mp4\`.`,
+    "- One folder per shot, ordered so upload order matches the reference indices",
+    "  the video prompt addresses.",
+  );
+  return out.join("\n");
+}
+
+/**
  * Assembles the four-layer Seedance prompt from the brief.
  *
  * Order is deliberate and matches the documented structure: material roles
