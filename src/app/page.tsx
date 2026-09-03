@@ -3,8 +3,9 @@ import path from "node:path";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HomeNav } from "@/components/HomeNav";
+import { ClayCompare } from "@/components/ClayCompare";
 import { ShowcaseStrip } from "@/components/ShowcaseStrip";
-import { SHOWCASE, isHosted, showcaseEnvKey } from "@/lib/showcase";
+import { CLAY_PAIR, SHOWCASE, isHosted, showcaseEnvKey } from "@/lib/showcase";
 
 export const metadata: Metadata = {
   title: "Ajwad Rauf — AI production systems",
@@ -308,6 +309,31 @@ export default function Home() {
       </section>
 
       {/* ---------------- Output, before the argument ---------------- */}
+      {/*
+        Craft first, argument second — and the pair says it faster than the
+        strip did. The strip stays below for everything else, and removes
+        itself when there is nothing in it.
+      */}
+      <section
+        aria-label="Selected output"
+        className="mx-auto max-w-[1440px] px-6 pb-4 sm:px-12 lg:px-24"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
+          <span className="label !tracking-[0.16em]">Made with the studio</span>
+          <span className="text-xs text-muted/80">
+            One shot, twice — press play and watch them together.
+          </span>
+        </div>
+        <div className="mt-6">
+          <ClayCompare
+            left={CLAY_PAIR.left}
+            right={CLAY_PAIR.right}
+            href={CLAY_PAIR.href}
+            hrefLabel={CLAY_PAIR.hrefLabel}
+          />
+        </div>
+      </section>
+
       <ShowcaseStrip items={showcase} />
 
       {/* ---------------- Skills marquee ---------------- */}

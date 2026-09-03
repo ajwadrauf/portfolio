@@ -49,24 +49,33 @@ export type ShowcaseItem = {
  * Fill these in as you export renders. Names are suggestions, not fixtures —
  * change them freely; only `file` has to match what is on disk.
  */
-export const SHOWCASE: ShowcaseItem[] = [
-  {
-    /*
-     * A clay control pass, not a generated frame — which is why the strip no
-     * longer claims everything in it came out of the pipeline. It earns the
-     * lead position because it is the piece with a case study behind it, and
-     * because "here is the geometry I built so the model could not improvise"
-     * is a harder thing to claim than a nice render.
-     */
-    id: "the-wall",
-    file: "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/01_clay_1A.mp4",
+/**
+ * The clay pass and its finished render, shown as a frame-locked pair.
+ *
+ * These used to be one entry in the strip below — the grey one only, captioned
+ * with what it was for. On its own it asks the reader to take the payoff on
+ * trust. Side by side and playing together it makes the argument itself, so it
+ * gets its own component above the strip rather than a tile inside it.
+ */
+export const CLAY_PAIR = {
+  href: "/ai-studio/blender/the-wall",
+  hrefLabel: "Read the shot, including the frame that could not be built →",
+  left: {
+    src: "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/01_clay_1A.mp4",
     poster: "/the-wall/f288.jpg",
-    title: "The Wall",
-    note: "A clay control pass: 12s of untextured geometry that settles every camera decision before a credit is spent.",
-    model: "Blender → Seedance 2.5",
+    label: "The clay control pass",
     cost: "0 credits",
-    href: "/ai-studio/blender/the-wall",
+    note: "12 seconds of untextured geometry, blocked out in Blender. Camera, timing, blocking and occlusion settled here, where changing them is free.",
   },
+  right: {
+    src: "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/CookieExample/Example-Seedance-Blender.mp4",
+    label: "The finished render",
+    cost: "$3.05",
+    note: "The same twelve seconds through Seedance 2.5, holding the camera exactly and re-solving the physics the blockout only stood in for.",
+  },
+};
+
+export const SHOWCASE: ShowcaseItem[] = [
   {
     id: "reverse-rewind",
     file: "/showcase/reverse-rewind.mp4",

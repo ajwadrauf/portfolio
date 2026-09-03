@@ -306,6 +306,64 @@ export function BlenderBriefBuilder() {
           />
         </Field>
 
+        {/*
+          The physics contract. A clay pass is authored to settle camera,
+          staging and timing — the things that are expensive to fix later.
+          Granular dynamics are the reverse: painful to simulate in 3D and
+          something the video model is already good at. So this is the dial
+          that decides which half of the blockout is a specification and which
+          half is a placeholder.
+        */}
+        <Field
+          label="The blockout's subject motion"
+          hint="Whether the clay pass animates real dynamics, or slides proxies along a path as a stand-in. Getting this wrong is what produces a flat object skating across a frozen surface."
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(
+              [
+                {
+                  id: "resolve" as const,
+                  title: "A placeholder — re-solve it",
+                  body: "Camera, staging and timing are inherited exactly. The model re-solves how things actually move.",
+                },
+                {
+                  id: "inherit" as const,
+                  title: "Animated — inherit it",
+                  body: "Subject trajectories come across with the camera. Right when the motion was genuinely animated.",
+                },
+              ]
+            ).map((o) => (
+              <button
+                key={o.id}
+                onClick={() => set("physics", o.id)}
+                aria-pressed={b.physics === o.id}
+                className={`rounded-[6px] border p-3 text-left transition ${
+                  b.physics === o.id
+                    ? "border-accent bg-accent/[0.05] ring-1 ring-accent"
+                    : "border-border-soft hover:border-accent/50"
+                }`}
+              >
+                <span className="block text-xs font-semibold">{o.title}</span>
+                <span className="mt-1 block text-[11px] leading-snug text-muted">{o.body}</span>
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        {b.physics === "resolve" && (
+          <Field
+            label="Loose material in the shot"
+            hint="Anything granular or fluid a subject moves through, lands in or rises out of. Naming it writes the physics block — bow wave, furrow, slump-back, and the rule that nothing floats above it."
+          >
+            <input
+              className="input"
+              placeholder="chocolate chips, dry sand, fresh snow, coffee beans…"
+              value={b.medium}
+              onChange={(e) => set("medium", e.target.value)}
+            />
+          </Field>
+        )}
+
         <Field
           label="Composited after generation"
           hint="Anything with readable type. Generative video garbles it, differently on every frame."
@@ -411,8 +469,8 @@ export function BlenderBriefBuilder() {
           </div>
         ) : (
           <p className="mt-4 rounded-[6px] border border-success/40 bg-success/10 p-3 text-xs leading-relaxed text-success">
-            Nothing flagged. The exclusion block is in, every mapped subject has
-            a look reference, and the beats fit the shot.
+            Nothing flagged. The exclusion block is in, the ID colours are
+            distinct, something is referenced, and the beats fit the shot.
           </p>
         )}
       </div>

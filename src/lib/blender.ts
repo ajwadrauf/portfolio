@@ -178,6 +178,26 @@ export type BlenderBrief = {
   beats: Beat[];
   creative: string;
   composited: string;
+  /**
+   * The loose material subjects move through, if any — sand, chips, snow,
+   * foam, water.
+   *
+   * Added after a render came back with the hero object sliding across a
+   * frozen bed like a sprite. The cause was in the prompt: the composer told
+   * the model to inherit the blockout's subject trajectories, so it faithfully
+   * reproduced motion that had never been simulated. Naming the medium is what
+   * lets the composer write a physics contract instead.
+   */
+  medium: string;
+  /**
+   * Whether the blockout's subject motion is a specification or a placeholder.
+   *
+   * A clay pass is authored to settle camera, staging and timing — the things
+   * that are expensive to fix downstream. Granular dynamics are the opposite:
+   * miserable to simulate in 3D and something the video model is already good
+   * at. So control is a dial, not a switch, and this is the dial.
+   */
+  physics: "inherit" | "resolve";
 };
 
 export const EMPTY_BRIEF: BlenderBrief = {
@@ -195,33 +215,52 @@ export const EMPTY_BRIEF: BlenderBrief = {
   beats: [{ from: "0", to: "", action: "" }],
   creative: "",
   composited: "",
+  medium: "",
+  physics: "resolve",
 };
 
-/** A worked example, so the form is never a wall of empty boxes. */
+/**
+ * A worked example, so the form is never a wall of empty boxes — and this one
+ * is the brief behind a shot that actually rendered, not a plausible
+ * reconstruction of one.
+ *
+ * It is chosen for what it teaches. Only the pack carries a look reference:
+ * the chips and the cookie are described in words and come back consistent
+ * anyway, which is the right way to spend a scarce reference slot. Four
+ * proxies share that single reference. And the clay pass is declared a
+ * placeholder for physics, because the version of this brief that inherited
+ * its subject motion produced a flat cookie skating over a frozen bed.
+ */
 export const EXAMPLE_BRIEF: BlenderBrief = {
   shotId: "1A",
-  aspect: "1:1",
+  aspect: "4:3",
   seconds: "12",
   sensor: "36mm full frame",
-  lens: "50",
-  rig: "slow dolly push, 0.4 m/s",
-  startFraming: "Medium, product centre frame, eye level",
-  endFraming: "Close, product fills 60% of frame height",
-  keyLight: "Sun, 45° off camera left, 30° elevation, soft fill camera right at quarter key",
-  lightCharacter: "Warm morning window light",
+  lens: "45",
+  rig: "macro-to-wide dolly and crane, continuous, no cuts",
+  startFraming: "Macro, buried in the chip bed, three or four chips filling frame",
+  endFraming: "Wide, cookie face-on in the foreground, four packs in a row behind",
+  keyLight: "Single raking key from camera left, low elevation",
+  lightCharacter: "Warm, high-end food commercial",
   subjects: [
-    { color: "orange", proxy: "box on the counter", becomes: "the product package", ref: "Image 1" },
-    { color: "blue", proxy: "jointed arm entering from the right", becomes: "a hand and forearm", ref: "Image 2" },
-    { color: "neutral grey", proxy: "counter and back wall", becomes: "a kitchen counter at morning", ref: "Image 3" },
+    { color: "blue", proxy: "small conical chips forming the bed", becomes: "semi-sweet chocolate chips, deep brown with a soft sheen", ref: "" },
+    { color: "orange", proxy: "disc", becomes: "a thick golden peanut butter chocolate chip cookie", ref: "" },
+    { color: "green", proxy: "form, leftmost", becomes: "the product pack", ref: "Image 1" },
+    { color: "magenta", proxy: "form, second left", becomes: "the product pack", ref: "Image 1" },
+    { color: "yellow", proxy: "form, third left", becomes: "the product pack", ref: "Image 1" },
+    { color: "cyan", proxy: "form, rightmost", becomes: "the product pack", ref: "Image 1" },
   ],
   beats: [
-    { from: "0", to: "4", action: "The hand sets the package down centre frame and withdraws. The package holds still, label to camera." },
-    { from: "4", to: "9", action: "The camera pushes in slowly. Light shifts warmer across the surface as it travels." },
-    { from: "9", to: "12", action: "The push settles. The final frame holds on the package, filling most of the height." },
+    { from: "0", to: "3", action: "Macro orbit around one chip inside a dense bed. The bed is at rest; only parallax moves." },
+    { from: "3", to: "6", action: "The camera pulls back and lifts. The wall of chips resolves into a landscape ending at a central depression." },
+    { from: "6", to: "8.5", action: "One cookie descends slower than gravity, tumbling gently, and settles into the depression — chips displaced outward, a scatter flicked up, the rim cascading inward behind it." },
+    { from: "8.5", to: "12", action: "The camera cranes back and up. The cookie ploughs forward to the near ridge and tilts face-on. Four packs heave up through the bed behind it and settle seated in the chips." },
   ],
   creative:
-    "A single product placed on a morning kitchen counter, shot on a slow dolly push in warm window light, photoreal and unhurried.",
-  composited: "wordmark, legal line, price",
+    "A continuous macro-to-wide move through a landscape of chocolate chips. A hero cookie settles into the chips and a row of four kraft packs rises behind it. Warm, high-end food commercial lighting from one direction, raking across the surfaces.",
+  composited: "wordmark, flavour name, legal line",
+  medium: "chocolate chips",
+  physics: "resolve",
 };
 
 const clean = (s: string) => s.trim();
@@ -269,15 +308,49 @@ export function uploadPlan(b: BlenderBrief) {
       what: "The clay control pass",
       role: "Camera, blocking, timing, occlusion, light direction",
     },
-    ...mapped.map((s, i) => ({
-      slot: `@${has(s.ref) ? clean(s.ref) : `Image ${i + 1}`}`,
+    // Only referenced subjects occupy an upload slot. A subject described in
+    // words takes no file, so listing one here would ask for an upload that
+    // does not exist and push every real slot number down by one.
+    ...uniqueRefs(mapped).map((r, i) => ({
+      slot: `@${r.ref}`,
       order: i + 2,
-      color: swatchFor(s.color),
-      colorName: clean(s.color),
-      what: clean(s.becomes),
-      role: has(s.proxy) ? `Replaces the ${clean(s.color)} ${clean(s.proxy)}` : "Look and finish",
+      color: swatchFor(r.colors[0]),
+      colorName: r.colors.join(", "),
+      what: r.becomes,
+      role:
+        r.proxies.length > 1
+          ? `Replaces ${r.proxies.length} proxies: ${r.proxies.join("; ")}`
+          : (r.proxies[0] ?? "Look and finish"),
     })),
   ];
+}
+
+/**
+ * Groups subjects by the reference that defines them.
+ *
+ * One file can define several proxies — four bags that are all the same pack —
+ * and it is uploaded once. Listing it per subject would over-count the slots
+ * and mis-number everything after it.
+ */
+function uniqueRefs(mapped: SubjectMap[]) {
+  const byRef = new Map<
+    string,
+    { ref: string; becomes: string; colors: string[]; proxies: string[] }
+  >();
+  for (const s of mapped) {
+    if (!has(s.ref)) continue;
+    const key = clean(s.ref);
+    const entry = byRef.get(key) ?? {
+      ref: key,
+      becomes: clean(s.becomes),
+      colors: [],
+      proxies: [],
+    };
+    entry.colors.push(clean(s.color));
+    if (has(s.proxy)) entry.proxies.push(`the ${clean(s.color)} ${clean(s.proxy)}`);
+    byRef.set(key, entry);
+  }
+  return [...byRef.values()];
 }
 
 /** "a rectangular box" → "rectangular box", so "The orange a box" cannot happen. */
@@ -297,12 +370,18 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
   const beats = b.beats.filter((x) => has(x.action));
   const out: string[] = [];
 
-  const refs = mapped.map((s, i) => (has(s.ref) ? clean(s.ref) : `Image ${i + 1}`));
-  const materials = mapped.map(
-    (s, i) => `@${refs[i]} ${clean(s.becomes).replace(/^(a|an|the)\s+/i, "")}`,
-  );
+  const referenced = mapped.filter((s) => has(s.ref));
+  const materials: string[] = [];
+  for (const s of referenced) {
+    const slot = `@${clean(s.ref)}`;
+    // One reference can define several proxies — four bags that are all the
+    // same pack — and it belongs in MATERIALS once, not once per subject.
+    if (!materials.some((m) => m.startsWith(`${slot} `))) {
+      materials.push(`${slot} ${dropArticle(s.becomes)}`);
+    }
+  }
   out.push(
-    `MODE: Clay Renderer / Omni Reference`,
+    `MODE: Clay Renderer / Omni Reference${b.physics === "resolve" ? " — camera locked, physics free" : ""}`,
     `MATERIALS: @Video 1 clay blockout${materials.length ? ` · ${materials.join(" · ")}` : ""}`,
     // The stated length is not redundant with "match @Video 1": it is what
     // lets the lab set its own slider on import. A 12s timeline rendered at 8s
@@ -310,7 +389,19 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
     `SETTINGS: Match @Video 1 duration and camera route${has(b.seconds) ? ` · ${clean(b.seconds)}s` : ""} · ${b.aspect} · 720p`,
     "",
     "[Reference roles]",
-    "@Video 1 is a clay blockout. Inherit only camera movement, shot-size transitions, subject trajectories, blocking, timing, occlusion order, and the direction of the light.",
+    /*
+     * Two contracts, and the difference is expensive.
+     *
+     * The inherit form asks for the blockout's subject trajectories as well as
+     * its camera, which is right when the motion was actually animated. When
+     * it was not — when the clay pass slides a proxy along a path as a
+     * stand-in — the model reproduces that faithfully, and the result is a
+     * flat object skating across a frozen surface. Saying so explicitly is
+     * what stops it: naming the placeholder beats describing the goal.
+     */
+    b.physics === "resolve"
+      ? "@Video 1 is a clay blockout. It is a camera and staging reference, not a physics reference. Inherit exactly: the camera's path, speed and shot-size progression; the duration and order of the beats; which object occludes which; the direction of the key light; and where each element sits in the final frame. Do not inherit its physics — its subject motion is a placeholder standing in for dynamics that were never simulated. Keep only the start point, end point and duration of each move and re-solve everything between them as real physical motion."
+      : "@Video 1 is a clay blockout. Inherit only camera movement, shot-size transitions, subject trajectories, blocking, timing, occlusion order, and the direction of the light.",
   );
 
   for (const s of mapped) {
@@ -319,6 +410,31 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
       : `The ${clean(s.color)} element`;
     out.push(
       `${proxy} becomes ${clean(s.becomes)}${has(s.ref) ? `, defined by @${clean(s.ref)}` : ""}.`,
+    );
+  }
+
+  /*
+   * The physics contract, written only when there is loose material for
+   * something to move through.
+   *
+   * Every clause here came from a specific failure in a paid render: a hero
+   * object that read as a flat sprite, a bed that stayed frozen while
+   * something crossed it, a travelling object that displaced material on
+   * impact but left no wake, and packs that finished the shot hovering in
+   * clean air above the surface. Describing what went wrong turns out to be
+   * more reliable than describing what good looks like.
+   */
+  if (b.physics === "resolve" && has(b.medium)) {
+    const m = dropArticle(b.medium);
+    out.push(
+      "",
+      "[Physics and secondary motion]",
+      `Every solid subject is a three-dimensional object with real thickness and a visible edge — never a flat disc, never a cutout, never a sprite. While travelling it rotates in all three axes, with rotation that eases rather than running at constant speed or snapping to an angle.`,
+      `The ${m} is a granular material, not a surface texture: thousands of small loose bodies that roll, tumble and knock into each other individually rather than sliding together as a sheet.`,
+      `On contact, material is displaced outward in a low ring, a few pieces flicked up to bounce once and settle, and the rim of the resulting depression cascades inward and keeps settling a beat after the object has stopped.`,
+      `Travelling through it displaces material continuously, not only at the moment of contact. Anything crossing the ${m} is partly submerged in it: a bow wave builds and spills at the leading edge, material shears outward into low banks along both flanks, and a furrow opens behind — a furrow made of individual pieces catching the light, never a smooth dark void and never a clean carved groove. Its walls cannot hold a steep face, so they slump inward and partly refill the trench a beat behind. The trail is a transient disturbance, not a permanent channel.`,
+      `Rising out of the ${m} works the same way in reverse and happens in stages: the surface domes upward first, then parts; material sheets off the emerging object continuously, running down its faces and catching in any recess; and a collar of loose material avalanches inward against the base as the bed slumps to fill the space. Anything emerging finishes seated in the ${m} rather than standing on it or floating above it — partly buried, with an uneven bank piled against its base and no gap of any kind between object and bed.`,
+      `Everything eases in and out. Natural motion blur consistent with a 180-degree shutter. Nothing moves through the ${m} without the ${m} reacting to it, and the bed is never static while anything is moving in it.`,
     );
   }
 
@@ -349,11 +465,21 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
   globals.push(`Continuous lighting. No cuts other than those in @Video 1.`);
   out.push("", "[Global]", globals.join(" "));
 
+  const inheritScope =
+    b.physics === "resolve"
+      ? "use it only for camera movement, staging, timing, occlusion order and light direction"
+      : "use it only for camera movement, blocking, motion paths, timing, occlusion order and light direction";
   out.push(
     "",
     "[Exclusions]",
-    "No text, no captions, no subtitles, no on-screen type, no logos, no watermarks, no background music. Do not inherit primitive geometry, flat grey materials, placeholder shapes, axes, guide lines, path curves, camera frustums, or the empty set from @Video 1 — use it only for camera movement, blocking, motion paths, timing, occlusion order and light direction.",
+    `No text, no captions, no subtitles, no on-screen type, no logos, no watermarks, no background music. Do not inherit primitive geometry, flat grey materials, placeholder shapes, axes, guide lines, path curves, camera frustums, or the empty set from @Video 1 — ${inheritScope}.`,
   );
+  if (b.physics === "resolve" && has(b.medium)) {
+    const m = dropArticle(b.medium);
+    out.push(
+      `Do not reproduce the blockout's flat, sliding, sprite-like subject motion or its frozen bed — those are placeholders, not direction. Nothing slides across the top of the ${m} without sinking into it and moving it, and nothing travels through it leaving it undisturbed behind. No smooth dark voids, holes or shadow shapes standing in for a disturbed area. No trench that stays open and clean once the object has passed. Nothing hovers, floats or hangs in clean air above the ${m}, and no visible gap or level waterline separates an object from the material it is standing in.`,
+    );
+  }
 
   if (has(b.composited)) {
     out.push(
@@ -402,13 +528,25 @@ export function briefIssues(b: BlenderBrief): { text: string; why: string }[] {
     });
   }
 
-  for (const s of mapped) {
-    if (!has(s.ref)) {
-      issues.push({
-        text: `"${clean(s.becomes)}" has no look reference.`,
-        why: "Without one the model invents its appearance, and invents it differently on every generation. That is the most common source of drift between takes.",
-      });
-    }
+  /*
+   * Only flagged when nothing at all is referenced.
+   *
+   * This used to fire once per unreferenced subject, which made it fire twice
+   * on a brief that had already produced a finished render — the chips and the
+   * cookie were described in words on purpose and came back consistent anyway.
+   * A check that flags a known-good brief is not a check, it is noise that
+   * teaches people to ignore the panel.
+   *
+   * Where the author has referenced something and not something else, that is
+   * an allocation decision, and reference slots are scarce enough to be worth
+   * spending on identity rather than on generic matter. Referencing nothing at
+   * all is the case that is nearly always a mistake.
+   */
+  if (mapped.length > 0 && !mapped.some((s) => has(s.ref))) {
+    issues.push({
+      text: "No subject has a look reference.",
+      why: "With nothing to hold appearance steady the model invents every surface, and invents them differently on every generation — the most common source of drift between takes. Generic matter renders fine from description, but anything that has to be itself needs a reference.",
+    });
   }
 
   if (!has(b.lens)) {
