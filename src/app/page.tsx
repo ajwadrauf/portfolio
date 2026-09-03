@@ -32,7 +32,19 @@ type Project = {
    * to show — an NDA project has no public frames, and a placeholder would
    * be worse than a card that does not claim one.
    */
-  frames?: { src: string; alt: string }[];
+  frames?: {
+    /** Preferred local path under /public. Used whenever the file is committed. */
+    src: string;
+    alt: string;
+    /**
+     * Where to load it from until the file is committed here.
+     *
+     * Lets a card show its work immediately while the asset still lives on
+     * the product's own site, without the portfolio depending on that site
+     * permanently: commit the file and the local copy wins on the next build.
+     */
+    hosted?: string;
+  }[];
   /** What the strip shows, since a row of stills does not explain itself. */
   framesNote?: string;
   /**
@@ -90,9 +102,21 @@ const PROJECTS: Project[] = [
     arrow: "↗",
     note: "Pricing and static try-on demo open — generation needs an account",
     frames: [
-      { src: "/persopot/garment.png", alt: "Source garment — a forest green crew sweater on a hanger" },
-      { src: "/persopot/tryon-1.png", alt: "The same sweater rendered on a trained identity" },
-      { src: "/persopot/tryon-2.png", alt: "The same sweater rendered on a second trained identity" },
+      {
+        src: "/persopot/garment.jpg",
+        hosted: "https://persopot.com/marketing/home/outfit-source.jpg",
+        alt: "Source garment — a forest green crew sweater on a hanger",
+      },
+      {
+        src: "/persopot/tryon-1.jpg",
+        hosted: "https://persopot.com/marketing/home/outfit-result-1.jpg",
+        alt: "The same sweater rendered on a trained identity",
+      },
+      {
+        src: "/persopot/tryon-2.jpg",
+        hosted: "https://persopot.com/marketing/home/outfit-result-2.jpg",
+        alt: "The same sweater rendered on a second trained identity",
+      },
     ],
     framesNote: "One garment reference, two trained identities — from a pin in about 30 seconds",
     body: [
@@ -225,10 +249,17 @@ const resolve = (src: string | undefined) =>
  * or a committed file — in that order. An empty showcase removes the section
  * rather than rendering broken frames at the top of the page.
  */
-const projects: Project[] = PROJECTS.map((p) => ({
-  ...p,
-  frames: p.frames?.filter((f) => onDisk(f.src)),
-})).map((p) => ({ ...p, frames: p.frames?.length ? p.frames : undefined }));
+/*
+ * Local file first, then whatever the card named as a stand-in, then nothing.
+ * A frame with neither is dropped rather than rendered broken, and a strip
+ * left with no frames disappears rather than leaving a gap.
+ */
+const projects: Project[] = PROJECTS.map((p) => {
+  const frames = p.frames
+    ?.map((f) => ({ ...f, src: onDisk(f.src) ? f.src : (f.hosted ?? "") }))
+    .filter((f) => f.src !== "");
+  return { ...p, frames: frames?.length ? frames : undefined };
+});
 
 const showcase = SHOWCASE.map((i) => {
   const file = resolve(process.env[showcaseEnvKey(i.id)]?.trim() || i.file);

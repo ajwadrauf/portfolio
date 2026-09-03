@@ -1,27 +1,45 @@
 # Persopot card frames
 
 The home page shows a three-frame strip on the Persopot card: one garment
-reference and the same garment rendered on two trained identities. The point
-it makes visually is the one the copy makes in words — one input, any number
-of people.
+reference and the same garment rendered on two trained identities. It makes
+the point the copy makes in words — one input, any number of people.
 
-Save the three files here, exactly these names:
+## Right now they load from persopot.com
 
-| File          | What it is                                                               |
-| ------------- | ------------------------------------------------------------------------ |
-| `garment.png` | The source garment on its own — the forest green crew sweater on a hanger |
-| `tryon-1.png` | That sweater rendered on the first trained identity                      |
-| `tryon-2.png` | That sweater rendered on the second trained identity                     |
+The card declares each frame with a local path and a `hosted` fallback:
 
-`.jpg` is fine too — change the extensions in `frames` in `src/app/page.tsx`
-to match.
+```
+src:    /persopot/garment.jpg
+hosted: https://persopot.com/marketing/home/outfit-source.jpg
+```
 
-They render at roughly 90-160px wide in a row, so anything from about 400px
-on the short edge is plenty. Crop them to a consistent shape before saving:
-the strip sets `aspect-[4/3]` with object-cover, so portrait sources are
-centre-cropped, and the two try-on frames should share the same framing as
-each other or the row will look accidental.
+The local file wins whenever it exists. Until then the frame is served from
+persopot.com, so the strip works today with nothing committed here.
 
-Until all three are present the strip does not render at all — `page.tsx`
-drops frames whose files are missing rather than showing broken images. So a
-partial upload shows nothing, not a gap.
+## Committing local copies is better
+
+Hotlinking couples this site to persopot.com's asset paths. If those move or
+that deployment changes, the frames break here with no warning — and the
+portfolio is the thing that needs to be reliable. Local copies also load
+faster and survive persopot.com being down.
+
+Save these three, and they take over on the next build:
+
+| File          | From                                              |
+| ------------- | ------------------------------------------------- |
+| `garment.jpg` | `persopot.com/marketing/home/outfit-source.jpg`   |
+| `tryon-1.jpg` | `persopot.com/marketing/home/outfit-result-1.jpg` |
+| `tryon-2.jpg` | `persopot.com/marketing/home/outfit-result-2.jpg` |
+
+Take the originals at those paths rather than the `/_next/image?...&w=256`
+versions, which are resized for the marketing page.
+
+## Sizing
+
+Frames render about 90–160px wide, so roughly 400px on the short edge is
+plenty. The strip is `aspect-[4/3]` with object-cover, so portrait sources are
+centre-cropped — crop the two try-on frames to the same framing as each other
+or the row looks accidental.
+
+A frame with neither a committed file nor a `hosted` URL is dropped, and a
+strip left with no frames disappears rather than leaving a gap.
