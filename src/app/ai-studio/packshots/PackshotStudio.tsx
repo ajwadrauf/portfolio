@@ -14,6 +14,21 @@ import {
 
 type Reference = { angle: PackAngle; dataUrl: string };
 
+/**
+ * A real pack to start from, so the page is usable without hunting for a
+ * product photo first.
+ *
+ * It is the same pack the video work on this site uses, which makes the two
+ * tools read as one studio rather than two demos — and it is deliberately an
+ * unbranded pack, because branded packaging is refused by the video model's
+ * content filter and the same asset has to serve both.
+ */
+const EXAMPLE_PACK = {
+  url: "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/CookieExample/BakersBest-ChocolateChip-Bag%20Large.png",
+  angle: "front" as PackAngle,
+  label: "chocolate chip cookie bag, front",
+};
+
 type Job = {
   angle: PackAngle;
   modelId: string;
@@ -116,6 +131,37 @@ export function PackshotStudio() {
     },
     [uploadAngle],
   );
+
+  /**
+   * Pulls the example in and puts it through the same processing a dropped
+   * file gets — resized, flattened, re-encoded — so the example behaves
+   * exactly like something you uploaded rather than like a special case that
+   * works better than real input.
+   */
+  const [exampleBusy, setExampleBusy] = useState(false);
+  const loadExample = useCallback(async () => {
+    setError(null);
+    setExampleBusy(true);
+    try {
+      const res = await fetch(EXAMPLE_PACK.url);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const blob = await res.blob();
+      const dataUrl = await toProcessedDataUrl(
+        new File([blob], "example-pack.png", { type: blob.type || "image/png" }),
+      );
+      setReferences((prev) => [
+        ...prev.filter((r) => r.angle !== EXAMPLE_PACK.angle),
+        { angle: EXAMPLE_PACK.angle, dataUrl },
+      ]);
+      setUploadAngle(EXAMPLE_PACK.angle);
+    } catch (e) {
+      setError(
+        `Could not load the example image (${e instanceof Error ? e.message : "unknown"}). It is fetched from storage at click time, so an offline session or a blocked request will stop it — uploading your own photo works either way.`,
+      );
+    } finally {
+      setExampleBusy(false);
+    }
+  }, []);
 
   const updateJob = useCallback(
     (angle: PackAngle, jobModelId: string, patch: Partial<Job>) => {
@@ -299,6 +345,20 @@ export function PackshotStudio() {
                 }}
               />
             </div>
+
+            {/*
+              Sits under the upload row rather than beside it: adding your own
+              photo is the primary action, and the example is the way in for
+              someone who arrived without one.
+            */}
+            <button
+              className="mt-2.5 text-xs font-semibold text-accent hover:underline disabled:opacity-50"
+              onClick={() => void loadExample()}
+              disabled={exampleBusy}
+            >
+              {exampleBusy ? "Loading the example…" : "or load an example pack →"}
+            </button>
+
             {references.length > 0 && (
               <div className="mt-4 grid grid-cols-3 gap-3">
                 {references.map((r) => (
