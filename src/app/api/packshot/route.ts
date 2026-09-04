@@ -87,7 +87,14 @@ export async function POST(req: Request) {
     );
     // Reference images are billed as input on some edit endpoints, so the
     // estimate has to know how many are going up, not just what comes back.
-    const cost = estimateCost(model.id, { referenceImages: references.length });
+    // Priced against the size that will actually be rendered, not the one
+    // requested — resolveSize may have snapped it — and against the references
+    // going up, which some edit endpoints bill as input.
+    const cost = estimateCost(model.id, {
+      referenceImages: references.length,
+      sizePresetId: size.presetId,
+      sizePx: size.px,
+    });
 
     const hasKey =
       model.provider === "gemini"

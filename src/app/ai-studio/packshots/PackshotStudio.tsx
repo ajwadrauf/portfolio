@@ -230,7 +230,18 @@ export function PackshotStudio() {
   const resolved = resolveSize(sizeSupport, requestedSize);
 
   const { filled, total } = briefCompleteness(brief);
-  const costOpts = { referenceImages: references.length };
+  /*
+   * Size is part of the price on two of these models, so it is part of the
+   * estimate. Nano Banana Pro steps 1.5x at 2K and 2x at 4K; GPT Image 2 bills
+   * by pixel area, which makes a 2048² render four times a 1024² one. Quoting
+   * one flat rate per model understated both — the same failure as the video
+   * estimate that read $1.57 against a $3.05 invoice.
+   */
+  const costOpts = {
+    referenceImages: references.length,
+    sizePresetId: sizePresetId === "custom" ? undefined : (activePresetId ?? undefined),
+    sizePx: sizePresetId === "custom" ? resolved.px : undefined,
+  };
   const perAngleCost =
     estimateCost(modelId, costOpts) +
     (challengerId ? estimateCost(challengerId, costOpts) : 0);
@@ -295,6 +306,92 @@ export function PackshotStudio() {
     [],
   );
 
+  /**
+   * One angle on one model.
+   *
+   * Pulled out of the batch loop so a single failure can be retried on its
+   * own. Re-running the whole set to recover one angle means paying again for
+   * the ones that already worked, which on a seven-angle A/B is thirteen
+   * wasted generations to fix one.
+   */
+  const runOne = useCallback(
+    async (angle: PackAngle, jobModelId: string) => {
+      updateJob(angle, jobModelId, { status: "running", error: undefined });
+      try {
+        const res = await fetch("/api/packshot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetAngle: angle,
+            modelId: jobModelId,
+            references,
+            brief,
+            sizePresetId: sizePresetId === "custom" ? undefined : (activePresetId ?? undefined),
+            sizePx: sizePresetId === "custom" ? resolved.px : undefined,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "Generation failed");
+        if (!json.mock) addSpend(json.cost ?? 0);
+        updateJob(angle, jobModelId, {
+          status: json.mock ? "mock" : "done",
+          imageDataUrl: json.imageDataUrl,
+          imageUrl: json.imageUrl,
+          prompt: json.prompt,
+          grounded: json.grounded,
+          cost: json.mock ? 0 : (json.cost ?? 0),
+        });
+      } catch (e) {
+        updateJob(angle, jobModelId, {
+          status: "failed",
+          error: e instanceof Error ? e.message : "Generation failed",
+        });
+      }
+    },
+    [addSpend, activePresetId, brief, references, resolved.px, sizePresetId, updateJob],
+  );
+
+  const done = jobs.filter((j) => j.imageDataUrl || j.imageUrl);
+  const failed = jobs.filter((j) => j.status === "failed");
+  const needsQA = done.filter((j) => j.grounded === false);
+
+  const retryFailed = useCallback(async () => {
+    // Two at a time, matching the batch loop — the providers rate-limit and a
+    // retry storm is how a recoverable failure becomes a permanent one.
+    const queue = [...failed];
+    const worker = async () => {
+      for (;;) {
+        const j = queue.shift();
+        if (!j) return;
+        await runOne(j.angle, j.modelId);
+      }
+    };
+    await Promise.all([worker(), worker()]);
+  }, [failed, runOne]);
+
+  /**
+   * Save the whole set.
+   *
+   * A planogram delivery is a set, not seven separate files, and clicking
+   * seven links is where the GS1 naming stops being worth having. Sequential
+   * with a gap because browsers throttle rapid programmatic downloads and
+   * silently drop the ones that arrive too fast.
+   */
+  const downloadAll = useCallback(async () => {
+    for (const j of done) {
+      const gs1 = gs1FileName(sku, lang, j.angle);
+      const name =
+        j.role === "challenger" ? gs1.replace(/\.jpg$/, `__${j.modelId}.jpg`) : gs1;
+      const a = document.createElement("a");
+      a.href = downloadHref(j, name);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      await new Promise((r) => setTimeout(r, 350));
+    }
+  }, [done, lang, sku]);
+
   const generate = useCallback(async () => {
     if (references.length === 0 || selectedAngles.length === 0) return;
     // Refused here as well as server-side: over the cap the run would fail
@@ -322,41 +419,11 @@ export function PackshotStudio() {
       for (;;) {
         const run = queue.shift();
         if (!run) return;
-        updateJob(run.angle, run.modelId, { status: "running" });
-        try {
-          const res = await fetch("/api/packshot", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              targetAngle: run.angle,
-              modelId: run.modelId,
-              references,
-              brief,
-              sizePresetId: sizePresetId === "custom" ? undefined : (activePresetId ?? undefined),
-              sizePx: sizePresetId === "custom" ? resolved.px : undefined,
-            }),
-          });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json.error ?? "Generation failed");
-          if (!json.mock) addSpend(json.cost ?? 0);
-          updateJob(run.angle, run.modelId, {
-            status: json.mock ? "mock" : "done",
-            imageDataUrl: json.imageDataUrl,
-            imageUrl: json.imageUrl,
-            prompt: json.prompt,
-            grounded: json.grounded,
-            cost: json.mock ? 0 : (json.cost ?? 0),
-          });
-        } catch (e) {
-          updateJob(run.angle, run.modelId, {
-            status: "failed",
-            error: e instanceof Error ? e.message : "Generation failed",
-          });
-        }
+        await runOne(run.angle, run.modelId);
       }
     };
     await Promise.all([worker(), worker()]);
-  }, [addSpend, activePresetId, brief, challengerId, health, modelId, overCap, references, resolved.px, selectedAngles, sizePresetId, totalEstimate, updateJob]);
+  }, [challengerId, health, modelId, overCap, references.length, runOne, selectedAngles, totalEstimate]);
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-10">
@@ -690,7 +757,12 @@ export function PackshotStudio() {
               >
                 {PACKSHOT_MODELS.map((m) => (
                   <option key={m} value={m}>
-                    {MODELS[m].label} — ${MODELS[m].unitCost}/img
+                    {MODELS[m].label} —{" "}
+                    {(MODELS[m].outputSizes?.presets ?? []).some(
+                      (x) => (x.costMultiplier ?? 1) !== 1,
+                    )
+                      ? `from $${MODELS[m].unitCost}/img`
+                      : `$${MODELS[m].unitCost}/img`}
                     {MODELS[m].refImageCost
                       ? ` + $${MODELS[m].refImageCost} per reference`
                       : ""}
@@ -710,7 +782,12 @@ export function PackshotStudio() {
                 <option value="">Off — primary only</option>
                 {PACKSHOT_MODELS.filter((m) => m !== modelId).map((m) => (
                   <option key={m} value={m}>
-                    {MODELS[m].label} — ${MODELS[m].unitCost}/img
+                    {MODELS[m].label} —{" "}
+                    {(MODELS[m].outputSizes?.presets ?? []).some(
+                      (x) => (x.costMultiplier ?? 1) !== 1,
+                    )
+                      ? `from $${MODELS[m].unitCost}/img`
+                      : `$${MODELS[m].unitCost}/img`}
                     {MODELS[m].refImageCost
                       ? ` + $${MODELS[m].refImageCost} per reference`
                       : ""}
@@ -737,18 +814,29 @@ export function PackshotStudio() {
                   {sizeSupport.presets.map((preset) => {
                     const active =
                       sizePresetId !== "custom" && activePresetId === preset.id;
+                    // Priced per tier, on the button, because on two of these
+                    // models the tier is most of the decision.
+                    const each = estimateCost(modelId, {
+                      referenceImages: references.length,
+                      sizePresetId: preset.id,
+                    });
                     return (
                       <button
                         key={preset.id}
                         title={preset.note}
                         onClick={() => setSizePresetId(preset.id)}
-                        className={`rounded-[6px] border px-3 py-1.5 text-xs font-semibold transition ${
+                        className={`rounded-[6px] border px-3 py-1.5 text-left text-xs font-semibold transition ${
                           active
                             ? "border-accent bg-accent/[0.05] text-accent"
                             : "border-border-soft bg-surface hover:border-accent/40"
                         }`}
                       >
                         {preset.label}
+                        <span
+                          className={`ml-2 font-mono font-normal ${active ? "text-accent/80" : "text-muted"}`}
+                        >
+                          ${each.toFixed(3)}
+                        </span>
                       </button>
                     );
                   })}
@@ -779,6 +867,15 @@ export function PackshotStudio() {
                     <span className="text-xs text-muted">
                       px square · {sizeSupport.custom.min}–{sizeSupport.custom.max},
                       in steps of {sizeSupport.custom.multipleOf}
+                      {resolved.px && (
+                        <>
+                          {" · "}
+                          <span className="font-mono text-foreground">
+                            ${estimateCost(modelId, costOpts).toFixed(3)}
+                          </span>{" "}
+                          per angle
+                        </>
+                      )}
                     </span>
                   </div>
                 )}
@@ -786,6 +883,13 @@ export function PackshotStudio() {
                 <p className="mt-2 text-xs leading-relaxed text-muted">
                   {sizeSupport.note}
                 </p>
+                {sizeSupport.presets.length > 1 &&
+                  sizeSupport.presets.every((x) => (x.costMultiplier ?? 1) === 1) && (
+                    <p className="mt-1.5 text-xs leading-relaxed text-success">
+                      Size does not change the price on this model — take the
+                      largest tier that renders.
+                    </p>
+                  )}
                 {resolved.note && (
                   <p className="mt-2 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed">
                     <span className="font-bold text-warning">Adjusted.</span>{" "}
@@ -867,6 +971,44 @@ export function PackshotStudio() {
           </div>
 
           {jobs.length > 0 && (
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border-soft pt-5">
+              <div className="text-sm">
+                <span className="label">Results</span>
+                <span className="ml-3 text-muted">
+                  {done.length} of {jobs.length} done
+                  {failed.length > 0 && (
+                    <span className="text-danger"> · {failed.length} failed</span>
+                  )}
+                  {needsQA.length > 0 && (
+                    <span className="text-warning">
+                      {" "}
+                      · {needsQA.length} needing label QA
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {failed.length > 0 && (
+                  <button
+                    className="btn-secondary !px-3 !py-1.5 text-xs"
+                    onClick={() => void retryFailed()}
+                  >
+                    Retry {failed.length} failed
+                  </button>
+                )}
+                {done.length > 1 && (
+                  <button
+                    className="btn-secondary !px-3 !py-1.5 text-xs"
+                    onClick={() => void downloadAll()}
+                  >
+                    Download all {done.length}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {jobs.length > 0 && (
             <div
               /*
                 Wider now that results are not sharing the row with a rail.
@@ -881,7 +1023,13 @@ export function PackshotStudio() {
               }`}
             >
               {jobs.map((j) => (
-                <PackshotCard key={`${j.angle}:${j.modelId}`} job={j} sku={sku} lang={lang} />
+                <PackshotCard
+                  key={`${j.angle}:${j.modelId}`}
+                  job={j}
+                  sku={sku}
+                  lang={lang}
+                  onRetry={() => void runOne(j.angle, j.modelId)}
+                />
               ))}
             </div>
           )}
@@ -891,7 +1039,30 @@ export function PackshotStudio() {
   );
 }
 
-function PackshotCard({ job, sku, lang }: { job: Job; sku: string; lang: string }) {
+/**
+ * Where the Download link points.
+ *
+ * A data URL saves directly. A hosted one goes through our own origin, because
+ * the `download` attribute is ignored cross-origin — without the proxy the
+ * browser navigates to the image and the GS1 filename is lost, which on a
+ * planogram asset is the part that matters.
+ */
+function downloadHref(job: Job, fileName: string): string {
+  if (job.imageDataUrl) return job.imageDataUrl;
+  return `/api/packshot-file?url=${encodeURIComponent(job.imageUrl ?? "")}&name=${encodeURIComponent(fileName)}`;
+}
+
+function PackshotCard({
+  job,
+  sku,
+  lang,
+  onRetry,
+}: {
+  job: Job;
+  sku: string;
+  lang: string;
+  onRetry?: () => void;
+}) {
   const spec = PACK_ANGLES.find((a) => a.id === job.angle)!;
   const model = MODELS[job.modelId];
   const [showPrompt, setShowPrompt] = useState(false);
@@ -905,10 +1076,19 @@ function PackshotCard({ job, sku, lang }: { job: Job; sku: string; lang: string 
       <div className="relative aspect-square w-full bg-surface-2">
         {media ? (
           // eslint-disable-next-line @next/next/no-img-element
+          /*
+            Contain, not cover.
+            
+            Not every model returns a square: Flash Image and Kontext pick
+            their own pixel count, and cover silently crops the product out of
+            the preview. On a planogram asset that is the worst kind of
+            wrong — the thumbnail looks fine, so the crop is only discovered
+            after the file is in someone's hands.
+          */
           <img
             src={media}
             alt={spec.label}
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-contain"
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted">
@@ -945,17 +1125,23 @@ function PackshotCard({ job, sku, lang }: { job: Job; sku: string; lang: string 
         </div>
         <p className="mt-0.5 text-xs text-muted">{model.label}</p>
         <p className="mt-1 break-all font-mono text-[11px] text-muted">{fileName}</p>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5">
           {media && (
             <a
-              href={media}
+              href={downloadHref(job, fileName)}
               download={fileName}
-              target={job.imageUrl ? "_blank" : undefined}
-              rel="noreferrer"
               className="text-xs font-semibold text-accent hover:underline"
             >
               Download
             </a>
+          )}
+          {job.status === "failed" && onRetry && (
+            <button
+              className="text-xs font-semibold text-accent hover:underline"
+              onClick={onRetry}
+            >
+              Retry this angle
+            </button>
           )}
           {job.prompt && (
             <button

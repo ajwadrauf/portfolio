@@ -89,10 +89,31 @@ export type SizeMode = "pixels" | "tiers" | "aspect";
 
 export type OutputSizeSupport = {
   mode: SizeMode;
-  /** Named options, smallest first. Square, which is what a packshot is. */
-  presets: { id: string; label: string; px: number; note?: string }[];
+  /**
+   * Named options, smallest first. Square, which is what a packshot is.
+   *
+   * `costMultiplier` is relative to the model's `unitCost`, which is quoted at
+   * the preset that leaves it 1. Size moves the price on two of these models
+   * and not at all on the rest, and a picker that showed one number for every
+   * tier was quoting a 2048px GPT Image 2 render at a quarter of its price.
+   */
+  presets: { id: string; label: string; px: number; costMultiplier?: number; note?: string }[];
   /** Arbitrary square dimensions, for `pixels` endpoints that take them. */
-  custom?: { min: number; max: number; multipleOf: number };
+  custom?: {
+    min: number;
+    max: number;
+    multipleOf: number;
+    /**
+     * Price tracks pixel area rather than a tier.
+     *
+     * GPT Image 2 bills its output as image tokens, and three published sizes
+     * — 1024x1024 at $0.133, 1024x1536 at $0.200, 1536x1024 at $0.199 — come
+     * out at $0.127 per megapixel within half a percent of each other. So area
+     * is the model, and `basePx` is the square size `unitCost` was quoted at.
+     */
+    costScalesWithArea?: boolean;
+    basePx?: number;
+  };
   /** One line naming the constraint, shown under the control. */
   note: string;
 };
@@ -118,11 +139,11 @@ export const MODELS: Record<string, ModelInfo> = {
     outputSizes: {
       mode: "tiers",
       presets: [
-        { id: "1K", label: "1K — 1024²", px: 1024, note: "Web tiles and review rounds." },
-        { id: "2K", label: "2K — 2048²", px: 2048, note: "The planogram default: enough for label type to survive a crop." },
-        { id: "4K", label: "4K — 4096²", px: 4096, note: "Print and large in-store screens. Slowest and dearest." },
+        { id: "1K", label: "1K — 1024²", px: 1024, costMultiplier: 1, note: "Web tiles and review rounds." },
+        { id: "2K", label: "2K — 2048²", px: 2048, costMultiplier: 1.5, note: "The planogram default: enough for label type to survive a crop. Billed at 1.5x the 1K rate." },
+        { id: "4K", label: "4K — 4096²", px: 4096, costMultiplier: 2, note: "Print and large in-store screens. Twice the 1K rate, and the slowest." },
       ],
-      note: "Renders at three named tiers. Anything between them rounds to the nearest — there is no arbitrary pixel size on this model.",
+      note: "Three named tiers, and the tier moves the price: 2K is 1.5x the 1K rate and 4K is 2x. Anything between them rounds to the nearest — there is no arbitrary pixel size here.",
     },
   },
   "nano-banana-flash": {
@@ -196,7 +217,7 @@ export const MODELS: Record<string, ModelInfo> = {
         { id: "auto_2K", label: "2K — 2048²", px: 2048, note: "Best value per pixel in the set." },
         { id: "auto_4K", label: "4K — 4096²", px: 4096 },
       ],
-      note: "Named tiers up to 4K, and the cheapest route to a 2K planogram angle.",
+      note: "Named tiers up to 4K at one flat price — resolution does not move the bill here, which makes it the cheapest route to a 2K or 4K planogram angle by a wide margin.",
     },
   },
   "gpt-image-2-edit": {
@@ -223,12 +244,12 @@ export const MODELS: Record<string, ModelInfo> = {
     outputSizes: {
       mode: "pixels",
       presets: [
-        { id: "1024", label: "1024²", px: 1024, note: "The rate this model is priced at." },
-        { id: "1536", label: "1536²", px: 1536 },
-        { id: "2048", label: "2048²", px: 2048, note: "Past 1536 the price climbs steeply — high quality at 4K reaches $0.41." },
+        { id: "1024", label: "1024²", px: 1024, costMultiplier: 1, note: "The size the quoted rate is for." },
+        { id: "1536", label: "1536²", px: 1536, costMultiplier: 2.25, note: "2.25x the area, and 2.25x the price." },
+        { id: "2048", label: "2048²", px: 2048, costMultiplier: 4, note: "Four times the pixels of 1024², and four times the bill." },
       ],
-      custom: { min: 512, max: 2048, multipleOf: 16 },
-      note: "The only model here that takes an arbitrary pixel size. Both edges must divide by 16, and cost rises with area — a 2048² render is four times the pixels of the 1024² the quoted rate covers.",
+      custom: { min: 512, max: 2048, multipleOf: 16, costScalesWithArea: true, basePx: 1024 },
+      note: "The only model here that takes an arbitrary pixel size — both edges must divide by 16. It bills output as image tokens, so the price tracks area exactly: about $0.127 per megapixel, which makes a 2048² render four times the cost of a 1024² one.",
     },
   },
 
@@ -412,6 +433,9 @@ export function estimateCost(
     inputVideoSeconds?: number;
     /** Supplied reference images, for endpoints that bill them as input. */
     referenceImages?: number;
+    /** Chosen output size, which moves the price on some image models. */
+    sizePresetId?: string;
+    sizePx?: number;
   },
 ): number {
   const m = getModel(modelId);
@@ -431,7 +455,33 @@ export function estimateCost(
   // Reference input is billed separately on some edit endpoints, and a
   // packshot run supplies up to six of them.
   const refs = (m.refImageCost ?? 0) * (opts?.referenceImages ?? 0);
-  return m.unitCost * (opts?.images ?? 1) + refs;
+  return m.unitCost * sizeMultiplier(m, opts) * (opts?.images ?? 1) + refs;
+}
+
+/**
+ * How much the chosen output size moves the price.
+ *
+ * 1 for every model that charges one rate whatever it renders — Seedream,
+ * Kontext, Flash Image, Recraft — which is most of them, and the reason this
+ * was easy to miss. Nano Banana Pro steps 1x / 1.5x / 2x across its tiers, and
+ * GPT Image 2 tracks pixel area continuously.
+ */
+export function sizeMultiplier(
+  m: ModelInfo,
+  opts?: { sizePresetId?: string; sizePx?: number },
+): number {
+  const sizes = m.outputSizes;
+  if (!sizes) return 1;
+  const preset = sizes.presets.find((p) => p.id === opts?.sizePresetId);
+  if (preset) return preset.costMultiplier ?? 1;
+  const custom = sizes.custom;
+  if (custom?.costScalesWithArea && opts?.sizePx && custom.basePx) {
+    return Math.pow(opts.sizePx / custom.basePx, 2);
+  }
+  // No size chosen yet: quote the tier the picker will land on, not the
+  // cheapest one, so the number never falls when the user makes it explicit.
+  const fallback = sizes.presets[Math.min(1, sizes.presets.length - 1)];
+  return fallback?.costMultiplier ?? 1;
 }
 
 /** Models billed by token rather than by second. */
