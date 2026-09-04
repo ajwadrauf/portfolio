@@ -642,6 +642,7 @@ export const AD_VIDEO_MODELS = [
   "seedance-2.5-ref",
   "seedance-2.5",
   "runway-gen4",
+  "kling-3.0-pro",
   "kling-3.0",
 ];
 
@@ -731,6 +732,20 @@ const AUDIO_CAPABILITIES: Record<string, AudioCapability> = {
     note: "Sound and picture are generated jointly in one latent space, and this endpoint also takes audio IN — a supplied track becomes a timing signal the cuts key off, which is the one thing that makes a beat-driven concept land on purpose instead of by luck.",
   },
   "kling-3.0": SILENT_MODEL,
+  /*
+   * Kling v3 Pro renders its own audio — the published rate is higher with it
+   * on than off, which is only meaningful if the endpoint produces it. It is
+   * marked non-switchable because the field name for that toggle is not
+   * something to guess at against strict input validation; until it is
+   * confirmed against the live schema, the endpoint default stands and the
+   * estimate assumes the dearer of the two.
+   */
+  "kling-3.0-pro": {
+    native: true,
+    switchable: false,
+    refAudio: false,
+    note: "Renders its own audio with the picture. The switch that turns it off is not wired here, so the take arrives with sound and is billed at the audio-on rate — plan the edit around that rather than around silence.",
+  },
   "runway-gen4": SILENT_MODEL,
 };
 
@@ -921,6 +936,29 @@ export function referenceBlock(refs: ReferenceSpec[]): string {
 /** Per-model duration ceiling (seconds). Seedance 2.5 does native 30s takes. */
 export function maxAdSeconds(modelId: string): number {
   return modelId.startsWith("seedance-2.5") ? 30 : 10;
+}
+
+/**
+ * Models whose endpoint takes a fixed set of durations rather than a range.
+ *
+ * Kling publishes `duration` as an enum of "5" and "10". The length control is
+ * a 4-30s slider, so every other value it can produce is a 422 at submit time
+ * — after the estimate has been shown and the spend confirmed. This has been
+ * latent on Kling Standard the whole time; adding a second Kling endpoint is
+ * the point at which it stops being worth leaving.
+ */
+export const DISCRETE_DURATIONS: Record<string, number[]> = {
+  "kling-3.0": [5, 10],
+  "kling-3.0-pro": [5, 10],
+};
+
+/** The nearest length this model will actually accept. Ties round down. */
+export function snapAdSeconds(modelId: string, seconds: number): number {
+  const allowed = DISCRETE_DURATIONS[modelId];
+  if (!allowed?.length) return seconds;
+  return allowed.reduce((best, v) =>
+    Math.abs(v - seconds) < Math.abs(best - seconds) ? v : best,
+  );
 }
 
 export const AD_NEGATIVE_PROMPT =

@@ -18,34 +18,72 @@ function client() {
  * connection while the model runs — image models return in seconds, well
  * within the route's maxDuration.
  */
+/**
+ * fal's own size enum, for endpoints that take `image_size` rather than an
+ * aspect string. Only the shapes this app actually asks for are mapped; an
+ * unmapped one falls back to square, which is what every packshot is.
+ */
+const IMAGE_SIZE_ENUM: Record<string, string> = {
+  "1:1": "square_hd",
+  "4:3": "landscape_4_3",
+  "3:4": "portrait_4_3",
+  "16:9": "landscape_16_9",
+  "9:16": "portrait_16_9",
+};
+
 export async function falGenerateImage(opts: {
   endpoint: string;
   prompt: string;
   aspectRatio: string;
+  /**
+   * Which field this endpoint uses to size its output. Defaults to
+   * `aspect_ratio`, which is what Flux, Kontext and Seedream take. GPT Image 2
+   * takes `image_size` instead — and fal rejects an undefined field with a 422
+   * rather than ignoring it, so this is named per endpoint rather than sprayed.
+   */
+  sizeField?: "aspect_ratio" | "image_size";
   /** data URL of the product photo; fal auto-uploads data URIs. */
   referenceImageDataUrl?: string;
   /** multiple reference data URLs, for multi-image edit endpoints (Kontext multi, Seedream edit). */
   referenceImageDataUrls?: string[];
 }): Promise<{ url: string }> {
   const f = client();
+  const usesImageSize = opts.sizeField === "image_size";
   const input: Record<string, unknown> = {
     prompt: opts.prompt,
-    aspect_ratio: opts.aspectRatio,
     num_images: 1,
-    // Belt-and-braces: some endpoints use image_size instead of aspect_ratio;
-    // unknown fields are ignored by fal input validation on most endpoints.
-    output_format: "jpeg",
   };
+  if (usesImageSize) {
+    input.image_size = IMAGE_SIZE_ENUM[opts.aspectRatio] ?? "square_hd";
+  } else {
+    input.aspect_ratio = opts.aspectRatio;
+    // Not part of every schema — only sent on the endpoints known to take it,
+    // which are the ones that have been taking it all along.
+    input.output_format = "jpeg";
+  }
   const refs = opts.referenceImageDataUrls?.length
     ? opts.referenceImageDataUrls
     : opts.referenceImageDataUrl
       ? [opts.referenceImageDataUrl]
       : [];
   if (refs.length > 0) {
-    // Single-image endpoints read image_url; multi-image edit endpoints read
-    // image_urls. Send both — fal ignores fields an endpoint doesn't define.
-    input.image_url = refs[0];
-    if (refs.length > 1 || opts.referenceImageDataUrls) input.image_urls = refs;
+    /*
+     * Single-image endpoints read image_url; multi-image edit endpoints read
+     * image_urls.
+     *
+     * The legacy path sends both, on the theory that fal ignores a field an
+     * endpoint does not define. That is not true in general — fal validates
+     * strictly and answers 422 — it is merely true of the three endpoints that
+     * have been running this way. So it stays as it is for them, and anything
+     * new gets only the field its schema publishes: GPT Image 2's edit
+     * endpoint takes image_urls, and image_url alongside it is a rejection.
+     */
+    if (usesImageSize) {
+      input.image_urls = refs;
+    } else {
+      input.image_url = refs[0];
+      if (refs.length > 1 || opts.referenceImageDataUrls) input.image_urls = refs;
+    }
   }
 
   const result = await f.subscribe(opts.endpoint, { input, logs: false });

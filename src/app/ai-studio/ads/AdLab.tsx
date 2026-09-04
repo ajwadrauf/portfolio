@@ -21,6 +21,8 @@ import {
   getAdPreset,
   isDefaultRecipe,
   maxAdSeconds,
+  snapAdSeconds,
+  DISCRETE_DURATIONS,
   recipeStatus,
   unmetCriticalSteps,
   VIDEO_REF_LIMITS,
@@ -446,7 +448,17 @@ export function AdLab({
   const modelName = MODELS[modelId].label.split(" (")[0];
   const supportsRefs = MULTI_REF_MODELS.includes(modelId);
   const secondsCap = maxAdSeconds(modelId);
-  const duration = Math.min(seconds ?? preset.durationSeconds, secondsCap);
+  /*
+   * Snapped to what the endpoint publishes. Kling takes duration as an enum of
+   * 5 or 10, so a slider that offers every second between 4 and 10 was mostly
+   * offering values that 422 after the spend was confirmed. The control below
+   * becomes a two-way choice for those models rather than lying about a range.
+   */
+  const allowedDurations = DISCRETE_DURATIONS[modelId];
+  const duration = snapAdSeconds(
+    modelId,
+    Math.min(seconds ?? preset.durationSeconds, secondsCap),
+  );
   const tokenBilled = usesTokenPricing(modelId);
   const allowedAspects = aspectsFor(modelId);
   /** Falling back keeps a Seedance-only shape from being sent to Veo. */
@@ -2900,19 +2912,39 @@ export function AdLab({
               <span>Length</span>
               <span className="!text-foreground">{duration}s</span>
             </span>
-            <input
-              type="range"
-              min={4}
-              max={secondsCap}
-              step={1}
-              value={duration}
-              onChange={(e) => setSeconds(Number(e.target.value))}
-              className="w-full accent-[var(--accent)]"
-            />
+            {allowedDurations ? (
+              <div className="flex gap-2">
+                {allowedDurations.map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setSeconds(d)}
+                    className={`flex-1 rounded-[6px] border px-3 py-2 text-sm font-semibold transition ${
+                      duration === d
+                        ? "border-accent bg-accent/[0.05] text-accent"
+                        : "border-border-soft bg-surface hover:border-accent/40"
+                    }`}
+                  >
+                    {d}s
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <input
+                type="range"
+                min={4}
+                max={secondsCap}
+                step={1}
+                value={duration}
+                onChange={(e) => setSeconds(Number(e.target.value))}
+                className="w-full accent-[var(--accent)]"
+              />
+            )}
             <span className="mt-1 block text-xs leading-relaxed text-muted">
-              {secondsCap >= 30
-                ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
-                : `This model caps at ${secondsCap}s.`}{" "}
+              {allowedDurations
+                ? `This model renders ${allowedDurations.join("s or ")}s only — the endpoint takes those two lengths and rejects anything between them.`
+                : secondsCap >= 30
+                  ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
+                  : `This model caps at ${secondsCap}s.`}{" "}
               The concept is designed for {preset.durationSeconds}s.
             </span>
           </label>

@@ -19,6 +19,7 @@ export const PACKSHOT_MODELS = [
   "nano-banana-flash",
   "flux-kontext",
   "seedream-4",
+  "gpt-image-2-edit",
 ];
 
 export type PackAngle =

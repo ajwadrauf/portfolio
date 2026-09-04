@@ -112,7 +112,17 @@ export function PackshotStudio() {
     () => PACK_ANGLES.filter((a) => targets[a.id]).map((a) => a.id),
     [targets],
   );
-  const perAngleCost = estimateCost(modelId) + (challengerId ? estimateCost(challengerId) : 0);
+  /*
+   * Priced against the references actually staged, not against a bare output
+   * image. GPT Image 2's edit endpoint bills every reference as high-fidelity
+   * input, so a six-reference run costs meaningfully more than its per-image
+   * rate — and an estimate that ignores that reads low by exactly the amount
+   * the user did not agree to.
+   */
+  const costOpts = { referenceImages: references.length };
+  const perAngleCost =
+    estimateCost(modelId, costOpts) +
+    (challengerId ? estimateCost(challengerId, costOpts) : 0);
   const totalEstimate = selectedAngles.length * perAngleCost;
   const groundedCount = selectedAngles.filter((a) => isGrounded(a, providedAngles)).length;
 
@@ -400,6 +410,9 @@ export function PackshotStudio() {
                 {PACKSHOT_MODELS.map((m) => (
                   <option key={m} value={m}>
                     {MODELS[m].label} — ${MODELS[m].unitCost}/img
+                    {MODELS[m].refImageCost
+                      ? ` + $${MODELS[m].refImageCost} per reference`
+                      : ""}
                   </option>
                 ))}
               </select>
@@ -417,15 +430,21 @@ export function PackshotStudio() {
                 {PACKSHOT_MODELS.filter((m) => m !== modelId).map((m) => (
                   <option key={m} value={m}>
                     {MODELS[m].label} — ${MODELS[m].unitCost}/img
+                    {MODELS[m].refImageCost
+                      ? ` + $${MODELS[m].refImageCost} per reference`
+                      : ""}
                   </option>
                 ))}
               </select>
             </label>
             <p className="mt-2 text-xs text-muted">
               Nano Banana Pro holds label text best; Flux Kontext wins on
-              surface texture; Seedream is the value benchmark. With a
-              challenger set, every angle runs on both models and renders side
-              by side — the bake-off that should decide your default.
+              surface texture; Seedream is the value benchmark; GPT Image 2 is
+              the one to beat on following an instruction literally and keeping
+              type legible through an angle change — and the only one here that
+              bills the references as well as the render. With a challenger set,
+              every angle runs on both models and renders side by side — the
+              bake-off that should decide your default.
             </p>
           </div>
         </div>

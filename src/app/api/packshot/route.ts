@@ -47,7 +47,9 @@ export async function POST(req: Request) {
     const providedAngles = references.map((r) => r.angle);
     const grounded = isGrounded(body.targetAngle, providedAngles);
     const prompt = buildPackshotPrompt(body.targetAngle, providedAngles, body.productNotes);
-    const cost = estimateCost(model.id);
+    // Reference images are billed as input on some edit endpoints, so the
+    // estimate has to know how many are going up, not just what comes back.
+    const cost = estimateCost(model.id, { referenceImages: references.length });
 
     const hasKey = model.provider === "gemini" ? hasGeminiKey() : hasFalKey();
     // Gate first, then spend a unit of this session's budget. Either failing
@@ -83,6 +85,7 @@ export async function POST(req: Request) {
       endpoint: model.endpoint,
       prompt,
       aspectRatio: "1:1",
+      sizeField: model.sizeField,
       referenceImageDataUrls: references.map((r) => r.dataUrl),
     });
     return liveJson(spend, { mock: false, imageUrl: url, prompt, grounded, cost });

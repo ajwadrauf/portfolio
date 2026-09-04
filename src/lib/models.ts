@@ -24,6 +24,28 @@ export type ModelInfo = {
   /** USD. Images: per image. Video/music: per second. */
   unitCost: number;
   unit: "image" | "second";
+  /**
+   * Which field this fal endpoint uses to size its output.
+   *
+   * Defaults to `aspect_ratio`, which is what every image endpoint here used
+   * until GPT Image 2. That one takes `image_size` instead, and fal validates
+   * its input schema strictly — an undefined field is a 422 at submit time,
+   * not a field quietly ignored. This session already paid to learn that on
+   * the video side; the fix is to name the field per endpoint rather than
+   * send both and hope.
+   */
+  sizeField?: "aspect_ratio" | "image_size";
+  /**
+   * USD per supplied reference image, for endpoints that bill reference input
+   * on top of the output image.
+   *
+   * GPT Image 2's edit endpoint charges input image tokens at $0.008/1k and
+   * bills every reference at high fidelity regardless of output quality. A
+   * 1024x1024 reference is ~1.1k tokens, so ~$0.009 each — which on a
+   * six-reference packshot is a third of the bill again, and invisible if the
+   * estimate only ever counts output images.
+   */
+  refImageCost?: number;
   strengths: string;
   bestFor: string;
 };
@@ -90,6 +112,25 @@ export const MODELS: Record<string, ModelInfo> = {
       "Very strong subject-consistent editing at the lowest price in its class; multi-image input.",
     bestFor: "Packshot challenger: the value benchmark every bake-off should include.",
   },
+  "gpt-image-2-edit": {
+    id: "gpt-image-2-edit",
+    provider: "fal",
+    // Namespaced under `openai/`, not `fal-ai/` — fal hosts this one as the
+    // official partner API, and the fal-ai/ slug does not exist.
+    endpoint: env("FAL_GPT_IMAGE_2_EDIT_ENDPOINT", "openai/gpt-image-2/edit"),
+    label: "GPT Image 2 Edit (OpenAI, via fal.ai)",
+    kind: "image",
+    // High quality at 1024x1024, which is what a 1:1 packshot asks for.
+    // Low is $0.009 and medium $0.034 at the same size; 4K high reaches $0.41.
+    unitCost: 0.133,
+    unit: "image",
+    sizeField: "image_size",
+    refImageCost: 0.009,
+    strengths:
+      "Instruction-following and text rendering at the top of the current field, with a mask input for constraining an edit to one region. Reads a reference set closely rather than paraphrasing it.",
+    bestFor:
+      "Packshot challenger where the label has to survive: the angle changes and the type on the pack stays readable and correct.",
+  },
 
   // ---------------- Video ----------------
   "veo-3.1-fast": {
@@ -125,6 +166,26 @@ export const MODELS: Record<string, ModelInfo> = {
     strengths:
       "4-7x cheaper than alternatives, uniquely strong multi-shot subject consistency.",
     bestFor: "Cost-efficient social cutdowns; same product across many shots.",
+  },
+  "kling-3.0-pro": {
+    id: "kling-3.0-pro",
+    provider: "fal",
+    endpoint: env("FAL_KLING_PRO_ENDPOINT", "fal-ai/kling-video/v3/pro/image-to-video"),
+    label: "Kling 3.0 Pro (Kuaishou, via fal.ai)",
+    kind: "video",
+    /*
+     * The published rate is $0.112/s with audio off and $0.168/s with it on,
+     * and this app does not send an audio switch to Kling — the field name is
+     * not something to guess at on a strict-validation endpoint. So the
+     * endpoint default decides, and the estimate quotes the higher of the two
+     * rather than the one that would read better. An estimate that comes in
+     * under the invoice is worse than no estimate.
+     */
+    unitCost: 0.168,
+    unit: "second",
+    strengths:
+      "The quality tier above Kling Standard, at roughly 1.7x the price: better motion coherence and detail retention through a move, and it renders its own audio.",
+    bestFor: "A finished-looking single shot when Veo is too expensive and Standard is not holding up.",
   },
   "runway-gen4": {
     id: "runway-gen4",
@@ -216,6 +277,8 @@ export function estimateCost(
     aspect?: string;
     hasVideoInputs?: boolean;
     inputVideoSeconds?: number;
+    /** Supplied reference images, for endpoints that bill them as input. */
+    referenceImages?: number;
   },
 ): number {
   const m = getModel(modelId);
@@ -232,7 +295,10 @@ export function estimateCost(
     });
   }
   if (m.unit === "second") return m.unitCost * (opts?.seconds ?? 8);
-  return m.unitCost * (opts?.images ?? 1);
+  // Reference input is billed separately on some edit endpoints, and a
+  // packshot run supplies up to six of them.
+  const refs = (m.refImageCost ?? 0) * (opts?.referenceImages ?? 0);
+  return m.unitCost * (opts?.images ?? 1) + refs;
 }
 
 /** Models billed by token rather than by second. */

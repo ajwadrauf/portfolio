@@ -7,6 +7,7 @@ import { resolutionsFor, type VideoResolution } from "@/lib/videoCost";
 import { consume, liveJson, unlocked } from "@/lib/auth";
 import {
   AD_VIDEO_MODELS,
+  snapAdSeconds,
   AUDIO_REF_MODELS,
   MULTI_REF_MODELS,
   REF_CEILINGS,
@@ -110,9 +111,12 @@ export async function POST(req: Request) {
     }
 
     const model = getModel(body.modelId);
-    const seconds = Math.min(
-      Math.max(body.durationSeconds ?? 8, 4),
-      maxAdSeconds(body.modelId),
+    // Clamped to the model's ceiling, then snapped to a length it will
+    // actually accept — Kling publishes duration as an enum, so an in-range
+    // value it does not list is still a 422.
+    const seconds = snapAdSeconds(
+      body.modelId,
+      Math.min(Math.max(body.durationSeconds ?? 8, 4), maxAdSeconds(body.modelId)),
     );
     /*
      * Validated against what THIS endpoint renders, not against the full list.
