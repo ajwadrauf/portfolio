@@ -371,9 +371,19 @@ export function PackshotStudio() {
             <span className={`inline-block h-2 w-2 rounded-full ${health?.fal ? "bg-success" : "bg-muted/50"}`} />
             fal.ai {health?.fal ? "connected" : "not configured"}
           </span>
+          {/*
+            Recraft is a third provider with its own key, and this is the only
+            studio that offers a Recraft model — so the chip lives here rather
+            than in the shared status bars, where it would report on a key
+            nothing on the page could spend.
+          */}
+          <span className="chip">
+            <span className={`inline-block h-2 w-2 rounded-full ${health?.recraft ? "bg-success" : "bg-muted/50"}`} />
+            Recraft {health?.recraft ? "connected" : "not configured"}
+          </span>
           {/* Live-mode state sits with the other connection chips, not in the nav. */}
           <LiveGate />
-          {health && !health.live && !health.gemini && !health.fal && (
+          {health && !health.live && !health.gemini && !health.fal && !health.recraft && (
             <span className="chip border-warning/40 text-warning">
               Demo mode — zero-cost mocks; add API keys to go live
             </span>
@@ -537,9 +547,65 @@ export function PackshotStudio() {
               <span className="label"><Required /></span>
             </div>
             <p className="mt-1 text-xs text-muted">
-              Add every face you have — each one turns a reconstruction into a
-              grounded angle.
+              Every face you add turns a reconstruction into a grounded angle.
             </p>
+
+            {/*
+              Model-specific, and next to the upload control rather than beside
+              the model picker.
+              
+              This is where the decision gets made — how many photos to go and
+              find, and which ones. The ceilings differ by an order of
+              magnitude across this list and so does the right way to spend
+              them, so a single generic "add every face you have" was good
+              advice for two of the six models and wrong for the rest.
+            */}
+            <div
+              className={`mt-3 rounded-[6px] border p-3 ${
+                overCap
+                  ? "border-danger/40 bg-danger/10"
+                  : "border-accent/30 bg-accent/[0.04]"
+              }`}
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="label !text-accent">
+                  {cappedBy.label.split(" (")[0]}
+                </span>
+                <span
+                  className={`font-mono text-[11px] ${overCap ? "text-danger" : "text-muted"}`}
+                >
+                  {references.length}/{refCap} used
+                </span>
+              </div>
+              {overCap ? (
+                <p className="mt-1.5 text-xs leading-relaxed">
+                  <span className="font-bold text-danger">Too many references.</span>{" "}
+                  {cappedBy.label} accepts {refCap}. Remove{" "}
+                  {references.length - refCap} before running, or pick a model
+                  with a higher ceiling — the run is refused rather than
+                  silently dropping the extras, because a dropped face turns a
+                  grounded angle into a reconstruction without saying so.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs leading-relaxed text-muted">
+                  <span className="font-semibold text-foreground">
+                    Supports {refCap} reference{refCap === 1 ? "" : "s"}.
+                  </span>{" "}
+                  {cappedBy.referenceGuidance}
+                </p>
+              )}
+              {challenger &&
+                (challenger.maxReferenceImages ?? 16) !==
+                  (primary.maxReferenceImages ?? 16) && (
+                  <p className="mt-2 border-t border-border-soft pt-2 text-[11px] leading-relaxed text-muted">
+                    The A/B is held to the stricter of the two —{" "}
+                    {primary.label.split(" (")[0]} takes{" "}
+                    {primary.maxReferenceImages}, {challenger.label.split(" (")[0]}{" "}
+                    takes {challenger.maxReferenceImages}.
+                  </p>
+                )}
+            </div>
+
             <div className="mt-3 flex gap-2">
               <select
                 className="input flex-1"
@@ -607,7 +673,7 @@ export function PackshotStudio() {
           </div>
 
           <div className="card p-5 lg:col-span-7">
-            <h2 className="font-semibold">4 · Model and output</h2>
+            <h2 className="font-semibold">4 · Model and output size</h2>
             <label className="mt-3 block">
               <span className="mb-1 block label">
                 Primary
@@ -662,40 +728,6 @@ export function PackshotStudio() {
               bake-off that should decide your default.
             </p>
 
-            {/*
-              Reference ceilings differ by an order of magnitude across this
-              list — one on Recraft, three on Flash Image, sixteen on GPT Image
-              2 — so the limit is shown against the chosen model rather than as
-              a single number that would be wrong for four of the five.
-            */}
-            <div className="mt-4 border-t border-border-soft pt-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="label">Reference limit</span>
-                <span
-                  className={`chip shrink-0 ${overCap ? "!border-danger/50 !text-danger" : ""}`}
-                >
-                  {references.length}/{refCap} used
-                </span>
-              </div>
-              {overCap ? (
-                <p className="mt-2 rounded-[6px] border border-danger/40 bg-danger/10 p-3 text-xs leading-relaxed">
-                  <span className="font-bold text-danger">Too many references.</span>{" "}
-                  {cappedBy.label} accepts {refCap}. Remove{" "}
-                  {references.length - refCap} before running, or pick a model
-                  with a higher ceiling — the run is refused rather than
-                  silently dropping the extras, because a dropped face turns a
-                  grounded angle into a reconstruction without saying so.
-                </p>
-              ) : (
-                <p className="mt-2 text-xs leading-relaxed text-muted">
-                  {cappedBy.label} takes {refCap} reference
-                  {refCap === 1 ? "" : "s"}
-                  {refCap === 1
-                    ? " — it restages one photo rather than reading several, so it cannot synthesise a face no photo shows."
-                    : "."}
-                </p>
-              )}
-            </div>
 
             {/* Output size, per model. */}
             {sizeSupport && (

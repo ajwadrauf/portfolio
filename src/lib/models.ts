@@ -57,6 +57,17 @@ export type ModelInfo = {
   maxReferenceImages?: number;
   /** What this endpoint will render, for the size picker. */
   outputSizes?: OutputSizeSupport;
+  /**
+   * How to spend the reference slots this model gives you.
+   *
+   * The count alone is not advice. Sixteen slots on an endpoint that bills
+   * each one, three on an endpoint that drops the fourth, and one on an
+   * endpoint that restages rather than reads are three different jobs, and
+   * knowing which you are doing is the difference between a usable set and a
+   * set of plausible pictures. Shown next to the upload control, where the
+   * decision is actually made.
+   */
+  referenceGuidance?: string;
   strengths: string;
   bestFor: string;
 };
@@ -102,6 +113,8 @@ export const MODELS: Record<string, ModelInfo> = {
       "Reasoning-driven generation and editing, best-in-class text rendering (packaging, promo badges, EN/FR), strong brand consistency, up to 4K.",
     bestFor: "Promo tiles with live text, bilingual versioning, brand-critical hero shots.",
     maxReferenceImages: 14,
+    referenceGuidance:
+      "Give it every face you have — it reads all of them, and it holds label type better than anything else here. Front and back first, then the sides; each one you add is a face it no longer has to invent.",
     outputSizes: {
       mode: "tiers",
       presets: [
@@ -123,6 +136,8 @@ export const MODELS: Record<string, ModelInfo> = {
     strengths: "Fast and cheap generalist. The high-volume versioning workhorse.",
     bestFor: "Format adaptations, seasonal variants, bulk versioning at scale.",
     maxReferenceImages: 3,
+    referenceGuidance:
+      "Three is the hard limit and a fourth is dropped rather than blended, so spend them deliberately: the front, plus the two faces closest to the angles you actually need. For more than that, switch model.",
     outputSizes: {
       mode: "aspect",
       presets: [{ id: "1MP", label: "~1MP — 1024²", px: 1024 }],
@@ -152,6 +167,8 @@ export const MODELS: Record<string, ModelInfo> = {
       "Instruction-based editing with strong subject identity preservation and multi-image input; superb surface texture.",
     bestFor: "Packshot challenger: identity-true edits where texture matters more than dense label text.",
     maxReferenceImages: 2,
+    referenceGuidance:
+      "Built to combine two images, so give it the front plus the single face nearest your target angle. Treat a third as unsupported rather than untested — and describe the pack in words, since it reads a description better than a crowd of references.",
     outputSizes: {
       mode: "aspect",
       presets: [{ id: "auto", label: "Endpoint default — ~1024²", px: 1024 }],
@@ -170,6 +187,8 @@ export const MODELS: Record<string, ModelInfo> = {
       "Very strong subject-consistent editing at the lowest price in its class; multi-image input.",
     bestFor: "Packshot challenger: the value benchmark every bake-off should include.",
     maxReferenceImages: 10,
+    referenceGuidance:
+      "Ten available; front, back and one side is the practical sweet spot. Beyond that the returns flatten while the price does not move, so extra angles are free to add and rarely change the result.",
     outputSizes: {
       mode: "tiers",
       presets: [
@@ -199,6 +218,8 @@ export const MODELS: Record<string, ModelInfo> = {
     bestFor:
       "Packshot challenger where the label has to survive: the angle changes and the type on the pack stays readable and correct.",
     maxReferenceImages: 16,
+    referenceGuidance:
+      "Sixteen slots, but every one is billed as high-fidelity input — so add faces that show something new, not another crop of the same panel. It follows an instruction more literally than the others, which makes the written brief worth filling in properly.",
     outputSizes: {
       mode: "pixels",
       presets: [
@@ -228,6 +249,8 @@ export const MODELS: Record<string, ModelInfo> = {
      * separate style creation on top. Wrong tool for holding a label steady.
      */
     maxReferenceImages: 1,
+    referenceGuidance:
+      "One image, and it restages that photo rather than reading a set — so it cannot show a face your photo does not. Pick the reference closest to the angle you want, and lean on the written brief, which is carrying more weight here than on any other model.",
     outputSizes: {
       mode: "tiers",
       presets: [

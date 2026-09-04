@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 export type Health = {
   gemini: boolean;
   fal: boolean;
+  /** Recraft is its own REST API, so it has its own key and its own chip. */
+  recraft: boolean;
   live: boolean;
   gate: "disabled" | "locked" | "unlocked" | "exhausted";
   remaining: number | null;
@@ -63,7 +65,7 @@ export function useHealth(pollMs = 30_000) {
       const r = await fetch("/api/health", { cache: "no-store" });
       setHealth(await r.json());
     } catch {
-      setHealth((prev) => prev ?? { gemini: false, fal: false, live: false, gate: "disabled", remaining: null, ungated: false, blob: false });
+      setHealth((prev) => prev ?? { gemini: false, fal: false, recraft: false, live: false, gate: "disabled", remaining: null, ungated: false, blob: false });
     }
   }, []);
 
