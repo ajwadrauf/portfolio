@@ -253,6 +253,29 @@ export const MODELS: Record<string, ModelInfo> = {
     },
   },
 
+  "recraft-v4.1-utility": {
+    id: "recraft-v4.1-utility",
+    provider: "recraft",
+    endpoint: env("RECRAFT_UTILITY_MODEL", "recraftv4_1_utility"),
+    label: "Recraft V4.1 Utility (1K)",
+    kind: "image",
+    // Exactly a sixth of Utility Pro, which is what makes the pair work as a
+    // draft/final ladder rather than two similar options.
+    unitCost: 0.035,
+    unit: "image",
+    maxReferenceImages: 1,
+    outputSizes: {
+      mode: "tiers",
+      presets: [{ id: "1024x1024", label: "1024²", px: 1024 }],
+      note: "1K only — that is the whole difference between this and Utility Pro. Size does not move the price.",
+    },
+    referenceGuidance:
+      "One image, restaged rather than re-shot. Use this tier to find the prompt: at a sixth of Utility Pro's price you can burn six tries and still be ahead, then re-run the keeper at 2K.",
+    strengths:
+      "The draft half of Recraft's utility pair. Same behaviour as Utility Pro at 1K and a sixth of the cost, in about six seconds rather than twenty.",
+    bestFor:
+      "Iterating: testing how a label sits on a form, or what a restage prompt actually does, before spending Utility Pro money on the final.",
+  },
   "recraft-v4.1-utility-pro": {
     id: "recraft-v4.1-utility-pro",
     provider: "recraft",
@@ -271,7 +294,7 @@ export const MODELS: Record<string, ModelInfo> = {
      */
     maxReferenceImages: 1,
     referenceGuidance:
-      "One image, and it restages that photo rather than reading a set — so it cannot show a face your photo does not. Pick the reference closest to the angle you want, and lean on the written brief, which is carrying more weight here than on any other model.",
+      "One image, restaged rather than re-shot — so it cannot show you a face your photo does not already contain. Give it the photo OF the angle you are targeting and let it clean up the staging; do not ask it to rotate the pack. Six times the price of Utility 1K, so prove the prompt there first.",
     outputSizes: {
       mode: "tiers",
       presets: [
@@ -281,9 +304,9 @@ export const MODELS: Record<string, ModelInfo> = {
       note: "Size goes as WxH or w:h. The exact list of pixel sizes is published in Recraft's appendix and is worth checking before a batch; the ratio form is the safe one.",
     },
     strengths:
-      "A utility-tier raster model built for product and catalogue work rather than illustration, at 2K, with background removal and crisp upscale available on the same API.",
+      "The production half of Recraft's utility pair: 2K, tuned for flat lighting and front-facing product composition rather than illustration, with background removal and crisp upscale on the same API.",
     bestFor:
-      "Restaging or cleaning a single pack photo. Not angle synthesis — that needs a model that reads several references at once.",
+      "The final render of a restage you already proved on Utility 1K. Not angle synthesis — that needs a model that reads several references at once.",
   },
 
   // ---------------- Video ----------------

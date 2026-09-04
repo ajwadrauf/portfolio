@@ -13,6 +13,7 @@ import {
   gs1FileName,
   isGrounded,
   resolveSize,
+  suggestModel,
   type PackAngle,
   type PackBrief,
 } from "@/lib/packshot";
@@ -350,6 +351,18 @@ export function PackshotStudio() {
     },
     [addSpend, activePresetId, brief, references, resolved.px, sizePresetId, updateJob],
   );
+
+  /*
+   * Advice about the current setup, not about models in general. It only
+   * appears when the pick is actually a poor fit for the angles selected, so
+   * it stays worth reading.
+   */
+  const suggestion = suggestModel({
+    modelId,
+    targets: selectedAngles,
+    provided: providedAngles,
+    maxReferenceImages: primary.maxReferenceImages ?? 16,
+  });
 
   const done = jobs.filter((j) => j.imageDataUrl || j.imageUrl);
   const failed = jobs.filter((j) => j.status === "failed");
@@ -795,14 +808,49 @@ export function PackshotStudio() {
                 ))}
               </select>
             </label>
-            <p className="mt-2 text-xs text-muted">
-              Nano Banana Pro holds label text best; Flux Kontext wins on
-              surface texture; Seedream is the value benchmark; GPT Image 2 is
-              the one to beat on following an instruction literally and keeping
-              type legible through an angle change — and the only one here that
-              bills the references as well as the render. With a challenger set,
-              every angle runs on both models and renders side by side — the
-              bake-off that should decide your default.
+            {suggestion && (
+              <div
+                className={`mt-3 rounded-[6px] border p-3 ${
+                  suggestion.severity === "warn"
+                    ? "border-warning/40 bg-warning/10"
+                    : "border-accent/30 bg-accent/[0.04]"
+                }`}
+              >
+                <p className="text-xs leading-relaxed">
+                  <span
+                    className={`font-bold ${suggestion.severity === "warn" ? "text-warning" : "text-accent"}`}
+                  >
+                    {suggestion.severity === "warn"
+                      ? "Wrong tool for this run."
+                      : "Cheaper route available."}
+                  </span>{" "}
+                  {suggestion.text}
+                </p>
+                {suggestion.suggest && PACKSHOT_MODELS.includes(suggestion.suggest) && (
+                  <button
+                    className="mt-2 text-xs font-semibold text-accent hover:underline"
+                    onClick={() => {
+                      setModelId(suggestion.suggest!);
+                      setSizePresetId(null);
+                      setCustomPx("");
+                    }}
+                  >
+                    Switch to {MODELS[suggestion.suggest].label.split(" (")[0]} →
+                  </button>
+                )}
+              </div>
+            )}
+
+            <p className="mt-3 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-foreground">Picking one:</span>{" "}
+              Nano Banana Pro holds label text best and reads the most
+              references, so it is the default for angles you have to
+              reconstruct. GPT Image 2 follows a written brief most literally.
+              Seedream is the value benchmark and the only one where 4K is free.
+              Recraft&apos;s two tiers restage a single photo rather than
+              synthesising an angle — draft on Utility, finish on Utility Pro.
+              With a challenger set, every angle runs on both models side by
+              side: the bake-off that should decide your default.
             </p>
 
 
@@ -1079,8 +1127,8 @@ function PackshotCard({
           /*
             Contain, not cover.
             
-            Not every model returns a square: Flash Image and Kontext pick
-            their own pixel count, and cover silently crops the product out of
+            Not every model returns a square: Flash Image picks its own pixel
+            count, and cover silently crops the product out of
             the preview. On a planogram asset that is the worst kind of
             wrong — the thumbnail looks fine, so the crop is only discovered
             after the file is in someone's hands.

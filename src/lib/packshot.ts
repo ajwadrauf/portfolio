@@ -16,12 +16,25 @@
 import type { OutputSizeSupport } from "./models";
 
 /** Models eligible for packshot work (all support multi-image reference input). */
+/**
+ * Models eligible for packshot work.
+ *
+ * Flux Kontext was dropped: it is built around combining two images and takes
+ * a shape rather than a size, which makes it the weakest fit in a list where
+ * every other option either reads a full reference set or restages one photo.
+ * It stays in the registry and on the model landscape page — it is a good
+ * model, just not for this job.
+ *
+ * Recraft's two utility tiers are deliberately both here. They are the same
+ * behaviour at 1K and 2K for a sixth of the price, which makes them a
+ * draft/final ladder rather than a redundant pair.
+ */
 export const PACKSHOT_MODELS = [
   "nano-banana-pro",
   "nano-banana-flash",
-  "flux-kontext",
   "seedream-4",
   "gpt-image-2-edit",
+  "recraft-v4.1-utility",
   "recraft-v4.1-utility-pro",
 ];
 
@@ -318,6 +331,77 @@ export function resolveSize(
   }
   const fallback = support.presets[Math.min(1, support.presets.length - 1)];
   return { presetId: fallback.id, px: fallback.px };
+}
+
+/**
+ * Which model suits the job currently set up, and why.
+ *
+ * The picker lists six models with real differences and no opinion about
+ * which to reach for, which leaves the most consequential choice on the page
+ * to whoever is guessing. The split that actually matters is not price or
+ * resolution — it is whether the run needs a face synthesised from several
+ * references, or just an existing photo restaged.
+ *
+ * Returns null when the current pick is already right, so this stays a hint
+ * rather than a permanent scold.
+ */
+export function suggestModel(opts: {
+  modelId: string;
+  targets: PackAngle[];
+  provided: PackAngle[];
+  maxReferenceImages: number;
+}): { severity: "warn" | "tip"; text: string; suggest?: string } | null {
+  const { modelId, targets, provided, maxReferenceImages } = opts;
+  if (targets.length === 0 || provided.length === 0) return null;
+
+  const ungrounded = targets.filter((t) => !isGrounded(t, provided));
+  const singleRef = maxReferenceImages <= 1;
+
+  /*
+   * The one combination that cannot work.
+   *
+   * A single-reference model restages the photo it is given; it does not turn
+   * a pack around. Pointing one at a face no photo shows produces a confident,
+   * plausible, wrong image — and because it is the front panel restaged, it is
+   * wrong in a way that survives a glance.
+   */
+  if (singleRef && ungrounded.length > 0) {
+    return {
+      severity: "warn",
+      text:
+        `${ungrounded.length} of your ${targets.length} target angle${targets.length === 1 ? "" : "s"} ` +
+        `(${ungrounded.join(", ")}) are not shown in any reference photo. This model restages a single ` +
+        `photo rather than reading a set, so it cannot turn the pack around — it will hand back the face ` +
+        `it was given, restaged. Either untick those angles, or switch to a model that reads several references.`,
+      suggest: "nano-banana-pro",
+    };
+  }
+
+  if (ungrounded.length > 0 && maxReferenceImages < 4) {
+    return {
+      severity: "warn",
+      text:
+        `${ungrounded.length} target angle${ungrounded.length === 1 ? " is" : "s are"} being reconstructed, ` +
+        `and this model reads at most ${maxReferenceImages} references — so it is doing that from less ` +
+        `evidence than you have. A model that takes the whole set will invent less.`,
+      suggest: "nano-banana-pro",
+    };
+  }
+
+  // Everything asked for is already photographed: this is cleanup, not
+  // synthesis, and the cheapest tool that restages well is the right one.
+  if (ungrounded.length === 0 && !modelId.startsWith("recraft") && modelId !== "seedream-4") {
+    return {
+      severity: "tip",
+      text:
+        "Every angle you have selected is shown in a reference photo, so nothing here needs reconstructing — " +
+        "this is a restage, not a synthesis. Recraft Utility does that for $0.035 an angle, and you can " +
+        "re-run the keepers on Utility Pro at 2K.",
+      suggest: "recraft-v4.1-utility",
+    };
+  }
+
+  return null;
 }
 
 export function buildPackshotPrompt(

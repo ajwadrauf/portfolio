@@ -20,7 +20,7 @@ export const maxDuration = 60;
 
 /**
  * Ceiling across all models. The per-model cap is tighter on most of them and
- * is enforced below — three references on Gemini Flash Image, two on Kontext.
+ * is enforced below — three references on Gemini Flash Image, one on Recraft.
  */
 const MAX_REFERENCES = 16;
 
