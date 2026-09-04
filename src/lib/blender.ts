@@ -439,6 +439,16 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
     "",
     "Give every hero object real thickness and a real profile. A flat proxy reads",
     "as a sprite in the generation because it was one in the blockout.",
+  );
+  if (has(b.composited)) {
+    out.push(
+      "",
+      `Do not model or letter the following: ${clean(b.composited)}. Leave those`,
+      "surfaces blank. They are composited after generation, so geometry for them",
+      "here only gives the model something to garble.",
+    );
+  }
+  out.push(
     "",
     "## Animation",
     "",
@@ -633,7 +643,10 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
 }
 
 /** Problems worth catching before a paid generation, not after. */
-export function briefIssues(b: BlenderBrief): { text: string; why: string }[] {
+export function briefIssues(
+  b: BlenderBrief,
+  mode: "build" | "seedance" = "seedance",
+): { text: string; why: string }[] {
   const issues: { text: string; why: string }[] = [];
   const beats = b.beats.filter((x) => has(x.action));
   const mapped = b.subjects.filter((s) => has(s.color) && has(s.becomes));
@@ -682,10 +695,24 @@ export function briefIssues(b: BlenderBrief): { text: string; why: string }[] {
    * spending on identity rather than on generic matter. Referencing nothing at
    * all is the case that is nearly always a mistake.
    */
-  if (mapped.length > 0 && !mapped.some((s) => has(s.ref))) {
+  if (mode === "seedance" && mapped.length > 0 && !mapped.some((s) => has(s.ref))) {
     issues.push({
       text: "No subject has a look reference.",
       why: "With nothing to hold appearance steady the model invents every surface, and invents them differently on every generation — the most common source of drift between takes. Generic matter renders fine from description, but anything that has to be itself needs a reference.",
+    });
+  }
+
+  /*
+   * Build-mode only. Where the shot opens and where it ends is the single
+   * decision the clay pass exists to settle — it is the shot-size progression
+   * the generation inherits verbatim. A brief without it produces a blockout
+   * whose camera the operator invents, which puts the choice back in exactly
+   * the place this workflow moved it out of.
+   */
+  if (mode === "build" && !has(b.startFraming) && !has(b.endFraming)) {
+    issues.push({
+      text: "No opening or closing framing.",
+      why: "The shot-size progression is what the generation copies most literally. Left unstated, whoever builds the scene picks it, and it changes between rebuilds.",
     });
   }
 

@@ -179,20 +179,24 @@ const APPROACH = [
 ];
 
 /**
- * The marquee list. Duplicated in the markup so the track can travel exactly
- * -50% and rejoin itself without a seam.
+ * What the work actually is.
+ *
+ * This replaced a scrolling ticker, and the list changed with it. The old one
+ * led on "Stills" and "Motion", which are outputs anyone's tooling produces —
+ * naming them as strengths puts the emphasis on the deliverable rather than on
+ * the part that is hard to hire for. What is actually scarce here is the layer
+ * above: choosing the model, holding the cost, and knowing when a take is
+ * wrong and which layer owns it.
  */
 const SKILLS = [
-  "Built & shipped",
-  "Stills",
-  "Motion",
-  "Generative media",
-  "Sound design",
-  "Bilingual EN/FR versioning",
-  "Prompt systems",
+  "AI-native production",
   "Model routing",
-  "Quality gates",
-  "Retail content",
+  "Prompt systems",
+  "Cost control per render",
+  "3D control passes",
+  "Quality gates before spend",
+  "Bilingual EN/FR versioning",
+  "Retail & CPG content",
 ];
 
 /**
@@ -336,24 +340,40 @@ export default function Home() {
 
       <ShowcaseStrip items={showcase} />
 
-      {/* ---------------- Skills marquee ---------------- */}
-      <div className="marquee" aria-hidden="true">
-        <div className="marquee-track">
-          {[0, 1].map((copy) => (
-            <div key={copy} className="flex">
+      {/* ---------------- What the work is ---------------- */}
+      {/*
+        Was a scrolling marquee. A loop that never stops is a thing to wait out
+        rather than to read, and it was carrying the least specific words on the
+        page. Standing still, the same band can hold a claim as well as a list.
+      */}
+      <section className="border-y border-border bg-surface-2">
+        <div className="mx-auto max-w-[1440px] px-6 py-9 sm:px-12 lg:px-24 lg:py-11">
+          <div className="grid gap-7 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-center lg:gap-14">
+            <p className="text-[15px] leading-[1.6] tracking-[-0.01em] sm:text-base">
+              <span className="font-semibold">
+                The judgment is the same as it always was.
+              </span>{" "}
+              <span className="text-muted">
+                The tooling is not. Everything below runs through models I
+                route, price and gate myself.
+              </span>
+            </p>
+            <ul className="flex flex-wrap gap-x-7 gap-y-3">
               {SKILLS.map((skill) => (
-                <span key={`${copy}-${skill}`} className="marquee-item">
+                <li
+                  key={skill}
+                  className="flex items-center gap-2 font-mono text-[11px] uppercase leading-none tracking-[0.14em] text-muted"
+                >
+                  <span aria-hidden className="text-[9px] text-accent">
+                    ✶
+                  </span>
                   {skill}
-                </span>
+                </li>
               ))}
-            </div>
-          ))}
+            </ul>
+          </div>
         </div>
-      </div>
-      {/* The loop is decorative; the same list, readable, for screen readers. */}
-      <p className="sr-only">
-        Focus areas: {SKILLS.join(", ")}.
-      </p>
+      </section>
 
       {/* ---------------- Selected work ---------------- */}
       <div

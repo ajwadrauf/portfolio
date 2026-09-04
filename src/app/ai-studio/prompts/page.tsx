@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BlenderBriefBuilder } from "../blender/BlenderBriefBuilder";
+import { SPECS } from "@/lib/blender";
 import { PromptBuilder } from "./PromptBuilder";
 
 export const metadata: Metadata = {
@@ -41,6 +42,28 @@ export default function PromptsPage() {
           </Link>
         </p>
         <BlenderBriefBuilder mode="seedance" />
+
+        {/*
+          Moved here off the Blender page. These are limits on the generation
+          call, not on the blockout — a prompt author hits every one of them and
+          a Blender operator hits none, so this is where they belong.
+        */}
+        <div className="mt-10 rounded-[6px] border border-border-soft bg-surface p-6">
+          <p className="label !text-accent">Limits worth knowing before you spend</p>
+          <p className="mt-2 max-w-[70ch] text-xs leading-relaxed text-muted">
+            Documented as of August 2026. Verify against the live surface before
+            a paid run — the consumer app, the API and resellers expose
+            different subsets.
+          </p>
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {SPECS.map((sp) => (
+              <div key={sp.k}>
+                <dt className="label-sm">{sp.k}</dt>
+                <dd className="mt-0.5 text-xs leading-relaxed">{sp.v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </section>
     </>
   );

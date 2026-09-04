@@ -71,7 +71,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
     [b, build],
   );
   const plan = useMemo(() => uploadPlan(b), [b]);
-  const issues = useMemo(() => briefIssues(b), [b]);
+  const issues = useMemo(() => briefIssues(b, mode), [b, mode]);
 
   const copy = async () => {
     try {
@@ -171,6 +171,33 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           </Field>
         </div>
 
+        {/*
+          Where the shot opens and where it lands. Only the build brief consumes
+          these — it is the camera instruction, and the clay pass exists to
+          settle it. In the prompt they would be describing a clip that already
+          exists, which is the model's job to read, not the author's to restate.
+        */}
+        {build && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Opens on" hint="The first frame, as a shot size. It has to be a real composition, not a lead-in.">
+              <input
+                className="input"
+                placeholder="Macro, buried in the bed, three chips filling frame"
+                value={b.startFraming}
+                onChange={(e) => set("startFraming", e.target.value)}
+              />
+            </Field>
+            <Field label="Ends on" hint="The frame that has to survive. Hold it still for the last half-second.">
+              <input
+                className="input"
+                placeholder="Wide, hero face-on, packs in a row behind"
+                value={b.endFraming}
+                onChange={(e) => set("endFraming", e.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Key light" hint="Direction and elevation, not a mood.">
             <input className="input" value={b.keyLight} onChange={(e) => set("keyLight", e.target.value)} />
@@ -196,8 +223,9 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
             </button>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            One flat ID colour per subject you intend to name in the prompt.
-            Everything else stays neutral grey.
+            {build
+              ? "One flat, unlit ID colour per subject the prompt will name later. Everything else in the scene stays neutral grey — the colour is the mapping, so a second grey erases it."
+              : "One flat ID colour per subject you intend to name in the prompt. Everything else stays neutral grey."}
           </p>
           <div className="mt-3 space-y-3">
             {b.subjects.map((s, i) => (
@@ -219,24 +247,20 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                       set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, proxy: e.target.value } : x)))
                     }
                   />
-                  <input
-                    className="input"
-                    placeholder="Becomes — e.g. the product package"
-                    value={s.becomes}
-                    onChange={(e) =>
-                      set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, becomes: e.target.value } : x)))
-                    }
-                  />
                   <div className="flex gap-2">
                     <input
-                      className="input"
-                      placeholder="Look ref — e.g. Image 1"
-                      value={s.ref}
+                      className="input min-w-0 flex-1"
+                      placeholder={
+                        build
+                          ? "Becomes — what to size and shape it like"
+                          : "Becomes — e.g. the product package"
+                      }
+                      value={s.becomes}
                       onChange={(e) =>
-                        set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, ref: e.target.value } : x)))
+                        set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, becomes: e.target.value } : x)))
                       }
                     />
-                    {b.subjects.length > 1 && (
+                    {build && b.subjects.length > 1 && (
                       <button
                         aria-label="Remove subject"
                         className="shrink-0 px-2 text-sm text-danger hover:opacity-70"
@@ -246,6 +270,34 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                       </button>
                     )}
                   </div>
+                  {/*
+                    Look references are a generation-time input: they hold a
+                    surface steady between takes. Nothing in the clay pass is
+                    textured, so asking for one here would be an input the build
+                    brief cannot consume — the kind of dead field that teaches
+                    people the form is decorative.
+                  */}
+                  {!build && (
+                    <div className="flex gap-2">
+                      <input
+                        className="input min-w-0 flex-1"
+                        placeholder="Look ref — e.g. Image 1"
+                        value={s.ref}
+                        onChange={(e) =>
+                          set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, ref: e.target.value } : x)))
+                        }
+                      />
+                      {b.subjects.length > 1 && (
+                        <button
+                          aria-label="Remove subject"
+                          className="shrink-0 px-2 text-sm text-danger hover:opacity-70"
+                          onClick={() => set("subjects", b.subjects.filter((_, j) => j !== i))}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -317,7 +369,14 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           </div>
         </div>
 
-        <Field label="Creative direction" hint="One sentence: subject, setting, event, style, governing camera idea.">
+        <Field
+          label={build ? "What the shot is" : "Creative direction"}
+          hint={
+            build
+              ? "One sentence, so whoever builds the scene knows what they are staging. Look and style are not their problem — that lives in the prompt."
+              : "One sentence: subject, setting, event, style, governing camera idea."
+          }
+        >
           <textarea
             className="input min-h-[72px]"
             value={b.creative}
@@ -334,21 +393,29 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           half is a placeholder.
         */}
         <Field
-          label="The blockout's subject motion"
-          hint="Whether the clay pass animates real dynamics, or slides proxies along a path as a stand-in. Getting this wrong is what produces a flat object skating across a frozen surface."
+          label={build ? "Dynamics — simulate or stand in?" : "The blockout's subject motion"}
+          hint={
+            build
+              ? "Decides how much of this shot is worth simulating in 3D, and what the build brief has to declare as a placeholder so the video prompt can override it."
+              : "Whether the clay pass animates real dynamics, or slides proxies along a path as a stand-in. Getting this wrong is what produces a flat object skating across a frozen surface."
+          }
         >
           <div className="grid gap-2 sm:grid-cols-2">
             {(
               [
                 {
                   id: "resolve" as const,
-                  title: "A placeholder — re-solve it",
-                  body: "Camera, staging and timing are inherited exactly. The model re-solves how things actually move.",
+                  title: build ? "Stand it in — don't simulate" : "A placeholder — re-solve it",
+                  body: build
+                    ? "Slide proxies along a path to hold the timing. Cheap to build, and the brief flags it so the video prompt re-solves it."
+                    : "Camera, staging and timing are inherited exactly. The model re-solves how things actually move.",
                 },
                 {
                   id: "inherit" as const,
-                  title: "Animated — inherit it",
-                  body: "Subject trajectories come across with the camera. Right when the motion was genuinely animated.",
+                  title: build ? "Simulate it properly" : "Animated — inherit it",
+                  body: build
+                    ? "Real dynamics in Blender. Slow to build and to art-direct, but the generation can then be told to follow it."
+                    : "Subject trajectories come across with the camera. Right when the motion was genuinely animated.",
                 },
               ]
             ).map((o) => (
@@ -372,7 +439,11 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
         {b.physics === "resolve" && (
           <Field
             label="Loose material in the shot"
-            hint="Anything granular or fluid a subject moves through, lands in or rises out of. Naming it writes the physics block — bow wave, furrow, slump-back, and the rule that nothing floats above it."
+            hint={
+              build
+                ? "Anything granular or fluid a subject moves through. Naming it tells the build how much to simulate locally, and puts the placeholder declaration in the brief."
+                : "Anything granular or fluid a subject moves through, lands in or rises out of. Naming it writes the physics block — bow wave, furrow, slump-back, and the rule that nothing floats above it."
+            }
           >
             <input
               className="input"
@@ -384,8 +455,12 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
         )}
 
         <Field
-          label="Composited after generation"
-          hint="Anything with readable type. Generative video garbles it, differently on every frame."
+          label={build ? "Leave blank — added in post" : "Composited after generation"}
+          hint={
+            build
+              ? "Anything with readable type. Do not model or letter it: it is composited later, and geometry for it here only gives the model something to garble."
+              : "Anything with readable type. Generative video garbles it, differently on every frame."
+          }
         >
           <input
             className="input"
