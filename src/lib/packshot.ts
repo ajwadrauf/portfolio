@@ -13,6 +13,8 @@
  * label-accuracy QA before use — or be grounded by uploading that face.
  */
 
+import type { OutputSizeSupport } from "./models";
+
 /** Models eligible for packshot work (all support multi-image reference input). */
 export const PACKSHOT_MODELS = [
   "nano-banana-pro",
@@ -20,6 +22,7 @@ export const PACKSHOT_MODELS = [
   "flux-kontext",
   "seedream-4",
   "gpt-image-2-edit",
+  "recraft-v4.1-utility-pro",
 ];
 
 export type PackAngle =
@@ -117,10 +120,210 @@ export function isGrounded(target: PackAngle, provided: PackAngle[]): boolean {
   return getAngle(target).groundedBy.some((g) => provided.includes(g));
 }
 
+/**
+ * The intake variables, and why each one exists.
+ *
+ * Uploading a front photo tells the model two things: what the label looks
+ * like, and roughly what the silhouette is. It tells it nothing about what the
+ * object *is* — and every one of the remaining angles is a guess about volume,
+ * material and how the pack holds its shape. That is where reconstructions go
+ * wrong, and they go wrong in ways that read as cheap rather than as wrong:
+ * a stand-up pouch rendered with the rigidity of a carton, a matte kraft bag
+ * with the specular highlight of gloss laminate, a 2kg sack in the proportions
+ * of a 200g one.
+ *
+ * None of these can be inferred from a flat photo of the front. All of them
+ * are one line to type. Each field below is a variable the prompt interpolates
+ * into a physical description of the object, so the model is reconstructing a
+ * thing rather than extruding a picture.
+ */
+export type PackVariable = {
+  id: keyof PackBrief;
+  label: string;
+  placeholder: string;
+  /** What goes wrong when it is left blank. */
+  why: string;
+  options?: string[];
+};
+
+export type PackBrief = {
+  format: string;
+  material: string;
+  dimensions: string;
+  fill: string;
+  closure: string;
+  labelCoverage: string;
+  notes: string;
+};
+
+export const EMPTY_BRIEF: PackBrief = {
+  format: "",
+  material: "",
+  dimensions: "",
+  fill: "",
+  closure: "",
+  labelCoverage: "",
+  notes: "",
+};
+
+export const PACK_VARIABLES: PackVariable[] = [
+  {
+    id: "format",
+    label: "Pack format",
+    placeholder: "stand-up pouch",
+    why: "Decides the silhouette from every angle you did not photograph. A pouch, a carton and a tub photograph almost identically head-on and share nothing in profile.",
+    options: [
+      "stand-up pouch",
+      "pillow bag",
+      "folding carton",
+      "rigid box",
+      "bottle",
+      "jar",
+      "can",
+      "tub",
+      "tray with film lid",
+      "shrink multipack",
+    ],
+  },
+  {
+    id: "material",
+    label: "Material and finish",
+    placeholder: "matte kraft laminate",
+    why: "Decides how light behaves. Matte, gloss, foil and clear plastic differ mostly in their highlights, and a wrong highlight is the single clearest tell that a packshot was generated.",
+    options: [
+      "matte kraft laminate",
+      "gloss laminate",
+      "metallised foil",
+      "clear PET",
+      "frosted plastic",
+      "uncoated board",
+      "aluminium",
+      "glass",
+    ],
+  },
+  {
+    id: "dimensions",
+    label: "Dimensions (H × W × D)",
+    placeholder: "280 × 190 × 80 mm",
+    why: "Decides proportion, which is the most common reconstruction failure and the hardest to spot in isolation — the pack looks right until it sits on a planogram beside a real one.",
+  },
+  {
+    id: "fill",
+    label: "Fill and structure",
+    placeholder: "full, taut, stands unaided",
+    why: "Decides whether a flexible pack reads as flexible. A part-filled pouch slumps and creases; the same pouch described as full stands square. Left blank, the model usually renders it rigid.",
+    options: [
+      "full, taut, stands unaided",
+      "part-filled, slumping at the top",
+      "loosely filled, soft and creased",
+      "rigid — holds its shape regardless",
+    ],
+  },
+  {
+    id: "closure",
+    label: "Closure and features",
+    placeholder: "zip track under a tear notch, bottom gusset",
+    why: "These are the details a side or top view is mostly made of, and they are invisible in a front photo. Unstated, the model invents a plain seam.",
+  },
+  {
+    id: "labelCoverage",
+    label: "Label coverage",
+    placeholder: "front panel only, rest plain kraft",
+    why: "Decides what the unseen faces carry. Without it a full-wrap design gets repeated onto a plain back, or a plain back gets invented for a full-wrap pack.",
+    options: [
+      "front panel only, rest plain",
+      "front and back panels printed",
+      "full wrap, printed on every face",
+      "sleeve around a plain container",
+    ],
+  },
+];
+
+/** Everything the author actually filled in, as a physical description. */
+export function describePack(b: PackBrief): string {
+  const bits: string[] = [];
+  const t = (v: string) => v.trim();
+  if (t(b.format)) bits.push(`The product is a ${t(b.format)}`);
+  if (t(b.dimensions)) bits.push(`measuring ${t(b.dimensions)}`);
+  if (t(b.material)) bits.push(`made of ${t(b.material)}`);
+  const head = bits.length ? `${bits.join(", ")}.` : "";
+  const rest: string[] = [];
+  if (t(b.fill)) rest.push(`It is ${t(b.fill)}.`);
+  if (t(b.closure)) rest.push(`Structural features: ${t(b.closure)}.`);
+  if (t(b.labelCoverage)) rest.push(`Printed artwork coverage: ${t(b.labelCoverage)}.`);
+  if (t(b.notes)) rest.push(`${t(b.notes)}.`);
+  return [head, ...rest].filter(Boolean).join(" ");
+}
+
+/**
+ * How many of the six variables are set.
+ *
+ * Surfaced in the UI because the failure this guards against is silent: a
+ * brief with none of them filled still generates, still looks plausible, and
+ * is wrong in exactly the ways nobody checks for.
+ */
+export function briefCompleteness(b: PackBrief): { filled: number; total: number } {
+  const filled = PACK_VARIABLES.filter((v) => b[v.id].trim()).length;
+  return { filled, total: PACK_VARIABLES.length };
+}
+
+/**
+ * Resolve a requested size against what the model will actually render.
+ *
+ * Returns what to put on the wire plus, when the request could not be honoured
+ * exactly, a line saying so. Silently rendering 1K for a 4K request is the
+ * failure this exists to prevent: the file arrives, it looks fine on screen,
+ * and it is a quarter of the pixels the planogram spec asked for.
+ */
+export function resolveSize(
+  support: OutputSizeSupport | undefined,
+  requested: { presetId?: string; px?: number },
+): { presetId?: string; px?: number; note?: string } {
+  if (!support) return {};
+  if (support.mode === "aspect") {
+    return {
+      px: support.presets[0]?.px,
+      note: requested.presetId || requested.px
+        ? "This model does not take an output size — it renders at its own resolution and only the shape is yours to choose."
+        : undefined,
+    };
+  }
+  if (requested.px && support.custom) {
+    const { min, max, multipleOf } = support.custom;
+    const clamped = Math.min(Math.max(requested.px, min), max);
+    const snapped = Math.round(clamped / multipleOf) * multipleOf;
+    return {
+      px: snapped,
+      note:
+        snapped !== requested.px
+          ? `${requested.px}px is not renderable here — using ${snapped}px, the nearest size within ${min}–${max} that divides by ${multipleOf}.`
+          : undefined,
+    };
+  }
+  // Tier models, and pixel models asked for a named preset.
+  const exact = support.presets.find((p) => p.id === requested.presetId);
+  if (exact) return { presetId: exact.id, px: exact.px };
+  if (requested.px) {
+    const nearest = support.presets.reduce((best, p) =>
+      Math.abs(p.px - requested.px!) < Math.abs(best.px - requested.px!) ? p : best,
+    );
+    return {
+      presetId: nearest.id,
+      px: nearest.px,
+      note:
+        nearest.px !== requested.px
+          ? `This model renders at named tiers only — ${requested.px}px was rounded to ${nearest.label}.`
+          : undefined,
+    };
+  }
+  const fallback = support.presets[Math.min(1, support.presets.length - 1)];
+  return { presetId: fallback.id, px: fallback.px };
+}
+
 export function buildPackshotPrompt(
   target: PackAngle,
   provided: PackAngle[],
-  productNotes?: string,
+  brief?: Partial<PackBrief> | string,
 ): string {
   const spec = getAngle(target);
   const refList =
@@ -130,6 +333,20 @@ export function buildPackshotPrompt(
   const grounded = isGrounded(target, provided)
     ? ""
     : " The requested face is not shown in any reference photo: reconstruct it conservatively and consistently with the visible packaging design, keeping brand elements coherent — this output will be flagged for label review.";
-  const notes = productNotes ? ` Product notes: ${productNotes}.` : "";
-  return `${refList} ${spec.prompt}${grounded}${notes}`.trim();
+  /*
+   * The physical description leads, before the camera instruction.
+   *
+   * It is describing the object the camera is being pointed at, and an
+   * instruction to shoot the left side means something different once the
+   * model knows the thing has a gusset. A string is still accepted so the
+   * older shape of this call keeps working.
+   */
+  const described =
+    typeof brief === "string"
+      ? brief.trim()
+      : brief
+        ? describePack({ ...EMPTY_BRIEF, ...brief })
+        : "";
+  const physical = described ? ` ${described}` : "";
+  return `${refList}${physical} ${spec.prompt}${grounded}`.trim();
 }

@@ -12,7 +12,7 @@ import { seedanceCost, type VideoResolution } from "./videoCost";
  *      slightly wrong estimate).
  */
 
-export type Provider = "gemini" | "fal";
+export type Provider = "gemini" | "fal" | "recraft";
 
 export type ModelInfo = {
   id: string; // registry key, stable within this app
@@ -46,8 +46,44 @@ export type ModelInfo = {
    * estimate only ever counts output images.
    */
   refImageCost?: number;
+  /**
+   * How many reference images this endpoint actually accepts.
+   *
+   * These differ by an order of magnitude — 3 on Gemini Flash Image, 16 on GPT
+   * Image 2 — and the studio was offering six slots to all of them. Over the
+   * cap the provider drops the extras or rejects the call, and either way the
+   * face you uploaded to ground an angle silently stops grounding it.
+   */
+  maxReferenceImages?: number;
+  /** What this endpoint will render, for the size picker. */
+  outputSizes?: OutputSizeSupport;
   strengths: string;
   bestFor: string;
+};
+
+/**
+ * How an endpoint is told what size to render, and what it will accept.
+ *
+ * Three genuinely different surfaces hide behind one "resolution" control:
+ *
+ * - `pixels`  — takes explicit width and height, within bounds.
+ * - `tiers`   — takes named steps (1K/2K/4K, auto_2K) and nothing between.
+ * - `aspect`  — takes a shape only. The pixel count is the endpoint's to
+ *               choose, so a size control here would be decoration.
+ *
+ * The picker is built from this rather than from one global list, because a
+ * 4K option that silently renders 1K is worse than no 4K option.
+ */
+export type SizeMode = "pixels" | "tiers" | "aspect";
+
+export type OutputSizeSupport = {
+  mode: SizeMode;
+  /** Named options, smallest first. Square, which is what a packshot is. */
+  presets: { id: string; label: string; px: number; note?: string }[];
+  /** Arbitrary square dimensions, for `pixels` endpoints that take them. */
+  custom?: { min: number; max: number; multipleOf: number };
+  /** One line naming the constraint, shown under the control. */
+  note: string;
 };
 
 const env = (key: string, fallback: string) => process.env[key] ?? fallback;
@@ -65,6 +101,16 @@ export const MODELS: Record<string, ModelInfo> = {
     strengths:
       "Reasoning-driven generation and editing, best-in-class text rendering (packaging, promo badges, EN/FR), strong brand consistency, up to 4K.",
     bestFor: "Promo tiles with live text, bilingual versioning, brand-critical hero shots.",
+    maxReferenceImages: 14,
+    outputSizes: {
+      mode: "tiers",
+      presets: [
+        { id: "1K", label: "1K — 1024²", px: 1024, note: "Web tiles and review rounds." },
+        { id: "2K", label: "2K — 2048²", px: 2048, note: "The planogram default: enough for label type to survive a crop." },
+        { id: "4K", label: "4K — 4096²", px: 4096, note: "Print and large in-store screens. Slowest and dearest." },
+      ],
+      note: "Renders at three named tiers. Anything between them rounds to the nearest — there is no arbitrary pixel size on this model.",
+    },
   },
   "nano-banana-flash": {
     id: "nano-banana-flash",
@@ -76,6 +122,12 @@ export const MODELS: Record<string, ModelInfo> = {
     unit: "image",
     strengths: "Fast and cheap generalist. The high-volume versioning workhorse.",
     bestFor: "Format adaptations, seasonal variants, bulk versioning at scale.",
+    maxReferenceImages: 3,
+    outputSizes: {
+      mode: "aspect",
+      presets: [{ id: "1MP", label: "~1MP — 1024²", px: 1024 }],
+      note: "Takes a shape, not a size: output is about one megapixel whatever you ask for. Also the tightest reference limit here at three images — a fourth face is dropped, not blended.",
+    },
   },
   "flux-2-pro": {
     id: "flux-2-pro",
@@ -99,6 +151,12 @@ export const MODELS: Record<string, ModelInfo> = {
     strengths:
       "Instruction-based editing with strong subject identity preservation and multi-image input; superb surface texture.",
     bestFor: "Packshot challenger: identity-true edits where texture matters more than dense label text.",
+    maxReferenceImages: 2,
+    outputSizes: {
+      mode: "aspect",
+      presets: [{ id: "auto", label: "Endpoint default — ~1024²", px: 1024 }],
+      note: "Aspect-ratio only; the endpoint picks the pixel count. Built around combining two images, so treat a third reference as unsupported rather than merely untested.",
+    },
   },
   "seedream-4": {
     id: "seedream-4",
@@ -111,6 +169,16 @@ export const MODELS: Record<string, ModelInfo> = {
     strengths:
       "Very strong subject-consistent editing at the lowest price in its class; multi-image input.",
     bestFor: "Packshot challenger: the value benchmark every bake-off should include.",
+    maxReferenceImages: 10,
+    outputSizes: {
+      mode: "tiers",
+      presets: [
+        { id: "square_hd", label: "1K — 1024²", px: 1024 },
+        { id: "auto_2K", label: "2K — 2048²", px: 2048, note: "Best value per pixel in the set." },
+        { id: "auto_4K", label: "4K — 4096²", px: 4096 },
+      ],
+      note: "Named tiers up to 4K, and the cheapest route to a 2K planogram angle.",
+    },
   },
   "gpt-image-2-edit": {
     id: "gpt-image-2-edit",
@@ -130,6 +198,48 @@ export const MODELS: Record<string, ModelInfo> = {
       "Instruction-following and text rendering at the top of the current field, with a mask input for constraining an edit to one region. Reads a reference set closely rather than paraphrasing it.",
     bestFor:
       "Packshot challenger where the label has to survive: the angle changes and the type on the pack stays readable and correct.",
+    maxReferenceImages: 16,
+    outputSizes: {
+      mode: "pixels",
+      presets: [
+        { id: "1024", label: "1024²", px: 1024, note: "The rate this model is priced at." },
+        { id: "1536", label: "1536²", px: 1536 },
+        { id: "2048", label: "2048²", px: 2048, note: "Past 1536 the price climbs steeply — high quality at 4K reaches $0.41." },
+      ],
+      custom: { min: 512, max: 2048, multipleOf: 16 },
+      note: "The only model here that takes an arbitrary pixel size. Both edges must divide by 16, and cost rises with area — a 2048² render is four times the pixels of the 1024² the quoted rate covers.",
+    },
+  },
+
+  "recraft-v4.1-utility-pro": {
+    id: "recraft-v4.1-utility-pro",
+    provider: "recraft",
+    endpoint: env("RECRAFT_MODEL", "recraftv4_1_utility_pro"),
+    label: "Recraft V4.1 Utility Pro",
+    kind: "image",
+    unitCost: 0.21,
+    unit: "image",
+    /*
+     * One, and this is a property of the operation rather than a limit to work
+     * around. Recraft's imageToImage takes a single `image_url` plus a prompt
+     * and a strength; there is no multi-reference edit on this API. The
+     * generations endpoint does take up to ten images, but as *style*
+     * references — they carry look, not product identity, and they bill as a
+     * separate style creation on top. Wrong tool for holding a label steady.
+     */
+    maxReferenceImages: 1,
+    outputSizes: {
+      mode: "tiers",
+      presets: [
+        { id: "1024x1024", label: "1024²", px: 1024 },
+        { id: "1:1", label: "Square, model native (2K)", px: 2048, note: "A ratio rather than a size — Recraft renders this model's native 2K." },
+      ],
+      note: "Size goes as WxH or w:h. The exact list of pixel sizes is published in Recraft's appendix and is worth checking before a batch; the ratio form is the safe one.",
+    },
+    strengths:
+      "A utility-tier raster model built for product and catalogue work rather than illustration, at 2K, with background removal and crisp upscale available on the same API.",
+    bestFor:
+      "Restaging or cleaning a single pack photo. Not angle synthesis — that needs a model that reads several references at once.",
   },
 
   // ---------------- Video ----------------
@@ -306,4 +416,5 @@ export const usesTokenPricing = (modelId: string) => modelId.startsWith("seedanc
 
 export const hasGeminiKey = () => Boolean(process.env.GEMINI_API_KEY);
 export const hasFalKey = () => Boolean(process.env.FAL_KEY);
+export const hasRecraftKey = () => Boolean(process.env.RECRAFT_API_TOKEN);
 export const isDryRun = () => process.env.DRY_RUN === "1";

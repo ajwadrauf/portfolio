@@ -5,11 +5,16 @@ import { LiveGate } from "@/components/LiveGate";
 import { useHealth } from "@/lib/useHealth";
 import { MODELS, estimateCost } from "@/lib/models";
 import {
+  EMPTY_BRIEF,
   PACKSHOT_MODELS,
   PACK_ANGLES,
+  PACK_VARIABLES,
+  briefCompleteness,
   gs1FileName,
   isGrounded,
+  resolveSize,
   type PackAngle,
+  type PackBrief,
 } from "@/lib/packshot";
 
 type Reference = { angle: PackAngle; dataUrl: string };
@@ -45,6 +50,40 @@ type Job = {
 const SPEND_KEY = "studio-session-spend";
 const LANGS = ["enfr", "en", "fr"] as const;
 
+/**
+ * Per-reference byte ceiling.
+ *
+ * References ride the route's JSON body, and a serverless request body is
+ * capped at 4.5MB. Six references therefore have to share it, with headroom
+ * for the prompt and the rest of the payload — so 600KB each, enforced per
+ * file rather than hoped for in aggregate.
+ */
+const MAX_REF_BYTES = 600 * 1024;
+
+/** Tried in order, largest first, until one fits the budget. */
+const REF_TIERS: { maxSide: number; quality: number }[] = [
+  { maxSide: 2048, quality: 0.92 },
+  { maxSide: 2048, quality: 0.82 },
+  { maxSide: 1536, quality: 0.86 },
+  { maxSide: 1536, quality: 0.74 },
+  { maxSide: 1024, quality: 0.86 },
+  { maxSide: 1024, quality: 0.7 },
+];
+
+const dataUrlBytes = (u: string) => Math.ceil((u.length - (u.indexOf(",") + 1)) * 0.75);
+
+/**
+ * Downscale a reference as little as the payload budget allows.
+ *
+ * This used to be a flat 1024px at quality 0.92, which is a poor trade for
+ * this particular job: the whole promise of the tool is that label text stays
+ * legible through an angle change, and the model can only preserve type it
+ * could read in the first place. An ingredient list on a 2kg pouch is a few
+ * hundred pixels tall in the original and unreadable once the long edge is
+ * 1024. Starting at 2048 and stepping down only when the file is genuinely too
+ * big keeps the detail on the packs that need it, without risking a body the
+ * route cannot accept.
+ */
 async function toProcessedDataUrl(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
@@ -54,16 +93,22 @@ async function toProcessedDataUrl(file: File): Promise<string> {
       el.onerror = () => reject(new Error("Could not read that image"));
       el.src = url;
     });
-    const maxSide = 1024;
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale) || maxSide;
-    canvas.height = Math.round(img.height * scale) || maxSide;
     const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.92);
+    let last = "";
+    for (const tier of REF_TIERS) {
+      // Never upscale: a 700px photo stays 700px rather than being blown up
+      // into detail it does not have.
+      const scale = Math.min(1, tier.maxSide / Math.max(img.width, img.height));
+      canvas.width = Math.round(img.width * scale) || tier.maxSide;
+      canvas.height = Math.round(img.height * scale) || tier.maxSide;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      last = canvas.toDataURL("image/jpeg", tier.quality);
+      if (dataUrlBytes(last) <= MAX_REF_BYTES) return last;
+    }
+    return last;
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -78,7 +123,9 @@ export function PackshotStudio() {
   const { health } = useHealth();
   const [sku, setSku] = useState("");
   const [lang, setLang] = useState<(typeof LANGS)[number]>("enfr");
-  const [notes, setNotes] = useState("");
+  const [brief, setBrief] = useState<PackBrief>(EMPTY_BRIEF);
+  const [sizePresetId, setSizePresetId] = useState<string | null>(null);
+  const [customPx, setCustomPx] = useState<string>("");
   const [references, setReferences] = useState<Reference[]>([]);
   const [uploadAngle, setUploadAngle] = useState<PackAngle>("front");
   const [targets, setTargets] = useState<Record<string, boolean>>(() =>
@@ -119,6 +166,54 @@ export function PackshotStudio() {
    * rate — and an estimate that ignores that reads low by exactly the amount
    * the user did not agree to.
    */
+  /*
+   * Every model in the picker has a different reference ceiling and a
+   * different idea of what "resolution" means, so both are derived from the
+   * selected model rather than fixed. Where a challenger is set, the binding
+   * limit is the stricter of the two — a run that fits the primary and
+   * overflows the challenger fails halfway through, having already spent.
+   */
+  const primary = MODELS[modelId];
+  const challenger = challengerId ? MODELS[challengerId] : undefined;
+  const sizeSupport = primary.outputSizes;
+  const refCap = Math.min(
+    primary.maxReferenceImages ?? 16,
+    challenger?.maxReferenceImages ?? 16,
+  );
+  const overCap = references.length > refCap;
+  const cappedBy =
+    challenger && (challenger.maxReferenceImages ?? 16) < (primary.maxReferenceImages ?? 16)
+      ? challenger
+      : primary;
+
+  // Reset a preset the newly-chosen model does not publish, rather than
+  // sending an id it will not recognise.
+  const activePresetId =
+    sizeSupport?.presets.some((p) => p.id === sizePresetId)
+      ? sizePresetId
+      : (sizeSupport?.presets[Math.min(1, sizeSupport.presets.length - 1)]?.id ?? null);
+  const customValue = Number(customPx);
+  /*
+   * Aspect-only models are asked for nothing.
+   *
+   * `activePresetId` always resolves to something so the control has a
+   * selected state, but passing it to a model that takes no size made
+   * resolveSize report an adjustment on page load — a warning about a request
+   * nobody made. Warn only when the author actually chose.
+   */
+  const requestedSize =
+    sizeSupport?.mode === "aspect" && sizePresetId === null
+      ? {}
+      : {
+          presetId: sizePresetId === "custom" ? undefined : (activePresetId ?? undefined),
+          px:
+            sizePresetId === "custom" && Number.isFinite(customValue)
+              ? customValue
+              : undefined,
+        };
+  const resolved = resolveSize(sizeSupport, requestedSize);
+
+  const { filled, total } = briefCompleteness(brief);
   const costOpts = { referenceImages: references.length };
   const perAngleCost =
     estimateCost(modelId, costOpts) +
@@ -186,6 +281,10 @@ export function PackshotStudio() {
 
   const generate = useCallback(async () => {
     if (references.length === 0 || selectedAngles.length === 0) return;
+    // Refused here as well as server-side: over the cap the run would fail
+    // partway, after the confirm dialog and after spending on the angles that
+    // happened to go first.
+    if (overCap) return;
     setError(null);
     const runs: { angle: PackAngle; modelId: string; role: "primary" | "challenger" }[] =
       selectedAngles.flatMap((angle) => [
@@ -216,7 +315,9 @@ export function PackshotStudio() {
               targetAngle: run.angle,
               modelId: run.modelId,
               references,
-              productNotes: notes || undefined,
+              brief,
+              sizePresetId: sizePresetId === "custom" ? undefined : (activePresetId ?? undefined),
+              sizePx: sizePresetId === "custom" ? resolved.px : undefined,
             }),
           });
           const json = await res.json();
@@ -239,7 +340,7 @@ export function PackshotStudio() {
       }
     };
     await Promise.all([worker(), worker()]);
-  }, [addSpend, challengerId, health, modelId, notes, references, selectedAngles, totalEstimate, updateJob]);
+  }, [addSpend, activePresetId, brief, challengerId, health, modelId, overCap, references, resolved.px, selectedAngles, sizePresetId, totalEstimate, updateJob]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -311,21 +412,84 @@ export function PackshotStudio() {
                 ))}
               </select>
             </label>
-            <label className="mt-3 block">
-              <span className="mb-1 block label">
-                Product notes (optional)
+          </div>
+
+          {/*
+            The variables.
+            
+            A front photo carries the label and roughly the silhouette. It
+            carries nothing about volume, material or how the pack holds its
+            shape — and those are what every unphotographed angle is a guess
+            about. Six one-line fields turn the guess into a reconstruction,
+            which is the whole difference between a usable planogram asset and
+            a plausible picture.
+          */}
+          <div className="card p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-semibold">2 · What the pack is</h2>
+              <span
+                className={`chip shrink-0 ${filled === 0 ? "!border-warning/50 !text-warning" : filled === total ? "!border-success/50 !text-success" : ""}`}
+              >
+                {filled}/{total} set
               </span>
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              A photo of the front tells the model what the label says. It does
+              not tell it what the object is — so every face you did not shoot
+              gets reconstructed from a guess about shape and material. Each
+              line below removes one guess. Hover a label to see which.
+            </p>
+
+            {PACK_VARIABLES.map((v) => (
+              <label key={v.id} className="mt-3 block" title={v.why}>
+                <span className="mb-1 flex items-baseline gap-2 label">
+                  <span>{v.label}</span>
+                  {!brief[v.id].trim() && (
+                    <span className="font-normal normal-case tracking-normal text-muted/70">
+                      — {v.why.split(".")[0].toLowerCase()}
+                    </span>
+                  )}
+                </span>
+                <input
+                  className="input"
+                  list={v.options ? `pack-${v.id}` : undefined}
+                  placeholder={v.placeholder}
+                  value={brief[v.id]}
+                  onChange={(e) => setBrief((b) => ({ ...b, [v.id]: e.target.value }))}
+                />
+                {v.options && (
+                  <datalist id={`pack-${v.id}`}>
+                    {v.options.map((o) => (
+                      <option key={o} value={o} />
+                    ))}
+                  </datalist>
+                )}
+              </label>
+            ))}
+
+            <label className="mt-3 block">
+              <span className="mb-1 block label">Anything else</span>
               <input
                 className="input"
-                placeholder="e.g. stand-up pouch, 2 kg, matte kraft finish"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. the window panel is on the front only"
+                value={brief.notes}
+                onChange={(e) => setBrief((b) => ({ ...b, notes: e.target.value }))}
               />
             </label>
+
+            {filled < 3 && (
+              <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed">
+                <span className="font-bold text-warning">Thin brief.</span>{" "}
+                With this little to go on the model will render a rigid box with
+                a gloss finish, because that is the average of everything it has
+                seen. Format, material and dimensions are the three that change
+                the result most.
+              </p>
+            )}
           </div>
 
           <div className="card p-5">
-            <h2 className="font-semibold">2 · Reference photos</h2>
+            <h2 className="font-semibold">3 · Reference photos</h2>
             <p className="mt-1 text-xs text-muted">
               Add every face you have — each one turns a reconstruction into a
               grounded angle.
@@ -397,7 +561,7 @@ export function PackshotStudio() {
           </div>
 
           <div className="card p-5">
-            <h2 className="font-semibold">3 · Model</h2>
+            <h2 className="font-semibold">4 · Model and output</h2>
             <label className="mt-3 block">
               <span className="mb-1 block label">
                 Primary
@@ -405,7 +569,12 @@ export function PackshotStudio() {
               <select
                 className="input"
                 value={modelId}
-                onChange={(e) => setModelId(e.target.value)}
+                onChange={(e) => {
+                setModelId(e.target.value);
+                // A size chosen for one model means nothing on the next.
+                setSizePresetId(null);
+                setCustomPx("");
+              }}
               >
                 {PACKSHOT_MODELS.map((m) => (
                   <option key={m} value={m}>
@@ -446,13 +615,124 @@ export function PackshotStudio() {
               every angle runs on both models and renders side by side — the
               bake-off that should decide your default.
             </p>
+
+            {/*
+              Reference ceilings differ by an order of magnitude across this
+              list — one on Recraft, three on Flash Image, sixteen on GPT Image
+              2 — so the limit is shown against the chosen model rather than as
+              a single number that would be wrong for four of the five.
+            */}
+            <div className="mt-4 border-t border-border-soft pt-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="label">Reference limit</span>
+                <span
+                  className={`chip shrink-0 ${overCap ? "!border-danger/50 !text-danger" : ""}`}
+                >
+                  {references.length}/{refCap} used
+                </span>
+              </div>
+              {overCap ? (
+                <p className="mt-2 rounded-[6px] border border-danger/40 bg-danger/10 p-3 text-xs leading-relaxed">
+                  <span className="font-bold text-danger">Too many references.</span>{" "}
+                  {cappedBy.label} accepts {refCap}. Remove{" "}
+                  {references.length - refCap} before running, or pick a model
+                  with a higher ceiling — the run is refused rather than
+                  silently dropping the extras, because a dropped face turns a
+                  grounded angle into a reconstruction without saying so.
+                </p>
+              ) : (
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  {cappedBy.label} takes {refCap} reference
+                  {refCap === 1 ? "" : "s"}
+                  {refCap === 1
+                    ? " — it restages one photo rather than reading several, so it cannot synthesise a face no photo shows."
+                    : "."}
+                </p>
+              )}
+            </div>
+
+            {/* Output size, per model. */}
+            {sizeSupport && (
+              <div className="mt-4 border-t border-border-soft pt-4">
+                <span className="label">Output size</span>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {sizeSupport.presets.map((preset) => {
+                    const active =
+                      sizePresetId !== "custom" && activePresetId === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        title={preset.note}
+                        onClick={() => setSizePresetId(preset.id)}
+                        className={`rounded-[6px] border px-3 py-1.5 text-xs font-semibold transition ${
+                          active
+                            ? "border-accent bg-accent/[0.05] text-accent"
+                            : "border-border-soft bg-surface hover:border-accent/40"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                  {sizeSupport.custom && (
+                    <button
+                      onClick={() => setSizePresetId("custom")}
+                      className={`rounded-[6px] border px-3 py-1.5 text-xs font-semibold transition ${
+                        sizePresetId === "custom"
+                          ? "border-accent bg-accent/[0.05] text-accent"
+                          : "border-border-soft bg-surface hover:border-accent/40"
+                      }`}
+                    >
+                      Custom
+                    </button>
+                  )}
+                </div>
+
+                {sizePresetId === "custom" && sizeSupport.custom && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      className="input !w-28"
+                      inputMode="numeric"
+                      aria-label="Custom size in pixels"
+                      placeholder={String(sizeSupport.custom.min)}
+                      value={customPx}
+                      onChange={(e) => setCustomPx(e.target.value)}
+                    />
+                    <span className="text-xs text-muted">
+                      px square · {sizeSupport.custom.min}–{sizeSupport.custom.max},
+                      in steps of {sizeSupport.custom.multipleOf}
+                    </span>
+                  </div>
+                )}
+
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  {sizeSupport.note}
+                </p>
+                {resolved.note && (
+                  <p className="mt-2 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed">
+                    <span className="font-bold text-warning">Adjusted.</span>{" "}
+                    {resolved.note}
+                  </p>
+                )}
+                {challenger?.outputSizes &&
+                  challenger.outputSizes.mode !== sizeSupport.mode && (
+                    <p className="mt-2 text-xs leading-relaxed text-muted">
+                      <span className="font-semibold text-foreground">
+                        The challenger sizes differently.
+                      </span>{" "}
+                      {challenger.label}: {challenger.outputSizes.note} A/B
+                      results will not be pixel-matched.
+                    </p>
+                  )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* right column — targets + results */}
         <div>
           <div className="card p-5">
-            <h2 className="font-semibold">4 · Target angles</h2>
+            <h2 className="font-semibold">5 · Target angles</h2>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {PACK_ANGLES.map((a) => {
                 const grounded = isGrounded(a.id, providedAngles);
@@ -492,7 +772,7 @@ export function PackshotStudio() {
               </div>
               <button
                 className="btn-primary"
-                disabled={references.length === 0 || selectedAngles.length === 0}
+                disabled={references.length === 0 || selectedAngles.length === 0 || overCap}
                 onClick={() => void generate()}
               >
                 Generate packshots →

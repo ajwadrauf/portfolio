@@ -57,6 +57,14 @@ export async function generateImage(opts: {
   model: string;
   prompt: string;
   aspectRatio: string;
+  /**
+   * "1K" | "2K" | "4K", on the models that expose it.
+   *
+   * Only Gemini 3 Pro Image renders at a chosen tier; Flash Image returns
+   * about a megapixel whatever it is told, so this is left unset for it rather
+   * than sent and quietly ignored.
+   */
+  imageSize?: string;
   referenceImages?: InlineImage[];
 }): Promise<{ dataUrl: string }> {
   const parts: object[] = [];
@@ -70,7 +78,10 @@ export async function generateImage(opts: {
     contents: [{ role: "user", parts }],
     config: {
       responseModalities: ["IMAGE", "TEXT"],
-      imageConfig: { aspectRatio: opts.aspectRatio },
+      imageConfig: {
+        aspectRatio: opts.aspectRatio,
+        ...(opts.imageSize ? { imageSize: opts.imageSize } : {}),
+      },
     },
   });
 

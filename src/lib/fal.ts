@@ -42,6 +42,16 @@ export async function falGenerateImage(opts: {
    * rather than ignoring it, so this is named per endpoint rather than sprayed.
    */
   sizeField?: "aspect_ratio" | "image_size";
+  /**
+   * What to render, for endpoints that take a size at all.
+   *
+   * A tier id (Seedream's `auto_2K`) goes on the wire verbatim; explicit
+   * pixels go as `{width, height}`, which fal accepts wherever it accepts the
+   * enum. Endpoints that only take an aspect ratio ignore this — the picker
+   * says so rather than offering a control that does nothing.
+   */
+  sizePreset?: string;
+  sizePixels?: { width: number; height: number };
   /** data URL of the product photo; fal auto-uploads data URIs. */
   referenceImageDataUrl?: string;
   /** multiple reference data URLs, for multi-image edit endpoints (Kontext multi, Seedream edit). */
@@ -54,7 +64,9 @@ export async function falGenerateImage(opts: {
     num_images: 1,
   };
   if (usesImageSize) {
-    input.image_size = IMAGE_SIZE_ENUM[opts.aspectRatio] ?? "square_hd";
+    input.image_size = opts.sizePixels
+      ? { width: opts.sizePixels.width, height: opts.sizePixels.height }
+      : (opts.sizePreset ?? IMAGE_SIZE_ENUM[opts.aspectRatio] ?? "square_hd");
   } else {
     input.aspect_ratio = opts.aspectRatio;
     // Not part of every schema — only sent on the endpoints known to take it,

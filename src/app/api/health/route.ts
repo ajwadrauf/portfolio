@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { gateEnabled, gateStatus } from "@/lib/auth";
-import { hasFalKey, hasGeminiKey, isDryRun } from "@/lib/models";
+import { hasFalKey, hasGeminiKey, hasRecraftKey, isDryRun } from "@/lib/models";
 import { blobConfigured } from "@/lib/blob";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +8,15 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const gemini = hasGeminiKey();
   const fal = hasFalKey();
+  const recraft = hasRecraftKey();
   const dryRun = isDryRun();
-  const keysPresent = gemini || fal;
+  const keysPresent = gemini || fal || recraft;
   const { gate, remaining } = gateStatus(req);
 
   return NextResponse.json({
     gemini,
     fal,
+    recraft,
     dryRun,
     gate,
     remaining,
