@@ -20,6 +20,22 @@ import {
 type Reference = { angle: PackAngle; dataUrl: string };
 
 /**
+ * Marks a field the studio will happily run without.
+ *
+ * Worth stating on every one of them rather than assuming it reads as
+ * implied: the pack brief is six inputs deep and a form that long looks
+ * mandatory. Only two things actually gate a run — one reference photo and one
+ * target angle — and both carry the opposite tag.
+ */
+const Optional = () => (
+  <span className="font-normal normal-case tracking-normal text-muted/60">optional</span>
+);
+
+const Required = () => (
+  <span className="font-normal normal-case tracking-normal text-warning/80">required</span>
+);
+
+/**
  * A real pack to start from, so the page is usable without hunting for a
  * product photo first.
  *
@@ -343,7 +359,7 @@ export function PackshotStudio() {
   }, [addSpend, activePresetId, brief, challengerId, health, modelId, overCap, references, resolved.px, selectedAngles, sizePresetId, totalEstimate, updateJob]);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
+    <div className="mx-auto max-w-[1400px] px-6 py-10">
       {/* status */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -382,14 +398,24 @@ export function PackshotStudio() {
         <div className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">{error}</div>
       )}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[380px_1fr]">
-        {/* left column — inputs */}
-        <div className="space-y-6">
-          <div className="card p-5">
+      {/*
+        Intake runs the full width rather than down a 380px rail.
+        
+        The brief is six fields plus a reference grid plus two model pickers
+        and a size control; in a narrow column all of that stacked into a long
+        scroll, and the pack variables in particular read as a wall of inputs
+        rather than as six related facts about one object. Across the page they
+        sit two and three abreast, and the whole intake is visible at once —
+        which is what makes it obvious that most of it is blank.
+      */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-12">
+        <div className="contents">
+          <div className="card p-5 lg:col-span-4">
             <h2 className="font-semibold">1 · Product</h2>
             <label className="mt-3 block">
-              <span className="mb-1 block label">
-                SKU / GTIN
+              <span className="mb-1 flex items-baseline justify-between gap-2 label">
+                <span>SKU / GTIN</span>
+                <Optional />
               </span>
               <input
                 className="input"
@@ -397,10 +423,15 @@ export function PackshotStudio() {
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
               />
+              <span className="mt-1 block text-[11px] leading-[1.5] text-muted/80">
+                Names the downloads in GS1 planogram form. Left blank they are
+                named SKU_… and can be renamed later.
+              </span>
             </label>
             <label className="mt-3 block">
-              <span className="mb-1 block label">
-                Language code
+              <span className="mb-1 flex items-baseline justify-between gap-2 label">
+                <span>Language code</span>
+                <Optional />
               </span>
               <select
                 className="input"
@@ -424,7 +455,7 @@ export function PackshotStudio() {
             which is the whole difference between a usable planogram asset and
             a plausible picture.
           */}
-          <div className="card p-5">
+          <div className="card p-5 lg:col-span-8">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-semibold">2 · What the pack is</h2>
               <span
@@ -434,48 +465,60 @@ export function PackshotStudio() {
               </span>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted">
-              A photo of the front tells the model what the label says. It does
-              not tell it what the object is — so every face you did not shoot
-              gets reconstructed from a guess about shape and material. Each
-              line below removes one guess. Hover a label to see which.
+              All of this is optional — nothing here blocks a run. It matters
+              in proportion to how much you are asking the model to invent: for
+              an angle your photos already show, skip it; for a face no photo
+              shows, it is doing most of the work. A photo of the front tells
+              the model what the label says, not what the object is.
             </p>
 
-            {PACK_VARIABLES.map((v) => (
-              <label key={v.id} className="mt-3 block" title={v.why}>
-                <span className="mb-1 flex items-baseline gap-2 label">
-                  <span>{v.label}</span>
+            {/*
+              Three abreast on a wide screen. The reason each field exists is
+              worth reading once and then never again, so it shows under an
+              empty field and gets out of the way as soon as it is answered.
+            */}
+            <div className="mt-4 grid gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+              {PACK_VARIABLES.map((v) => (
+                <label key={v.id} className="block" title={v.why}>
+                  <span className="mb-1 flex items-baseline justify-between gap-2 label">
+                    <span>{v.label}</span>
+                    <Optional />
+                  </span>
+                  <input
+                    className="input"
+                    list={v.options ? `pack-${v.id}` : undefined}
+                    placeholder={v.placeholder}
+                    value={brief[v.id]}
+                    onChange={(e) => setBrief((b) => ({ ...b, [v.id]: e.target.value }))}
+                  />
+                  {v.options && (
+                    <datalist id={`pack-${v.id}`}>
+                      {v.options.map((o) => (
+                        <option key={o} value={o} />
+                      ))}
+                    </datalist>
+                  )}
                   {!brief[v.id].trim() && (
-                    <span className="font-normal normal-case tracking-normal text-muted/70">
-                      — {v.why.split(".")[0].toLowerCase()}
+                    <span className="mt-1 block text-[11px] leading-[1.5] text-muted/80">
+                      {v.why}
                     </span>
                   )}
+                </label>
+              ))}
+
+              <label className="block sm:col-span-2 xl:col-span-3">
+                <span className="mb-1 flex items-baseline justify-between gap-2 label">
+                  <span>Anything else</span>
+                  <Optional />
                 </span>
                 <input
                   className="input"
-                  list={v.options ? `pack-${v.id}` : undefined}
-                  placeholder={v.placeholder}
-                  value={brief[v.id]}
-                  onChange={(e) => setBrief((b) => ({ ...b, [v.id]: e.target.value }))}
+                  placeholder="e.g. the window panel is on the front only, or the cap is a different plastic"
+                  value={brief.notes}
+                  onChange={(e) => setBrief((b) => ({ ...b, notes: e.target.value }))}
                 />
-                {v.options && (
-                  <datalist id={`pack-${v.id}`}>
-                    {v.options.map((o) => (
-                      <option key={o} value={o} />
-                    ))}
-                  </datalist>
-                )}
               </label>
-            ))}
-
-            <label className="mt-3 block">
-              <span className="mb-1 block label">Anything else</span>
-              <input
-                className="input"
-                placeholder="e.g. the window panel is on the front only"
-                value={brief.notes}
-                onChange={(e) => setBrief((b) => ({ ...b, notes: e.target.value }))}
-              />
-            </label>
+            </div>
 
             {filled < 3 && (
               <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed">
@@ -488,8 +531,11 @@ export function PackshotStudio() {
             )}
           </div>
 
-          <div className="card p-5">
-            <h2 className="font-semibold">3 · Reference photos</h2>
+          <div className="card p-5 lg:col-span-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-semibold">3 · Reference photos</h2>
+              <span className="label"><Required /></span>
+            </div>
             <p className="mt-1 text-xs text-muted">
               Add every face you have — each one turns a reconstruction into a
               grounded angle.
@@ -560,7 +606,7 @@ export function PackshotStudio() {
             )}
           </div>
 
-          <div className="card p-5">
+          <div className="card p-5 lg:col-span-7">
             <h2 className="font-semibold">4 · Model and output</h2>
             <label className="mt-3 block">
               <span className="mb-1 block label">
@@ -729,10 +775,13 @@ export function PackshotStudio() {
           </div>
         </div>
 
-        {/* right column — targets + results */}
-        <div>
+        {/* targets + results, full width beneath the intake */}
+        <div className="lg:col-span-12">
           <div className="card p-5">
-            <h2 className="font-semibold">5 · Target angles</h2>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-semibold">5 · Target angles</h2>
+              <span className="label"><Required /></span>
+            </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {PACK_ANGLES.map((a) => {
                 const grounded = isGrounded(a.id, providedAngles);
@@ -787,8 +836,16 @@ export function PackshotStudio() {
 
           {jobs.length > 0 && (
             <div
+              /*
+                Wider now that results are not sharing the row with a rail.
+                With a challenger set the column count stays even, so each
+                angle's two renders land side by side rather than wrapping
+                apart — comparing them is the entire point of the A/B.
+              */
               className={`mt-6 grid gap-4 ${
-                challengerId ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"
+                challengerId
+                  ? "sm:grid-cols-2 xl:grid-cols-4"
+                  : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               }`}
             >
               {jobs.map((j) => (
