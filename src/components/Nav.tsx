@@ -23,12 +23,21 @@ export function Nav() {
       <div className="brand-strip" />
       <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex items-center justify-between gap-4 sm:justify-start">
+          {/* Same monogram as the portfolio header — the two halves are one site. */}
           <Link
             href="/"
-            className="label !text-[12px] whitespace-nowrap font-medium transition hover:text-accent min-[360px]:!text-[14px]"
+            className="group flex items-center gap-2 whitespace-nowrap"
             title="Back to ajwadrauf.com"
           >
-            ← Ajwad Rauf
+            <span
+              aria-hidden
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-[6px] bg-[linear-gradient(135deg,var(--hue-1),var(--hue-2)_45%,var(--hue-3))] font-mono text-[10px] font-bold leading-none text-white transition group-hover:brightness-110"
+            >
+              AR
+            </span>
+            <span className="label !text-[12px] font-medium transition group-hover:text-accent min-[360px]:!text-[14px]">
+              Ajwad Rauf
+            </span>
           </Link>
           <span className="hidden h-4 w-px bg-accent/30 sm:block" />
           <Link

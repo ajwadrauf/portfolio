@@ -20,6 +20,28 @@
   --warning: #92400e;
   --danger: #b3372f;
   --radius: 6px;
+
+  /*
+   * The spectrum, promoted.
+   *
+   * These seven were already in the system — as a 3px strip under the nav,
+   * described as "the one place the full spectrum appears". That was one line
+   * of colour on an otherwise cream page, which is most of why the home page
+   * read as flat: a single purple accent doing every job, and no signal that
+   * one section had ended and another begun.
+   *
+   * Naming them makes the strip a palette rather than a decoration. Each
+   * project and each section takes one, so colour carries structure instead of
+   * being sprinkled — and the page still cannot drift outside the brand,
+   * because there is nowhere else to go.
+   */
+  --hue-1: #8e3a7c;
+  --hue-2: #6d4b9e;
+  --hue-3: #3c6ea5;
+  --hue-4: #2e7d4f;
+  --hue-5: #a8862f;
+  --hue-6: #b8722f;
+  --hue-7: #b3372f;
 }
 
 @theme inline {
@@ -82,14 +104,107 @@ h3 {
   height: 3px;
   background: linear-gradient(
     90deg,
-    #8e3a7c,
-    #6d4b9e,
-    #3c6ea5,
-    #2e7d4f,
-    #a8862f,
-    #b8722f,
-    #b3372f
+    var(--hue-1),
+    var(--hue-2),
+    var(--hue-3),
+    var(--hue-4),
+    var(--hue-5),
+    var(--hue-6),
+    var(--hue-7)
   );
+}
+
+/*
+ * Section boundaries that read as a change of subject.
+ *
+ * A flat 1px border says "there is a line here". A rule that carries the
+ * incoming section's hue and fades out says "this is a different thing", which
+ * is the job the borders were failing at. `--rule` is set per section; it
+ * falls back to the plain border so an unstyled section still looks correct.
+ */
+.section-rule {
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(
+      90deg,
+      var(--rule, var(--border-strong)) 0%,
+      color-mix(in srgb, var(--rule, var(--border)) 30%, transparent) 22%,
+      var(--border) 55%,
+      transparent 100%
+    )
+    1;
+}
+
+/*
+ * A tinted band, in the section's own hue.
+ *
+ * Alternating bands are what make a long page read as chapters rather than as
+ * one column of text. The tint is deliberately weak — 4% — because the job is
+ * to separate, not to decorate.
+ */
+.hue-band {
+  background: color-mix(in srgb, var(--rule) 4%, var(--surface-2));
+}
+
+/* The eyebrow's colour mark: small, and the only place a section states its hue. */
+.hue-mark::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  margin-right: 10px;
+  vertical-align: 3px;
+  background: var(--rule, var(--accent));
+}
+
+/*
+ * Hero wash.
+ *
+ * Two very low-opacity radials so the top of the page has some depth behind
+ * the headline instead of flat cream. Both sit in brand hues and neither is
+ * strong enough to affect text contrast.
+ */
+.hero-wash {
+  background:
+    radial-gradient(
+      70ch 50ch at 12% -10%,
+      color-mix(in srgb, var(--hue-1) 11%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      60ch 40ch at 92% 0%,
+      color-mix(in srgb, var(--hue-3) 9%, transparent),
+      transparent 70%
+    );
+}
+
+/*
+ * Entry reveal.
+ *
+ * A one-time fade and rise as a section arrives, which is a different thing
+ * from the marquee that used to loop here forever: it resolves and stops.
+ * Anything that has not been observed yet stays visible, so a failed observer
+ * or a crawler gets the full page rather than a blank one.
+ */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal.is-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 /* Mono eyebrow/label — the system's connective tissue. */

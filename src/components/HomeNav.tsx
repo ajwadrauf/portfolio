@@ -77,11 +77,30 @@ export function HomeNav({ work }: { work: WorkLink[] }) {
     <header className="nav-bar sticky top-0 z-40 border-b border-accent/20 backdrop-blur">
       <div className="brand-strip" />
       <div className="mx-auto flex max-w-[1440px] flex-col items-start gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-12 lg:px-24">
-        <Link
-          href="/"
-          className="label !text-[14px] font-semibold !text-accent whitespace-nowrap"
-        >
-          Ajwad Rauf
+        {/*
+          The wordmark, not a nav item.
+          
+          It was mono uppercase in accent — the same treatment as every eyebrow
+          on the page, which made a person's name read as another label. A
+          monogram in the brand gradient plus the name set in the display face
+          gives the bar something to be anchored by, and it is the one place
+          the spectrum appears at a size anyone actually registers.
+        */}
+        <Link href="/" className="group flex items-center gap-2.5 whitespace-nowrap">
+          <span
+            aria-hidden
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px] bg-[linear-gradient(135deg,var(--hue-1),var(--hue-2)_45%,var(--hue-3))] font-mono text-[11px] font-bold leading-none tracking-[0.02em] text-white shadow-sm transition group-hover:brightness-110"
+          >
+            AR
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-semibold tracking-[-0.02em] text-foreground transition group-hover:text-accent">
+              Ajwad Rauf
+            </span>
+            <span className="mt-[3px] font-mono text-[9.5px] uppercase tracking-[0.16em] text-muted">
+              AI production systems
+            </span>
+          </span>
         </Link>
 
         <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="Sections">

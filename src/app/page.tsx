@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HomeNav } from "@/components/HomeNav";
+import { Reveal } from "@/components/Reveal";
 import { ClayCompare } from "@/components/ClayCompare";
 import { ShowcaseStrip } from "@/components/ShowcaseStrip";
 import { CLAY_PAIR, SHOWCASE, isHosted, showcaseEnvKey } from "@/lib/showcase";
@@ -60,6 +61,14 @@ type Project = {
   body: string[];
   tags: string[];
 };
+
+/**
+ * One hue per project, in strip order.
+ *
+ * Taken from the brand spectrum rather than chosen, so three visually distinct
+ * cards still cannot land outside the system.
+ */
+const PROJECT_HUES = ["var(--hue-1)", "var(--hue-3)", "var(--hue-4)"];
 
 const PROJECTS: Project[] = [
   {
@@ -279,7 +288,7 @@ export default function Home() {
       <HomeNav work={projects.map((p) => ({ name: p.name, href: p.href }))} />
 
       {/* ---------------- Hero ---------------- */}
-      <section className="mx-auto grid max-w-[1440px] items-end gap-10 px-6 pb-16 pt-12 sm:px-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-[88px] lg:px-24 lg:pb-28 lg:pt-24">
+      <section className="hero-wash mx-auto grid max-w-[1440px] items-end gap-10 px-6 pb-16 pt-12 sm:px-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-[88px] lg:px-24 lg:pb-28 lg:pt-24">
         <div>
           <h1 className="text-[clamp(2.875rem,8.5vw,6.5rem)] leading-[0.94] tracking-[-0.045em]">
             I build working
@@ -346,7 +355,10 @@ export default function Home() {
         rather than to read, and it was carrying the least specific words on the
         page. Standing still, the same band can hold a claim as well as a list.
       */}
-      <section className="border-y border-border bg-surface-2">
+      <section
+        className="hue-band section-rule border-b border-border"
+        style={{ "--rule": "var(--hue-3)" } as React.CSSProperties}
+      >
         <div className="mx-auto max-w-[1440px] px-6 py-9 sm:px-12 lg:px-24 lg:py-11">
           <div className="grid gap-7 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-center lg:gap-14">
             <p className="text-[15px] leading-[1.6] tracking-[-0.01em] sm:text-base">
@@ -378,21 +390,38 @@ export default function Home() {
       {/* ---------------- Selected work ---------------- */}
       <div
         id="work"
-        className="mx-auto flex max-w-[1440px] items-baseline justify-between border-t border-border-soft px-6 pb-8 pt-8 sm:px-12 lg:px-24"
+        className="section-rule mx-auto flex max-w-[1440px] items-baseline justify-between px-6 pb-8 pt-10 sm:px-12 lg:px-24"
+        style={{ "--rule": "var(--hue-1)" } as React.CSSProperties}
       >
-        <span className="label !tracking-[0.16em]">Selected work</span>
+        <span className="label hue-mark !tracking-[0.16em]">Selected work</span>
         <span className="label !tracking-[0.16em]">Three projects</span>
       </div>
 
       <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-6 pb-20 sm:px-12 lg:gap-7 lg:px-24 lg:pb-26">
-        {projects.map((p) => (
-          <article
+        {projects.map((p, i) => (
+          /*
+            One hue per project, from the brand strip.
+            
+            Three identical cream cards in a column was the flattest part of
+            the page — nothing distinguished the second from the third except
+            reading it. A hue on the index, the rule above it and the hover
+            border makes them three things rather than one repeated thing, and
+            the colour is doing structural work rather than decoration.
+          */
+          <Reveal
+            as="article"
             key={p.n}
-            className="card grid gap-8 p-7 sm:p-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:px-14 lg:py-13"
+            delay={i * 70}
+            style={{ "--rule": PROJECT_HUES[i % PROJECT_HUES.length] } as React.CSSProperties}
+            className="card group relative grid gap-8 overflow-hidden p-7 transition-colors duration-300 hover:border-[color-mix(in_srgb,var(--rule)_45%,var(--border))] sm:p-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:px-14 lg:py-13"
           >
+            <span
+              aria-hidden
+              className="absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,var(--rule),color-mix(in_srgb,var(--rule)_25%,transparent)_55%,transparent)] opacity-70 transition-opacity duration-300 group-hover:opacity-100"
+            />
             <div className="min-w-0">
               <div className="label flex flex-wrap items-center gap-x-3.5 gap-y-1">
-                <span className="text-accent">{p.n}</span>
+                <span className="font-bold text-[color:var(--rule)]">{p.n}</span>
                 <span>{p.kind}</span>
                 <StatusDot status={p.status} />
               </div>
@@ -495,19 +524,21 @@ export default function Home() {
                 ))}
               </div>
             </div>
-          </article>
+          </Reveal>
         ))}
       </div>
 
       {/* ---------------- Approach ---------------- */}
       <section
         id="approach"
-        className="mx-auto max-w-[1440px] border-t border-border-soft px-6 py-14 sm:px-12 lg:px-24 lg:pb-24 lg:pt-16"
+        className="hue-band section-rule border-b border-border-soft px-6 py-14 sm:px-12 lg:px-24 lg:pb-24 lg:pt-16"
+        style={{ "--rule": "var(--hue-4)" } as React.CSSProperties}
       >
-        <span className="label !tracking-[0.16em]">How I work</span>
+        <div className="mx-auto max-w-[1440px]">
+        <span className="label hue-mark !tracking-[0.16em]">How I work</span>
         <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:mt-11 lg:grid-cols-4 lg:gap-10">
-          {APPROACH.map((a) => (
-            <div key={a.h}>
+          {APPROACH.map((a, i) => (
+            <Reveal key={a.h} delay={i * 60}>
               <h3 className="text-xl leading-[1.2] tracking-[-0.02em] sm:text-[26px]">
                 {a.h}
               </h3>
@@ -515,15 +546,19 @@ export default function Home() {
                 <span className="hidden sm:inline">{a.p}</span>
                 <span className="sm:hidden">{a.short}</span>
               </p>
-            </div>
+            </Reveal>
           ))}
+        </div>
         </div>
       </section>
 
       {/* ---------------- Judgment ---------------- */}
-      <section className="mx-auto max-w-[1440px] border-t border-border-soft px-6 py-14 sm:px-12 lg:px-24 lg:pb-24 lg:pt-16">
+      <section
+        className="section-rule mx-auto max-w-[1440px] px-6 py-14 sm:px-12 lg:px-24 lg:pb-24 lg:pt-16"
+        style={{ "--rule": "var(--hue-6)" } as React.CSSProperties}
+      >
         <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
-          <span className="label !tracking-[0.16em]">What shipping taught me</span>
+          <span className="label hue-mark !tracking-[0.16em]">What shipping taught me</span>
           <Link
             href="/ai-studio/models"
             className="text-sm font-semibold text-accent hover:underline"
@@ -538,19 +573,34 @@ export default function Home() {
           them myself, on work that had to ship.
         </p>
         <div className="mt-9 grid gap-8 sm:grid-cols-2 lg:gap-x-14 lg:gap-y-10">
-          {LEARNED.map((l) => (
-            <div key={l.h} className="border-t border-border-soft pt-5">
+          {LEARNED.map((l, i) => (
+            /*
+              Each lesson takes the next hue along the strip. The rule above it
+              is what these four were already using to separate; giving it
+              colour costs nothing and turns a grid of grey-ruled paragraphs
+              into four distinguishable things.
+            */
+            <Reveal
+              key={l.h}
+              delay={i * 60}
+              style={{ "--rule": `var(--hue-${((i + 1) % 7) + 1})` } as React.CSSProperties}
+              className="section-rule pt-5"
+            >
               <h3 className="text-lg leading-[1.25] tracking-[-0.02em] sm:text-xl">
                 {l.h}
               </h3>
               <p className="mt-2.5 text-sm leading-[1.7] text-muted">{l.p}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* ---------------- Contact ---------------- */}
-      <footer id="contact" className="border-t border-border-soft bg-surface">
+      <footer
+        id="contact"
+        className="section-rule bg-surface"
+        style={{ "--rule": "var(--hue-7)" } as React.CSSProperties}
+      >
         <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-8 px-6 py-12 sm:px-12 lg:flex-row lg:items-end lg:px-24 lg:pb-22 lg:pt-18">
           <div>
             <span className="label !tracking-[0.16em]">Contact</span>
