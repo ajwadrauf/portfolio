@@ -19,12 +19,21 @@ export const maxDuration = 60;
  * fixes both. Locked to the hosts our own providers return, so it cannot be
  * used as an open proxy.
  */
+/*
+ * Hosts our own providers return results from.
+ *
+ * Recraft's exact CDN domain could not be confirmed without a live call, so
+ * the plausible ones are listed and a rejection names the host it saw — a
+ * one-line fix when a real result arrives from somewhere unlisted, rather than
+ * a silent dead Download link.
+ */
 const ALLOWED_SUFFIXES = [
   ".fal.media",
   "fal.media",
   ".fal.ai",
   ".recraft.ai",
   "recraft.ai",
+  ".recraftapi.com",
   ".public.blob.vercel-storage.com",
 ];
 
@@ -52,7 +61,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "invalid url" }, { status: 400 });
   }
   if (!ALLOWED_SUFFIXES.some((s) => host === s || host.endsWith(s))) {
-    return NextResponse.json({ error: "url host not allowed" }, { status: 400 });
+    return NextResponse.json(
+      {
+        error:
+          `This file is hosted on ${host}, which is not in the download proxy's allowlist. ` +
+          `If a provider started serving from a new domain, add it to ALLOWED_SUFFIXES in ` +
+          `src/app/api/packshot-file/route.ts.`,
+      },
+      { status: 400 },
+    );
   }
 
   const upstream = await fetch(src);

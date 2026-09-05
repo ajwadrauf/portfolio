@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
+import { Why } from "@/components/Why";
+import { FINISH_OPS, type FinishOp } from "@/lib/recraft.client";
 import { useHealth } from "@/lib/useHealth";
 import { MODELS, estimateCost } from "@/lib/models";
 import {
@@ -62,6 +64,15 @@ type Job = {
   grounded?: boolean;
   error?: string;
   cost: number;
+  /**
+   * The result of a finishing pass, kept beside the original rather than
+   * replacing it — a cutout you cannot compare against the render it came
+   * from is hard to judge, and the original is still the file some workflows
+   * want.
+   */
+  finished?: { op: FinishOp; url: string };
+  finishing?: FinishOp;
+  finishError?: string;
 };
 
 const SPEND_KEY = "studio-session-spend";
@@ -363,6 +374,41 @@ export function PackshotStudio() {
     provided: providedAngles,
     maxReferenceImages: primary.maxReferenceImages ?? 16,
   });
+
+  /**
+   * Run a Recraft finishing pass over a result that already exists.
+   *
+   * Kept out of the model picker on purpose: these are not another way to
+   * generate a packshot, they are what turns one into a usable asset, and they
+   * cost a fraction of a render.
+   */
+  const finish = useCallback(
+    async (job: Job, op: FinishOp) => {
+      const source = job.finished?.url ?? job.imageUrl ?? job.imageDataUrl;
+      if (!source) return;
+      updateJob(job.angle, job.modelId, { finishing: op, finishError: undefined });
+      try {
+        const res = await fetch("/api/packshot/finish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ op, imageUrl: source }),
+        });
+        const json = await res.json();
+        if (!res.ok || json.error) throw new Error(json.error ?? "Finishing failed");
+        addSpend(json.cost ?? 0);
+        updateJob(job.angle, job.modelId, {
+          finishing: undefined,
+          finished: { op, url: json.url },
+        });
+      } catch (e) {
+        updateJob(job.angle, job.modelId, {
+          finishing: undefined,
+          finishError: e instanceof Error ? e.message : "Finishing failed",
+        });
+      }
+    },
+    [addSpend, updateJob],
+  );
 
   const done = jobs.filter((j) => j.imageDataUrl || j.imageUrl);
   const failed = jobs.filter((j) => j.status === "failed");
@@ -1077,6 +1123,7 @@ export function PackshotStudio() {
                   sku={sku}
                   lang={lang}
                   onRetry={() => void runOne(j.angle, j.modelId)}
+                  onFinish={(op) => void finish(j, op)}
                 />
               ))}
             </div>
@@ -1105,11 +1152,13 @@ function PackshotCard({
   sku,
   lang,
   onRetry,
+  onFinish,
 }: {
   job: Job;
   sku: string;
   lang: string;
   onRetry?: () => void;
+  onFinish?: (op: FinishOp) => void;
 }) {
   const spec = PACK_ANGLES.find((a) => a.id === job.angle)!;
   const model = MODELS[job.modelId];
@@ -1161,6 +1210,26 @@ function PackshotCard({
           </span>
         )}
       </div>
+      {job.finished && (
+        /*
+          Transparency is invisible against any solid colour, so the cutout
+          sits on a checkerboard. Without it a successful background removal
+          and a failed one look identical on a white card.
+        */
+        <div className="border-t border-border-soft bg-[length:16px_16px] bg-[linear-gradient(45deg,rgba(128,128,128,0.18)_25%,transparent_25%,transparent_75%,rgba(128,128,128,0.18)_75%),linear-gradient(45deg,rgba(128,128,128,0.18)_25%,transparent_25%,transparent_75%,rgba(128,128,128,0.18)_75%)] bg-[position:0_0,8px_8px]">
+          <div className="relative aspect-square w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={job.finished.url}
+              alt={`${spec.label}, ${FINISH_OPS[job.finished.op].label.toLowerCase()}`}
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+            <span className="absolute left-2 top-2 rounded bg-accent px-2 py-0.5 text-[10px] font-bold text-background">
+              {FINISH_OPS[job.finished.op].label.toUpperCase()}
+            </span>
+          </div>
+        </div>
+      )}
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="font-semibold">{spec.label}</p>
@@ -1180,7 +1249,16 @@ function PackshotCard({
               download={fileName}
               className="text-xs font-semibold text-accent hover:underline"
             >
-              Download
+              Download{job.finished ? " original" : ""}
+            </a>
+          )}
+          {job.finished && (
+            <a
+              href={`/api/packshot-file?url=${encodeURIComponent(job.finished.url)}&name=${encodeURIComponent(fileName.replace(/\.jpg$/, `_${job.finished.op}`))}`}
+              download
+              className="text-xs font-semibold text-accent hover:underline"
+            >
+              Download {FINISH_OPS[job.finished.op].label.toLowerCase()}
             </a>
           )}
           {job.status === "failed" && onRetry && (
@@ -1200,6 +1278,47 @@ function PackshotCard({
             </button>
           )}
         </div>
+
+        {/*
+          Finishing.
+          
+          Only offered once there is something to finish, and each action
+          carries the case for itself — these are the two steps most likely to
+          be skipped precisely because nobody explains why they matter.
+        */}
+        {media && onFinish && (
+          <div className="mt-3 border-t border-border-soft pt-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {(Object.values(FINISH_OPS) as (typeof FINISH_OPS)[FinishOp][]).map((op) => {
+                const isCurrent = job.finished?.op === op.id;
+                const busy = job.finishing === op.id;
+                return (
+                  <span key={op.id} className="inline-flex items-center gap-1.5">
+                    <button
+                      disabled={!!job.finishing || isCurrent}
+                      onClick={() => onFinish(op.id)}
+                      className="text-xs font-semibold text-accent hover:underline disabled:cursor-default disabled:text-muted disabled:no-underline"
+                    >
+                      {busy
+                        ? `${op.label}…`
+                        : isCurrent
+                          ? `${op.label} ✓`
+                          : `${op.label} · $${op.cost}`}
+                    </button>
+                    <Why title={op.label} align="right">
+                      {op.why}
+                    </Why>
+                  </span>
+                );
+              })}
+            </div>
+            {job.finishError && (
+              <p className="mt-2 text-[11px] leading-relaxed text-danger">
+                {job.finishError}
+              </p>
+            )}
+          </div>
+        )}
         {showPrompt && job.prompt && (
           <p className="mt-2 rounded-[6px] bg-surface-2 p-3 font-mono text-xs leading-relaxed text-muted">
             {job.prompt}

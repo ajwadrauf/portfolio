@@ -1,4 +1,5 @@
 import "server-only";
+import { FINISH_OPS, type FinishOp } from "./recraft.client";
 
 /**
  * Recraft — a third provider alongside Gemini and fal.
@@ -106,5 +107,51 @@ export async function recraftImageToImage(opts: {
   }
   const url = data.data?.[0]?.url;
   if (!url) throw new Error("Recraft returned no image URL");
+  return { url };
+}
+
+/*
+ * Finishing operations.
+ *
+ * The table itself lives in recraft.client.ts because the UI has to render the
+ * costs and the reasoning, and this module is server-only — it holds the API
+ * token. Re-exported here so callers on the server have one import.
+ */
+export { FINISH_OPS, type FinishOp } from "./recraft.client";
+
+/**
+ * Run a finishing operation against an already-generated packshot.
+ *
+ * Takes the image by reference — Recraft's JSON body accepts a public URL or a
+ * data URL, so a hosted fal result and an inline Gemini one both go across
+ * without an upload step in between.
+ */
+export async function recraftFinish(opts: {
+  op: FinishOp;
+  imageUrl: string;
+}): Promise<{ url: string }> {
+  const spec = FINISH_OPS[opts.op];
+  const res = await fetch(`${BASE}${spec.path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ image_url: opts.imageUrl, response_format: "url" }),
+  });
+
+  const text = await res.text();
+  if (!res.ok) throw new Error(describe(res.status, text));
+
+  let data: { image?: { url?: string } };
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Recraft returned a non-JSON response: ${text.slice(0, 200)}`);
+  }
+  // These endpoints answer with a single `image`, not the `data[]` array the
+  // generation endpoints use.
+  const url = data.image?.url;
+  if (!url) throw new Error(`Recraft returned no image URL for ${spec.label}`);
   return { url };
 }
