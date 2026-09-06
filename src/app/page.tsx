@@ -299,9 +299,18 @@ export default function Home() {
             Second half of the headline's sentence, not a separate thought —
             so it sits close enough to read as one. At lg it had drifted far
             enough below the last line to look like an orphaned caption.
+
+            It used to read "Not decks about them." That was a jab at other
+            people's work, and it was not even true of mine — the job comes
+            with decks. It also answered the wrong question. What a team hiring
+            for this actually needs to know is not whether I can ship
+            something, but whether what I ship outlives my attention: the
+            Approach section below puts it as "capability that lives in one
+            person's head isn't a studio, it's a bottleneck with a title", and
+            the headline should be setting that up rather than picking a fight.
           */}
-          <p className="mt-4 max-w-[20ch] text-xl leading-[1.45] tracking-[-0.01em] text-muted sm:text-2xl lg:mt-5">
-            Not decks about them.
+          <p className="mt-4 max-w-[22ch] text-xl leading-[1.45] tracking-[-0.01em] text-muted sm:text-2xl lg:mt-5">
+            Then I make them someone else&apos;s to run.
           </p>
         </div>
         <div className="lg:pb-3.5">
