@@ -6,6 +6,8 @@ import {
   EMPTY_BRIEF,
   EXAMPLE_BRIEF,
   briefIssues,
+  CAMERA_MOVES,
+  getCameraMove,
   composeBlenderBuildBrief,
   composeBlenderPrompt,
   uploadPlan,
@@ -166,10 +168,44 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
               onChange={(e) => set("lens", e.target.value)}
             />
           </Field>
-          <Field label="Rig">
-            <input className="input" value={b.rig} onChange={(e) => set("rig", e.target.value)} />
+          <Field
+            label="Camera move"
+            hint={getCameraMove(b.move)?.use}
+          >
+            <select
+              className="input"
+              value={b.move}
+              onChange={(e) => set("move", e.target.value)}
+            >
+              {CAMERA_MOVES.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+              <option value="">Something else — describe it below</option>
+            </select>
           </Field>
         </div>
+
+        {/*
+          A named move plus a line of detail, rather than one free-text field.
+          
+          The rig used to be a sentence each brief invented for a move that has
+          had a name for eighty years. Naming it means the operator builds a
+          known thing, and the video prompt downstream inherits the same words —
+          so the blockout and the prompt cannot end up describing two different
+          camera moves.
+        */}
+        <Field
+          label={getCameraMove(b.move) ? "Move detail" : "Describe the move"}
+          hint={
+            getCameraMove(b.move)
+              ? `${getCameraMove(b.move)!.rig} Add speed, distance or anything specific to this shot.`
+              : "Speed, path and what the camera is doing across the take."
+          }
+        >
+          <input className="input" value={b.rig} onChange={(e) => set("rig", e.target.value)} />
+        </Field>
 
         {/*
           Where the shot opens and where it lands. Only the build brief consumes

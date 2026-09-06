@@ -416,12 +416,57 @@ Every hero object gets real thickness and a real profile, even in clay:
   it *was* a sprite in the blockout.
 - Rotate it in three axes while it travels. A body that only rotates around Z
   reads as a cutout being dragged.
-- Ease every move in and out. Constant-velocity translation is the single
-  clearest tell of unedited keyframes; the model copies the easing curve it is
-  shown.
+- Ease every *subject* move in and out. Constant-velocity translation is the
+  single clearest tell of unedited keyframes; the model copies the easing curve
+  it is shown. This rule is about subjects and does not transfer to the camera —
+  see "Camera transport is a different question" below.
 - Keep the object's contact point consistent with its geometry. If it is
   half-buried, bury it — do not float it a few millimetres above the surface
   and rely on the camera angle to hide the gap.
+
+### Aim the camera through a constraint, never by keyframing rotation
+
+A camera with keyframes on both location and rotation has two things that can
+drift between rebuilds, and the second is the one nobody notices until the take
+comes back framed a few degrees off.
+
+Add an empty at the point the shot is about, name it something the brief can
+refer to (`Focus_Anchor`, `Hero_Target`), and give the camera a `TRACK_TO`
+constraint pointed at it — `-Z` track axis, `Y` up. Then:
+
+- **Camera location** is the move. Keyframe it.
+- **The empty** is what the shot is about. Keyframe it only when the point of
+  attention itself moves — a subject travelling, a lift.
+- **Camera rotation** is neither. Leave it alone; the constraint owns it.
+
+The payoff is that re-timing a move cannot re-aim it. Change the dolly speed,
+push the beat two seconds later, rebuild the scene from the script — the
+framing is still pointed at the same object, because the aim was never a number
+you typed. It also gives the video prompt something honest to say: "the camera
+holds on the pack throughout" is verifiable in the blockout rather than hoped
+for.
+
+### Camera transport is a different question from subject motion
+
+The easing rule above is about subjects, and applying it to the camera is a
+mistake in the other direction. Ask separately:
+
+- **The camera is linear** when it travels at a constant rate through the whole
+  shot: a dolly, a lateral track, an orbit on a path. These are mechanically
+  constant in real life — a dolly grip does not accelerate through a move — and
+  a uniform motion field is easier for the video model to hold coherent across
+  a take. Set those f-curves to `LINEAR` explicitly; Blender's default Bezier
+  will add an acceleration nobody asked for.
+- **The camera is eased** when the move starts or stops inside the shot: a
+  crane that arrives and settles, a push that comes to rest on the final frame.
+  It has to accelerate, so let it.
+- **Subjects are never linear.** Anything under gravity accelerates whatever
+  the camera is doing. A pack rising at constant speed reads as a lift on a
+  wire.
+
+Getting this backwards is a specific, recognisable failure each way: an eased
+dolly makes the whole frame breathe in a way that reads as a wobble in the
+generation, and a linear falling object reads as an elevator.
 
 ### Granular beds: simulate locally, or declare the placeholder
 
@@ -483,12 +528,15 @@ natural blur in the Seedance prompt instead, where it belongs.
 
 ### Before you export, watch it once
 
-Play the blockout back at speed and ask three questions:
+Play the blockout back at speed and ask four questions:
 
-1. Does anything move at constant velocity? Fix the easing.
-2. Does anything slide across a surface without disturbing it? Either simulate
+1. Does a SUBJECT move at constant velocity? Fix the easing. (The camera is
+   allowed to — see "Camera transport is a different question".)
+2. Is the camera aimed by a constraint on a named empty, rather than by
+   keyframed rotation?
+3. Does anything slide across a surface without disturbing it? Either simulate
    it locally or write it into the prompt as a placeholder to override.
-3. Does anything end the shot floating, intersecting, or resting on a
+4. Does anything end the shot floating, intersecting, or resting on a
    suspiciously level line? Seat it properly — the generation will amplify it.
 
 A pass that fails any of these is not broken. It just means the prompt now has
@@ -1059,7 +1107,10 @@ GENERATION MODE:    Clay Renderer / Omni Reference
 CAMERA
   Sensor:           36mm full frame
   Lens:             50mm
-  Rig:              slow dolly push, 0.4 m/s
+  Move:             push in — 0.4 m/s, holding 50mm throughout
+  Transport:        eased (it settles on the final frame)
+  Aim anchor:       Focus_Anchor, empty at the pack's front face
+                    TRACK_TO on the camera, -Z track, Y up; rotation unkeyed
   Start framing:    medium, subject centre, eye level
   End framing:      close, subject fills 60% of frame height
 

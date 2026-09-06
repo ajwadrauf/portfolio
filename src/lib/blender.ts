@@ -163,12 +163,136 @@ export type SubjectMap = {
 
 export type Beat = { from: string; to: string; action: string };
 
+/**
+ * A vocabulary of camera moves, and how each one is actually built.
+ *
+ * The rig field used to be free text, which meant every brief invented its own
+ * description of a move that has had a name for eighty years. Naming them does
+ * two things: the operator builds a known thing instead of interpreting a
+ * sentence, and the video prompt downstream inherits the same words, so the
+ * clay pass and the prompt cannot describe the camera differently.
+ *
+ * `transport` is the part worth reading. It decides the interpolation on the
+ * camera's own keyframes, and it is not the same answer as for subject motion:
+ *
+ * - `linear` — the camera travels at constant speed. A dolly, a track and an
+ *   orbit are all mechanically constant in real life, and a uniform motion
+ *   field is easier for a video model to hold coherent across a take.
+ * - `eased` — the move starts or stops within the shot, so it has to
+ *   accelerate. A crane that arrives, a push that settles.
+ *
+ * Neither answer transfers to what the SUBJECTS do: an object under gravity
+ * accelerates whatever the camera is doing, and easing subject motion is the
+ * rule §7 of the guide exists to defend. Camera and content are separate
+ * questions, and this is only the camera one.
+ */
+export type CameraMove = {
+  id: string;
+  label: string;
+  /** What to build, in the operator's terms. */
+  rig: string;
+  /** When this move is the right answer. */
+  use: string;
+  transport: "linear" | "eased" | "static";
+};
+
+export const CAMERA_MOVES: CameraMove[] = [
+  {
+    id: "locked",
+    label: "Locked off",
+    rig: "No camera animation. Position it, aim it at the tracking empty, and leave it.",
+    use: "When the subject carries the shot. The cheapest move to get right, and the only one where nothing about the camera can drift between takes.",
+    transport: "static",
+  },
+  {
+    id: "push",
+    label: "Push in",
+    rig: "Dolly the camera toward the anchor along one axis. Hold the focal length — a push and a zoom are different shots.",
+    use: "Building attention on one thing. The default for a product coming to rest.",
+    transport: "eased",
+  },
+  {
+    id: "pull",
+    label: "Pull back to reveal",
+    rig: "The push in reverse: start close, end wide, focal length fixed.",
+    use: "When the context is the point — the pack, then the shelf it sits on.",
+    transport: "eased",
+  },
+  {
+    id: "orbit",
+    label: "Orbit",
+    rig: "A Bezier circle as a path, a FOLLOW_PATH constraint on the camera, and offset_factor keyframed 0 to 1. Aim stays on the anchor throughout.",
+    use: "Showing a product has three dimensions. A quarter turn reads better than a full one in a short take.",
+    transport: "linear",
+  },
+  {
+    id: "crane",
+    label: "Crane up",
+    rig: "Raise the camera and let the TRACK_TO constraint tilt it down as it climbs. Optionally widen the lens on the way.",
+    use: "Ending on scale — the hero small in a larger arrangement.",
+    transport: "eased",
+  },
+  {
+    id: "track",
+    label: "Lateral track",
+    rig: "Camera and anchor travel the same distance on the same axis, so the subject stays put in frame while the background moves.",
+    use: "Anything travelling. The move that makes speed legible.",
+    transport: "linear",
+  },
+  {
+    id: "carousel",
+    label: "Macro carousel",
+    rig: "A short arc at close range on a long lens — bake the position per frame rather than fighting a path constraint at this scale.",
+    use: "Surface and texture: crumb, grain, condensation, foil. The food move.",
+    transport: "linear",
+  },
+  {
+    id: "topdown",
+    label: "Top-down descend",
+    rig: "Camera overhead pointing straight down, descending. Zero rotation already points a Blender camera down its negative Z.",
+    use: "Flatlays and arrangements — the angle retail media uses most and previs covers least.",
+    transport: "eased",
+  },
+  {
+    id: "rise",
+    label: "Rise with the subject",
+    rig: "Anchor and camera both climb, the camera slightly behind and wider, so the subject holds its place in frame while it lifts.",
+    use: "A lift out of something — a pack out of a pile, a fork out of a bowl.",
+    transport: "eased",
+  },
+  {
+    id: "spiral",
+    label: "Spiral descend",
+    rig: "Bake position per frame from an angle that sweeps while the radius and height shrink. Aim held on the anchor.",
+    use: "Arriving somewhere. Two moves in one, so keep it slow or it reads as a camera showing off.",
+    transport: "linear",
+  },
+  {
+    id: "dollyzoom",
+    label: "Dolly zoom",
+    rig: "Move the camera in while the focal length goes wide, keyframing both so the subject stays the same size and the background does not.",
+    use: "Sparingly. It is a feeling, not a product shot, and it is the move most likely to look like a trick.",
+    transport: "linear",
+  },
+  {
+    id: "handheld",
+    label: "Handheld drift",
+    rig: "Frame it static, then add a NOISE modifier to the camera's location f-curves at low strength — around 0.015 at scale 15.",
+    use: "Taking the sterility off a locked shot. Enough to feel human, not enough to read as shake.",
+    transport: "static",
+  },
+];
+
+export const getCameraMove = (id: string) => CAMERA_MOVES.find((m) => m.id === id);
+
 export type BlenderBrief = {
   shotId: string;
   aspect: string;
   seconds: string;
   sensor: string;
   lens: string;
+  /** A CAMERA_MOVES id, or "" for a move described only in `rig`. */
+  move: string;
   rig: string;
   startFraming: string;
   endFraming: string;
@@ -206,7 +330,8 @@ export const EMPTY_BRIEF: BlenderBrief = {
   seconds: "12",
   sensor: "36mm full frame",
   lens: "50",
-  rig: "slow dolly push, 0.4 m/s",
+  move: "push",
+  rig: "0.4 m/s, holding 50mm throughout",
   startFraming: "",
   endFraming: "",
   keyLight: "",
@@ -237,7 +362,8 @@ export const EXAMPLE_BRIEF: BlenderBrief = {
   seconds: "12",
   sensor: "36mm full frame",
   lens: "45",
-  rig: "macro-to-wide dolly and crane, continuous, no cuts",
+  move: "pull",
+  rig: "macro-to-wide dolly with a crane rise, continuous, no cuts",
   startFraming: "Macro, buried in the chip bed, three or four chips filling frame",
   endFraming: "Wide, cookie face-on in the foreground, four packs in a row behind",
   keyLight: "Single raking key from camera left, low elevation",
@@ -406,7 +532,29 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
       `- Real camera: ${clean(b.lens)}mm${has(b.sensor) ? ` on a ${clean(b.sensor)} sensor` : ""}.`,
     );
   }
-  if (has(b.rig)) out.push(`- Move: ${clean(b.rig)}.`);
+  const move = getCameraMove(b.move);
+  if (move) {
+    out.push(`- Move: ${move.label}. ${move.rig}`);
+    if (has(b.rig)) out.push(`  ${clean(b.rig)}`);
+  } else if (has(b.rig)) {
+    out.push(`- Move: ${clean(b.rig)}.`);
+  }
+  /*
+   * The tracking empty, and why it is not optional.
+   *
+   * A camera keyframed on rotation as well as position has two things that can
+   * drift between rebuilds, and the second one is the one nobody notices until
+   * the take comes back framed slightly differently. Aiming through a
+   * constraint on a named empty separates where the camera IS from what it is
+   * LOOKING AT, so re-timing a move cannot re-aim it, and the anchor itself
+   * becomes a thing the brief can talk about.
+   */
+  out.push(
+    "- Aim through a constraint, never by keyframing rotation. Add an empty at",
+    "  the point the shot is about, name it, and give the camera a TRACK_TO",
+    "  constraint pointed at it (-Z track axis, Y up). Animate the empty when the",
+    "  subject of attention moves; animate the camera's location for the move.",
+  );
   if (has(b.startFraming)) out.push(`- Opens on: ${clean(b.startFraming)}.`);
   if (has(b.endFraming)) out.push(`- Ends on: ${clean(b.endFraming)}.`);
   out.push(
@@ -464,8 +612,18 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
     "- Keyframe the beats as real ranges on the timeline. The video prompt tells",
     "  the model to match this clip's duration and route, so the two timelines",
     "  must agree to the frame.",
-    "- Ease every move in and out. Constant-velocity translation is the clearest",
-    "  tell of unedited keyframes, and the model copies the curve it is shown.",
+    "- Interpolation is two separate questions, and the same answer is wrong for",
+    "  both:",
+    `    · The CAMERA on this shot is ${move ? move.transport : "eased"}. ${
+      move?.transport === "linear"
+        ? "Set its f-curves to LINEAR — a dolly, a track and an orbit are mechanically constant, and a uniform motion field is easier for the video model to hold coherent."
+        : move?.transport === "static"
+          ? "It does not travel, so there is nothing to interpolate; any drift comes from a modifier, not from keyframes."
+          : "Ease it. The move starts or stops inside the shot, so it has to accelerate."
+    }`,
+    "    · The SUBJECTS are never linear. Anything under gravity accelerates, and",
+    "      constant-velocity subject motion is the clearest tell of unedited",
+    "      keyframes — the model copies the curve it is shown.",
     "- Rotate travelling objects in all three axes, not just around Z.",
     "- Seat contacts honestly. Half-buried means buried — do not float an object",
     "  above a surface and rely on the camera angle to hide the gap.",
@@ -605,7 +763,22 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
       `Photoreal, shot on a ${clean(b.lens)}mm lens${has(b.sensor) ? ` (${clean(b.sensor)})` : ""}, shallow but not extreme depth of field.`,
     );
   }
-  if (has(b.rig)) globals.push(`Camera rig: ${clean(b.rig)}.`);
+  /*
+   * The move goes into the prompt by name.
+   *
+   * The clip already shows the camera doing it, so this is not instruction so
+   * much as agreement: the blockout and the prompt describe the same move in
+   * the same words, and a later edit to one cannot quietly contradict the
+   * other.
+   */
+  const namedMove = getCameraMove(b.move);
+  if (namedMove) {
+    globals.push(
+      `Camera: ${namedMove.label.toLowerCase()}${has(b.rig) ? `, ${clean(b.rig)}` : ""}.`,
+    );
+  } else if (has(b.rig)) {
+    globals.push(`Camera rig: ${clean(b.rig)}.`);
+  }
   if (has(b.lightCharacter)) globals.push(`Lighting character: ${clean(b.lightCharacter)}.`);
   if (mapped.length) {
     globals.push(
