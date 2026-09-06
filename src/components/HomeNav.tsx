@@ -70,40 +70,53 @@ export function HomeNav({ work }: { work: WorkLink[] }) {
     }
   };
 
+  /*
+   * Direction C's pills: a touch heavier and roomier than before, so a row of
+   * four reads as a considered group rather than as small grey text floating
+   * beside a large name.
+   */
   const pill =
-    "rounded-[6px] px-2 py-1.5 text-sm text-muted transition hover:bg-accent/8 hover:text-accent sm:px-3";
+    "rounded-[6px] px-2.5 py-2 text-[13.5px] font-semibold text-muted transition hover:bg-accent/[0.09] hover:text-accent sm:px-[15px]";
 
   return (
-    <header className="nav-bar sticky top-0 z-40 border-b border-accent/20 backdrop-blur">
-      <div className="brand-strip" />
-      <div className="mx-auto flex max-w-[1440px] flex-col items-start gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-12 lg:px-24">
+    /*
+     * The bar carries nothing but the wordmark and the links.
+     *
+     * It used to sit under a seven-colour strip on a purple wash, which made
+     * the heaviest band on the page the one with the least in it. The strip is
+     * gone and the wash with it; what separates the header from the page now
+     * is a single hairline and a translucent surface, so the name is the
+     * loudest thing in the bar rather than competing with its background.
+     */
+    <header className="sticky top-0 z-40 border-b border-border-soft bg-[color-mix(in_srgb,var(--surface)_82%,transparent)] backdrop-blur">
+      <div className="mx-auto flex max-w-[1440px] flex-col items-start gap-3 px-4 py-3.5 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-12 lg:px-24">
         {/*
-          The wordmark, not a nav item.
+          The wordmark: two weights of one name, over a rule that runs out.
           
-          It was mono uppercase in accent — the same treatment as every eyebrow
-          on the page, which made a person's name read as another label. A
-          monogram in the brand gradient plus the name set in the display face
-          gives the bar something to be anchored by, and it is the one place
-          the spectrum appears at a size anyone actually registers.
+          The monogram tile is gone — a rounded square with initials in it is
+          the single most common personal-site move, and it was doing the
+          identity work the name should have been doing. Splitting the weight
+          between given and family name makes "Ajwad" the thing you read
+          first, and the rule underneath is the only drawn mark on the page:
+          it starts in brand purple and dissolves, so it reads as a signature
+          rather than a border.
         */}
-        <Link href="/" className="group flex items-center gap-2.5 whitespace-nowrap">
+        <Link href="/" className="group flex flex-col gap-[7px]">
+          <span className="flex items-baseline gap-[9px] leading-none">
+            <span className="text-[21px] font-bold tracking-[-0.04em] text-foreground transition group-hover:text-accent">
+              Ajwad
+            </span>
+            <span className="text-[21px] font-normal tracking-[-0.02em] text-muted">
+              Rauf
+            </span>
+          </span>
           <span
             aria-hidden
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px] bg-[linear-gradient(135deg,var(--hue-1),var(--hue-2)_45%,var(--hue-3))] font-mono text-[11px] font-bold leading-none tracking-[0.02em] text-white shadow-sm transition group-hover:brightness-110"
-          >
-            AR
-          </span>
-          <span className="flex flex-col leading-none">
-            <span className="text-[15px] font-semibold tracking-[-0.02em] text-foreground transition group-hover:text-accent">
-              Ajwad Rauf
-            </span>
-            <span className="mt-[3px] font-mono text-[9.5px] uppercase tracking-[0.16em] text-muted">
-              AI production systems
-            </span>
-          </span>
+            className="block h-[3px] w-[132px] bg-[linear-gradient(90deg,var(--hue-1)_0%,var(--hue-2)_46%,transparent_100%)] transition-[width] duration-300 group-hover:w-[150px]"
+          />
         </Link>
 
-        <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="Sections">
+        <nav className="flex items-center gap-0.5 sm:gap-1 sm:pt-0.5" aria-label="Sections">
           <div className="relative" ref={wrapRef}>
             <button
               ref={buttonRef}
