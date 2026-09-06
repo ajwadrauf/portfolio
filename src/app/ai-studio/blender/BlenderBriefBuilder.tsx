@@ -269,7 +269,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <input
                     className="input"
-                    placeholder="ID colour — e.g. orange"
+                    placeholder="ID colour + hex — orange #D94F0A"
                     value={s.color}
                     onChange={(e) =>
                       set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, color: e.target.value } : x)))

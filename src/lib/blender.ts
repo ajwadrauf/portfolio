@@ -369,12 +369,12 @@ export const EXAMPLE_BRIEF: BlenderBrief = {
   keyLight: "Single raking key from camera left, low elevation",
   lightCharacter: "Warm, high-end food commercial",
   subjects: [
-    { color: "blue", proxy: "small conical chips forming the bed", becomes: "semi-sweet chocolate chips, deep brown with a soft sheen", ref: "" },
-    { color: "orange", proxy: "disc", becomes: "a thick golden peanut butter chocolate chip cookie", ref: "" },
-    { color: "green", proxy: "form, leftmost", becomes: "the product pack", ref: "Image 1" },
-    { color: "magenta", proxy: "form, second left", becomes: "the product pack", ref: "Image 1" },
-    { color: "yellow", proxy: "form, third left", becomes: "the product pack", ref: "Image 1" },
-    { color: "cyan", proxy: "form, rightmost", becomes: "the product pack", ref: "Image 1" },
+    { color: "blue #0D33CC", proxy: "small conical chips forming the bed", becomes: "semi-sweet chocolate chips, deep brown with a soft sheen", ref: "" },
+    { color: "orange #D94F0A", proxy: "disc", becomes: "a thick golden peanut butter chocolate chip cookie", ref: "" },
+    { color: "green #1A8C26", proxy: "form, leftmost", becomes: "the product pack", ref: "Image 1" },
+    { color: "magenta #B5279B", proxy: "form, second left", becomes: "the product pack", ref: "Image 1" },
+    { color: "yellow #C9A227", proxy: "form, third left", becomes: "the product pack", ref: "Image 1" },
+    { color: "cyan #1B9AAA", proxy: "form, rightmost", becomes: "the product pack", ref: "Image 1" },
   ],
   beats: [
     { from: "0", to: "3", action: "Macro orbit around one chip inside a dense bed. The bed is at rest; only parallax moves." },
@@ -530,6 +530,9 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
   if (has(b.lens)) {
     out.push(
       `- Real camera: ${clean(b.lens)}mm${has(b.sensor) ? ` on a ${clean(b.sensor)} sensor` : ""}.`,
+      "  Set the sensor width explicitly on the camera data rather than leaving it",
+      "  to the startup file. It defaults to 36mm, but a changed default silently",
+      "  reframes every shot and nothing in the render says why.",
     );
   }
   const move = getCameraMove(b.move);
@@ -552,8 +555,31 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
   out.push(
     "- Aim through a constraint, never by keyframing rotation. Add an empty at",
     "  the point the shot is about, name it, and give the camera a TRACK_TO",
-    "  constraint pointed at it (-Z track axis, Y up). Animate the empty when the",
-    "  subject of attention moves; animate the camera's location for the move.",
+    "  constraint pointed at it (-Z track axis, Y up). Animate the camera's",
+    "  location for the move.",
+    /*
+     * Where the anchor attaches, and why it is not obvious.
+     *
+     * When the point of attention travels, the reflex is to bind the anchor to
+     * whatever is carrying it — a hand, a spoon, a conveyor. That aims the
+     * camera at that object's ORIGIN, which for a single mesh defaults to its
+     * geometric centre: the middle of a spoon's shaft, not the bowl. The
+     * framing then drifts toward the handle, and worse, if the carrier rotates
+     * as it travels the subject swings around a point it is not centred on.
+     *
+     * Two fixes, and the second is the real one. Bind the anchor to the
+     * SUBJECT rather than the carrier — the scoop, not the spoon — and set that
+     * subject's origin where the camera should look before animating anything.
+     * Once the origin is right, COPY_LOCATION, parenting and a plain constraint
+     * all behave, because they were never the problem.
+     */
+    "- Attach the anchor to the SUBJECT, not to whatever carries it, and set that",
+    "  subject's origin where the camera should look BEFORE animating. A tool's",
+    "  origin defaults to its geometric centre — a spoon's is halfway down the",
+    "  shaft, not in the bowl — so aiming at the carrier frames the handle, and",
+    "  any rotation swings the subject around a point it is not centred on.",
+    "  With the origin set correctly, parenting or COPY_LOCATION both work; with",
+    "  it wrong, neither does.",
   );
   if (has(b.startFraming)) out.push(`- Opens on: ${clean(b.startFraming)}.`);
   if (has(b.endFraming)) out.push(`- Ends on: ${clean(b.endFraming)}.`);
@@ -584,6 +610,19 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
     );
   }
   out.push(
+    "",
+    /*
+     * A colour word is not a colour.
+     *
+     * "orange" is a range, and two proxies described as orange and red can land
+     * close enough that the model merges them — which is the exact failure the
+     * ID map exists to prevent. A hex is checkable; an adjective is not.
+     */
+    "Colours above are the mapping, so pin them as values. Assign each as the",
+    "Base Color of a Principled BSDF at roughness 0.55, converting from hex to",
+    "linear first — see hex_to_linear in CLAUDE.md §6. Do NOT use flat unlit",
+    "materials or a viewport-solid render for subjects: it separates the colours",
+    "and destroys the contact shadows and light direction the generation reads.",
     "",
     "Give every hero object real thickness and a real profile. A flat proxy reads",
     "as a sprite in the generation because it was one in the blockout.",
@@ -661,7 +700,18 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
     "## Export",
     "",
     `- MP4 / H.264, ${dur}s, 24 fps, ${b.aspect}, 720p short edge.`,
-    `- Name it by shot: \`${has(b.shotId) ? clean(b.shotId) : "1A"}_clay.mp4\`.`,
+    /*
+     * The extension belongs to Blender, not to you.
+     *
+     * Rendering an animation to a video container appends the frame range
+     * AFTER whatever `filepath` ends with, so setting it to "1A_clay.mp4"
+     * writes "1A_clay.mp40001-0072.mp4" — a file that plays fine and sorts
+     * wrong, and whose name nobody reads until the upload order is already
+     * scrambled. Set the path without an extension and let Blender add it.
+     */
+    `- Set \`scene.render.filepath\` to \`${has(b.shotId) ? clean(b.shotId) : "1A"}_clay\` with NO extension —`,
+    "  Blender appends the frame range and the container suffix itself. Writing",
+    "  the extension yourself produces `..._clay.mp40001-0072.mp4`.",
     "- One folder per shot, ordered so upload order matches the reference indices",
     "  the video prompt addresses.",
   );

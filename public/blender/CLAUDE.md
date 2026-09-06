@@ -323,6 +323,15 @@ ID_COLORS = {
 Roughness 0.5–0.6 gives readable form without glare. Zero metallic. No bump, no
 textures, no transparency.
 
+**Shaded, not flat.** There is a tempting shortcut here — set `use_nodes =
+False`, assign `diffuse_color`, and capture the viewport with
+`bpy.ops.render.opengl` in solid shading. It is faster, and the ID colours come
+out perfectly separated. It also throws away the two things the generation reads
+most: the contact shadow under each object and the direction of the key. A clay
+pass without shadows tells the model where things are in the frame but not where
+they are in the room. Render it lit. Emission and flat colour are for
+backgrounds and typography, where there is no form to describe.
+
 Record the ID colour map as a constant at the top of the script. The prompt
 generator reads from it, so render and prompt cannot drift apart.
 
@@ -436,7 +445,13 @@ constraint pointed at it — `-Z` track axis, `Y` up. Then:
 
 - **Camera location** is the move. Keyframe it.
 - **The empty** is what the shot is about. Keyframe it only when the point of
-  attention itself moves — a subject travelling, a lift.
+  attention itself moves — a subject travelling, a lift. Attach it to the
+  *subject*, not to whatever carries the subject, and set that object's origin
+  where the camera should look before you animate. An origin defaults to the
+  mesh's geometric centre, so a spoon's sits halfway down the shaft: aim there
+  and you frame the handle, and any rotation swings the scoop around a point it
+  is not centred on. Once the origin is right, parenting and `COPY_LOCATION`
+  both behave — the constraint was never the problem.
 - **Camera rotation** is neither. Leave it alone; the constraint owns it.
 
 The payoff is that re-timing a move cannot re-aim it. Change the dolly speed,
@@ -750,6 +765,13 @@ of spatial relationships that one camera angle cannot. It may carry labels and
 arrows, because it is a diagram — exclude it from the visual style in the prompt.
 
 ### Encoding
+
+**Leave the extension off `render.filepath`.** Rendering an animation to a video
+container appends the frame range after whatever the path ends with, so
+`filepath = "out/01_clay_1A.mp4"` writes `01_clay_1A.mp40001-0072.mp4`. It plays
+fine, sorts wrong, and nobody notices until the upload order is scrambled and
+the prompt's `[Video1]` is pointing at a different shot. Set
+`filepath = "out/01_clay_1A"` and let Blender add the rest.
 
 Probe first; some builds ship without FFmpeg, so `file_format = 'FFMPEG'` raises
 an enum error. Fallback is a PNG sequence encoded separately:
