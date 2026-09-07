@@ -19,6 +19,8 @@ finished look, which changes three things §6 would otherwise dictate:
 """
 
 import math
+import os
+import re
 
 # --------------------------------------------------------------------------
 # DELIVERY
@@ -313,6 +315,57 @@ def frame_width_at(distance, lens):
     return distance * SENSOR_WIDTH / lens
 
 
+# --------------------------------------------------------------------------
+# PORTABILITY
+# --------------------------------------------------------------------------
+# Blender 5.2.1 ships NumPy 2; the bpy 5.0.1 wheel ships 1.26. Anything NumPy 2
+# removed therefore runs clean on the wheel and dies on the desktop build — and
+# it dies partway through a render, which is the expensive place to find out.
+# `arr.ptp()` did exactly that: four shots rendered, then 1E raised on the line
+# that logs the wordmark's size. This file needs no Blender, so it runs anywhere.
+NUMPY2_REMOVED = [
+    (r"\.ptp\(\)",         "arr.ptp() -> np.ptp(arr)"),
+    (r"\.itemset\(",        "arr.itemset(i, v) -> arr[i] = v"),
+    (r"\.newbyteorder\(",   "arr.newbyteorder() -> arr.view(dtype.newbyteorder())"),
+    (r"np\.float_\b",       "np.float_ -> np.float64"),
+    (r"np\.unicode_\b",     "np.unicode_ -> np.str_"),
+    (r"np\.in1d\b",         "np.in1d -> np.isin"),
+    (r"np\.alltrue\b",      "np.alltrue -> np.all"),
+    (r"np\.sometrue\b",     "np.sometrue -> np.any"),
+    (r"np\.product\b",      "np.product -> np.prod"),
+    (r"np\.cumproduct\b",   "np.cumproduct -> np.cumprod"),
+    (r"np\.row_stack\b",    "np.row_stack -> np.vstack"),
+    (r"np\.NaN\b",          "np.NaN -> np.nan"),
+    (r"np\.Inf\b",          "np.Inf -> np.inf"),
+]
+
+
+def check_numpy2(path=None):
+    """Flag anything NumPy 2.0 removed, before a render finds it."""
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "token_build.py")
+    if not os.path.exists(path):
+        return True
+    bad = []
+    for i, line in enumerate(open(path), 1):
+        if line.lstrip().startswith("#"):
+            continue
+        for pat, fix in NUMPY2_REMOVED:
+            if re.search(pat, line):
+                bad.append((i, fix))
+    for i, fix in bad:
+        print("  NUMPY 2 REMOVED: %s:%d  %s" % (os.path.basename(path), i, fix))
+    if not bad:
+        try:
+            import numpy
+            here = numpy.__version__
+        except ImportError:
+            here = "not installed"
+        print("numpy %s here, and nothing NumPy 2.0 removed is used — so this "
+              "also runs on Blender 5.2's numpy 2" % here)
+    return not bad
+
+
 if __name__ == "__main__":
     total = sum(s["frames"] for s in SHOTS.values())
     print("%s — %d frames, %.1fs at %d fps, %dx%d\n"
@@ -332,6 +385,7 @@ if __name__ == "__main__":
     print("\ntoken %.0f x %.0f x %.0f mm · %d instances · swarm %.2f m cube · seed %d"
           % (TOKEN_DIM[0] * 1000, TOKEN_DIM[1] * 1000, TOKEN_DIM[2] * 1000,
              TOKEN_COUNT, SWARM_CUBE, SCATTER_SEED))
+    check_numpy2()
     print("palette:", ", ".join("%s %s" % (n, h) for n, h in
           [("void", VOID), ("white", TOKEN_WHITE), ("cyan", CYAN),
            ("amber", AMBER), ("grey", DEAD_GREY)]))

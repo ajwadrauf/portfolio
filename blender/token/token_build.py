@@ -829,9 +829,12 @@ def wordmark_targets(n, text=None, target_width=1.35):
     out = np.zeros_like(pts)
     out[:, 0] = pts[:, 0] - (pts[:, 0].max() + pts[:, 0].min()) / 2
     out[:, 2] = pts[:, 1] - (pts[:, 1].max() + pts[:, 1].min()) / 2
+    # np.ptp(a), not a.ptp(): the ndarray METHOD was removed in NumPy 2.0, and
+    # Blender 5.2.1 ships NumPy 2 while the bpy 5.0.1 wheel ships 1.26. The
+    # function form is correct on both.
     log("wordmark: %d verts / %d edges -> %d targets, %.2f x %.2f m"
         % (len(verts), len(edges), n,
-           out[:, 0].ptp(), out[:, 2].ptp()))
+           np.ptp(out[:, 0]), np.ptp(out[:, 2])))
     return out, txt
 
 

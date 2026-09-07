@@ -59,7 +59,7 @@ after that any shot can be rebuilt alone.
 ## Running it
 
 ```bash
-python3 token_config.py                     # the edit-time table, no Blender
+python3 token_config.py                     # edit-time table + portability check
 python3 token_build.py --all                # build + all checks, no pixels
 python3 token_build.py --all --checkpoints  # + a still on every named beat
 python3 token_build.py --shot 1C --checkpoints
@@ -161,6 +161,13 @@ clean on every shot.
   `Threshold` 0.6 to 1.5 moves the frame by 0.011. `Strength` is the only lever
   that moves Bloom at all, and the numbers behind the value in `token_config.py`
   are in the comment above it. `Size` is a Fog Glow control.
+- **Blender 5.2.1 ships NumPy 2; the `bpy` 5.0.1 wheel ships 1.26.** Anything
+  NumPy 2.0 removed runs clean on the wheel and raises on the desktop build —
+  and it raises *partway through a render*. `arr.ptp()` did exactly that: 1A
+  through 1D rendered at 1920×1080, then 1E died on the line that logs the
+  wordmark's size. `python3 token_config.py` now scans `token_build.py` for
+  every name NumPy 2.0 removed and prints what to use instead. It needs no
+  Blender, so it runs before the render rather than 285 frames into it.
 - **No FFMPEG writer** in the `bpy` wheel or in Blender 5.2.1 LTS on macOS. Test
   it by assigning and catching the `TypeError`, whose message enumerates what the
   build really supports — `ImageFormatSettings.bl_rna` lists `FFMPEG` either way,
