@@ -26,7 +26,14 @@ import {
  */
 export type BuilderMode = "build" | "seedance";
 
-const ASPECTS = ["1:1", "16:9", "9:16", "4:5", "21:9"];
+/*
+ * Shapes the builder offers.
+ *
+ * 4:3 was missing while the worked example used it, so loading the example put
+ * the select into a value it could not display — the shot said 4:3 and the
+ * control said 1:1. Everything the Ad Lab accepts belongs here.
+ */
+const ASPECTS = ["1:1", "4:3", "3:4", "16:9", "9:16", "4:5", "21:9"];
 
 const clean = (s: string) => s.trim();
 

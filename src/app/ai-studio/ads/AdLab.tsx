@@ -408,10 +408,22 @@ export function AdLab({
    * Generate run a prompt that no longer matches the settings.
    */
   const invalidatePrompt = useCallback(() => {
+    /*
+     * An imported prompt is not derived from these settings, so it is not
+     * made stale by them.
+     *
+     * The rule below is right for a composed prompt: it is a function of the
+     * recipe, so changing the recipe makes the shown text a lie. It was wrong
+     * for an imported one, and wrongest in the exact workflow the importer
+     * exists for — load a prompt written elsewhere, add the references it
+     * addresses as [Image1] and [Video1], and adding the first reference wiped
+     * the prompt. The feature destroyed its own input.
+     */
+    if (imported) return;
     setFinalPrompt("");
     setNegativePrompt("");
     setPhase("idle");
-  }, []);
+  }, [imported]);
 
   // Vision autofill
   const [autofillBusy, setAutofillBusy] = useState(false);

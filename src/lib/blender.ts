@@ -519,7 +519,9 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
     `- Duration ${dur}s at 24 fps — frames 1 to ${frames}.`,
     `- Aspect ${b.aspect}, rendered at 720p on the short edge.`,
     "- Real-world scale. Set unit scale before modelling, not after.",
-    "- Flat, unlit ID colours. No textures, no reflections, no depth of field —",
+    "- One flat ID colour per mapped subject, assigned as Base Color on a",
+    "  Principled BSDF at roughness 0.55 — shaded, not unlit, so the form and the",
+    "  contact shadow survive. No textures, no reflections, no depth of field —",
     "  all three obscure the geometry the model is meant to read.",
     "- Render sharp: no motion blur in the clay. Blur is asked for in the video",
     "  prompt, where it belongs.",
@@ -877,7 +879,20 @@ export function briefIssues(
   const beats = b.beats.filter((x) => has(x.action));
   const mapped = b.subjects.filter((s) => has(s.color) && has(s.becomes));
 
+  if (mapped.length === 0) {
+    issues.push({
+      text: "No subject is mapped to an ID colour.",
+      why: "The colour map is how the prompt addresses anything in the blockout. With none, the clip is a camera move over untitled geometry and nothing downstream can name a part of it.",
+    });
+  }
+
   const total = Number(b.seconds);
+  if (has(b.seconds) && !Number.isFinite(total)) {
+    issues.push({
+      text: `"${clean(b.seconds)}" is not a number of seconds.`,
+      why: "Duration drives the frame count, the beat ranges and the cost estimate. A value that will not parse silently becomes NaN frames.",
+    });
+  }
   if (Number.isFinite(total)) {
     if (total > 30) {
       issues.push({
@@ -954,6 +969,36 @@ export function briefIssues(
       text: "No key light direction.",
       why: "Shadow direction and length are how the model builds its own lighting. Flat ambient gives it nothing to work from.",
     });
+  }
+
+  /*
+   * Beats that overlap, or run backwards.
+   *
+   * The timeline is the one part of the brief the video prompt reproduces to
+   * the frame, so two beats claiming the same seconds is not a style question:
+   * whoever builds it has to guess which wins, and the prompt asserts both.
+   */
+  const timed = beats
+    .map((x) => ({ ...x, f: Number(x.from), t: Number(x.to) }))
+    .filter((x) => Number.isFinite(x.f) && Number.isFinite(x.t));
+  for (const beat of timed) {
+    if (beat.t < beat.f) {
+      issues.push({
+        text: `The beat at ${beat.from}–${beat.to}s ends before it starts.`,
+        why: "Nothing downstream can order it, and the frame range it produces is negative.",
+      });
+    }
+  }
+  const ordered = [...timed].sort((a, x) => a.f - x.f);
+  for (let i = 1; i < ordered.length; i++) {
+    const prev = ordered[i - 1];
+    const cur = ordered[i];
+    if (cur.f < prev.t) {
+      issues.push({
+        text: `The beats at ${prev.from}–${prev.to}s and ${cur.from}–${cur.to}s overlap.`,
+        why: "Two beats claiming the same seconds leaves the operator to pick one, while the video prompt states both — so the blockout and the prompt disagree about what happens when.",
+      });
+    }
   }
 
   for (const beat of beats) {

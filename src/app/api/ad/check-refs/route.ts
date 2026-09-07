@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { judge, readDimensions, type RefFinding } from "@/lib/refCheck";
+import { judge, readDimensions, type RefFinding, type RefKind } from "@/lib/refCheck";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ const FETCH_TIMEOUT_MS = 15_000;
  * exactly the file a provider cannot read, and that failure comes back from
  * the provider as a content-policy sentence with no mention of fetching.
  */
-async function inspect(slot: string, url: string): Promise<RefFinding> {
+async function inspect(slot: string, url: string, kind: RefKind = "image"): Promise<RefFinding> {
   // A data URL is carried inside the request rather than fetched, so there is
   // no reachability question to answer and calling it unreachable would be a
   // false alarm on a file that works.
@@ -31,7 +31,7 @@ async function inspect(slot: string, url: string): Promise<RefFinding> {
   }
   if (!/^https?:\/\//i.test(url)) {
     return judge(slot, url, undefined,
-      "Not an http(s) URL. A generation provider fetches references over the public internet, so a local path is not reachable from there.");
+      "Not an http(s) URL. A generation provider fetches references over the public internet, so a local path is not reachable from there.", kind);
   }
   // A non-https URL is still inspected rather than dismissed: the dimensions
   // and size are worth reporting even when the scheme is the blocking issue,
@@ -50,7 +50,7 @@ async function inspect(slot: string, url: string): Promise<RefFinding> {
     });
     if (!res.ok && res.status !== 206) {
       return judge(slot, url, undefined,
-        `The URL returned ${res.status} ${res.statusText}. The provider fetches references itself, so a file it cannot download is rejected — often reported as a content problem rather than a missing file.`);
+        `The URL returned ${res.status} ${res.statusText}. The provider fetches references itself, so a file it cannot download is rejected — often reported as a content problem rather than a missing file.`, kind);
     }
 
     const contentType = res.headers.get("content-type") ?? undefined;
@@ -62,7 +62,7 @@ async function inspect(slot: string, url: string): Promise<RefFinding> {
 
     const buf = new Uint8Array(await res.arrayBuffer());
     const dims = readDimensions(buf);
-    const finding = judge(slot, url, { bytes, contentType, ...(dims ?? {}) });
+    const finding = judge(slot, url, { bytes, contentType, ...(dims ?? {}) }, undefined, kind);
     return schemeNote.length
       ? { ...finding, ok: false, problems: [...schemeNote, ...finding.problems] }
       : finding;
@@ -71,7 +71,7 @@ async function inspect(slot: string, url: string): Promise<RefFinding> {
     return judge(slot, url, undefined,
       aborted
         ? `The URL did not respond within ${FETCH_TIMEOUT_MS / 1000}s. A provider fetching it will time out too.`
-        : `Could not be fetched: ${e instanceof Error ? e.message : String(e)}`);
+        : `Could not be fetched: ${e instanceof Error ? e.message : String(e)}`, kind);
   } finally {
     clearTimeout(timer);
   }
@@ -86,8 +86,8 @@ export async function POST(req: Request) {
     // Clips get the reachability half of the check only: the documented
     // pixel limits are for stills, and inventing limits for video would be
     // worse than saying nothing.
-    ...videos.map((u, i) => inspect(`[Video${i + 1}]`, u)),
-    ...images.map((u, i) => inspect(`[Image${i + 1}]`, u)),
+    ...videos.map((u, i) => inspect(`[Video${i + 1}]`, u, "video")),
+    ...images.map((u, i) => inspect(`[Image${i + 1}]`, u, "image")),
   ]);
 
   return NextResponse.json({

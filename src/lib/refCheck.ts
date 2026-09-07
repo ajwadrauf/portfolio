@@ -24,6 +24,23 @@ export const IMAGE_LIMITS = {
   formats: ["jpeg", "jpg", "png", "webp", "bmp", "tiff", "gif", "heic", "heif"],
 } as const;
 
+/**
+ * What can be checked about a clip, which is much less.
+ *
+ * The published pixel constraints — min side, max side, aspect band — are for
+ * stills. Applying them to video is not conservative, it is wrong: it was
+ * reporting a working 4.7MB MP4 as "not an accepted format" and "not an image
+ * type", on the one screen whose entire job is telling you why a reference
+ * failed. A checker that invents failures is worse than no checker, because
+ * the next real failure gets ignored with the rest.
+ */
+export const VIDEO_LIMITS = {
+  maxBytes: 100 * 1024 * 1024,
+  formats: ["mp4", "mov", "webm", "m4v"],
+} as const;
+
+export type RefKind = "image" | "video";
+
 export type RefFinding = {
   url: string;
   /** Which slot the prompt addresses this as, e.g. "[Image2]". */
@@ -112,6 +129,14 @@ export function judge(
   url: string,
   detail: RefFinding["detail"],
   fetchProblem?: string,
+  /*
+   * What this file is meant to be.
+   *
+   * Defaulted to image so existing calls keep their behaviour, but the video
+   * path is the reason this parameter exists: everything below the fetch check
+   * is a still-image rule, and a clip judged by them fails for being a clip.
+   */
+  kind: RefKind = "image",
 ): RefFinding {
   const problems: string[] = [];
   const notes: string[] = [];
@@ -121,19 +146,32 @@ export function judge(
     return { url, slot, ok: false, problems, notes };
   }
 
+  const limits = kind === "video" ? VIDEO_LIMITS : IMAGE_LIMITS;
   const e = ext(url);
-  if (e && !IMAGE_LIMITS.formats.includes(e as never)) {
-    problems.push(`.${e} is not an accepted format (${IMAGE_LIMITS.formats.join(", ")}).`);
+  if (e && !(limits.formats as readonly string[]).includes(e)) {
+    problems.push(`.${e} is not an accepted ${kind} format (${limits.formats.join(", ")}).`);
   }
 
   const { bytes, width, height, contentType } = detail ?? {};
-  if (bytes && bytes > IMAGE_LIMITS.maxBytes) {
-    problems.push(`${(bytes / 1024 / 1024).toFixed(1)}MB is over the ${IMAGE_LIMITS.maxBytes / 1024 / 1024}MB limit.`);
+  if (bytes && bytes > limits.maxBytes) {
+    problems.push(`${(bytes / 1024 / 1024).toFixed(1)}MB is over the ${limits.maxBytes / 1024 / 1024}MB limit.`);
   }
-  if (contentType && !contentType.startsWith("image/")) {
+  if (contentType && !contentType.startsWith(`${kind}/`)) {
     problems.push(
-      `The server returns this as ${contentType}, not an image type. A provider fetching it may refuse it before looking at the pixels.`,
+      `The server returns this as ${contentType}, not ${kind === "video" ? "a video" : "an image"} type. A provider fetching it may refuse it before looking at the file.`,
     );
+  }
+
+  /*
+   * Everything past this point is a still-image rule. A clip's dimensions and
+   * aspect are not governed by the reference-stills limits, and inventing a
+   * ceiling for them would be the same mistake in the other direction.
+   */
+  if (kind === "video") {
+    if (!problems.length) {
+      notes.push("Reachable and the right kind of file. Duration and dimensions are not checked here — the published limits are for stills.");
+    }
+    return { url, slot, ok: problems.length === 0, detail, problems, notes };
   }
 
   if (width && height) {
