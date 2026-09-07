@@ -858,25 +858,27 @@ def _credit_text(name, body, width, alpha, top_z, fade_at):
                      (fade_at, white + (0.0,)),
                      (fade_at + 10, white + (alpha,)),
                      (C.E_END, white + (alpha,))], easing="EASE_OUT")
+    bpy.context.view_layer.update()
     return o
 
 
 def build_credit(below_z):
-    """The claim and the specifics, as type rather than tokens.
+    """The credit stack, as type rather than tokens.
 
     Particles are the wrong medium for anything that has to be READ: 800 of them
     over 26 characters leaves a 16% gap-to-cap ratio and the letterforms come
-    apart. Solid glyphs here, dimmer than the wordmark so they read as a
-    footnote, and rendered rather than comped so that "entirely in Blender" is
-    true of the finished frame rather than true of everything except the frame."""
-    credit = _credit_text("credit", C.E_CREDIT, C.E_CREDIT_WIDTH,
-                          C.E_CREDIT_ALPHA, below_z - C.E_CREDIT_DROP,
-                          C.E_CREDIT_IN)
-    bpy.context.view_layer.update()
-    stats = _credit_text("stats", C.E_STATS, C.E_STATS_WIDTH, C.E_STATS_ALPHA,
-                         credit.location.z - credit.dimensions.z - C.E_STATS_DROP,
-                         C.E_CREDIT_IN + 6)
-    return [credit, stats]
+    apart. Solid glyphs here, each line dimmer and later than the one above it,
+    and rendered rather than comped so that "entirely in Blender" is true of the
+    finished frame rather than true of everything except the frame."""
+    out = []
+    z = below_z
+    for i, (body, width, alpha, delay) in enumerate(C.E_CREDIT_LINES):
+        z -= C.E_CREDIT_GAPS[i]
+        o = _credit_text("credit_%d" % i, body, width, alpha, z,
+                         C.E_CREDIT_IN + delay)
+        z -= o.dimensions.z
+        out.append(o)
+    return out
 
 
 def build_1e():
@@ -1270,6 +1272,44 @@ def assemble():
         return
     log("%s  %d frames  %.2f s  %.1f MB"
         % (out, n, n / float(C.FPS), os.path.getsize(out) / 1e6))
+    check_film_moves(out, n)
+
+
+def check_film_moves(path, n):
+    """Decode the finished film back and prove it is not a still.
+
+    ffmpeg returning 0 says it wrote a file, not that the file is a film. A
+    12-second video of a single repeated frame exits 0 and looks correct in
+    every log; the only way to know is to read the pixels back out. Three frames
+    is enough: if the first, the middle and the last are byte-identical then
+    something upstream collapsed and this is not worth uploading."""
+    import shutil, subprocess, tempfile, hashlib
+    if not shutil.which("ffmpeg"):
+        return True
+    picks = [1, max(1, n // 2), n]
+    got, tmp = [], tempfile.mkdtemp()
+    try:
+        for f in picks:
+            fp = os.path.join(tmp, "p_%04d.png" % f)
+            r = subprocess.run(
+                ["ffmpeg", "-v", "error", "-y", "-i", path,
+                 "-vf", "select=eq(n\\,%d)" % (f - 1), "-frames:v", "1", fp],
+                capture_output=True, text=True)
+            if r.returncode or not os.path.exists(fp):
+                log("could not read frame %d back out of the film" % f)
+                return False
+            got.append(hashlib.md5(open(fp, "rb").read()).hexdigest())
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    if len(set(got)) == 1:
+        log("WARNING: frames %s of the film are IDENTICAL — it encoded a still."
+            % ", ".join(str(f) for f in picks))
+        log("         check the source: "
+            "md5 -q out/<shot>/frames/*.png | sort -u | wc -l")
+        return False
+    log("film moves: frames %s decode to %d distinct images"
+        % ("/".join(str(f) for f in picks), len(set(got))))
+    return True
 
 
 # ==========================================================================

@@ -197,21 +197,24 @@ E_LATE_LAG = 8          # how far behind the pack the late token runs
 #   BUILT WITH / CLAUDE / IN BLENDER  26 chars  16%   falls apart
 # Past ~10 characters the strokes stop being strokes at this token count. The
 # rest of the sentence is set as real type below, where it belongs.
-E_WORDMARK = "CLAUDE"
-E_WORDMARK_RISE = 0.09  # lift, so wordmark + credit sit centred as one block
+E_WORDMARK = "AJWAD RAUF"
+E_WORDMARK_RISE = 0.085  # lift, so wordmark + credit sit centred as one block
 
-# The claim and the specifics are real text geometry, not tokens. Type that has
-# to be READ should not be made of particles, and rendering it here rather than
-# comping it keeps "entirely in Blender" literally true of the finished frame.
-E_CREDIT = "BUILT ENTIRELY IN BLENDER"
-E_CREDIT_WIDTH = 1.00   # metres; the tagline
-E_CREDIT_ALPHA = 0.55
-E_STATS = "800 TOKENS · ONE ASSET · 360 FRAMES · FIVE SHOTS"
-E_STATS_WIDTH = 1.24    # metres; smaller and dimmer, a footnote to the footnote
-E_STATS_ALPHA = 0.32
-E_CREDIT_DROP = 0.10    # metres below the wordmark block
-E_STATS_DROP = 0.085    # metres below the credit
-E_CREDIT_IN = 58        # fades up once the wordmark has landedd
+# The credit stack: real text geometry, not tokens. Type that has to be READ
+# should not be made of particles, and rendering it here rather than comping it
+# keeps "entirely in Blender" literally true of the finished frame.
+# Each entry is (text, width in metres, emission alpha, frames after E_CREDIT_IN).
+# Width is what sets the size, so it also sets the hierarchy: two lines of
+# similar length at similar widths come out the same size and read as one block.
+E_CREDIT_LINES = [
+    ("LIMIT REACHED · RESET · BUILT WITH CLAUDE IN BLENDER", 1.42, 0.55, 0),
+    ("800 TOKENS · ONE ASSET · 360 FRAMES · FIVE SHOTS", 1.16, 0.28, 6),
+]
+E_CREDIT_GAPS = [0.105, 0.062]  # drop below whatever sits above each line.
+# Measured, not guessed: at 0.042 the descenders of one line touch the caps of
+# the next. Each gap is clearance BELOW the previous line's own height, which
+# the build reads off the text object after scaling.
+E_CREDIT_IN = 58        # fades up once the wordmark has landeddd
 
 # --------------------------------------------------------------------------
 # CAMERA MOVES — (start_offset, end_offset) in metres, plus aim empty name.
