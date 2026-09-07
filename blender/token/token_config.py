@@ -25,7 +25,9 @@ import re
 # --------------------------------------------------------------------------
 # DELIVERY
 # --------------------------------------------------------------------------
-FILM = "TOKEN"
+FILM = "RESET"          # the finished film's name, and its filename.
+                        # 1D reaches the limit, 1E resets and lands — that is
+                        # the whole arc, so the film is named for it.
 FPS = 30                      # not 24 — hard freezes read better at 30
 RES_FINAL = (1920, 1080)
 RES_DRAFT = (960, 540)

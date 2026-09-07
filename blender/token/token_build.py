@@ -1244,6 +1244,12 @@ def assemble():
     if os.path.isdir(frames):
         shutil.rmtree(frames)
     os.makedirs(frames)
+    # Delete any previous film FIRST. Every early return below leaves without
+    # writing one, and a stale mp4 sitting at the same path is indistinguishable
+    # from a fresh one — you open it, it plays, and it is last week's render.
+    for stale in glob.glob(os.path.join(d, "*.mp4")):
+        os.remove(stale)
+        log("removed stale %s" % os.path.basename(stale))
     n = 0
     for shot in C.SHOT_ORDER:
         src = os.path.join(OUT, shot, "frames")
