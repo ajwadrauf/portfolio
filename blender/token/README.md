@@ -114,7 +114,8 @@ LIBGL_ALWAYS_SOFTWARE=1 EGL_PLATFORM=surfaceless GALLIUM_DRIVER=llvmpipe \
 | `report_speeds()` | Mean and peak m/s for the camera and for a sample of subjects, measured off the real fcurves rather than the config maths. |
 | `check_linearity()` | Flags any subject whose frame-to-frame step is constant to within 5%. Constant velocity is the tell that something was typed rather than animated — except where it is the point, like 1B's camera and 1D's wipe, which are LINEAR on purpose. |
 | `check_framing()` | Projects every prop's bounding box through the camera on **every** frame and flags anything spanning more than 1.6 frames, plus any beat where the swarm has left the frame. 1D's wipe and 1E's shockwave are exempt by name — both are supposed to leave the frame. |
-| `check_type_room()` | Type is comped in the edit, but the frame still has to leave room for it. Measures the display luminance of the zone each type moment lands in, off the rendered checkpoint, so "keep the lower third clear" is a number rather than an intention. |
+| `check_type_room()` | Where type is comped in the edit, the frame still has to leave room for it. Measures the display luminance of the zone each type moment lands in, off the rendered checkpoint, at **both ends of the hold** — a zone that is bright when the type comes up but dark for the rest of it is one the edit can work with. |
+| `check_film_moves()` | Runs on `--assemble`. ffmpeg returning 0 says it wrote a file, not that the file is a film: a 12-second video of one repeated frame exits 0 and looks correct in every log. This decodes the first, middle and last frames back out and warns if they are identical. Tested in both directions against a synthetic moving clip and a synthetic still. |
 
 `check_framing` exists because three separate bugs cost a render pass each, and
 all three were size errors that looked like plausible numbers in the source:
@@ -129,6 +130,35 @@ all three were size errors that looked like plausible numbers in the source:
   noise rather than a cube.
 
 Sizes are a rendering question. They get measured against the render.
+
+## The end card
+
+1E lands on `AJWAD RAUF` made of the same 800 tokens as the rest of the film,
+with the credit set beneath it as real text geometry.
+
+The split is forced by measurement. 800 tokens is a fixed budget, and what
+decides legibility is the gap between them relative to cap height — not cap
+height itself. Measured on the payoff frame at 1920×1080:
+
+| Wordmark | chars | cap | gap | ratio | |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `TOKEN` | 5 | 276 px | 22 px | 8% | crisp |
+| `CLAUDE` | 6 | 242 px | 29 px | 12% | crisp |
+| `AJWAD RAUF` | 10 | 195 px | 24 px | 12% | crisp |
+| `BUILT WITH / CLAUDE` | 16 | 204 px | 41 px | 20% | dotted |
+| `BUILT WITH / CLAUDE / IN BLENDER` | 26 | 215 px | 35 px | 16% | broken |
+
+Cap height barely moves across those; the gap is what kills it. Past about ten
+characters the strokes stop being strokes at this token count, whatever the
+layout — so anything longer is set as type instead. That also keeps "entirely in
+Blender" true of the finished frame rather than true of everything except the
+frame.
+
+`E_CREDIT_LINES` holds `(text, width, alpha, fade delay)` per line and
+`E_CREDIT_GAPS` the clearance below each. Width sets size, which sets hierarchy.
+Two things only the render showed: gaps of 0.042 m let one line's descenders
+touch the next line's caps, and the block sat high enough to leave a dead third
+at the bottom of frame.
 
 ## Not rendered here
 
