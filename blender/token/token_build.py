@@ -784,7 +784,7 @@ def _sweep_plane(mat):
 # ==========================================================================
 # SHOT 1E — RESET AND LAND
 # ==========================================================================
-def wordmark_targets(n, text=None, target_width=1.35):
+def wordmark_targets(n, text=None, target_width=1.35, rise=0.0):
     """Landing coordinates sampled from the actual font outline.
 
     Sampled along EDGES, not down the vertex array. A text mesh's vertices are
@@ -828,7 +828,7 @@ def wordmark_targets(n, text=None, target_width=1.35):
     pts *= target_width / max(span, 1e-9)
     out = np.zeros_like(pts)
     out[:, 0] = pts[:, 0] - (pts[:, 0].max() + pts[:, 0].min()) / 2
-    out[:, 2] = pts[:, 1] - (pts[:, 1].max() + pts[:, 1].min()) / 2
+    out[:, 2] = pts[:, 1] - (pts[:, 1].max() + pts[:, 1].min()) / 2 + rise
     # np.ptp(a), not a.ptp(): the ndarray METHOD was removed in NumPy 2.0, and
     # Blender 5.2.1 ships NumPy 2 while the bpy 5.0.1 wheel ships 1.26. The
     # function form is correct on both.
@@ -836,6 +836,47 @@ def wordmark_targets(n, text=None, target_width=1.35):
         % (len(verts), len(edges), n,
            np.ptp(out[:, 0]), np.ptp(out[:, 2])))
     return out, txt
+
+
+def _credit_text(name, body, width, alpha, top_z, fade_at):
+    """Real text geometry, standing in the XZ plane, facing the camera."""
+    bpy.ops.object.text_add()
+    o = bpy.context.object
+    o.name = name
+    o.data.body = body
+    o.data.align_x = "CENTER"
+    o.data.align_y = "TOP"
+    o.data.size = 0.1
+    o.data.materials.append(shared_emit())
+    o.rotation_euler = (math.radians(90), 0, 0)
+    bpy.context.view_layer.update()
+    o.scale = (width / max(o.dimensions.x, 1e-6),) * 3
+    bpy.context.view_layer.update()
+    o.location = (0.0, 0.0, top_z)
+    white = C.hex_to_linear(C.TOKEN_WHITE)[:3]
+    key(o, "color", [(1, white + (0.0,)),
+                     (fade_at, white + (0.0,)),
+                     (fade_at + 10, white + (alpha,)),
+                     (C.E_END, white + (alpha,))], easing="EASE_OUT")
+    return o
+
+
+def build_credit(below_z):
+    """The claim and the specifics, as type rather than tokens.
+
+    Particles are the wrong medium for anything that has to be READ: 800 of them
+    over 26 characters leaves a 16% gap-to-cap ratio and the letterforms come
+    apart. Solid glyphs here, dimmer than the wordmark so they read as a
+    footnote, and rendered rather than comped so that "entirely in Blender" is
+    true of the finished frame rather than true of everything except the frame."""
+    credit = _credit_text("credit", C.E_CREDIT, C.E_CREDIT_WIDTH,
+                          C.E_CREDIT_ALPHA, below_z - C.E_CREDIT_DROP,
+                          C.E_CREDIT_IN)
+    bpy.context.view_layer.update()
+    stats = _credit_text("stats", C.E_STATS, C.E_STATS_WIDTH, C.E_STATS_ALPHA,
+                         credit.location.z - credit.dimensions.z - C.E_STATS_DROP,
+                         C.E_CREDIT_IN + 6)
+    return [credit, stats]
 
 
 def build_1e():
@@ -850,7 +891,8 @@ def build_1e():
     rot = (np.array([r["rot"] for r in st["tokens"]]) if st
            else tumble(rng, C.TOKEN_COUNT))
 
-    targets, txt = wordmark_targets(C.TOKEN_COUNT)
+    targets, txt = wordmark_targets(C.TOKEN_COUNT, rise=C.E_WORDMARK_RISE)
+    credit = build_credit(float(np.min(targets[:, 2])))
     wave = _icosphere("shockwave", 0.02, shared_emit())
     # it travels outward THROUGH the swarm and is gone; it must not end up a
     # 0.9 m amber sphere sitting around the camera for the rest of the shot
@@ -912,7 +954,8 @@ def build_1e():
              (max(arrive - 6, C.E_APEX + 1), tuple(rot[i] + rng.uniform(-2, 2, 3))),
              (arrive, (0.0, 0.0, 0.0))], easing="EASE_OUT")
     log("late token: tok_%04d, arriving %d frames behind the pack" % (late, C.E_LATE_LAG))
-    return toks, {"cam": cam, "aim": aim, "wave": wave, "wordmark": txt, "late": late}
+    return toks, {"cam": cam, "aim": aim, "wave": wave, "wordmark": txt,
+                  "credit": credit, "late": late}
 
 
 BUILDERS = {"1A": build_1a, "1B": build_1b, "1C": build_1c,

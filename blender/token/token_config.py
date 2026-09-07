@@ -188,9 +188,30 @@ E_LATE_TOKEN = 66       # 2.2s     one token arrives late. Do not cut it.
 E_END = 75
 E_ARRIVAL_STAGGER = 20  # frames across which arrivals are spread
 E_LATE_LAG = 8          # how far behind the pack the late token runs
-E_WORDMARK = "TOKEN"    # what the 800 tokens land on. Any string works —
-                        # wordmark_targets() samples the font outline and
-                        # scales it to a fixed width, so length does not matter.
+# What the 800 tokens land on. SIX CHARACTERS, because 800 tokens is a fixed
+# budget and the gap between them is what decides legibility, not cap height.
+# Measured at 1920x1080 on 1E's payoff frame, gap as a fraction of cap height:
+#   TOKEN       5 chars  276 px cap   8%   crisp
+#   CLAUDE      6 chars  242 px cap  12%   crisp
+#   BUILT WITH / CLAUDE            16 chars  20%   dotted
+#   BUILT WITH / CLAUDE / IN BLENDER  26 chars  16%   falls apart
+# Past ~10 characters the strokes stop being strokes at this token count. The
+# rest of the sentence is set as real type below, where it belongs.
+E_WORDMARK = "CLAUDE"
+E_WORDMARK_RISE = 0.09  # lift, so wordmark + credit sit centred as one block
+
+# The claim and the specifics are real text geometry, not tokens. Type that has
+# to be READ should not be made of particles, and rendering it here rather than
+# comping it keeps "entirely in Blender" literally true of the finished frame.
+E_CREDIT = "BUILT ENTIRELY IN BLENDER"
+E_CREDIT_WIDTH = 1.00   # metres; the tagline
+E_CREDIT_ALPHA = 0.55
+E_STATS = "800 TOKENS · ONE ASSET · 360 FRAMES · FIVE SHOTS"
+E_STATS_WIDTH = 1.24    # metres; smaller and dimmer, a footnote to the footnote
+E_STATS_ALPHA = 0.32
+E_CREDIT_DROP = 0.10    # metres below the wordmark block
+E_STATS_DROP = 0.085    # metres below the credit
+E_CREDIT_IN = 58        # fades up once the wordmark has landedd
 
 # --------------------------------------------------------------------------
 # CAMERA MOVES — (start_offset, end_offset) in metres, plus aim empty name.
@@ -220,7 +241,8 @@ TYPE_MOMENTS = [
     ("1C", 45, "FASTER", 18, "lower"),
     ("1D",  6, "LIMIT REACHED + resets in 00:03", 39, "lower"),
     ("1E",  1, "∞", 6, "centre"),
-    ("1E", 42, "ajwadrauf.com", 33, "lower"),   # below the wordmark, not over it
+    # 1E's lower third is no longer free for comped type: the credit line is
+    # rendered there now, as geometry. Nothing to composite over this shot.
 ]
 # x0, x1, y0, y1 in frame fractions, origin bottom-left as Blender's pixels are
 TYPE_ZONES = {"lower": (0.08, 0.92, 0.06, 0.26),
