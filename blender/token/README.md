@@ -132,16 +132,17 @@ Sizes are a rendering question. They get measured against the render.
 
 ## Not rendered here
 
-**The full 360-frame film has not been rendered at final resolution in this
-container.** There is no GPU, so EEVEE falls back to llvmpipe at roughly 18 s a
-frame at 960×540 — call it four hours at 1920×1080. On a machine with a GPU the
-same render is minutes, which is why the render lives on your side and the
-construction lives here.
+**The film is not rendered in the container it was built in.** There is no GPU
+there, so EEVEE falls back to llvmpipe at roughly 18 s a frame even at 960×540.
+On an M-series Mac the same work measures **0.4 s a frame at 1920×1080** — the
+45-frame 1D renders in 0.3 min, so all 360 frames is about two and a half
+minutes. That ratio, roughly 200×, is why the render belongs on your machine and
+only the construction belongs in the container.
 
-What *has* been built and inspected: all five shots, every named beat rendered
-as a checkpoint still at 960×540, and a full-length draft assembled end to end
-so the cuts can be watched rather than argued about. Every check above runs
-clean on every shot.
+What is built and inspected there: all five shots, and every named beat rendered
+as a checkpoint still at 960×540 and looked at. Every check above runs clean on
+every shot. Reviewing those stills is what found the bugs listed below — none of
+them raised an error, and all of them survived being reasoned about.
 
 ## What the probe found
 
