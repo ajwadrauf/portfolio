@@ -183,7 +183,7 @@ Everything animated now goes through `shared_emit()`, whose node tree reads
 `ShaderNodeObjectInfo → Color`.
 
 **A text mesh's vertices are not ordered around the outline.** Sampling
-`AJWAD RAUF` down the vertex array drew chords between unrelated points on
+the wordmark down the vertex array drew chords between unrelated points on
 different letters, and 1E's payoff frame rendered as a horizontal smear with
 swooshes through it. `wordmark_targets()` samples along `me.edges` by arc length
 instead, which is where the real connectivity is, and distributes the 800 tokens

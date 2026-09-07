@@ -35,7 +35,10 @@ SENSOR_WIDTH = 36.0           # full frame, set explicitly, never inherited
 # --------------------------------------------------------------------------
 # PALETTE — sRGB hex. Converted to linear at use; Blender stores colour linearly.
 # --------------------------------------------------------------------------
-VOID        = "#0B0B0C"       # background, every shot
+VOID        = "#000000"       # background, every shot. True black, not near-
+                             # black: on an OLED panel a lit pixel at #0B0B0C
+                             # is a visibly grey rectangle around the frame,
+                             # and this film is emitters against nothing.
 TOKEN_WHITE = "#F2EFE9"       # default token emission, warm off-white
 CYAN        = "#38E1D0"       # 1C only, the compressing core
 AMBER       = "#FF6B2C"       # 1E only, the flood
@@ -185,7 +188,9 @@ E_LATE_TOKEN = 66       # 2.2s     one token arrives late. Do not cut it.
 E_END = 75
 E_ARRIVAL_STAGGER = 20  # frames across which arrivals are spread
 E_LATE_LAG = 8          # how far behind the pack the late token runs
-E_WORDMARK = "AJWAD RAUF"
+E_WORDMARK = "TOKEN"    # what the 800 tokens land on. Any string works —
+                        # wordmark_targets() samples the font outline and
+                        # scales it to a fixed width, so length does not matter.
 
 # --------------------------------------------------------------------------
 # CAMERA MOVES — (start_offset, end_offset) in metres, plus aim empty name.
@@ -205,7 +210,7 @@ CAM = {
 
 # --------------------------------------------------------------------------
 # TYPE — comped in the edit, not rendered. Local frame is the authority.
-# AJWAD RAUF is the one exception: it is geometry, because tokens assembling
+# E_WORDMARK is the one exception: it is geometry, because tokens assembling
 # into it is the payoff. Listed here so the build can keep frame clear for it.
 # --------------------------------------------------------------------------
 # Each entry carries the zone the type sits in, so "keep frame clear for it" is
@@ -288,7 +293,7 @@ GLARE_TYPE = "Bloom"
 #   Strength 0.00         0.193 / 0.172   the floor
 #
 # 0.55 washed the whole frame and left the type nowhere to sit at 1C f45 and
-# 1D f6. 0.20 keeps the halo and gives the palette's #0B0B0C back.
+# 1D f6. 0.20 keeps the halo and gives the palette's true black back.
 GLARE_STRENGTH = 0.20
 GLARE_SIZE = 8              # Fog Glow only — set, but Bloom does not read it
 GLARE_THRESHOLD = 0.6
