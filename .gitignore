@@ -55,6 +55,13 @@ public/references/*.gif
 # --no-render` regenerates the whole package in seconds.
 blender/out/
 
+# TOKEN: same reasoning. `out/` is 360 rendered frames plus the clips. `state/`
+# is the per-shot handoff JSON — it is regenerated on every build, so tracking
+# it would bring back modified files after any local run and block the next
+# pull. Build the shots in order once and it rebuilds itself.
+blender/token/out/
+blender/token/state/
+
 # Python bytecode from the Blender build scripts
 __pycache__/
 *.pyc
