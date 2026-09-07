@@ -1,6 +1,7 @@
-# TOKEN — a 12-second film
+# RESET — a 12-second film
 
-Five shots, one continuous run of 800 emissive tokens, cut hard.
+Five shots, one continuous run of 800 emissive tokens, cut hard. 1D reaches the
+limit, 1E resets and lands — the film is named for its own arc.
 **1920×1080 · 30 fps · 360 frames · 12.00 s.**
 
 | Shot | Frames | In | Lens | Job |
@@ -74,7 +75,7 @@ directly. (Device selection is a Cycles concern, and this film is EEVEE.)
 ```bash
 blender --background --python token_build.py -- --all --animation
 blender --background --python token_build.py -- --assemble
-open out/film/TOKEN.mp4
+open out/film/RESET.mp4
 ```
 
 On macOS the binary lives inside the app bundle, so either put it on `PATH` or
