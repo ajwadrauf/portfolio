@@ -43,6 +43,8 @@ Run the standalone preview as described in [README.md](README.md). Inspect the d
 
 Use the full copy in `page-fragment.html`. Keep the warm ivory, plum accents, olive surfaces and black film section. Space Grotesk supplies the main voice; Instrument Serif adds expressive emphasis. Match the supplied hierarchy and spacing rather than replacing the design with generic cards.
 
+**Project links must look clickable at rest.** Ajwad found the original small text links difficult to identify. All three project destinations now use full-width, filled buttons with 14 px labels, a 52 px minimum height, a visible arrow, strong contrast, and distinct hover/keyboard-focus states. Preserve this treatment for “Explore AI Content Studio,” “Visit Persopot,” and “View Forge case study.” Keep real anchor semantics and the existing destination URLs; the filled button area is the click target. Do not reduce these to low-contrast text or make hover the only indication of clickability.
+
 ## Map to the existing Next.js application
 
 These are proposed implementation locations; adapt names to repository conventions.

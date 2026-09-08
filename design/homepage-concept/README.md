@@ -19,11 +19,15 @@ Open **http://localhost:8765**. No API keys, Next.js installation, or generation
 
 Try **Assemble** in the hero, **Explore again**, dragging the sculpture, and playing the film. The video starts on request. Three.js and the media are included locally; Google Fonts requires an internet connection and has system-font fallbacks.
 
+The three project destinations use prominent filled buttons, larger labels and arrow icons so their clickable area is visible before hover, including on touch screens.
+
 ### Desktop
 
 ![Desktop homepage hero](review/desktop-hero.png)
 
 [Full desktop page](review/desktop-full.png) · [Assembled wordmark](review/desktop-assembled.png) · [Mobile page](review/width-390.png)
+
+[Updated project buttons — desktop](review/project-links-desktop.png) · [Updated project buttons — mobile](review/project-links-mobile.png)
 
 ## What to use
 
