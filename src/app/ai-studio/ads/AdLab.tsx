@@ -197,12 +197,20 @@ const fromLines = (v: string) =>
   v.split("\n").map((x) => x.trim()).filter(Boolean);
 
 /**
- * How much of the request body inline references may occupy.
+ * How much of the request body inline references may occupy, in WIRE bytes.
  *
- * A serverless request body caps at 4.5MB and the prompt, recipe and settings
- * share it, so this leaves headroom rather than filling the ceiling.
+ * The unit is the bug this constant used to have. A data URL is base64, so it
+ * travels as four characters for every three bytes it decodes to — budgeting
+ * 3.4MiB of decoded image put 4.53MiB of text on the wire, over Vercel's
+ * 4.5MB body cap before the prompt was even added. Everything here counts what
+ * is actually sent.
+ *
+ * The remainder is for the prompt, the recipe, the settings and JSON overhead.
  */
-const REF_BUDGET_BYTES = 3.4 * 1024 * 1024;
+const MAX_INLINE_WIRE_BYTES = 4_000_000;
+
+/** Characters of base64 in a data URL — what the request body actually carries. */
+const wireBytes = (dataUrl: string) => dataUrl.length - (dataUrl.indexOf(",") + 1);
 
 /** Tried largest first, until one fits whatever budget is left. */
 const REF_TIERS: { maxSide: number; quality: number }[] = [
@@ -215,6 +223,7 @@ const REF_TIERS: { maxSide: number; quality: number }[] = [
   { maxSide: 768, quality: 0.7 },
 ];
 
+/** Decoded size, for anything that reasons about the image rather than the request. */
 const dataUrlBytes = (u: string) => Math.ceil((u.length - (u.indexOf(",") + 1)) * 0.75);
 
 /**
@@ -230,9 +239,15 @@ const dataUrlBytes = (u: string) => Math.ceil((u.length - (u.indexOf(",") + 1)) 
  * already committed: the first pack photo gets 2048px, and a set of ten
  * degrades gracefully instead of the eleventh failing the request.
  */
-async function toProcessedDataUrl(file: File, usedBytes = 0): Promise<string> {
+async function toProcessedDataUrl(file: File, usedWireBytes = 0): Promise<string> {
   const url = URL.createObjectURL(file);
-  const budget = Math.max(180 * 1024, REF_BUDGET_BYTES - usedBytes);
+  /*
+   * No floor. The old one granted another 180KiB whenever the budget ran out,
+   * which meant a full set could always add one more file and the request
+   * failed anyway — with a 413 rather than an explanation. A reference that
+   * does not fit is refused below, and the message names the way round it.
+   */
+  const budget = MAX_INLINE_WIRE_BYTES - usedWireBytes;
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
@@ -253,9 +268,18 @@ async function toProcessedDataUrl(file: File, usedBytes = 0): Promise<string> {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       last = canvas.toDataURL("image/jpeg", tier.quality);
-      if (dataUrlBytes(last) <= budget) return last;
+      if (wireBytes(last) <= budget) return last;
     }
-    return last;
+    /*
+     * Even the smallest tier does not fit. Returning it anyway is how a body
+     * limit becomes a 413 at submit time, after the estimate has been read and
+     * the spend confirmed — so refuse here, where the fix is one click.
+     */
+    throw new Error(
+      `This reference does not fit alongside the ones already added — inline references share a ${Math.round(
+        MAX_INLINE_WIRE_BYTES / 1024 / 1024,
+      )}MB request body. Remove one, or add this by URL instead: a hosted reference is passed as a link and costs the body nothing.`,
+    );
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -442,6 +466,20 @@ export function AdLab({
   const refInput = useRef<HTMLInputElement>(null);
   const promptFileInput = useRef<HTMLInputElement>(null);
   const endFrameInput = useRef<HTMLInputElement>(null);
+
+  /**
+   * Everything currently inline in the request body.
+   *
+   * The product photo and the references are separate controls but one
+   * payload, and budgeting them separately let each take the whole allowance —
+   * a 3.2MB photo plus 3.7MB of references is 6.9MB through a 4.5MB cap. This
+   * is the number both encoders measure against.
+   */
+  const inlineWireBytes =
+    (productImage?.startsWith("data:") ? wireBytes(productImage) : 0) +
+    refs
+      .filter((r) => r.url.startsWith("data:"))
+      .reduce((n, r) => n + wireBytes(r.url), 0);
 
   /**
    * Audio settings and recipe edits are baked into the composed prompt, so
@@ -1108,12 +1146,7 @@ export function AdLab({
             },
           ]);
         } else {
-          // Inline references share one body budget, so each new one is
-          // encoded against what the others have already spent.
-          const usedBytes = refs
-            .filter((r) => r.url.startsWith("data:"))
-            .reduce((n, r) => n + dataUrlBytes(r.url), 0);
-          const dataUrl = await toProcessedDataUrl(file, usedBytes);
+          const dataUrl = await toProcessedDataUrl(file, inlineWireBytes);
           setRefs((prev) => [
             ...prev,
             { url: dataUrl, media: "image", role: "style", name: file.name },
@@ -1128,7 +1161,8 @@ export function AdLab({
     },
     // `refs` is read to measure the budget already spent, so it belongs here —
     // without it the first upload's size would be used for every later one.
-    [health, invalidatePrompt, refs],
+    // Reads inlineWireBytes to budget against everything already in the body.
+    [health, invalidatePrompt, inlineWireBytes],
   );
 
   /** Adds an already-hosted reference. No upload, so no storage permission. */
@@ -2026,7 +2060,13 @@ export function AdLab({
                 const f = e.target.files?.[0];
                 if (f) {
                   try {
-                    const dataUrl = await toProcessedDataUrl(f);
+                    // The product photo rides the same request body as the
+                    // references, so it is budgeted against them rather than
+                    // being handed the whole allowance twice.
+                    const dataUrl = await toProcessedDataUrl(
+                      f,
+                      inlineWireBytes - (productImage ? wireBytes(productImage) : 0),
+                    );
                     setProductImage(dataUrl);
                     void runAutofill(dataUrl, presetId);
                   } catch {

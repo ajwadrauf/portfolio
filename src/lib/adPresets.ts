@@ -988,13 +988,27 @@ export const supportsNegativePromptField = (modelId: string) =>
  *
  * Appended rather than woven in: the prompt may be hand-written or imported,
  * and rewriting someone's text is a worse failure than adding a line to it.
+ *
+ * Duplicates are removed per TERM, not per document. The first version of this
+ * skipped the whole negative prompt whenever the text contained an
+ * `[Exclusions]` heading — so a composed prompt excluding "grey plastic" would
+ * silently swallow a hand-typed "no camera shake", on the theory that the
+ * heading proved the job was done. A heading is not a list of what is in it.
+ * Each comma-separated constraint is now checked on its own and only the ones
+ * genuinely absent are added.
  */
 export function withExclusions(prompt: string, negative?: string): string {
-  const n = (negative ?? "").trim();
-  if (!n) return prompt;
-  // Already carries its own exclusion block — do not say it twice.
-  if (/\[Exclusions\]/i.test(prompt)) return prompt;
-  return `${prompt.trimEnd()}\n\nDo not include: ${n}.`;
+  const terms = (negative ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (!terms.length) return prompt;
+
+  const haystack = prompt.toLowerCase();
+  const missing = terms.filter((t) => !haystack.includes(t.toLowerCase()));
+  if (!missing.length) return prompt;
+
+  return `${prompt.trimEnd()}\n\nDo not include: ${missing.join(", ")}.`;
 }
 
 export const AD_NEGATIVE_PROMPT =
