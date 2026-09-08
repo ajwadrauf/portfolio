@@ -230,7 +230,7 @@ export default function Home() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Meet Persopot <span aria-hidden>↗</span>
+                Visit Persopot <span aria-hidden>↗</span>
               </a>
             </article>
 
@@ -260,7 +260,7 @@ export default function Home() {
                 production teams.
               </p>
               <Link className="ar-project-link" href="/project-forge">
-                Read the case study <span aria-hidden>↗</span>
+                View Forge case study <span aria-hidden>↗</span>
               </Link>
             </article>
           </div>

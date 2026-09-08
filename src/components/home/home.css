@@ -539,17 +539,59 @@ body:has(#ajwad-home) {
   margin-right: 13px;
   color: var(--ar-accent);
 }
+/*
+ * The three project destinations.
+ *
+ * These were 12px text on a hairline, which is a caption that happens to be a
+ * link: nothing about it says "press me" until the cursor is already on it,
+ * and on a touch screen there is no hover to discover it with. So they are
+ * filled buttons now — the whole bar is the target, at 52px minimum, which is
+ * also the smallest thing a thumb reliably hits.
+ *
+ * Hover and keyboard focus are deliberately different marks rather than the
+ * same one: both fill with plum, and focus adds the ring from the page's
+ * focus-visible rule, which sits 5px out on paper so it stays visible against
+ * the filled button. The lift is the hover's alone, and only on devices that
+ * actually hover.
+ */
 #ajwad-home .ar-project-link {
-  font-size: 12px;
   display: flex;
+  width: 100%;
+  min-height: 52px;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid var(--ar-line);
-  padding-top: 16px;
-  margin-top: 34px;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 14px 18px;
+  border: 1px solid var(--ar-ink);
+  border-radius: 3px;
+  background: var(--ar-ink);
+  color: var(--ar-paper);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
 }
-#ajwad-home .ar-project-link:hover {
-  color: var(--ar-accent);
+/* The arrow holds its size and never wraps, however long the label runs. */
+#ajwad-home .ar-project-link > span {
+  flex-shrink: 0;
+  font-size: 21px;
+  line-height: 1;
+}
+#ajwad-home .ar-project-link:hover,
+#ajwad-home .ar-project-link:focus-visible {
+  background: var(--ar-accent);
+  border-color: var(--ar-accent);
+  color: var(--ar-paper);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  #ajwad-home .ar-project-link:hover {
+    transform: translateY(-2px);
+  }
 }
 #ajwad-home .ar-project-copy > .ar-access-note {
   font-size: 11px;
