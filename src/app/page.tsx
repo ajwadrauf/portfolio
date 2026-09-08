@@ -1,645 +1,359 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Instrument_Serif } from "next/font/google";
 import { HomeNav } from "@/components/HomeNav";
-import { Reveal } from "@/components/Reveal";
-import { ClayCompare } from "@/components/ClayCompare";
-import { ShowcaseStrip } from "@/components/ShowcaseStrip";
-import { CLAY_PAIR, SHOWCASE, isHosted, showcaseEnvKey } from "@/lib/showcase";
+import { SmoothAnchors } from "@/components/home/SmoothAnchors";
+import { TokenFilm } from "@/components/home/TokenFilm";
+import { TokenSculpture } from "@/components/home/TokenSculpture";
+import "@/components/home/home.css";
+
+/**
+ * The expressive half of the page's voice, loaded here rather than in the root
+ * layout so the studio never pays for a face it does not use. It is bound to
+ * <em> in home.css, which is why the variable has to reach the page root.
+ */
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Ajwad Rauf — AI production systems",
+  title: "Ajwad Rauf — applied AI, creative work and production systems",
   description:
-    "Applied AI for content production, mostly in retail marketing. I build the pipelines that close the gap between content demand and what a team can actually make — stills, motion and sound, shipped end to end.",
-};
-
-type Project = {
-  n: string;
-  kind: string;
-  status: { label: string; tone: "live" | "internal" };
-  name: string;
-  lede: string;
-  href: string;
-  cta: string;
-  arrow: string;
-  note: string;
-  /** Why it is gated and who to ask — rendered as prose, not as a mono label. */
-  access?: { text: string; linkLabel: string; href: string; after: string };
-  /**
-   * A strip of frames from the work itself.
-   *
-   * A portfolio for a craft role that is three columns of prose asks the
-   * reader to take the work on trust. Omitted where there is nothing honest
-   * to show — an NDA project has no public frames, and a placeholder would
-   * be worse than a card that does not claim one.
-   */
-  frames?: {
-    /** Preferred local path under /public. Used whenever the file is committed. */
-    src: string;
-    alt: string;
-    /**
-     * Where to load it from until the file is committed here.
-     *
-     * Lets a card show its work immediately while the asset still lives on
-     * the product's own site, without the portfolio depending on that site
-     * permanently: commit the file and the local copy wins on the next build.
-     */
-    hosted?: string;
-  }[];
-  /** What the strip shows, since a row of stills does not explain itself. */
-  framesNote?: string;
-  /**
-   * Two or three named capabilities worth pulling out of the prose.
-   *
-   * Some products are not explained by what they generate. Persopot's
-   * differentiator is what happens after the render, and a reader skimming
-   * three paragraphs of stack detail will miss it — so the features that
-   * carry the argument get their own row rather than a parenthetical.
-   */
-  features?: { name: string; what: string }[];
-  body: string[];
-  tags: string[];
+    "I turn emerging AI into creative work and production systems people can actually use. AI Content Studio, Persopot and Project Forge — applied AI and creative technology, from Toronto.",
 };
 
 /**
- * One hue per project, in strip order.
+ * The three ice-cream frames.
  *
- * Taken from the brand spectrum rather than chosen, so three visually distinct
- * cards still cannot land outside the system.
+ * Labelled as concept references in the caption below them, and they have to
+ * stay labelled that way: they are current exploration, not outputs a client
+ * signed off, and a portfolio that blurs the two is only impressive until
+ * someone asks which it was. Dimensions are on every image so the triptych
+ * reserves its space before the files land.
  */
-const PROJECT_HUES = ["var(--hue-1)", "var(--hue-3)", "var(--hue-4)"];
+const REFERENCES = [
+  { src: "/homepage/macro.jpg", alt: "Close study of vanilla ice-cream texture" },
+  {
+    src: "/homepage/trio.jpg",
+    alt: "Vanilla, chocolate and strawberry ice-cream concept reference",
+  },
+  { src: "/homepage/spiral.jpg", alt: "A vanilla cream ribbon spiralling around a scoop" },
+] as const;
 
-const PROJECTS: Project[] = [
+const METHOD = [
   {
     n: "01",
-    kind: "Working AI production pipeline",
-    status: { label: "Live", tone: "live" },
-    name: "AI Content Studio",
-    lede: "One product photo in, a multi-format retail campaign out.",
-    href: "/ai-studio",
-    cta: "Open the live studio",
-    arrow: "↗",
-    note: "Browsable end to end · live generation gated",
-    access: {
-      text: "Every render spends real credits, so generation is behind a passcode. Internal colleagues can reach out directly; recruiters, ",
-      linkLabel: "message me on LinkedIn",
-      href: "https://www.linkedin.com/in/ajwadrauf",
-      after: " and I will open it up.",
-    },
-    body: [
-      "A campaign studio that turns one product photo into stills, bilingual EN/FR promo tiles and video. A packshot generator that produces GS1 planogram angles without a reshoot. An Ad Lab of preset ad recipes — editable, reference-locked, with the sound built in layers the way a studio actually does it. And a prompt builder that teaches the structure rather than handing over a prompt.",
-      "Thirteen models from six labs behind two APIs, routed by what each is actually good at: reference-to-video where the packaging must not drift, a cheap draft tier where it does not matter yet. Costed per render before you spend — including the token-billed models, where resolution moves the price more than length does.",
-    ],
-    frames: [
-      { src: "/the-wall/f001.jpg", alt: "Clay control pass, opening frame" },
-      { src: "/the-wall/f072.jpg", alt: "Clay control pass, camera pulling back" },
-      { src: "/the-wall/f144.jpg", alt: "Clay control pass, mid move" },
-      { src: "/the-wall/f204.jpg", alt: "Clay control pass, product settling" },
-      { src: "/the-wall/f288.jpg", alt: "Clay control pass, final frame" },
-    ],
-    framesNote: "Five frames from one 12s clay pass — 0 credits",
-    tags: ["Generative AI", "Video", "Production systems", "Next.js"],
+    h: "Explore what’s next.",
+    p: "Find the capability that changes what a team can make.",
   },
   {
     n: "02",
-    kind: "Consumer AI product",
-    status: { label: "Market ready", tone: "live" },
-    name: "Persopot",
-    lede: "Selfies in, studio headshots and outfit try-ons out.",
-    href: "https://persopot.com",
-    cta: "persopot.com",
-    arrow: "↗",
-    note: "Pricing and static try-on demo open — generation needs an account",
-    frames: [
-      {
-        src: "/persopot/garment.jpg",
-        hosted: "https://persopot.com/marketing/home/outfit-source.jpg",
-        alt: "Source garment — a forest green crew sweater on a hanger",
-      },
-      {
-        src: "/persopot/tryon-1.jpg",
-        hosted: "https://persopot.com/marketing/home/outfit-result-1.jpg",
-        alt: "The same sweater rendered on a trained identity",
-      },
-      {
-        src: "/persopot/tryon-2.jpg",
-        hosted: "https://persopot.com/marketing/home/outfit-result-2.jpg",
-        alt: "The same sweater rendered on a second trained identity",
-      },
-    ],
-    framesNote: "One garment reference, two trained identities — from a pin in about 30 seconds",
-    body: [
-      "Two AI products on one trained identity: studio headshots ($29–$79 one-time) and an outfit try-on subscription that composites any Pinterest pin, retailer page or screenshot onto the user’s trained face ($5/mo, 30 credits).",
-      "Generating the image is the easy half. What makes it a product is what happens next, and the whole thing is built around a plain fact about buying clothes: almost nobody decides alone. Five dresses before a wedding, a bachelorette party coordinating outfits in one shared pot, a second read from your partner before you walk out the door — the render is the beginning of that conversation, not the end of it.",
-      "Solo build. Two parallel ML pipelines — FLUX.1 for headshots, FLUX.2 for outfits on fal.ai — share a Gemini 2.5-pro validation gate that catches identity drift before a user sees it. Next.js, Supabase, Stripe, Cloudflare R2 and Trigger.dev: about 95 API routes and 16 migrations across payments, generation and the social layer.",
-    ],
-    features: [
-      {
-        name: "Pots",
-        what: "Shared collections. Group the looks you are deciding between, keep them in one place, and open them to the people deciding with you.",
-      },
-      {
-        name: "Ask a bestie",
-        what: "Puts an outfit in front of the person whose opinion was going to settle it anyway — before the purchase, not after the delivery.",
-      },
-    ],
-    tags: ["Consumer AI", "Social product", "Full-stack", "Production ML"],
+    h: "Test what holds.",
+    p: "Put fidelity, control, speed and cost against a real brief.",
   },
   {
     n: "03",
-    kind: "Internal production tool",
-    status: { label: "Internal · Loblaw", tone: "internal" },
-    name: "Project Forge",
-    lede: "A badge brief in, a reviewed, deployment-ready email badge out.",
-    href: "/project-forge",
-    cta: "Read the case study",
-    arrow: "→",
-    note: "No public URL — internal Loblaw tool",
-    body: [
-      "An intake-to-deployment platform for the promotional badges in Shoppers Drug Mart and Loblaw CRM emails. Every request moves through a two-phase workflow, Brief then Badge Build, across submission, review, QA and sign-off, with role-based access for marketers, agency producers and admins over Microsoft Entra SSO.",
-      "It generates PDF briefs, handles bilingual EN and FR copy, builds UTM links, and validates subject lines with AI (Gemini 2.5 Flash). Transactional email fires at each stage and scheduled jobs send the reminders: daily digest, link-plan and UTM nudges, rejection follow-ups. Next.js App Router on Firebase App Hosting with Firestore and Storage. Solo build at LA Digital.",
-    ],
-    tags: ["Internal tooling", "Workflow automation", "Next.js + Firebase"],
+    h: "Build what lasts.",
+    p: "Turn the experiment into a system someone else can run.",
   },
-];
-
-const APPROACH = [
-  {
-    h: "Production first",
-    p: "I start from the output a team actually has to ship — a planogram angle, a bilingual tile, a signed-off badge — and build backwards to the model.",
-    short: "I start from the output a team has to ship and build backwards to the model.",
-  },
-  {
-    h: "Gates, not vibes",
-    p: "Every pipeline has a quality gate and a cost ceiling. Bad generations get caught before a user or a reviewer sees them.",
-    short: "Every pipeline has a quality gate and a cost ceiling.",
-  },
-  {
-    h: "Solo to shipped",
-    p: "Design, build, deploy, support. All three projects here went from idea to live users without a hand-off, including one through enterprise SSO and review.",
-    short: "Design, build, deploy, support — no hand-off.",
-  },
-  {
-    h: "Built to hand over",
-    p: "Capability that lives in one person's head isn't a studio — it's a bottleneck with a title. So every asset exposes the prompt that made it, and every workflow is documented well enough that the tenth person can run it.",
-    short: "Every asset exposes its prompt; every workflow is written down.",
-  },
-];
-
-/**
- * What the work actually is.
- *
- * This replaced a scrolling ticker, and the list changed with it. The old one
- * led on "Stills" and "Motion", which are outputs anyone's tooling produces —
- * naming them as strengths puts the emphasis on the deliverable rather than on
- * the part that is hard to hire for. What is actually scarce here is the layer
- * above: choosing the model, holding the cost, and knowing when a take is
- * wrong and which layer owns it.
- */
-const SKILLS = [
-  "AI-native production",
-  "Model routing",
-  "Prompt systems",
-  "Cost control per render",
-  "3D control passes",
-  "Quality gates before spend",
-  "Bilingual EN/FR versioning",
-  "Retail & CPG content",
-];
-
-/**
- * Judgment, stated as things that cost something to find out. The full
- * versions live in the studio; these are the compressed forms, here because a
- * Director is hired for knowing what is ready and what is not, and that is
- * only credible when it is specific.
- */
-const LEARNED = [
-  {
-    h: "The leaderboard flips quarterly",
-    p: "Sora 2's API sunset stranded pipelines built on it. Model IDs and prices sit in one config file with environment overrides, so switching vendor is an edit, not a rebuild.",
-  },
-  {
-    h: "Video models don't write music",
-    p: "They render effects, ambience and dialogue convincingly, then approximate a score. So the layers split: the video model does sound design, a music model composes, the mix stays a finishing step.",
-  },
-  {
-    h: "Text-in-image is a routing decision",
-    p: "Most image models still mangle type. That one constraint is why bilingual tiles route to the pro tier while format adaptations run four times cheaper on flash.",
-  },
-  {
-    h: "AI can't know what it never saw",
-    p: "A generated packshot of a panel no camera captured is a plausible reconstruction, not a record. It gets labelled that way every time — a wrong ingredient list is a recall, not a retouch.",
-  },
-];
-
-const LINKS = [{ label: "LinkedIn", href: "https://www.linkedin.com/in/ajwadrauf" }];
-
-function StatusDot({ status }: { status: Project["status"] }) {
-  const color = status.tone === "live" ? "text-success" : "text-warning";
-  const bg = status.tone === "live" ? "bg-success" : "bg-warning";
-  return (
-    <span className={`inline-flex items-center gap-1.5 ${color}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${bg}`} />
-      {status.label}
-    </span>
-  );
-}
-
-const onDisk = (p: string) => {
-  try {
-    return fs.existsSync(path.join(process.cwd(), "public", p.replace(/^\//, "")));
-  } catch {
-    return false;
-  }
-};
-
-/** A source is usable if it is a URL, or a file that is actually there. */
-const resolve = (src: string | undefined) =>
-  src && (isHosted(src) || onDisk(src)) ? src : undefined;
-
-/**
- * Only work that actually exists, from an env override, a URL in the manifest,
- * or a committed file — in that order. An empty showcase removes the section
- * rather than rendering broken frames at the top of the page.
- */
-/*
- * Local file first, then whatever the card named as a stand-in, then nothing.
- * A frame with neither is dropped rather than rendered broken, and a strip
- * left with no frames disappears rather than leaving a gap.
- */
-const projects: Project[] = PROJECTS.map((p) => {
-  const frames = p.frames
-    ?.map((f) => ({ ...f, src: onDisk(f.src) ? f.src : (f.hosted ?? "") }))
-    .filter((f) => f.src !== "");
-  return { ...p, frames: frames?.length ? frames : undefined };
-});
-
-const showcase = SHOWCASE.map((i) => {
-  const file = resolve(process.env[showcaseEnvKey(i.id)]?.trim() || i.file);
-  const poster = resolve(process.env[showcaseEnvKey(i.id, true)]?.trim() || i.poster);
-  return file ? { ...i, file, poster } : null;
-}).filter((i): i is NonNullable<typeof i> => i !== null);
+] as const;
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Work menu is built from the projects below, so it cannot go stale. */}
-      <HomeNav work={projects.map((p) => ({ name: p.name, href: p.href }))} />
+    <div id="ajwad-home" className={instrumentSerif.variable}>
+      <SmoothAnchors />
+      <a className="ar-skip" href="#ar-main">
+        Skip to content
+      </a>
 
-      {/* ---------------- Hero ---------------- */}
-      <section className="hero-wash mx-auto grid max-w-[1440px] items-end gap-10 px-6 pb-16 pt-12 sm:px-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-[88px] lg:px-24 lg:pb-28 lg:pt-24">
-        <div>
-          <h1 className="text-[clamp(2.875rem,8.5vw,6.5rem)] leading-[0.94] tracking-[-0.045em]">
-            I build working
-            <br className="hidden sm:block" /> AI production
-            <br className="hidden sm:block" /> systems.
-          </h1>
-          {/*
-            Second half of the headline's sentence, not a separate thought —
-            so it sits close enough to read as one. At lg it had drifted far
-            enough below the last line to look like an orphaned caption.
+      <HomeNav />
 
-            It used to read "Not decks about them." That was a jab at other
-            people's work, and it was not even true of mine — the job comes
-            with decks. It also answered the wrong question. What a team hiring
-            for this actually needs to know is not whether I can ship
-            something, but whether what I ship outlives my attention: the
-            Approach section below puts it as "capability that lives in one
-            person's head isn't a studio, it's a bottleneck with a title", and
-            the headline should be setting that up rather than picking a fight.
-          */}
-          <p className="mt-4 max-w-[22ch] text-xl leading-[1.45] tracking-[-0.01em] text-muted sm:text-2xl lg:mt-5">
-            Then I make them someone else&apos;s to run.
-          </p>
-        </div>
-        <div className="lg:pb-3.5">
-          <p className="text-[15px] leading-[1.7] text-muted sm:text-[17px]">
-            Applied AI for content production, mostly in retail marketing.
-            Content demand has outrun what any team can hand-make; I build the
-            pipelines that close that gap — stills, motion and sound — and take
-            them end to end, through security review, into people&apos;s hands.
-            Built by hand, not bought off a shelf. Three of those systems are
-            below.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-2.5">
-            <span className="chip">Toronto</span>
-            <span className="chip">AI · Content production</span>
-            <span className="chip">Solo builds, shipped</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------------- Output, before the argument ---------------- */}
-      {/*
-        Craft first, argument second — and the pair says it faster than the
-        strip did. The strip stays below for everything else, and removes
-        itself when there is nothing in it.
-      */}
-      <section
-        aria-label="Selected output"
-        className="mx-auto max-w-[1440px] px-6 pb-4 sm:px-12 lg:px-24"
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
-          <span className="label !tracking-[0.16em]">Made with the studio</span>
-          <span className="text-xs text-muted/80">
-            One shot, twice — press play and watch them together.
-          </span>
-        </div>
-        <div className="mt-6">
-          <ClayCompare
-            left={CLAY_PAIR.left}
-            right={CLAY_PAIR.right}
-            href={CLAY_PAIR.href}
-            hrefLabel={CLAY_PAIR.hrefLabel}
-          />
-        </div>
-      </section>
-
-      <ShowcaseStrip items={showcase} />
-
-      {/* ---------------- What the work is ---------------- */}
-      {/*
-        Was a scrolling marquee. A loop that never stops is a thing to wait out
-        rather than to read, and it was carrying the least specific words on the
-        page. Standing still, the same band can hold a claim as well as a list.
-      */}
-      <section
-        className="hue-band section-rule border-b border-border"
-        style={{ "--rule": "var(--hue-3)" } as React.CSSProperties}
-      >
-        <div className="mx-auto max-w-[1440px] px-6 py-9 sm:px-12 lg:px-24 lg:py-11">
-          <div className="grid gap-7 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-center lg:gap-14">
-            <p className="text-[15px] leading-[1.6] tracking-[-0.01em] sm:text-base">
-              <span className="font-semibold">
-                The judgment is the same as it always was.
-              </span>{" "}
-              <span className="text-muted">
-                The tooling is not. Everything below runs through models I
-                route, price and gate myself.
-              </span>
+      <main id="ar-main" tabIndex={-1}>
+        {/* ------------------------------- Hero ------------------------------ */}
+        <section className="ar-hero ar-wrap" id="ar-top">
+          <div className="ar-hero-copy">
+            <p className="ar-eyebrow">
+              <span className="ar-dot" />
+              Applied AI &amp; creative technology · Toronto
             </p>
-            <ul className="flex flex-wrap gap-x-7 gap-y-3">
-              {SKILLS.map((skill) => (
-                <li
-                  key={skill}
-                  className="flex items-center gap-2 font-mono text-[11px] uppercase leading-none tracking-[0.14em] text-muted"
-                >
-                  <span aria-hidden className="text-[9px] text-accent">
-                    ✶
-                  </span>
-                  {skill}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* ---------------- Selected work ---------------- */}
-      <div
-        id="work"
-        className="section-rule mx-auto flex max-w-[1440px] items-baseline justify-between px-6 pb-8 pt-10 sm:px-12 lg:px-24"
-        style={{ "--rule": "var(--hue-1)" } as React.CSSProperties}
-      >
-        <span className="label hue-mark !tracking-[0.16em]">Selected work</span>
-        <span className="label !tracking-[0.16em]">Three projects</span>
-      </div>
-
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-6 pb-20 sm:px-12 lg:gap-7 lg:px-24 lg:pb-26">
-        {projects.map((p, i) => (
-          /*
-            One hue per project, from the brand strip.
-            
-            Three identical cream cards in a column was the flattest part of
-            the page — nothing distinguished the second from the third except
-            reading it. A hue on the index, the rule above it and the hover
-            border makes them three things rather than one repeated thing, and
-            the colour is doing structural work rather than decoration.
-          */
-          <Reveal
-            as="article"
-            key={p.n}
-            delay={i * 70}
-            style={{ "--rule": PROJECT_HUES[i % PROJECT_HUES.length] } as React.CSSProperties}
-            className="card group relative grid gap-8 overflow-hidden p-7 transition-colors duration-300 hover:border-[color-mix(in_srgb,var(--rule)_45%,var(--border))] sm:p-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:px-14 lg:py-13"
-          >
-            <span
-              aria-hidden
-              className="absolute inset-x-0 top-0 h-[3px] bg-[linear-gradient(90deg,var(--rule),color-mix(in_srgb,var(--rule)_25%,transparent)_55%,transparent)] opacity-70 transition-opacity duration-300 group-hover:opacity-100"
-            />
-            <div className="min-w-0">
-              <div className="label flex flex-wrap items-center gap-x-3.5 gap-y-1">
-                <span className="font-bold text-[color:var(--rule)]">{p.n}</span>
-                <span>{p.kind}</span>
-                <StatusDot status={p.status} />
-              </div>
-              <h2 className="mt-5 text-[clamp(2rem,4.5vw,3.25rem)] leading-[1.02] tracking-[-0.035em]">
-                {p.name}
-              </h2>
-              <p className="mt-4 text-lg leading-[1.35] tracking-[-0.015em] sm:text-[23px] sm:leading-[1.4]">
-                {p.lede}
-              </p>
-              <div className="mt-7">
-                <Link
-                  href={p.href}
-                  target={p.href.startsWith("http") ? "_blank" : undefined}
-                  rel={p.href.startsWith("http") ? "noreferrer" : undefined}
-                  className="link-rule text-[15px] sm:text-base"
-                >
-                  {p.cta} <span className="font-mono">{p.arrow}</span>
-                </Link>
-              </div>
-              <p className="label-sm mt-3.5">{p.note}</p>
-              {p.access && (
-                <p className="mt-3 max-w-[46ch] text-[13px] leading-[1.65] text-muted">
-                  {p.access.text}
-                  <a
-                    href={p.access.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-accent hover:underline"
-                  >
-                    {p.access.linkLabel}
-                  </a>
-                  {p.access.after}
-                </p>
-              )}
-
-              {/*
-                Frames from the work, under the claim they belong to. A row
-                rather than a hero image: five stills from one continuous move
-                say "this is a shot" in a way one still cannot, and they stay
-                small enough not to outrank the writing beside them.
-              */}
-              {p.frames && (
-                <div className="mt-8">
-                  {/*
-                    Five across fits a desktop column but renders 50px wide on
-                    a phone, which is too small to read as anything. Below sm
-                    it scrolls instead, so each frame stays legible and the
-                    sequence survives — the scroll lives on this container, not
-                    the page.
-                  */}
-                  <div className="flex gap-1.5 overflow-x-auto pb-1">
-                    {p.frames.map((f) => (
-                      <div
-                        key={f.src}
-                        className="relative aspect-[4/3] min-w-[92px] flex-1 shrink-0 overflow-hidden rounded-[3px] border border-border-soft bg-surface-2"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={f.src}
-                          alt={f.alt}
-                          loading="lazy"
-                          className="absolute inset-0 h-full w-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {p.framesNote && <p className="label-sm mt-2.5">{p.framesNote}</p>}
-                </div>
-              )}
+            <h1>
+              AI moves fast.
+              <br />I make it <em>work.</em>
+            </h1>
+            <p className="ar-hero-description">
+              I turn emerging AI into creative work and production systems people can
+              actually use.
+            </p>
+            <div className="ar-hero-actions">
+              <a className="ar-button ar-primary" href="#ar-work">
+                Explore the work <span aria-hidden>↘</span>
+              </a>
+              <a className="ar-text-link" href="#ar-film">
+                Watch the 12-second film <span aria-hidden>▷</span>
+              </a>
             </div>
+            <p className="ar-hero-footnote">From the first experiment to the last mile.</p>
+          </div>
+          <TokenSculpture />
+        </section>
 
+        <div className="ar-practice ar-wrap">
+          <span className="ar-eyebrow">The practice</span>
+          <p>
+            Creative direction <span>/</span> AI production <span>/</span> Products &amp;
+            systems
+          </p>
+          <a href="#ar-approach" aria-label="Read my approach">
+            ↓
+          </a>
+        </div>
+
+        {/* ------------------------------- Film ------------------------------ */}
+        <section className="ar-film" id="ar-film" aria-labelledby="ar-film-heading">
+          <div className="ar-wrap">
+            <div className="ar-film-heading">
+              <div>
+                <p className="ar-eyebrow">01 / Motion study</p>
+                <h2 id="ar-film-heading">
+                  A thought.
+                  <br />
+                  <em>Made visible.</em>
+                </h2>
+              </div>
+              <p>
+                A cursor becomes a swarm. A swarm finds its form.
+                <br />
+                Twelve seconds of motion, built in Blender.
+              </p>
+            </div>
+            <TokenFilm />
+            <div className="ar-film-note">
+              <span>Concept → choreography → Blender → final film</span>
+              <span>800 tokens. One signature.</span>
+            </div>
+          </div>
+        </section>
+
+        {/* --------------------------- Selected work ------------------------- */}
+        <section className="ar-work ar-wrap" id="ar-work" aria-labelledby="ar-work-heading">
+          <div className="ar-section-heading">
             <div>
-              {p.body.map((para, i) => (
-                <p
-                  key={i}
-                  className={`text-sm leading-[1.75] text-muted sm:text-[17px] ${i > 0 ? "mt-4" : ""}`}
-                >
-                  {para}
-                </p>
-              ))}
-              {p.features && (
-                <dl className="mt-7 grid gap-4 border-t border-border-soft pt-5 sm:grid-cols-2">
-                  {p.features.map((f) => (
-                    <div key={f.name}>
-                      <dt className="text-sm font-semibold text-accent">{f.name}</dt>
-                      <dd className="mt-1 ml-0 text-[13px] leading-[1.6] text-muted">
-                        {f.what}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
+              <p className="ar-eyebrow">02 / Selected work</p>
+              <h2 id="ar-work-heading">
+                The work behind
+                <br />
+                <em>the point of view.</em>
+              </h2>
+            </div>
+            <p>
+              Creative tools, consumer products and the systems that keep production
+              moving.
+            </p>
+          </div>
 
-              <div className="label-sm mt-7 flex flex-wrap items-center gap-2 border-t border-border-soft pt-5">
-                {p.tags.map((t, i) => (
-                  <span key={t} className="flex items-center gap-2">
-                    {i > 0 && <span className="text-accent">·</span>}
-                    {t}
-                  </span>
+          <article className="ar-studio-project">
+            <div className="ar-project-copy">
+              <div className="ar-project-meta">
+                <span className="ar-eyebrow">01 / AI Content Studio</span>
+                <span className="ar-status">Live studio</span>
+              </div>
+              <h3>
+                One product.
+                <br />A world of possibilities.
+              </h3>
+              <p>
+                A working toolkit for product imagery, bilingual campaigns, motion and
+                sound. Built around the decisions that make AI useful: which model, which
+                reference, which quality gate, and at what cost.
+              </p>
+              <div className="ar-tags">
+                <span>Retail &amp; CPG</span>
+                <span>Stills + motion + sound</span>
+                <span>Model routing</span>
+              </div>
+              <Link className="ar-project-link" href="/ai-studio">
+                Explore AI Content Studio <span aria-hidden>↗</span>
+              </Link>
+              <p className="ar-access-note">
+                Browse the workflows. Live generation is available by request.
+              </p>
+            </div>
+            <div className="ar-studio-visual">
+              <div className="ar-image-triptych">
+                {REFERENCES.map((r) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={r.src}
+                    src={r.src}
+                    width={435}
+                    height={780}
+                    alt={r.alt}
+                    loading="lazy"
+                  />
                 ))}
               </div>
+              <div className="ar-image-caption">
+                <span>Current exploration</span>
+                <span>Ice cream / concept references</span>
+              </div>
             </div>
-          </Reveal>
-        ))}
-      </div>
+          </article>
 
-      {/* ---------------- Approach ---------------- */}
-      <section
-        id="approach"
-        className="hue-band section-rule border-b border-border-soft px-6 py-14 sm:px-12 lg:px-24 lg:pb-24 lg:pt-16"
-        style={{ "--rule": "var(--hue-4)" } as React.CSSProperties}
-      >
-        <div className="mx-auto max-w-[1440px]">
-        <span className="label hue-mark !tracking-[0.16em]">How I work</span>
-        <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:mt-11 lg:grid-cols-4 lg:gap-10">
-          {APPROACH.map((a, i) => (
-            <Reveal key={a.h} delay={i * 60}>
-              <h3 className="text-xl leading-[1.2] tracking-[-0.02em] sm:text-[26px]">
-                {a.h}
-              </h3>
-              <p className="mt-3 text-sm leading-[1.7] text-muted sm:text-base">
-                <span className="hidden sm:inline">{a.p}</span>
-                <span className="sm:hidden">{a.short}</span>
+          <div className="ar-project-pair">
+            <article>
+              <div className="ar-project-meta">
+                <span className="ar-eyebrow">02 / Persopot</span>
+                <span className="ar-status">Consumer product</span>
+              </div>
+              <div className="ar-perso-visual">
+                <span className="ar-perso-title">persopot.</span>
+                <div className="ar-perso-orbit">
+                  <span>Headshots</span>
+                  <span>Try it on</span>
+                  <span>Ask a bestie</span>
+                </div>
+                <span className="ar-perso-caption">Your identity. More possibilities.</span>
+              </div>
+              <h3>AI with a social life.</h3>
+              <p>
+                Studio headshots and outfit try-ons, built around one identity. Shared
+                collections make the result part of a conversation, with the people whose
+                opinions matter.
               </p>
-            </Reveal>
-          ))}
-        </div>
-        </div>
-      </section>
-
-      {/* ---------------- Judgment ---------------- */}
-      <section
-        className="section-rule mx-auto max-w-[1440px] px-6 py-14 sm:px-12 lg:px-24 lg:pb-24 lg:pt-16"
-        style={{ "--rule": "var(--hue-6)" } as React.CSSProperties}
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
-          <span className="label hue-mark !tracking-[0.16em]">What shipping taught me</span>
-          <Link
-            href="/ai-studio/models"
-            className="text-sm font-semibold text-accent hover:underline"
-          >
-            The full model landscape →
-          </Link>
-        </div>
-        <p className="mt-6 max-w-[62ch] text-[15px] leading-[1.7] text-muted sm:text-[17px]">
-          This field turns over every quarter, so the useful thing is not a
-          list of tools — it is knowing what is ready, what is emerging and
-          what is not viable yet. I know where those lines sit because I hit
-          them myself, on work that had to ship.
-        </p>
-        <div className="mt-9 grid gap-8 sm:grid-cols-2 lg:gap-x-14 lg:gap-y-10">
-          {LEARNED.map((l, i) => (
-            /*
-              Each lesson takes the next hue along the strip. The rule above it
-              is what these four were already using to separate; giving it
-              colour costs nothing and turns a grid of grey-ruled paragraphs
-              into four distinguishable things.
-            */
-            <Reveal
-              key={l.h}
-              delay={i * 60}
-              style={{ "--rule": `var(--hue-${((i + 1) % 7) + 1})` } as React.CSSProperties}
-              className="section-rule pt-5"
-            >
-              <h3 className="text-lg leading-[1.25] tracking-[-0.02em] sm:text-xl">
-                {l.h}
-              </h3>
-              <p className="mt-2.5 text-sm leading-[1.7] text-muted">{l.p}</p>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------------- Contact ---------------- */}
-      <footer
-        id="contact"
-        className="section-rule bg-surface"
-        style={{ "--rule": "var(--hue-7)" } as React.CSSProperties}
-      >
-        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-8 px-6 py-12 sm:px-12 lg:flex-row lg:items-end lg:px-24 lg:pb-22 lg:pt-18">
-          <div>
-            <span className="label !tracking-[0.16em]">Contact</span>
-            <div className="mt-4 text-2xl tracking-[-0.02em] sm:text-4xl lg:mt-5 lg:text-[44px] lg:tracking-[-0.03em]">
               <a
-                href="mailto:hello@ajwadrauf.com"
-                className="border-b border-accent/40 pb-1 transition hover:border-accent"
-              >
-                hello@ajwadrauf.com
-              </a>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-5 lg:gap-[30px] lg:pb-2.5">
-            {LINKS.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
+                className="ar-project-link"
+                href="https://persopot.com"
                 target="_blank"
                 rel="noreferrer"
-                className="label !tracking-[0.12em] text-accent transition hover:text-accent-soft"
               >
-                {l.label} ↗
+                Meet Persopot <span aria-hidden>↗</span>
               </a>
+            </article>
+
+            <article>
+              <div className="ar-project-meta">
+                <span className="ar-eyebrow">03 / Project Forge</span>
+                <span className="ar-status ar-status-internal">Internal · Loblaw</span>
+              </div>
+              <div className="ar-forge-visual">
+                <span className="ar-forge-monogram" aria-hidden>
+                  F<span>↗</span>
+                </span>
+                <ol aria-label="Project Forge workflow">
+                  <li>Brief</li>
+                  <li>Build</li>
+                  <li>Review</li>
+                  <li>Deploy</li>
+                </ol>
+                <span className="ar-forge-caption">
+                  A clearer path from request to release.
+                </span>
+              </div>
+              <h3>Make the work flow.</h3>
+              <p>
+                An internal platform for promotional email badges: intake, bilingual
+                briefs, review, QA and sign-off. One connected workflow for marketers and
+                production teams.
+              </p>
+              <Link className="ar-project-link" href="/project-forge">
+                Read the case study <span aria-hidden>↗</span>
+              </Link>
+            </article>
+          </div>
+        </section>
+
+        {/* ----------------------------- Approach ---------------------------- */}
+        <section className="ar-approach" id="ar-approach" aria-labelledby="ar-story-heading">
+          <div className="ar-wrap ar-story-grid">
+            <div className="ar-story-title">
+              <p className="ar-eyebrow">03 / Staying ahead</p>
+              <h2 id="ar-story-heading">
+                The next model
+                <br />
+                is coming.
+                <br />
+                <em>So is the next brief.</em>
+              </h2>
+              <span className="ar-story-mark" aria-hidden>
+                ↗
+              </span>
+            </div>
+            <div className="ar-story-body">
+              <p className="ar-story-lead">
+                New models. New possibilities.
+                <br />
+                The real question is what&rsquo;s ready to work.
+              </p>
+              <p>
+                A launch can change what&rsquo;s possible overnight. A production brief
+                asks harder questions: can it hold the packaging, render the French copy,
+                meet the deadline and stay inside the budget?
+              </p>
+              <p>
+                That&rsquo;s where I spend my time. I test new capabilities against real
+                work, build around the ones that hold up, and keep the system flexible
+                enough for what comes next.
+              </p>
+              <p className="ar-story-punch">
+                Staying ahead is a practice.
+                <br />
+                <span>Curiosity. Testing. Shipping. Repeat.</span>
+              </p>
+              <Link className="ar-text-link" href="/ai-studio/models">
+                Inside my model toolkit <span aria-hidden>↗</span>
+              </Link>
+            </div>
+          </div>
+
+          <div className="ar-wrap ar-method">
+            {METHOD.map((m) => (
+              <article key={m.n}>
+                <span className="ar-method-number">{m.n}</span>
+                <h3>{m.h}</h3>
+                <p>{m.p}</p>
+              </article>
             ))}
           </div>
-        </div>
-        <div className="mx-auto max-w-[1440px] px-6 pb-8 sm:px-12 lg:px-24">
-          <p className="label-sm !text-[10px] !tracking-[0.12em]">
-            Ajwad Rauf · Toronto · 2026
-          </p>
+        </section>
+
+        {/* ------------------------------ Contact ---------------------------- */}
+      </main>
+
+      <footer className="ar-contact" id="ar-contact">
+        <div className="ar-wrap">
+          <div className="ar-contact-heading">
+            <div>
+              <p className="ar-eyebrow">Have something in mind?</p>
+              <h2>
+                Let&rsquo;s build
+                <br />
+                <em>what&rsquo;s next.</em>
+              </h2>
+            </div>
+            <a
+              className="ar-contact-circle"
+              href="mailto:hello@ajwadrauf.com"
+              aria-label="Email Ajwad Rauf"
+            >
+              <span aria-hidden>↗</span>
+            </a>
+          </div>
+          <div className="ar-contact-bottom">
+            <a href="mailto:hello@ajwadrauf.com">hello@ajwadrauf.com</a>
+            <a
+              href="https://www.linkedin.com/in/ajwadrauf"
+              target="_blank"
+              rel="noreferrer"
+            >
+              LinkedIn ↗
+            </a>
+            <span>Ajwad Rauf · Toronto · 2026</span>
+            <a href="#ar-top">Back to top ↑</a>
+          </div>
         </div>
       </footer>
     </div>
