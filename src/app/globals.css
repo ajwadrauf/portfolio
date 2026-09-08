@@ -92,6 +92,78 @@ h3 {
 }
 
 /*
+ * The block button.
+ *
+ * The same treatment the homepage gives its three project destinations, in a
+ * form the studio can use: full width, 52px minimum, a 14px label and an arrow
+ * pinned right, filled at rest so it reads as pressable before any hover — and
+ * a target big enough for a thumb. The homepage keeps its own copy scoped
+ * under #ajwad-home; this one is for everything else, so no studio screen has
+ * to invent a third way of saying "go here".
+ *
+ * The light variant is for the black film section, where an ink fill would
+ * vanish: it sits outlined until hover, rather than competing with the primary
+ * playback control beside it.
+ */
+.btn-block {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--foreground);
+  border-radius: 3px;
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s,
+    transform 0.2s;
+}
+.btn-block > span {
+  flex-shrink: 0;
+  font-size: 21px;
+  line-height: 1;
+}
+.btn-block:hover,
+.btn-block:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--background);
+}
+.btn-block:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .btn-block:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.btn-block-light {
+  background: transparent;
+  border-color: #4a4a44;
+  color: #f1ede5;
+}
+.btn-block-light:hover,
+.btn-block-light:focus-visible {
+  background: #f1ede5;
+  border-color: #f1ede5;
+  color: #131311;
+}
+.btn-block-light:focus-visible {
+  outline-color: #efece5;
+}
+
+/*
  * The wordmark.
  *
  * One mark for the whole site: four tokens tilted off-axis, the name set

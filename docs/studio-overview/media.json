@@ -1,0 +1,43 @@
+{
+  "poster_time_seconds": 6.1,
+  "files": [
+    {
+      "path": "public/studio/cream/motion-guide.mp4",
+      "original_filename": "CREAM_IN_MOTION_18s_SEEDANCE_GUIDE_720x1280.mp4",
+      "sha256": "1cc7c68f42fd7e0e31e780588b27ac577c8b0ae04e0a6064e3961ab9f7654978",
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 720,
+          "height": 1280,
+          "r_frame_rate": "24/1"
+        }
+      ],
+      "format": {
+        "duration": "18.000000",
+        "size": "1568155"
+      }
+    },
+    {
+      "path": "public/studio/cream/shaded-render.mp4",
+      "original_filename": "CREAM_IN_MOTION_18s_BEAUTY_1080x1920.mp4",
+      "sha256": "583610299f8489d2a7f99b8d4b8b3d28abcf11fc37eac48cc201599ffd1df431",
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1080,
+          "height": 1920,
+          "r_frame_rate": "24/1"
+        }
+      ],
+      "format": {
+        "duration": "18.000000",
+        "size": "5469967"
+      }
+    }
+  ]
+}

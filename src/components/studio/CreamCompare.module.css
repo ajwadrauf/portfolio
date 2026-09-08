@@ -1,0 +1,414 @@
+/*
+ * The paired 9:16 players.
+ *
+ * Scoped as a CSS module so the dark comparison cannot reach any other studio
+ * screen. Colours are literal here rather than token-driven: this block is
+ * black whatever the page around it is doing, and the light values are picked
+ * for contrast against that black, not against paper.
+ */
+
+.section {
+  background: #000;
+  color: #f4f0e8;
+  scroll-margin-top: 20px;
+}
+
+.wrap {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 72rem;
+  padding: 72px 24px 56px;
+}
+
+.head {
+  min-width: 0;
+}
+
+.eyebrow {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a4a29c;
+}
+
+.title {
+  margin: 14px 0 0;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+}
+
+.standfirst {
+  margin: 14px 0 0;
+  font-size: 15px;
+  color: #cfcbc2;
+}
+
+.explain {
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: #a4a29c;
+  max-width: 46ch;
+}
+
+/* A caveat that has to survive skim-reading, so it gets its own rule. */
+.caveat {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid #2a2a28;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #8d8b85;
+  max-width: 46ch;
+}
+
+.body {
+  display: grid;
+  gap: 34px;
+  margin-top: 34px;
+}
+
+.players {
+  min-width: 0;
+}
+
+/*
+ * Order, and why it changes.
+ *
+ * On desktop the copy sits beside the players and the two deep links tuck
+ * under it in the same column. Stacked on a phone that same DOM order buries
+ * the films under a screen and a half of prose — which is the complaint this
+ * whole page was rebuilt to answer. So the links move below the players there,
+ * and the first thing under the heading is the work.
+ */
+@media (min-width: 1024px) {
+  .body {
+    grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+    column-gap: 48px;
+    row-gap: 28px;
+    align-items: start;
+  }
+  .head {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .players {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .deeper {
+    grid-column: 1;
+    grid-row: 2;
+  }
+}
+
+/* ------------------------------- The panes ------------------------------- */
+
+/*
+ * Side by side at every width, on purpose. Stacking them would leave a
+ * "comparison" you have to scroll between, which is not one; below 480 the
+ * labels shed their pixel dimensions instead, and the full-size links carry
+ * anyone who needs to actually inspect a frame.
+ */
+.panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .panes {
+    gap: 16px;
+  }
+}
+
+.pane {
+  min-width: 0;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  /* Portrait, uncropped, letterboxed on black if a source ever differs. */
+  aspect-ratio: 9 / 16;
+  background: #0a0a0a;
+  border: 1px solid #232320;
+  overflow: hidden;
+}
+
+.stage video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #0a0a0a;
+}
+
+/* The affordance that has to be there before anything plays. */
+.play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  background: linear-gradient(180deg, #00000020, #00000070);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+}
+.play[hidden] {
+  display: none;
+}
+
+.playBadge {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid #ffffff5c;
+  background: #14121680;
+  backdrop-filter: blur(6px);
+  font-size: 19px;
+  line-height: 1;
+  /* Optical centring for a triangle glyph in a circle. */
+  padding-left: 3px;
+}
+
+@media (min-width: 640px) {
+  .playBadge {
+    width: 72px;
+    height: 72px;
+    font-size: 24px;
+  }
+}
+
+.paneLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #efece5;
+}
+
+.paneSpec {
+  font-size: 11px;
+  color: #8d8b85;
+  white-space: nowrap;
+}
+
+@media (max-width: 479px) {
+  .paneSpec {
+    display: none;
+  }
+}
+
+.paneNote {
+  margin: 5px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8d8b85;
+}
+
+/* ------------------------------- Controls -------------------------------- */
+
+.controls {
+  margin-top: 20px;
+  border-top: 1px solid #2a2a28;
+  border-bottom: 1px solid #2a2a28;
+  padding-block: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  /* 44px is the floor for a thumb; these sit at 44 exactly. */
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #3a3a36;
+  border-radius: 3px;
+  background: #191917;
+  color: #f1ede5;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.button:hover {
+  background: #2a2a26;
+  border-color: #55554e;
+}
+.buttonPrimary {
+  background: #f1ede5;
+  border-color: #f1ede5;
+  color: #131311;
+}
+.buttonPrimary:hover {
+  background: #fff;
+  border-color: #fff;
+}
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.scrubRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 240px;
+  min-width: 180px;
+}
+
+.scrub {
+  flex: 1;
+  min-width: 80px;
+  height: 22px;
+  accent-color: #dad3c8;
+  cursor: pointer;
+  background: transparent;
+}
+
+.time {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: #a4a29c;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ------------------------------- Chapters -------------------------------- */
+
+.chapterHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.chapters {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chapter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 13px;
+  border: 1px solid #33332f;
+  border-radius: 999px;
+  background: transparent;
+  color: #cfcbc2;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+.chapter:hover {
+  border-color: #6d6d64;
+  color: #f4f0e8;
+}
+.chapterActive {
+  background: #f1ede5;
+  border-color: #f1ede5;
+  color: #131311;
+}
+
+.chapterTime {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.chapterAction {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #8d8b85;
+  min-height: 2.4em;
+}
+
+/* --------------------------- Status and escapes -------------------------- */
+
+.status {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #a4a29c;
+}
+
+.statusError {
+  color: #e8a99b;
+}
+
+.openLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin-top: 16px;
+}
+
+/*
+ * Also the no-JavaScript path: these are plain anchors to the files, so the
+ * section still hands over the work when the paired player cannot run.
+ */
+.openLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  font-size: 12px;
+  color: #efece5;
+  border-bottom: 1px solid #4a4a44;
+  text-decoration: none;
+}
+.openLink:hover {
+  border-color: #efece5;
+}
+
+.deeper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Focus has to be obvious on black, so it is a light ring rather than plum. */
+.section :focus-visible {
+  outline: 3px solid #efece5;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section *,
+  .section *::before,
+  .section *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
