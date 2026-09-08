@@ -7,6 +7,8 @@ import { resolutionsFor, type VideoResolution } from "@/lib/videoCost";
 import { consume, liveJson, unlocked } from "@/lib/auth";
 import {
   AD_VIDEO_MODELS,
+  supportsNegativePromptField,
+  withExclusions,
   snapAdSeconds,
   AUDIO_REF_MODELS,
   MULTI_REF_MODELS,
@@ -219,7 +221,9 @@ export async function POST(req: Request) {
     const cap = audioCapability(body.modelId);
     const { requestId } = await falStartVideo({
       endpoint: model.endpoint,
-      prompt: body.prompt,
+      prompt: supportsNegativePromptField(model.id)
+        ? body.prompt
+        : withExclusions(body.prompt, body.negativePrompt),
       durationSeconds: seconds,
       aspectRatio: body.aspect,
       referenceImageDataUrl: multiRef ? undefined : body.imageDataUrl,
@@ -231,7 +235,13 @@ export async function POST(req: Request) {
       referenceAudioUrls: audioRefs.slice(0, REF_CEILINGS.audio),
       generateAudio: cap.switchable ? (body.generateAudio ?? true) : undefined,
       resolution: model.id.startsWith("seedance") ? resolution : undefined,
-      negativePrompt: body.negativePrompt,
+      /*
+       * Only where the endpoint publishes the field. Everywhere else the same
+       * constraints ride the prompt (see the prompt argument above), because a
+       * field an endpoint does not define is dropped in silence — and these
+       * are the constraints the product depends on.
+       */
+      negativePrompt: supportsNegativePromptField(model.id) ? body.negativePrompt : undefined,
     });
     return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, cost });
   } catch (e) {

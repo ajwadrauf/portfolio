@@ -196,8 +196,43 @@ const toLines = (xs: string[]) => xs.join("\n");
 const fromLines = (v: string) =>
   v.split("\n").map((x) => x.trim()).filter(Boolean);
 
-async function toProcessedDataUrl(file: File): Promise<string> {
+/**
+ * How much of the request body inline references may occupy.
+ *
+ * A serverless request body caps at 4.5MB and the prompt, recipe and settings
+ * share it, so this leaves headroom rather than filling the ceiling.
+ */
+const REF_BUDGET_BYTES = 3.4 * 1024 * 1024;
+
+/** Tried largest first, until one fits whatever budget is left. */
+const REF_TIERS: { maxSide: number; quality: number }[] = [
+  { maxSide: 2048, quality: 0.92 },
+  { maxSide: 2048, quality: 0.8 },
+  { maxSide: 1536, quality: 0.86 },
+  { maxSide: 1536, quality: 0.72 },
+  { maxSide: 1024, quality: 0.86 },
+  { maxSide: 1024, quality: 0.68 },
+  { maxSide: 768, quality: 0.7 },
+];
+
+const dataUrlBytes = (u: string) => Math.ceil((u.length - (u.indexOf(",") + 1)) * 0.75);
+
+/**
+ * Downscale a reference as little as the remaining body budget allows.
+ *
+ * This was a flat 1024px long edge, which on a portrait pack photo meant
+ * 572x1024 — and this is the endpoint whose entire purpose is holding product
+ * identity while the camera moves. Label type that the model cannot read is
+ * label type it cannot preserve, so the reference arrives already missing the
+ * thing it was uploaded to protect.
+ *
+ * The budget is shared across every inline reference, so it takes the bytes
+ * already committed: the first pack photo gets 2048px, and a set of ten
+ * degrades gracefully instead of the eleventh failing the request.
+ */
+async function toProcessedDataUrl(file: File, usedBytes = 0): Promise<string> {
   const url = URL.createObjectURL(file);
+  const budget = Math.max(180 * 1024, REF_BUDGET_BYTES - usedBytes);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
@@ -205,16 +240,22 @@ async function toProcessedDataUrl(file: File): Promise<string> {
       el.onerror = () => reject(new Error("Could not read that image"));
       el.src = url;
     });
-    const maxSide = 1024;
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale) || maxSide;
-    canvas.height = Math.round(img.height * scale) || maxSide;
     const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.9);
+    let last = "";
+    for (const tier of REF_TIERS) {
+      // Never upscale: a 700px photo stays 700px rather than being blown up
+      // into detail it does not have.
+      const scale = Math.min(1, tier.maxSide / Math.max(img.width, img.height));
+      canvas.width = Math.round(img.width * scale) || tier.maxSide;
+      canvas.height = Math.round(img.height * scale) || tier.maxSide;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      last = canvas.toDataURL("image/jpeg", tier.quality);
+      if (dataUrlBytes(last) <= budget) return last;
+    }
+    return last;
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -1067,7 +1108,12 @@ export function AdLab({
             },
           ]);
         } else {
-          const dataUrl = await toProcessedDataUrl(file);
+          // Inline references share one body budget, so each new one is
+          // encoded against what the others have already spent.
+          const usedBytes = refs
+            .filter((r) => r.url.startsWith("data:"))
+            .reduce((n, r) => n + dataUrlBytes(r.url), 0);
+          const dataUrl = await toProcessedDataUrl(file, usedBytes);
           setRefs((prev) => [
             ...prev,
             { url: dataUrl, media: "image", role: "style", name: file.name },
@@ -1080,7 +1126,9 @@ export function AdLab({
         setUploading(false);
       }
     },
-    [health, invalidatePrompt],
+    // `refs` is read to measure the budget already spent, so it belongs here —
+    // without it the first upload's size would be used for every later one.
+    [health, invalidatePrompt, refs],
   );
 
   /** Adds an already-hosted reference. No upload, so no storage permission. */

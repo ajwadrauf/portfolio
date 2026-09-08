@@ -961,5 +961,41 @@ export function snapAdSeconds(modelId: string, seconds: number): number {
   );
 }
 
+/**
+ * Models whose endpoint documents a separate negative-prompt field.
+ *
+ * Only Veo, and only because Gemini publishes `negativePrompt` and that call
+ * goes through a different client entirely. Seedance's reference-to-video
+ * inputs do not list one, and the fal endpoints have not been verified from
+ * here — so nothing else gets the field.
+ *
+ * The reason this matters is not a rejection. Renders have succeeded with the
+ * field attached, so it is accepted and, on an endpoint that does not define
+ * it, ignored. That is worse than an error: every constraint in
+ * AD_NEGATIVE_PROMPT — warped product, deformed packaging, illegible text — is
+ * exactly what a product ad needs held, and the app was reporting them as
+ * applied while the model never saw them. Where the field is not documented
+ * the constraints go into the prompt instead, which is where this project's
+ * own Blender composer has always put them: an [Exclusions] block in the text.
+ */
+export const NEGATIVE_PROMPT_MODELS = ["veo-3.1", "veo-3.1-fast"];
+
+export const supportsNegativePromptField = (modelId: string) =>
+  NEGATIVE_PROMPT_MODELS.includes(modelId);
+
+/**
+ * Folds negative constraints into the prompt for endpoints without the field.
+ *
+ * Appended rather than woven in: the prompt may be hand-written or imported,
+ * and rewriting someone's text is a worse failure than adding a line to it.
+ */
+export function withExclusions(prompt: string, negative?: string): string {
+  const n = (negative ?? "").trim();
+  if (!n) return prompt;
+  // Already carries its own exclusion block — do not say it twice.
+  if (/\[Exclusions\]/i.test(prompt)) return prompt;
+  return `${prompt.trimEnd()}\n\nDo not include: ${n}.`;
+}
+
 export const AD_NEGATIVE_PROMPT =
   "blurry, warped product, deformed packaging, illegible text, watermark artifacts, camera shake, extra hands, morphing errors";
