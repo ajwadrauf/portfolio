@@ -1,0 +1,10 @@
+{
+  "name": "homepage-concept-review",
+  "private": true,
+  "scripts": {
+    "verify": "node verify.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "layouts": [
+    {
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "width": 736,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "overflow": false
+    }
+  ],
+  "playback": {
+    "duration": 12,
+    "width": 1920,
+    "height": 1080,
+    "currentTime": 0.273986
+  },
+  "reducedMotion": true,
+  "webgl": true,
+  "pageErrors": []
+}

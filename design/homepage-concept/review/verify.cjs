@@ -1,0 +1,46 @@
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH ? {executablePath:process.env.CHROME_PATH} : {}),args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const page=await browser.newPage({viewport:{width:1440,height:950},deviceScaleFactor:1});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(process.env.PREVIEW_URL || 'http://127.0.0.1:8765',{waitUntil:'networkidle'});
+ await page.waitForSelector('.ar-sculpture.ready');
+ await page.screenshot({path:path.join(__dirname,'desktop-hero.png')});
+ await page.locator('.ar-image-triptych').scrollIntoViewIfNeeded();
+ await page.locator('.ar-image-triptych img').evaluateAll(imgs=>Promise.all(imgs.map(i=>i.decode())));
+ await page.evaluate(()=>window.scrollTo(0,0));
+ await page.screenshot({path:path.join(__dirname,'desktop-full.png'),fullPage:true});
+ await page.getByRole('button',{name:'Assemble',exact:false}).click();
+ await page.waitForTimeout(1500);
+ assert.equal(await page.locator('#ar-assemble').getAttribute('aria-pressed'),'true');
+ await page.screenshot({path:path.join(__dirname,'desktop-assembled.png')});
+ await page.getByRole('button',{name:'Explore again'}).click();
+ await page.locator('#ar-film-start').click();
+ await page.waitForFunction(()=>{const v=document.querySelector('video');return !v.paused&&v.currentTime>.25;});
+ const playback=await page.locator('video').evaluate(v=>({duration:v.duration,width:v.videoWidth,height:v.videoHeight,currentTime:v.currentTime}));
+ assert.equal(playback.duration,12);assert.equal(playback.width,1920);
+ await page.locator('#ar-film-toggle').click();
+ assert.equal(await page.locator('video').evaluate(v=>v.paused),true);
+ const layouts=[];
+ for(const width of [1024,736,390,360,320]){
+   await page.setViewportSize({width,height:900});
+   await page.goto(process.env.PREVIEW_URL || 'http://127.0.0.1:8765',{waitUntil:'networkidle'});
+   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+   assert.equal(overflow,false,'overflow at '+width);
+   await page.screenshot({path:path.join(__dirname,'width-'+width+'.png'),fullPage:true});
+   layouts.push({width,overflow});
+ }
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto(process.env.PREVIEW_URL || 'http://127.0.0.1:8765',{waitUntil:'networkidle'});
+ await page.waitForSelector('.ar-sculpture.ready');
+ await page.getByRole('button',{name:'Assemble',exact:false}).click();
+ assert.equal(await page.locator('#ar-assemble').getAttribute('aria-pressed'),'true');
+ assert.equal(await page.locator('video').evaluate(v=>v.paused),true);
+ assert.deepEqual(errors,[]);
+ const result={layouts,playback,reducedMotion:true,webgl:true,pageErrors:errors};
+ fs.writeFileSync(path.join(__dirname,'checks.json'),JSON.stringify(result,null,2));
+ console.log(JSON.stringify(result));await browser.close();
+})().catch(e=>{console.error(e);process.exit(1);});
