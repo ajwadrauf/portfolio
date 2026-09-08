@@ -2,46 +2,38 @@
 
 /*
  * Design tokens — Ajwad Rauf portfolio system.
+ *
  * Source of truth for both the portfolio home and the AI Content Studio, so
  * the two halves are one system rather than two things that resemble each
- * other. Values mirror the Claude Design system exactly.
+ * other.
+ *
+ * The values are the homepage concept's: its paper, ink, line and plum, moved
+ * up here so the studio inherits them rather than running a second palette a
+ * few degrees off. The old set was a lighter cream (#faf6ee) and a brighter
+ * plum (#8e3a7c), which read as a different site the moment you crossed from
+ * the homepage into the studio. Nothing lost contrast in the move: text pairs
+ * stay between 4.7:1 and 14.2:1, and the accent got stronger (6.4 -> 7.2 on
+ * paper), because the new plum is the darker of the two.
+ *
+ * surface and surface-2 are the studio's own — the homepage has no cards to
+ * put on paper — and sit either side of it: surface a shade lighter for
+ * raised cards, surface-2 the concept's panel tone for recessed bands.
  */
 :root {
-  --background: #faf6ee;
-  --surface: #fffdf8;
-  --surface-2: #f4eee1;
-  --border: rgba(43, 37, 34, 0.13);
-  --border-strong: rgba(43, 37, 34, 0.22);
-  --foreground: #2b2522;
-  --muted: #6b6257;
-  --accent: #8e3a7c;
-  --accent-soft: #6f2c60;
+  --background: #f5f2ea;
+  --surface: #fbf9f3;
+  --surface-2: #e9e6dd;
+  --border: #d4d1c7;
+  --border-strong: #b8b4a8;
+  --foreground: #272726;
+  --muted: #66645e;
+  --accent: #763d5d;
+  --accent-soft: #5d2f4a;
   --success: #2e7d4f;
   --warning: #92400e;
   --danger: #b3372f;
   --radius: 6px;
 
-  /*
-   * The spectrum, promoted.
-   *
-   * These seven were already in the system — as a 3px strip under the nav,
-   * described as "the one place the full spectrum appears". That was one line
-   * of colour on an otherwise cream page, which is most of why the home page
-   * read as flat: a single purple accent doing every job, and no signal that
-   * one section had ended and another begun.
-   *
-   * Naming them makes the strip a palette rather than a decoration. Each
-   * project and each section takes one, so colour carries structure instead of
-   * being sprinkled — and the page still cannot drift outside the brand,
-   * because there is nowhere else to go.
-   */
-  --hue-1: #8e3a7c;
-  --hue-2: #6d4b9e;
-  --hue-3: #3c6ea5;
-  --hue-4: #2e7d4f;
-  --hue-5: #a8862f;
-  --hue-6: #b8722f;
-  --hue-7: #b3372f;
 }
 
 @theme inline {
@@ -80,88 +72,97 @@ h3 {
 }
 
 /*
- * The spectrum as a gradient rule.
+ * A short accent rule.
  *
- * No longer in either nav — a seven-colour stripe above the wordmark competed
- * with the thing it was meant to introduce, and the header now carries its own
- * mark. It stays for the places that use it deliberately as decoration.
+ * Replaces the seven-colour brand strip under the case-study headline. The
+ * spectrum was the loudest thing on a page whose whole argument is restraint,
+ * and it appeared nowhere else on the site once the homepage stopped using
+ * it, so it read as a visitor from another design. This says the same thing
+ * — a mark under the title — in the language the rest of the site speaks.
  */
-.brand-strip {
+.accent-rule {
   height: 3px;
+  border-radius: 999px;
   background: linear-gradient(
     90deg,
-    var(--hue-1),
-    var(--hue-2),
-    var(--hue-3),
-    var(--hue-4),
-    var(--hue-5),
-    var(--hue-6),
-    var(--hue-7)
+    var(--accent) 0%,
+    color-mix(in srgb, var(--accent) 35%, transparent) 55%,
+    transparent 100%
   );
 }
 
 /*
- * Section boundaries that read as a change of subject.
+ * The wordmark.
  *
- * A flat 1px border says "there is a line here". A rule that carries the
- * incoming section's hue and fades out says "this is a different thing", which
- * is the job the borders were failing at. `--rule` is set per section; it
- * falls back to the plain border so an unstyled section still looks correct.
+ * One mark for the whole site: four tokens tilted off-axis, the name set
+ * lowercase and tight, and a plum full stop. The tokens are the sculpture's
+ * own unit at type size, which is the only reason the mark means anything —
+ * it is the hero's material, not a decorative glyph.
+ *
+ * Everything scales off --wm, so the studio's back-link and the homepage's
+ * header are the same drawing at different sizes rather than two drawings.
+ * The ratios (squares at 0.296em, gap 0.111, spacing 0.444) are the concept's
+ * 8/3/12px at 27px, kept as fractions so no size needs its own numbers.
  */
-.section-rule {
-  border-top: 1px solid transparent;
-  border-image: linear-gradient(
-      90deg,
-      var(--rule, var(--border-strong)) 0%,
-      color-mix(in srgb, var(--rule, var(--border)) 30%, transparent) 22%,
-      var(--border) 55%,
-      transparent 100%
-    )
-    1;
+.wordmark {
+  --wm: 27px;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--wm);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+.wordmark-sm {
+  --wm: 15px;
+}
+@media (min-width: 360px) {
+  .wordmark-sm {
+    --wm: 17px;
+  }
+}
+.wordmark-md {
+  --wm: 19px;
+}
+.wordmark-mark {
+  display: grid;
+  grid-template-columns: repeat(2, calc(var(--wm) * 0.296));
+  gap: calc(var(--wm) * 0.111);
+  margin-right: calc(var(--wm) * 0.444);
+  transform: rotate(-12deg);
+}
+.wordmark-mark > span {
+  display: block;
+  width: calc(var(--wm) * 0.296);
+  height: calc(var(--wm) * 0.296);
+  background: var(--accent);
+  transition: opacity 0.2s;
+}
+/* The fourth token is held back, so the mark reads as three and a shadow. */
+.wordmark-mark > span:last-child {
+  opacity: 0.4;
+}
+.wordmark-period {
+  color: var(--accent);
+}
+/* Wherever the mark is a link, hovering completes it. */
+a:hover > .wordmark > .wordmark-mark > span:last-child {
+  opacity: 1;
 }
 
 /*
- * A tinted band, in the section's own hue.
+ * The seven-hue spectrum used to live here — brand-strip, section-rule,
+ * hue-band, hue-mark and hero-wash, plus the --hue-1..7 tokens above.
  *
- * Alternating bands are what make a long page read as chapters rather than as
- * one column of text. The tint is deliberately weak — 4% — because the job is
- * to separate, not to decorate.
+ * All of it belonged to the previous homepage. The concept replaced that page
+ * with one that separates its sections by ground colour — paper, black, olive
+ * — rather than by tinting hairlines, and the case study's rainbow bar went
+ * with it. Nothing referenced any of them afterwards, and a palette declared
+ * as "the brand" that the brand does not use is worse than no palette. Recover
+ * from git history if a future section wants it back.
  */
-.hue-band {
-  background: color-mix(in srgb, var(--rule) 4%, var(--surface-2));
-}
-
-/* The eyebrow's colour mark: small, and the only place a section states its hue. */
-.hue-mark::before {
-  content: "";
-  display: inline-block;
-  width: 18px;
-  height: 2px;
-  margin-right: 10px;
-  vertical-align: 3px;
-  background: var(--rule, var(--accent));
-}
-
-/*
- * Hero wash.
- *
- * Two very low-opacity radials so the top of the page has some depth behind
- * the headline instead of flat cream. Both sit in brand hues and neither is
- * strong enough to affect text contrast.
- */
-.hero-wash {
-  background:
-    radial-gradient(
-      70ch 50ch at 12% -10%,
-      color-mix(in srgb, var(--hue-1) 11%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      60ch 40ch at 92% 0%,
-      color-mix(in srgb, var(--hue-3) 9%, transparent),
-      transparent 70%
-    );
-}
 
 /*
  * Entry reveal.

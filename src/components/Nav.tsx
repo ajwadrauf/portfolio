@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UngatedBanner } from "./LiveGate";
+import { Wordmark } from "./Wordmark";
 
 const LINKS = [
   { href: "/ai-studio", label: "Overview" },
@@ -22,30 +23,20 @@ export function Nav() {
     /* Same treatment as the portfolio header — no wash, no strip, one hairline. */
     <header className="sticky top-0 z-40 border-b border-border-soft bg-[color-mix(in_srgb,var(--surface)_82%,transparent)] backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-start justify-between gap-4 sm:justify-start">
-          {/* The portfolio wordmark, at back-link scale. */}
-          <Link
-            href="/"
-            className="group flex flex-col gap-[5px]"
-            title="Back to ajwadrauf.com"
-          >
-            <span className="flex items-baseline gap-[7px] leading-none">
-              <span className="text-[15px] font-bold tracking-[-0.04em] text-foreground transition group-hover:text-accent min-[360px]:text-[17px]">
-                Ajwad
-              </span>
-              <span className="text-[15px] font-normal tracking-[-0.02em] text-muted min-[360px]:text-[17px]">
-                Rauf
-              </span>
-            </span>
-            <span
-              aria-hidden
-              className="block h-[2px] w-[86px] bg-[linear-gradient(90deg,var(--hue-1)_0%,var(--hue-2)_46%,transparent_100%)] transition-[width] duration-300 group-hover:w-[100px]"
-            />
+        <div className="flex items-center justify-between gap-4 sm:justify-start">
+          {/*
+            The site wordmark at back-link scale — the same mark the homepage
+            header carries, not a second one that resembles it. It used to be
+            a two-weight "Ajwad Rauf" over a gradient rule, which introduced
+            the site differently depending on which page you landed on.
+          */}
+          <Link href="/" title="Back to ajwadrauf.com" className="self-center">
+            <Wordmark size="sm" />
           </Link>
-          <span className="hidden h-5 w-px self-start bg-border-strong sm:block" />
+          <span className="hidden h-5 w-px self-center bg-border-strong sm:block" />
           <Link
             href="/ai-studio"
-            className="label !text-[12px] !text-accent self-start whitespace-nowrap font-semibold min-[360px]:!text-[14px]"
+            className="label !text-[12px] !text-accent self-center whitespace-nowrap font-semibold min-[360px]:!text-[14px]"
           >
             AI Content Studio
           </Link>
@@ -60,7 +51,7 @@ export function Nav() {
                 href={l.href}
                 className={`whitespace-nowrap rounded-[6px] px-3 py-1.5 transition ${
                   active
-                    ? "bg-accent font-semibold text-white shadow-[0_1px_6px_rgba(142,58,124,0.35)]"
+                    ? "bg-accent font-semibold text-white shadow-[0_1px_6px_rgba(118,61,93,0.35)]"
                     : "text-muted hover:bg-accent/8 hover:text-accent"
                 }`}
               >

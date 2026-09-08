@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Wordmark } from "@/components/Wordmark";
 
 export const metadata: Metadata = {
   title: "Project Forge — Case study · Ajwad Rauf",
@@ -151,15 +152,13 @@ function Emphasised({ text, strong }: { text: string; strong: string }) {
 export default function ProjectForgePage() {
   return (
     <main className="min-h-screen bg-background">
-      <div className="brand-strip" />
-
       <header
         className={`${SHELL} flex items-center justify-between gap-6 border-b border-border-soft py-6`}
       >
-        <Link href="/" className="label !text-foreground">
-          Ajwad Rauf
+        <Link href="/" title="Back to ajwadrauf.com">
+          <Wordmark size="md" />
         </Link>
-        <Link href="/#work" className="label transition hover:text-foreground">
+        <Link href="/#ar-work" className="label transition hover:text-foreground">
           ← All work
         </Link>
       </header>
@@ -173,7 +172,7 @@ export default function ProjectForgePage() {
         <p className="mt-5 max-w-[24ch] text-[clamp(1.3rem,3.2vw,1.9rem)] leading-[1.28] tracking-[-0.01em]">
           A badge brief in, a reviewed, deployment-ready email asset out.
         </p>
-        <div className="brand-strip mt-8 max-w-[340px] rounded-full" />
+        <div className="accent-rule mt-8 max-w-[340px]" />
         <p className="mt-8 max-w-[58ch] text-[15px] leading-[1.7] text-muted sm:text-[17px]">
           An internal production platform for an enterprise retail CRM email
           program. It moves every promotional badge from first request to final
@@ -397,7 +396,7 @@ export default function ProjectForgePage() {
             </p>
           </div>
           <Link
-            href="/#work"
+            href="/#ar-work"
             className="label !tracking-[0.12em] text-accent transition hover:text-accent-soft lg:pb-2.5"
           >
             ← All work

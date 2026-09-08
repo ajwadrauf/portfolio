@@ -1,3 +1,5 @@
+import { Wordmark } from "@/components/Wordmark";
+
 /**
  * Portfolio header.
  *
@@ -7,21 +9,17 @@
  * of the site is meant to feel like arriving somewhere, not like the same
  * chrome with different contents.
  *
+ * The mark is the shared one, so the studio and the case study introduce
+ * the site with exactly the same drawing.
+ *
  * Deliberately a server component. Every link is a real anchor that works
  * before any JavaScript arrives; SmoothAnchors only upgrades how they travel.
  */
 export function HomeNav() {
   return (
     <header className="ar-nav ar-wrap">
-      <a className="ar-wordmark" href="#ar-top" aria-label="Ajwad Rauf, back to top">
-        {/* Four tokens, tilted — the sculpture's own unit, at wordmark size. */}
-        <span className="ar-mark" aria-hidden>
-          <b />
-          <b />
-          <b />
-          <b />
-        </span>
-        ajwad rauf<span className="ar-period">.</span>
+      <a href="#ar-top" aria-label="Ajwad Rauf, back to top">
+        <Wordmark />
       </a>
       <nav aria-label="Main navigation">
         <a href="#ar-work">Selected work</a>

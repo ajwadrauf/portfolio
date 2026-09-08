@@ -1,11 +1,11 @@
 /*
  * Homepage styles, ported from design/homepage-concept/styles.css.
  *
- * Everything is scoped under #ajwad-home on purpose. The AI Content Studio
- * runs on the token system in globals.css, and this page runs on its own
- * palette; keeping the two in separate namespaces is what lets the homepage
- * carry olive, ivory and a black film section without a single studio screen
- * changing colour.
+ * Everything is scoped under #ajwad-home on purpose. Colour comes from the
+ * same tokens the studio uses, so paper, ink, line and plum are shared; what
+ * the namespace buys is the layout — this page can carry a black film section,
+ * an olive contact block and a 106px header without a single studio screen
+ * changing shape.
  *
  * The concept sheet used light-dark() pairs, but its own index.html pinned
  * html{color-scheme:light}, so the dark halves never rendered. They are
@@ -17,21 +17,27 @@
 /*
  * The page's own paper, behind the page.
  *
- * globals.css paints the body in the studio's cream, which is a shade off this
- * one — close enough to miss until an overscroll bounce on iOS pulls the body
- * into view above the header or below the olive footer. Scoped by :has so no
- * studio screen is touched.
+ * The page paints its own paper, but an overscroll bounce on iOS pulls the
+ * body out from behind it — above the header, or below the olive footer. This
+ * puts the same tone underneath. Scoped by :has, so it only fires here.
  */
 body:has(#ajwad-home) {
-  background: #f5f2ea;
+  background: var(--background);
 }
 
 #ajwad-home {
-  --ar-paper: #f5f2ea;
-  --ar-ink: #272726;
-  --ar-muted: #66645e;
-  --ar-line: #d4d1c7;
-  --ar-accent: #763d5d;
+  /*
+   * Aliases, not a palette. These five used to hold their own hex values,
+   * which made the homepage the only page that knew what the brand's paper
+   * and plum were. They now point at the tokens in globals.css, so retuning
+   * the site retunes this page too and the two can no longer drift apart.
+   * --ar-story stays local: the approach band's olive is this page's alone.
+   */
+  --ar-paper: var(--background);
+  --ar-ink: var(--foreground);
+  --ar-muted: var(--muted);
+  --ar-line: var(--border);
+  --ar-accent: var(--accent);
   --ar-story: #e7e9df;
 
   font-family: var(--font-space-grotesk), Arial, sans-serif;
@@ -116,32 +122,6 @@ body:has(#ajwad-home) {
   justify-content: space-between;
   border-bottom: 1px solid var(--ar-line);
   gap: 20px;
-}
-#ajwad-home .ar-wordmark {
-  display: flex;
-  align-items: center;
-  font-weight: 500;
-  letter-spacing: -0.055em;
-  font-size: 27px;
-  white-space: nowrap;
-}
-#ajwad-home .ar-period {
-  color: var(--ar-accent);
-}
-#ajwad-home .ar-mark {
-  display: grid;
-  grid-template-columns: repeat(2, 8px);
-  gap: 3px;
-  margin-right: 12px;
-  transform: rotate(-12deg);
-}
-#ajwad-home .ar-mark b {
-  width: 8px;
-  height: 8px;
-  background: var(--ar-accent);
-}
-#ajwad-home .ar-mark b:last-child {
-  opacity: 0.4;
 }
 #ajwad-home .ar-nav nav {
   display: flex;
@@ -1021,8 +1001,8 @@ body:has(#ajwad-home) {
   #ajwad-home .ar-nav {
     height: 82px;
   }
-  #ajwad-home .ar-wordmark {
-    font-size: 24px;
+  #ajwad-home .wordmark {
+    --wm: 24px;
   }
   #ajwad-home .ar-nav nav {
     gap: 17px;
