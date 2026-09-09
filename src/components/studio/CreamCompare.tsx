@@ -35,7 +35,14 @@ const clock = (seconds: number) => {
   return `${String(Math.floor(whole / 60)).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
 };
 
-export function CreamCompare() {
+type Props = {
+  /** Embed the same transport in a project card or walkthrough. */
+  compact?: boolean;
+  id?: string;
+  cue?: { time: number; key: number };
+};
+
+export function CreamCompare({ compact = false, id = "motion-study", cue }: Props = {}) {
   const [view, setView] = useState<string>(CREAM_COMPARISONS[0].id);
   const panes = (CREAM_COMPARISONS.find((c) => c.id === view) ?? CREAM_COMPARISONS[0]).panes;
   const [sound, setSound] = useState(false);
@@ -100,6 +107,13 @@ export function CreamCompare() {
     },
     [duration, ensureLoaded],
   );
+
+  // A reference in the making-of can cue a shot without starting playback.
+  useEffect(() => {
+    if (!cue) return;
+    pauseBoth();
+    seekBoth(cue.time);
+  }, [cue, pauseBoth, seekBoth]);
 
   const playBoth = useCallback(async () => {
     const all = videos();
@@ -185,6 +199,10 @@ export function CreamCompare() {
       if (document.hidden) pauseBoth();
     };
     document.addEventListener("visibilitychange", onVisibility);
+    const onFullscreen = () => {
+      for (const video of videos()) video.controls = document.fullscreenElement === video;
+    };
+    document.addEventListener("fullscreenchange", onFullscreen);
 
     /*
      * Watch the players, not the section around them.
@@ -208,6 +226,7 @@ export function CreamCompare() {
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("fullscreenchange", onFullscreen);
       observer?.disconnect();
       // Unmount is also a supersede: a play() resolving after this must not
       // restart panes that are on their way out.
@@ -231,12 +250,12 @@ export function CreamCompare() {
         : "Play both";
 
   return (
-    <section className={styles.section} id="motion-study" aria-labelledby="cream-heading">
+    <section className={`${styles.section} ${compact ? styles.compact : ""}`} id={id} tabIndex={-1} aria-label={compact ? "Blender and Seedance film comparison" : undefined} aria-labelledby={compact ? undefined : `${id}-heading`}>
       <div className={styles.wrap}>
         <div className={styles.body}>
-          <div className={styles.head}>
+          {!compact && <div className={styles.head}>
             <p className={styles.eyebrow}>Featured study</p>
-              <h2 className={styles.title} id="cream-heading">
+              <h2 className={styles.title} id={`${id}-heading`}>
                 Cream in motion.
               </h2>
               <p className={styles.standfirst}>
@@ -252,7 +271,7 @@ export function CreamCompare() {
                 concept with placeholder branding. Each pass is labelled by how
                 it was made.
               </p>
-          </div>
+          </div>}
 
           <div className={styles.players}>
             <div className={styles.comparisons} role="group" aria-label="Choose comparison">
@@ -357,6 +376,17 @@ export function CreamCompare() {
                   */}
                   <p className={styles.paneProvenance}>{pane.provenance}</p>
                   <p className={styles.paneNote}>{pane.note}</p>
+                  <button type="button" className={styles.fullscreen} onClick={() => {
+                    const video = videoRefs.current[i];
+                    if (!video) return;
+                    const native = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+                    if (video.requestFullscreen) void video.requestFullscreen().catch(() => setStatus({ text: "Full screen is unavailable here. Open the file directly below." }));
+                    else if (native.webkitEnterFullscreen) {
+                      try { native.webkitEnterFullscreen(); }
+                      catch { setStatus({ text: "Play the film first, then enter full screen, or open the file directly below." }); }
+                    }
+                    else setStatus({ text: "Full screen is unavailable here. Open the file directly below." });
+                  }}>Full screen <span className={styles.srOnly}>{pane.label}</span><span aria-hidden>↗</span></button>
                 </div>
               ))}
             </div>
@@ -407,6 +437,8 @@ export function CreamCompare() {
               </div>
             </div>
 
+            <details className={styles.shotDetails} open={compact ? undefined : true}>
+            <summary>Explore the seven shots</summary>
             <div className={styles.chapterHead}>
               <p className={styles.eyebrow}>Seven shots</p>
               <p className={styles.time}>
@@ -433,6 +465,7 @@ export function CreamCompare() {
             </ul>
             <p className={styles.chapterAction}>{chapter.action}</p>
             <p className={styles.paneNote}>Shot cues follow the Blender plan. Timing in the generated film may vary.</p>
+            </details>
 
             {status && (
               <p
@@ -458,14 +491,17 @@ export function CreamCompare() {
             </div>
           </div>
 
-          <div className={styles.deeper}>
+          {!compact && <div className={styles.deeper}>
             <Link href="/ai-studio/blender" className="btn-block btn-block-light">
               Build a Blender brief <span aria-hidden>↗</span>
             </Link>
             <Link href="/ai-studio/ads" className="btn-block btn-block-light">
               Open Ad Lab <span aria-hidden>↗</span>
             </Link>
-          </div>
+            <Link href="/ai-studio/ads#cream-making-of" className="btn-block btn-block-light">
+              See the five references &amp; prompts <span aria-hidden>↗</span>
+            </Link>
+          </div>}
         </div>
       </div>
     </section>

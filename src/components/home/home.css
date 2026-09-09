@@ -69,8 +69,8 @@ body:has(#ajwad-home) {
   color: inherit;
   text-decoration: none;
 }
-#ajwad-home button,
-#ajwad-home input {
+:where(#ajwad-home) button,
+:where(#ajwad-home) input {
   font: inherit;
 }
 #ajwad-home button {
@@ -484,7 +484,7 @@ body:has(#ajwad-home) {
 }
 #ajwad-home .ar-studio-project {
   display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
+  grid-template-columns: 0.8fr 1.2fr;
   border-top: 1px solid var(--ar-line);
   border-bottom: 1px solid var(--ar-line);
   padding-block: 29px 35px;
@@ -1187,6 +1187,9 @@ body:has(#ajwad-home) {
     flex-direction: column;
     gap: 25px;
     padding-block: 24px 30px;
+  }
+  #ajwad-home .ar-studio-project .ar-studio-visual {
+    order: -1;
   }
   #ajwad-home .ar-project-copy h3 {
     font-size: 35px;

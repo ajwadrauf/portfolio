@@ -1905,7 +1905,11 @@ export function AdLab({
         </div>
       )}
 
-      <h1 className="mt-6 text-[1.75rem] tracking-[-0.03em]">Ad Lab</h1>
+      <h1 id="ad-lab-workspace" className="mt-6 scroll-mt-32 text-[1.75rem] tracking-[-0.03em]">Ad Lab</h1>
+      <a href="#cream-making-of" className="mt-4 flex min-h-12 items-center justify-between gap-4 rounded-[4px] border border-accent/35 bg-accent/5 px-4 py-3 text-sm font-medium text-accent hover:bg-accent/10">
+        <span>How I made Cream in motion <span className="font-normal text-muted">— Blender, five images &amp; the prompts</span></span>
+        <span aria-hidden>↓</span>
+      </a>
       <p className="mt-2 max-w-3xl text-muted">
         {blenderLane ? (
           <>
