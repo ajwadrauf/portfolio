@@ -70,7 +70,11 @@ type Row = { criterion: string; suites: string; agg: string; direct: string; bes
 const MATRIX: Row[] = [
   { criterion: "Pricing model", suites: "Per seat + credits", agg: "Per generation", direct: "Per generation, negotiable at scale", best: 1 },
   { criterion: "Access to new models", suites: "Day one, across vendors", agg: "Days to weeks", direct: "Day one, that vendor only", best: 0 },
-  { criterion: "Workflow integration", suites: "None — UI only", agg: "Full API", direct: "Full API", best: 1 },
+    // "None — UI only" contradicted this page's own copy above, which
+  // describes a Blender add-on, an MCP bridge, Premiere/After Effects/Figma
+  // plugins and a REST API — with the caveat that the unlimited plan does not
+  // cover the API. That nuance is the accurate summary.
+  { criterion: "Workflow integration", suites: "Varies by suite and plan", agg: "Full API", direct: "Full API", best: 1 },
   { criterion: "Rights & indemnity", suites: "Vendor terms, varies", agg: "Passed through from the model owner", direct: "First-party, negotiable", best: 2 },
   { criterion: "Cost at high volume", suites: "Breaks down", agg: "Linear and predictable", direct: "Linear, improves with commitment", best: 2 },
   { criterion: "Switching cost", suites: "Low — cancel seats", agg: "Low — change one endpoint string", direct: "Medium — per-vendor integration", best: 1 },

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
+import { SpendChip } from "@/components/SpendChip";
 import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
@@ -69,6 +70,36 @@ import {
   SFX_PROMPT_TIPS,
   clampSfxSeconds,
 } from "@/lib/sfx";
+
+/**
+ * How far down the sticky studio header reaches, in pixels.
+ *
+ * The summary bar has to sit directly under it, and the header is two stacked
+ * rows on a phone and one on a desktop — so the offset is measured rather than
+ * hardcoded per breakpoint and left to drift the next time the nav changes.
+ */
+function useHeaderHeight() {
+  const [top, setTop] = useState(0);
+  useEffect(() => {
+    const header = document.querySelector("header");
+    if (!header) return;
+    const measure = () => setTop(header.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+  return top;
+}
+
+/** "a, b and c" — the receipt is a sentence, not a bulleted list. */
+function listOf(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+type ErrorAt = "page" | "compose" | "generate";
+type AdError = { text: string; at: ErrorAt } | null;
 
 type Phase = "idle" | "composing" | "ready" | "starting" | "polling" | "done" | "failed" | "mock";
 
@@ -337,14 +368,17 @@ function Step({
   title,
   aside,
   children,
+  id,
 }: {
   n: number;
   title: string;
   aside?: React.ReactNode;
   children: React.ReactNode;
+  /** Anchor target, so something further up the page can jump to this step. */
+  id?: string;
 }) {
   return (
-    <section className="card p-5 md:p-6">
+    <section id={id} className="card scroll-mt-28 p-5 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-3 font-semibold">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/12 font-mono text-[11px] text-accent">
@@ -388,7 +422,16 @@ export function AdLab({
   const [phase, setPhase] = useState<Phase>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  /*
+   * An error knows where it came from.
+   *
+   * There was one banner near the top of the page for every failure on it,
+   * which on a workflow ~11,000px tall meant a compose or a generation could
+   * fail entirely off screen. The tag lets the same message render beside the
+   * button that caused it; anything without a more specific home still falls
+   * back to the banner.
+   */
+  const [error, setError] = useState<AdError>(null);
   /**
    * A render that has been started and paid for but not yet collected. Held in
    * state so the timeout screen can offer to check again, and mirrored to
@@ -423,6 +466,15 @@ export function AdLab({
   const [elapsedMs, setElapsedMs] = useState(0);
   /** What the importer changed on the way in — shown rather than applied quietly. */
   const [importNotes, setImportNotes] = useState<string[]>([]);
+  /*
+   * A receipt for the handover, listed at the top where you land.
+   *
+   * The import worked; what was missing was any acknowledgement of it above
+   * the fold. You arrived at the top of an 11,000px page with a prompt sitting
+   * several screens down and nothing saying so — and, more importantly,
+   * nothing saying that files did not come with it.
+   */
+  const [importSummary, setImportSummary] = useState<string[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [sessionSpend, setSessionSpend] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -699,6 +751,15 @@ export function AdLab({
           notes.push(`The prompt states ${result.aspect}, so the shape is set to match the blockout.`);
         }
         setImportNotes(notes);
+
+        const arrived = ["the prompt text"];
+        if (result.aspect && ASPECTS.some((a) => a.id === result.aspect)) {
+          arrived.push(`its ${result.aspect} shape`);
+        }
+        if (/\[(?:Image|Video|Audio)\d+\]/.test(result.prompt)) {
+          arrived.push("a reference model to resolve its tokens");
+        }
+        setImportSummary(arrived);
       }
       // A timeline written for 14 seconds is wrong at 8, so the length comes
       // across with it rather than being left at the preset's.
@@ -706,6 +767,9 @@ export function AdLab({
       if (Number.isFinite(handedDuration) && handedDuration >= 4) {
         sessionStorage.removeItem("adlab-imported-duration");
         setSeconds(handedDuration);
+        setImportSummary((prev) =>
+          prev.length ? [...prev, `its ${handedDuration}-second length`] : prev,
+        );
       }
     } catch {}
   }, []);
@@ -766,13 +830,13 @@ export function AdLab({
         return;
       }
       if (status.status === "failed") {
-        setError(status.error ?? "The provider reported this render as failed.");
+        fail(status.error ?? "The provider reported this render as failed.");
         rememberJob(null);
         return;
       }
-      setError("Still rendering on the provider side. Check again in a minute.");
+      fail("Still rendering on the provider side. Check again in a minute.");
     } catch {
-      setError("Could not reach the provider. Check again in a moment.");
+      fail("Could not reach the provider. Check again in a moment.");
     } finally {
       setChecking(false);
     }
@@ -877,7 +941,7 @@ export function AdLab({
         setAutofilledKeys(filled);
         setAutofillRationale(json.rationale ?? null);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Photo analysis failed");
+        fail(e instanceof Error ? e.message : "Photo analysis failed");
       } finally {
         setAutofillBusy(false);
       }
@@ -1034,6 +1098,11 @@ export function AdLab({
     }
   }, []);
 
+  /** Record a failure, and where on the page it belongs. */
+  const fail = useCallback((text: string, at: ErrorAt = "page") => {
+    setError({ text, at });
+  }, []);
+
   const compose = useCallback(async () => {
     setError(null);
     setPhase("composing");
@@ -1063,7 +1132,7 @@ export function AdLab({
       setImported(false);
       setPhase("ready");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Compose failed");
+      fail(e instanceof Error ? e.message : "Compose failed", "compose");
       setPhase("idle");
     }
   }, [
@@ -1209,7 +1278,7 @@ export function AdLab({
         if (!json.mock) addSpend(json.cost ?? 0);
         setSfxTracks((prev) => ({ ...prev, [text]: json.audioUrl }));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Sound effect failed");
+        fail(e instanceof Error ? e.message : "Sound effect failed");
       } finally {
         setSfxBusy(null);
       }
@@ -1234,7 +1303,7 @@ export function AdLab({
       // A bed used as a timing signal changes the prompt, so it goes stale.
       if (musicAsTimingRef) invalidatePrompt();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Music generation failed");
+      fail(e instanceof Error ? e.message : "Music generation failed");
     } finally {
       setMusicBusy(false);
     }
@@ -1358,7 +1427,7 @@ export function AdLab({
         "Still rendering after 10 minutes. Nothing is lost — the job is finishing on the provider side and you can collect it below.",
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Generation failed");
+      fail(e instanceof Error ? e.message : "Generation failed", "generate");
       setPhase("failed");
     }
   }, [
@@ -1414,7 +1483,7 @@ export function AdLab({
   const importControl = (
     <>
       <button
-        className="text-xs font-semibold text-accent hover:underline"
+        className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-accent hover:underline"
         onClick={() => promptFileInput.current?.click()}
       >
         Import from .txt or .md
@@ -1506,7 +1575,7 @@ export function AdLab({
       const json = await res.json();
       setRefCheck(json.findings ?? []);
     } catch {
-      setError("Could not run the reference check.");
+      fail("Could not run the reference check.");
     } finally {
       setCheckingRefs(false);
     }
@@ -1599,6 +1668,70 @@ export function AdLab({
   /** Something was flagged above the spend button, whichever lane raised it. */
   const flagged = blenderLane ? slotGaps.length > 0 : unmet.length > 0;
 
+  const headerHeight = useHeaderHeight();
+  const jumpRowRef = useRef<HTMLElement>(null);
+
+  /*
+   * The one thing left to do, read off the state the page already keeps.
+   *
+   * Deliberately derived rather than a step counter: the two lanes have
+   * different steps — the Blender lane has no concept, product or recipe at
+   * all — so a fixed "step 3 of 8" would be wrong half the time. This asks
+   * the same questions the Generate button asks, in the order they block on.
+   */
+  const nextUp: { label: string; href: string } = blenderLane
+    ? !finalPrompt.trim()
+      ? { label: "Paste or import the prompt", href: "#ad-prompt" }
+      : slotGaps.length > 0
+        ? { label: "Attach the references the prompt names", href: "#ad-refs" }
+        : { label: "Ready to generate", href: "#ad-generate" }
+    : !productImage
+      ? { label: "Upload the product photo", href: "#ad-product" }
+      : unmet.length > 0
+        ? { label: "Add the references this recipe needs", href: "#ad-refs" }
+        : !finalPrompt.trim()
+          ? { label: "Compose the prompt", href: "#ad-prompt" }
+          : { label: "Ready to generate", href: "#ad-generate" };
+
+  /*
+   * Keep the step you need next inside the strip.
+   *
+   * Eight chips do not fit 390px, and a row that silently scrolls with the
+   * relevant item off the right-hand edge is the same failure the studio nav
+   * had. scrollLeft is set directly rather than via scrollIntoView, which
+   * would also move the page vertically.
+   */
+  useEffect(() => {
+    const row = jumpRowRef.current;
+    if (!row) return;
+    const target = row.querySelector<HTMLElement>(`a[href="${nextUp.href}"]`);
+    if (!target) return;
+    const left = target.offsetLeft - row.clientWidth / 2 + target.offsetWidth / 2;
+    row.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [nextUp.href]);
+
+  /** Only the steps this lane actually renders. */
+  const jumps = (
+    blenderLane
+      ? [
+          { href: "#ad-prompt", label: "Prompt" },
+          { href: "#ad-refs", label: "References" },
+          { href: "#ad-format", label: "Format" },
+          { href: "#ad-sound", label: "Sound" },
+          { href: "#ad-generate", label: "Generate" },
+        ]
+      : [
+          { href: "#ad-concept", label: "Concept" },
+          { href: "#ad-product", label: "Product" },
+          { href: "#ad-recipe", label: "Recipe" },
+          ...(supportsRefs ? [{ href: "#ad-refs", label: "References" }] : []),
+          { href: "#ad-format", label: "Format" },
+          { href: "#ad-sound", label: "Sound" },
+          { href: "#ad-prompt", label: "Prompt" },
+          { href: "#ad-generate", label: "Generate" },
+        ]
+  ) as { href: string; label: string }[];
+
   /** The bed must exist before a render that keys off it. */
   const blockedOnMusic = timingRefAvailable && musicAsTimingRef && !musicUrl;
 
@@ -1653,13 +1786,13 @@ export function AdLab({
             </span>
           )}
         </div>
-        <span className="chip">Session spend: ${sessionSpend.toFixed(2)}</span>
+        <SpendChip amount={sessionSpend} />
       </div>
 
       {/* Recovery: a render that was paid for but never made it onto the page. */}
       <div className="mt-3">
         <button
-          className="text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-foreground"
+          className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-foreground"
           onClick={() => {
             setRecoverOpen((v) => !v);
             if (!recent && !recovering) void loadRecent();
@@ -1795,7 +1928,7 @@ export function AdLab({
               </code>
             )}
           </div>
-          {error && <p className="mt-2 text-xs text-warning">{error}</p>}
+          {error && <p className="mt-2 text-xs text-warning">{error.text}</p>}
         </div>
       )}
 
@@ -1821,8 +1954,102 @@ export function AdLab({
         )}
       </p>
 
-      {error && (
-        <div className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">{error}</div>
+      {/*
+        A summary you do not have to scroll back to the top to read.
+        
+        The workflow runs to roughly 11,000px on a phone, so the settings that
+        decide the bill and the one thing still blocking a run were a long way
+        from wherever you happened to be. It sits under the studio header
+        rather than over the content, is one row tall, and never covers the
+        mobile keyboard because it is pinned to the top rather than the bottom.
+        
+        The jump links are plain anchors: none of them submits anything, and
+        the list is built from the lane's own steps rather than a fixed eight.
+      */}
+      <div
+        className="sticky z-30 -mx-6 mt-6 border-y border-border-soft bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] px-6 py-2 backdrop-blur"
+        style={{ top: headerHeight }}
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-muted">
+            <span className="font-semibold text-foreground">{modelName}</span>
+            <span aria-hidden>·</span>
+            <span>{duration}s</span>
+            <span aria-hidden>·</span>
+            <span>{aspect}</span>
+            <span aria-hidden>·</span>
+            <span className="font-semibold text-foreground">~${cost.toFixed(2)}</span>
+          </span>
+
+          <a
+            href={nextUp.href}
+            className="ml-auto inline-flex min-h-[32px] items-center gap-1.5 rounded-[6px] border border-accent/30 bg-accent/[0.07] px-2.5 font-semibold text-accent transition hover:border-accent"
+          >
+            <span className="label-sm !text-[10px] !text-accent/70">Next</span>
+            {nextUp.label}
+            <span aria-hidden className="font-mono">↓</span>
+          </a>
+        </div>
+
+        <nav
+          ref={jumpRowRef}
+          aria-label="Jump to a step"
+          className="no-scrollbar mt-1.5 flex gap-1 overflow-x-auto text-[11px]"
+        >
+          {jumps.map((j) => (
+            <a
+              key={j.href}
+              href={j.href}
+              className="whitespace-nowrap rounded-[5px] px-2 py-1 text-muted transition hover:bg-accent/8 hover:text-accent"
+            >
+              {j.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+
+      {/*
+        The receipt for a handover from the Prompts or Blender page.
+        
+        It names what arrived and, just as importantly, what did not: the
+        transfer carries prompt text and settings through sessionStorage, never
+        files, and a page that let someone assume otherwise would send them to
+        a generation with unresolved tokens.
+      */}
+      {importSummary.length > 0 && (
+        <div
+          role="status"
+          className="card mt-6 border-accent/30 bg-accent/[0.05] p-4 text-sm leading-relaxed"
+        >
+          <p>
+            <span className="font-bold text-accent">Imported.</span> This lab
+            received {listOf(importSummary)}.
+          </p>
+          <p className="mt-2 text-muted">
+            References did not come across — only text and settings transfer.
+            Attach any clips or stills the prompt names in the References step
+            so its tokens resolve.
+          </p>
+          <a
+            href="#ad-prompt"
+            className="link-rule mt-3 inline-flex text-[13px]"
+          >
+            Review prompt <span className="font-mono">↓</span>
+          </a>
+        </div>
+      )}
+
+      {/*
+        Only what has nowhere better to be. Compose and generation failures
+        render beside their own buttons instead.
+      */}
+      {error?.at === "page" && (
+        <div
+          role="alert"
+          className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger"
+        >
+          {error.text}
+        </div>
       )}
 
       {/*
@@ -1896,6 +2123,7 @@ export function AdLab({
         {/* ---------- the Blender lane opens on the prompt itself ---------- */}
         {blenderLane && (
           <Step
+            id="ad-prompt"
             n={STEP.prompt}
             title="Your prompt"
             aside={
@@ -1993,7 +2221,7 @@ export function AdLab({
 
         {/* ---------- 1. concept ---------- */}
         {!blenderLane && (
-        <Step n={STEP.concept} title="Pick a concept">
+        <Step id="ad-concept" n={STEP.concept} title="Pick a concept">
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {AD_PRESETS.map((p) => (
               <button
@@ -2019,11 +2247,12 @@ export function AdLab({
         {/* ---------- 2. product — first, because the photo fills in the recipe ---------- */}
         {!blenderLane && (
         <Step
+          id="ad-product"
           n={STEP.product}
           title="Your product"
           aside={
             <button
-              className="text-xs font-semibold text-muted hover:text-foreground"
+              className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-muted hover:text-foreground"
               onClick={loadExample}
             >
               or load an example
@@ -2070,7 +2299,7 @@ export function AdLab({
                     setProductImage(dataUrl);
                     void runAutofill(dataUrl, presetId);
                   } catch {
-                    setError("Could not read that image");
+                    fail("Could not read that image");
                   }
                 }
                 e.target.value = "";
@@ -2134,7 +2363,7 @@ export function AdLab({
                       setEndImage(await toProcessedDataUrl(f));
                       invalidatePrompt();
                     } catch {
-                      setError("Could not read that image");
+                      fail("Could not read that image");
                     }
                   }
                   e.target.value = "";
@@ -2203,6 +2432,7 @@ export function AdLab({
         {/* ---------- 3. the recipe, now populated from the photo ---------- */}
         {!blenderLane && (
         <Step
+          id="ad-recipe"
           n={STEP.recipe}
           title={`The recipe — ${preset.name}`}
           aside={
@@ -2375,6 +2605,7 @@ export function AdLab({
         {/* ---------- 4. references — what the recipe just asked for ---------- */}
         {supportsRefs && (
           <Step
+            id="ad-refs"
             n={STEP.refs}
             title={blenderLane ? "References — the clay pass and the look" : "References"}
             aside={
@@ -2585,6 +2816,7 @@ export function AdLab({
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <input
                   className="input min-w-0 flex-1 basis-64 font-mono text-xs"
+                  aria-label="Reference URL"
                   placeholder="…or paste a direct URL — https://example.com/camera-move.mp4"
                   value={refUrl}
                   onChange={(e) => setRefUrl(e.target.value)}
@@ -2912,6 +3144,7 @@ export function AdLab({
         {/* ---------- 7. compose ---------- */}
         {/* ---------- 5. format — after references, which change the bill ---------- */}
         <Step
+          id="ad-format"
           n={STEP.format}
           title="Format and cost"
           aside={
@@ -3139,6 +3372,7 @@ export function AdLab({
 
         {/* ---------- 6. sound — the bed is cut to the duration set above ---------- */}
         <Step
+          id="ad-sound"
           n={STEP.sound}
           title="Sound"
           aside={
@@ -3458,6 +3692,7 @@ export function AdLab({
 
         {!blenderLane && (
         <Step
+          id="ad-prompt"
           n={STEP.prompt}
           title="Compose the prompt"
           aside={importControl}
@@ -3478,6 +3713,17 @@ export function AdLab({
                 ? "Compose from photo + fields →"
                 : "Compose the prompt →"}
           </button>
+
+          {error?.at === "compose" && (
+            <p
+              role="alert"
+              className="mt-4 rounded-[6px] border border-danger/50 bg-danger/10 p-3 text-sm leading-relaxed text-danger"
+            >
+              <span className="font-bold">Compose failed.</span> {error.text}{" "}
+              Everything you entered is still here — fix what it names and press
+              Compose again.
+            </p>
+          )}
 
           {imported && (
             <p className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.05] p-3 text-xs leading-relaxed text-muted">
@@ -3512,7 +3758,7 @@ export function AdLab({
         )}
 
         {/* ---------- 8. generate ---------- */}
-        <Step n={STEP.generate} title="Generate">
+        <Step id="ad-generate" n={STEP.generate} title="Generate">
           {blenderLane && slotGaps.length > 0 && (
             <div className="mt-4 rounded-[6px] border border-warning/50 bg-warning/10 p-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning">
@@ -3626,7 +3872,9 @@ export function AdLab({
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted">
                     {phase === "failed" ? (
                       <div className="max-w-[85%] text-center">
-                        <p className="text-danger">{error}</p>
+                        <p role="alert" className="text-danger">
+                          {error?.text}
+                        </p>
                         {pendingJob && (
                           <div className="mt-4">
                             <button

@@ -50,7 +50,15 @@ export function Why({
         aria-expanded={open}
         aria-label={`Why: ${title}`}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none transition ${
+        /*
+          The mark stays 15px; the target does not.
+          
+          A pseudo-element stretches the hit area to ~35px without touching
+          layout, so the bubble still sits tight against a heading while being
+          reachable by a thumb. Growing the button itself would have pushed
+          every heading it appears in around.
+        */
+        className={`relative inline-flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none transition before:absolute before:-inset-[10px] before:content-[''] ${
           open
             ? "border-accent bg-accent text-background"
             : "border-muted/50 text-muted hover:border-accent hover:text-accent"

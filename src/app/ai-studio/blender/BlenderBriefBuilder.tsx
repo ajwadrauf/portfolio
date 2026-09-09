@@ -259,7 +259,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           <div className="flex items-center justify-between">
             <span className="label !text-accent">Proxy mapping</span>
             <button
-              className="text-xs font-semibold text-accent hover:underline"
+              className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-accent hover:underline"
               onClick={() => set("subjects", [...b.subjects, { color: "", proxy: "", becomes: "", ref: "" }])}
             >
               + Add subject
@@ -276,6 +276,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <input
                     className="input"
+                    aria-label={`Subject ${i + 1} ID colour`}
                     placeholder="ID colour + hex — orange #D94F0A"
                     value={s.color}
                     onChange={(e) =>
@@ -284,6 +285,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                   />
                   <input
                     className="input"
+                    aria-label={`Subject ${i + 1} proxy object`}
                     placeholder="Proxy — e.g. box on the counter"
                     value={s.proxy}
                     onChange={(e) =>
@@ -293,6 +295,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                   <div className="flex gap-2">
                     <input
                       className="input min-w-0 flex-1"
+                      aria-label={`Subject ${i + 1} becomes`}
                       placeholder={
                         build
                           ? "Becomes — what to size and shape it like"
@@ -305,8 +308,9 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                     />
                     {build && b.subjects.length > 1 && (
                       <button
-                        aria-label="Remove subject"
-                        className="shrink-0 px-2 text-sm text-danger hover:opacity-70"
+                        type="button"
+                        aria-label={`Remove subject ${i + 1}`}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] text-sm text-danger transition hover:bg-danger/10"
                         onClick={() => set("subjects", b.subjects.filter((_, j) => j !== i))}
                       >
                         ✕
@@ -324,6 +328,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                     <div className="flex gap-2">
                       <input
                         className="input min-w-0 flex-1"
+                        aria-label={`Subject ${i + 1} look reference`}
                         placeholder="Look ref — e.g. Image 1"
                         value={s.ref}
                         onChange={(e) =>
@@ -332,8 +337,9 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                       />
                       {b.subjects.length > 1 && (
                         <button
-                          aria-label="Remove subject"
-                          className="shrink-0 px-2 text-sm text-danger hover:opacity-70"
+                          type="button"
+                          aria-label={`Remove subject ${i + 1}`}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] text-sm text-danger transition hover:bg-danger/10"
                           onClick={() => set("subjects", b.subjects.filter((_, j) => j !== i))}
                         >
                           ✕
@@ -352,7 +358,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           <div className="flex items-center justify-between">
             <span className="label !text-accent">Timeline</span>
             <button
-              className="text-xs font-semibold text-accent hover:underline"
+              className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-accent hover:underline"
               onClick={() =>
                 set("beats", [
                   ...b.beats,
@@ -392,6 +398,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                   // minimum is wide enough to push the whole page sideways on a
                   // phone. min-w-0 lets it shrink to the row it is in.
                   className="input min-w-0 flex-1"
+                  aria-label={`Beat ${i + 1} action`}
                   placeholder="What changes, and what the frame looks like when it has"
                   value={beat.action}
                   onChange={(e) =>
@@ -400,8 +407,9 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                 />
                 {b.beats.length > 1 && (
                   <button
+                    type="button"
                     aria-label={`Remove beat ${i + 1}`}
-                    className="shrink-0 px-1 pt-1.5 text-sm text-danger hover:opacity-70"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] text-sm text-danger transition hover:bg-danger/10"
                     onClick={() => set("beats", b.beats.filter((_, j) => j !== i))}
                   >
                     ✕
@@ -517,7 +525,17 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
       {/* ---------- the output ---------- */}
       <div className="min-w-0 lg:sticky lg:top-28 lg:self-start">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="label">{build ? "The build brief" : "The prompt"}</span>
+          {/*
+            Which of the two outputs this builder is producing, and who reads
+            it. The same form appears on two pages in two modes, so "The
+            prompt" alone left it to the reader to work out which one they had
+            in front of them.
+          */}
+          <span className="chip !border-accent/30 !text-accent">
+            {build
+              ? "Output: Blender build brief — for Claude Code, Cowork or MCP"
+              : "Output: Seedance prompt — for the Ad Lab"}
+          </span>
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => void copy()}>
               {copied ? "Copied" : "Copy"}

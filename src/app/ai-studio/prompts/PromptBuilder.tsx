@@ -216,6 +216,7 @@ export function PromptBuilder() {
               </span>
               <select
                 className="input !w-auto !py-1 text-xs"
+                aria-label={`${tokenFor(slots, i)} media type`}
                 value={s.media}
                 onChange={(e) =>
                   setSlots((p) =>
@@ -233,6 +234,7 @@ export function PromptBuilder() {
               </select>
               <input
                 className="input min-w-0 flex-1 basis-48 !py-1 text-xs"
+                aria-label={`${tokenFor(slots, i)} purpose`}
                 placeholder="What is this reference for? e.g. product identity, cut rhythm"
                 value={s.job}
                 onChange={(e) =>
@@ -242,7 +244,8 @@ export function PromptBuilder() {
                 }
               />
               <button
-                className="font-mono text-xs text-danger"
+                type="button"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] font-mono text-xs text-danger transition hover:bg-danger/10"
                 aria-label={`Remove ${tokenFor(slots, i)}`}
                 onClick={() => setSlots((p) => p.filter((_, j) => j !== i))}
               >
@@ -279,7 +282,7 @@ export function PromptBuilder() {
           return (
             <section key={b.id} className="card p-5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="flex items-baseline gap-3 font-semibold">
+                <h2 id={`block-${b.id}`} className="flex items-baseline gap-3 font-semibold">
                   <span className="font-mono text-[11px] text-accent">{b.n}</span>
                   {b.label}
                   {b.optional && (
@@ -287,7 +290,7 @@ export function PromptBuilder() {
                   )}
                 </h2>
                 <button
-                  className="text-xs font-semibold text-accent hover:underline"
+                  className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-accent hover:underline"
                   onClick={() => setOpenWhy(open ? null : b.id)}
                 >
                   {open ? "Hide why" : "Why this part"}
@@ -302,6 +305,7 @@ export function PromptBuilder() {
 
               <textarea
                 className="input mt-3 min-h-20 text-sm leading-relaxed"
+                aria-labelledby={`block-${b.id}`}
                 placeholder={b.placeholder}
                 value={values[b.id] ?? ""}
                 onFocus={(e) => {
@@ -338,7 +342,7 @@ export function PromptBuilder() {
             Timeline — how the seconds are spent
           </h2>
           <button
-            className="text-xs font-semibold text-accent hover:underline"
+            className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-accent hover:underline"
             onClick={() => setOpenWhy(openWhy === "timeline" ? null : "timeline")}
           >
             {openWhy === "timeline" ? "Hide why" : "Why this part"}
@@ -418,6 +422,7 @@ export function PromptBuilder() {
                 </span>
                 <select
                   className="input !w-auto !py-1 text-xs"
+                  aria-label={`Beat ${i + 1} role`}
                   value={b.role}
                   onChange={(e) => setBeat(i, { role: e.target.value as BeatRole })}
                   title={BEAT_ROLES.find((r) => r.id === b.role)?.guidance}
@@ -435,13 +440,15 @@ export function PromptBuilder() {
                     max={30}
                     step={0.5}
                     className="input !w-20 !py-1 text-xs"
+                    aria-label={`Beat ${i + 1} length in seconds`}
                     value={b.seconds}
                     onChange={(e) => setBeat(i, { seconds: Number(e.target.value) })}
                   />
                   <span className="label-sm">sec</span>
                 </label>
                 <button
-                  className="ml-auto font-mono text-xs text-danger"
+                  type="button"
+                  className="ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] font-mono text-xs text-danger transition hover:bg-danger/10"
                   aria-label={`Remove beat ${i + 1}`}
                   onClick={() => setBeats((p) => p.filter((_, j) => j !== i))}
                 >
@@ -451,6 +458,7 @@ export function PromptBuilder() {
 
               <textarea
                 className="input mt-2 min-h-16 text-sm leading-relaxed"
+                aria-label={`Beat ${i + 1} action`}
                 placeholder={BEAT_ROLES.find((r) => r.id === b.role)?.guidance}
                 value={b.action}
                 onFocus={(e) => {
@@ -461,6 +469,7 @@ export function PromptBuilder() {
 
               <input
                 className="input mt-2 !py-1 text-xs"
+                aria-label={`Beat ${i + 1} sound effect`}
                 placeholder="Effect landing in this beat — timestamped automatically, e.g. a plastic snap for the lid"
                 value={b.audio}
                 onChange={(e) => setBeat(i, { audio: e.target.value })}
@@ -525,7 +534,7 @@ export function PromptBuilder() {
           return (
             <section key={b.id} className="card p-5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="flex items-baseline gap-3 font-semibold">
+                <h2 id={`block-${b.id}`} className="flex items-baseline gap-3 font-semibold">
                   <span className="font-mono text-[11px] text-accent">{b.n}</span>
                   {b.label}
                   {b.optional && (
@@ -533,7 +542,7 @@ export function PromptBuilder() {
                   )}
                 </h2>
                 <button
-                  className="text-xs font-semibold text-accent hover:underline"
+                  className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-accent hover:underline"
                   onClick={() => setOpenWhy(open ? null : b.id)}
                 >
                   {open ? "Hide why" : "Why this part"}
@@ -546,6 +555,7 @@ export function PromptBuilder() {
               )}
               <textarea
                 className="input mt-3 min-h-20 text-sm leading-relaxed"
+                aria-labelledby={`block-${b.id}`}
                 placeholder={b.placeholder}
                 value={values[b.id] ?? ""}
                 onFocus={(e) => {

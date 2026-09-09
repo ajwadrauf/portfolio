@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
 import { Why } from "@/components/Why";
+import { SpendChip } from "@/components/SpendChip";
 import { FINISH_OPS, type FinishOp } from "@/lib/recraft.client";
 import { useHealth } from "@/lib/useHealth";
 import { MODELS, estimateCost } from "@/lib/models";
@@ -515,7 +516,7 @@ export function PackshotStudio() {
             </span>
           )}
         </div>
-        <span className="chip">Session spend: ${sessionSpend.toFixed(2)}</span>
+        <SpendChip amount={sessionSpend} />
       </div>
 
       <h1 className="mt-6 text-[1.75rem] tracking-[-0.03em]">Packshot Studio</h1>
@@ -732,8 +733,17 @@ export function PackshotStudio() {
                 )}
             </div>
 
-            <div className="mt-3 flex gap-2">
+            {/*
+              The dropdown selects which angle the photo you are about to add
+              shows. Unlabelled it read as a filter on what is already there,
+              which is close to the opposite.
+            */}
+            <label htmlFor="packshot-upload-angle" className="label-sm mt-4 block">
+              Angle this photo shows
+            </label>
+            <div className="mt-1.5 flex gap-2">
               <select
+                id="packshot-upload-angle"
                 className="input flex-1"
                 value={uploadAngle}
                 onChange={(e) => setUploadAngle(e.target.value as PackAngle)}

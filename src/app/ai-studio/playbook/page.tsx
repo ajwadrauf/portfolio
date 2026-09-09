@@ -238,6 +238,36 @@ export default function PlaybookPage() {
         </p>
       </header>
 
+      {/*
+        The same contents, on a phone.
+        
+        The sticky sidebar is lg-only, which left this article roughly 14,000px
+        tall at 390px with no way into it but scrolling. A native <details> is
+        the whole fix: it needs no JavaScript, it is a real disclosure to a
+        screen reader, and the anchors already exist.
+      */}
+      <details className="card mt-10 p-0 lg:hidden">
+        <summary className="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold marker:content-none">
+          On this page
+          <span aria-hidden className="float-right text-xs text-muted">
+            {SECTIONS.length} sections
+          </span>
+        </summary>
+        <ol className="border-t border-border-soft px-2 py-2">
+          {SECTIONS.map((s) => (
+            <li key={s.id}>
+              <a
+                href={`#${s.id}`}
+                className="flex gap-2.5 rounded-md px-2 py-2.5 text-sm text-muted transition hover:bg-accent/8 hover:text-accent"
+              >
+                <span className="font-mono text-xs text-muted/60">{s.num}</span>
+                {s.label}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </details>
+
       <div className="mt-14 grid gap-12 lg:grid-cols-[200px_1fr]">
         {/* ---------- Sticky nav ---------- */}
         <aside className="hidden lg:block">
@@ -415,7 +445,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
               {[
                 ["Pre-flight estimate", "Shown and confirmed before any live generation."],
                 ["One price config", "List prices live in one file; the estimator reads from it."],
-                ["Visible spend", "Session spend tracked and always on screen."],
+                ["Visible spend", "A running cost estimate is tracked in the browser and always on screen."],
                 ["Free demo mode", "The full pipeline mocks itself — UX work and training never burn credits."],
                 ["Cheap defaults", "Cost-efficient tiers are default; premium is an explicit choice."],
                 ["Handles, not reruns", "Assets generated with trim room so a near-miss is an edit, not a regeneration."],

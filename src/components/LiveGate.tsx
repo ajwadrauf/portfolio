@@ -27,6 +27,7 @@ export function LiveGate() {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -49,8 +50,29 @@ export function LiveGate() {
     };
   }, [refresh]);
 
+  /*
+   * Drive a native <dialog> rather than a positioned div.
+   *
+   * showModal() is what makes the rest of the page genuinely inert: focus
+   * cannot leave, Escape closes, and background controls cannot be reached or
+   * activated. The previous overlay had none of that — Tab from Cancel walked
+   * straight out into the page behind it — and re-implementing a focus trap by
+   * hand is strictly worse than the one the browser already has.
+   *
+   * The browser also returns focus to whatever opened it, which covers both
+   * the header pill and a generation button several screens down.
+   */
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
+      // The passcode field is the point of the dialog, so it keeps the focus
+      // it had before rather than the browser's first-focusable default.
+      inputRef.current?.focus();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
   }, [open]);
 
   /*
@@ -123,64 +145,80 @@ export function LiveGate() {
         <button
           onClick={() => void lock()}
           title="Click to lock again"
-          className="rounded-full border border-success/40 bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success transition hover:border-success"
+          className="-my-1.5 inline-flex items-center rounded-full border border-success/40 bg-success/10 px-2.5 py-1.5 text-xs font-semibold text-success transition hover:border-success"
         >
           Live · {health.remaining} left
         </button>
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="rounded-full border border-border-soft bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-muted transition hover:border-accent hover:text-foreground"
+          className="-my-1.5 inline-flex items-center rounded-full border border-border-soft bg-surface-2 px-2.5 py-1.5 text-xs font-semibold text-muted transition hover:border-accent hover:text-foreground"
         >
           {health.gate === "exhausted" ? "Budget used · Demo mode" : "Demo mode · Unlock"}
         </button>
       )}
 
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-6"
-          onClick={() => setOpen(false)}
-        >
-          <form
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={submit}
-            className="card w-full max-w-sm p-6"
-          >
-            <h2 className="text-lg tracking-[-0.02em]">Enable live generation</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Browsing works without this — every page runs in demo mode with
-              realistic mock outputs. Enter the passcode from the application
-              to run real generations against the live models.
+      <dialog
+        ref={dialogRef}
+        aria-labelledby="live-gate-title"
+        className="max-w-sm rounded-[6px] border border-border-soft bg-surface p-0 text-foreground backdrop:bg-foreground/40"
+        // Escape and the close button both land here, so state follows the
+        // element rather than the two drifting apart.
+        onClose={() => setOpen(false)}
+        onCancel={() => setOpen(false)}
+        // A click on the backdrop targets the dialog itself; anything inside
+        // targets a descendant. That is the whole test.
+        onClick={(e) => {
+          if (e.target === dialogRef.current) setOpen(false);
+        }}
+      >
+        <form onSubmit={submit} className="w-full p-6">
+          <h2 id="live-gate-title" className="text-lg tracking-[-0.02em]">
+            Enable live generation
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Browsing works without this — every page runs in demo mode with
+            realistic mock outputs. Enter the passcode from the application to
+            run real generations against the live models.
+          </p>
+          <label htmlFor="live-passcode" className="label-sm mt-4 block">
+            Passcode
+          </label>
+          <input
+            ref={inputRef}
+            id="live-passcode"
+            type="password"
+            autoComplete="off"
+            className="input mt-1.5"
+            placeholder="Passcode"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "live-gate-error" : undefined}
+          />
+          {error && (
+            <p id="live-gate-error" role="alert" className="mt-2 text-sm text-danger">
+              {error}
             </p>
-            <input
-              ref={inputRef}
-              type="password"
-              autoComplete="off"
-              className="input mt-4"
-              placeholder="Passcode"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            {error && <p className="mt-2 text-sm text-danger">{error}</p>}
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-secondary !px-4 !py-2 text-sm"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-primary !px-4 !py-2 text-sm"
-                disabled={busy || !code}
-              >
-                {busy ? "Checking…" : "Unlock"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          )}
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn-secondary !px-4 !py-2 text-sm"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary !px-4 !py-2 text-sm"
+              disabled={busy || !code}
+            >
+              {busy ? "Checking…" : "Unlock"}
+            </button>
+          </div>
+        </form>
+      </dialog>
     </span>
   );
 }

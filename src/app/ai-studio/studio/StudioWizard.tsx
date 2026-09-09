@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
+import { SpendChip } from "@/components/SpendChip";
 import { useHealth, type Health } from "@/lib/useHealth";
 import { DELIVERABLES, type DeliverableSpec } from "@/lib/deliverables";
 import { MODELS, estimateCost } from "@/lib/models";
@@ -434,9 +435,7 @@ function StatusBar({
           </span>
         )}
       </div>
-      <span className="chip" title="Accumulated estimated cost of live generations this browser session">
-        Session spend: ${sessionSpend.toFixed(2)}
-      </span>
+      <SpendChip amount={sessionSpend} />
     </div>
   );
 }
@@ -527,7 +526,24 @@ function UploadStep({
           <>
             <p className="text-lg font-semibold">Drop a product photo here</p>
             <p className="text-sm text-muted">JPEG, PNG or WebP · resized client-side before upload</p>
-            <span className="btn-secondary mt-2">Browse files</span>
+            {/*
+              A real button, not a span in a clickable div.
+              
+              The drop zone stays clickable for the mouse, but it is a div with
+              no role — so this was the only way in for a keyboard, and it was
+              not focusable. stopPropagation keeps the zone's own handler from
+              firing behind it and opening the picker twice.
+            */}
+            <button
+              type="button"
+              className="btn-secondary mt-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInput.current?.click();
+              }}
+            >
+              Browse files
+            </button>
           </>
         )}
         <input

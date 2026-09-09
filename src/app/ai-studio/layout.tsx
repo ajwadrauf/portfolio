@@ -16,13 +16,13 @@ export default function StudioLayout({ children }: LayoutProps<"/ai-studio">) {
             · Toronto · 2026
           </p>
           <div className="flex flex-wrap gap-5">
-            <Link href="/ai-studio/models" className="label-sm hover:text-foreground">
+            <Link href="/ai-studio/models" className="-my-2 inline-flex items-center py-2 label-sm hover:text-foreground">
               Model landscape
             </Link>
-            <Link href="/ai-studio/build-vs-buy" className="label-sm hover:text-foreground">
+            <Link href="/ai-studio/build-vs-buy" className="-my-2 inline-flex items-center py-2 label-sm hover:text-foreground">
               Build vs. buy
             </Link>
-            <Link href="/ai-studio/playbook" className="label-sm hover:text-foreground">
+            <Link href="/ai-studio/playbook" className="-my-2 inline-flex items-center py-2 label-sm hover:text-foreground">
               Playbook
             </Link>
           </div>
