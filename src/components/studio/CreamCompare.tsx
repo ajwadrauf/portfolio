@@ -5,13 +5,14 @@ import Link from "next/link";
 import {
   CREAM_CHAPTERS,
   CREAM_DURATION,
-  type CreamPane,
+  CREAM_COMPARISONS,
   videoType,
 } from "./creamStudy";
 import styles from "./CreamCompare.module.css";
 
 /**
- * Two Blender passes of the same eighteen seconds, played as a pair.
+ * The Blender plan and supplied Seedance film, played as a pair. The two
+ * original Blender passes remain available in the comparison selector.
  *
  * The comparison is the content, so the two panes are driven together: one
  * play control, one scrub, one chapter list, and a drift check that nudges the
@@ -19,8 +20,8 @@ import styles from "./CreamCompare.module.css";
  * in a browser, not frame-locked synchronisation, and the section says so
  * rather than implying more than two <video> elements can promise.
  *
- * Nothing plays until someone asks. preload="none" plus a poster means neither
- * 3.5 MB file is fetched on page load, and every path that stops playback —
+ * Nothing plays until someone asks. preload="none" and posters keep video
+ * downloads off initial page load, and every path that stops playback —
  * scrolling away, hiding the tab, a source failing, unmounting — stops both
  * panes and puts the label back to what is actually true.
  */
@@ -34,7 +35,10 @@ const clock = (seconds: number) => {
   return `${String(Math.floor(whole / 60)).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
 };
 
-export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
+export function CreamCompare() {
+  const [view, setView] = useState<string>(CREAM_COMPARISONS[0].id);
+  const panes = (CREAM_COMPARISONS.find((c) => c.id === view) ?? CREAM_COMPARISONS[0]).panes;
+  const [sound, setSound] = useState(false);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const panesRef = useRef<HTMLDivElement>(null);
 
@@ -138,6 +142,21 @@ export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
     void playBoth();
   }, [seekBoth, playBoth]);
 
+  const changeComparison = (next: string) => {
+    if (next === view) return;
+    pauseBoth();
+    for (const v of videos()) if (v.readyState >= 1) v.currentTime = 0;
+    pendingSeek.current = null;
+    setCurrent(0);
+    setDuration(CREAM_DURATION);
+    setEnded(false);
+    setStarted(false);
+    setFailed(false);
+    setStatus(null);
+    setSound(false);
+    setView(next);
+  };
+
   /*
    * Drift correction.
    *
@@ -221,30 +240,33 @@ export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
                 Cream in motion.
               </h2>
               <p className={styles.standfirst}>
-                18 seconds. Seven shots. One camera plan.
+                Directed in Blender. Finished with Seedance.
               </p>
               <p className={styles.explain}>
-                The motion guide settles the camera, timing and action. The shaded
-                render adds lighting, texture and flavour colours. Both are built in
-                Blender; the guide can then become a motion reference for a separate
-                Seedance pass.
+                A camera plan built in Blender. Five references for packaging and
+                food texture. An 18-second film generated with Seedance. Play them
+                together to see the transformation.
               </p>
-              {/*
-                The line that keeps this honest. Everything above describes
-                craft; this says exactly what the two files are, because a
-                portfolio that lets a viewer assume "AI final" has spent
-                credibility it did not earn.
-              */}
               <p className={styles.caveat}>
-                Both panes are Blender renders — neither is a generative result. The
-                guide&rsquo;s flat colours identify geometry rather than flavour, the
-                tubs carry placeholder packaging, and the cream is art-directed
-                motion rather than a baked fluid simulation. Vanilla, chocolate and
-                strawberry. A portfolio concept, not a client campaign.
+                Vanilla, chocolate and strawberry. An independent portfolio
+                concept with placeholder branding. Each pass is labelled by how
+                it was made.
               </p>
           </div>
 
           <div className={styles.players}>
+            <div className={styles.comparisons} role="group" aria-label="Choose comparison">
+              {CREAM_COMPARISONS.map((comparison) => (
+                <button
+                  type="button"
+                  key={comparison.id}
+                  aria-pressed={view === comparison.id}
+                  onClick={() => changeComparison(comparison.id)}
+                >
+                  {comparison.label}
+                </button>
+              ))}
+            </div>
             <div className={styles.panes} ref={panesRef}>
               {panes.map((pane, i) => (
                 <div className={styles.pane} key={pane.id}>
@@ -256,11 +278,8 @@ export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
                       poster={pane.poster}
                       preload="none"
                       playsInline
-                      // Both files are silent, so there is nothing to unmute
-                      // and no control for it; muted only removes any chance
-                      // of an autoplay-policy rejection.
-                      muted
-                      aria-label={`${pane.label}, ${pane.spec}. Blender pass of the Cream in motion study.`}
+                      muted={!sound || !pane.hasAudio}
+                      aria-label={`${pane.label}, ${pane.spec}. ${pane.provenance}.`}
                       onClick={toggle}
                       onLoadedMetadata={(e) => {
                         const v = e.currentTarget;
@@ -301,7 +320,7 @@ export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
                         pauseBoth();
                         setFailed(true);
                         setStatus({
-                          text: `${pane.label} could not be loaded, so both panes are stopped. The full-size links below still work.`,
+                          text: `${pane.label} could not be loaded. Try another comparison or open a file directly below.`,
                           error: true,
                         });
                       }}
@@ -315,7 +334,7 @@ export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
                       hidden={playing}
                       onClick={toggle}
                       aria-label={
-                        ended ? "Replay both passes" : "Play both passes together"
+                        ended ? "Replay both videos" : "Play both videos together"
                       }
                     >
                       <span className={styles.playBadge} aria-hidden>
@@ -351,6 +370,16 @@ export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
               >
                 Restart
               </button>
+              {panes.some((pane) => pane.hasAudio) && (
+                <button
+                  type="button"
+                  className={styles.button}
+                  aria-pressed={sound}
+                  onClick={() => setSound((value) => !value)}
+                >
+                  {sound ? "Sound on" : "Sound off"}
+                </button>
+              )}
               <div className={styles.scrubRow}>
                 <input
                   type="range"
@@ -372,7 +401,7 @@ export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
             <div className={styles.chapterHead}>
               <p className={styles.eyebrow}>Seven shots</p>
               <p className={styles.time}>
-                {started ? "Coordinated playback, not frame-locked" : "Nothing loads until you press play"}
+                {started ? "Coordinated playback" : "Press play to load the videos"}
               </p>
             </div>
             <ul className={styles.chapters}>
@@ -394,6 +423,7 @@ export function CreamCompare({ panes }: { panes: readonly CreamPane[] }) {
               ))}
             </ul>
             <p className={styles.chapterAction}>{chapter.action}</p>
+            <p className={styles.paneNote}>Shot cues follow the Blender plan. Timing in the generated film may vary.</p>
 
             {status && (
               <p

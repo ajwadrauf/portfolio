@@ -10,7 +10,7 @@
 .section {
   background: #000;
   color: #f4f0e8;
-  scroll-margin-top: 20px;
+  scroll-margin-top: 100px;
 }
 
 .wrap {
@@ -74,6 +74,29 @@
 .players {
   min-width: 0;
 }
+
+.comparisons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.comparisons button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #48413f;
+  border-radius: 4px;
+  color: #d9d2ca;
+  background: #161314;
+  font-size: 12px;
+  cursor: pointer;
+}
+.comparisons button[aria-pressed="true"] {
+  background: #e8d7e1;
+  color: #392330;
+  border-color: #e8d7e1;
+}
+.comparisons button:hover { border-color: #ceb0c0; }
 
 /*
  * Order, and why it changes.

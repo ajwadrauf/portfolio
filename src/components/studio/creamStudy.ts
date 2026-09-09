@@ -1,17 +1,10 @@
 /**
- * "Cream in motion" — the two Blender passes shown side by side on the studio
- * overview, and the shot map they share.
- *
- * Both panes are authored Blender output. Neither is a generative result: the
- * guide's flat colours identify geometry rather than flavour, the tubs carry
- * placeholder packaging, and the cream is art-directed motion rather than a
- * baked fluid sim. Saying so in the data file as well as the page is the point
- * — the labels are the one part of this that must not drift into "AI final".
+ * Two authored Blender passes and the actual Seedance output supplied by
+ * Ajwad. Provenance stays with each asset when the comparison changes.
  */
 
 export type CreamPane = {
-  /** Left is the guide, right is the shaded render. Order is meaningful. */
-  id: "guide" | "render";
+  id: "guide" | "render" | "seedance";
   label: string;
   /** Pixel dimensions, shown beside the label at wider sizes. */
   spec: string;
@@ -21,6 +14,8 @@ export type CreamPane = {
   poster: string;
   /** Link text for opening the file at full size. */
   openLabel: string;
+  provenance: string;
+  hasAudio?: boolean;
 };
 
 export const CREAM_PANES: readonly CreamPane[] = [
@@ -30,8 +25,9 @@ export const CREAM_PANES: readonly CreamPane[] = [
     spec: "720 × 1280",
     note: "Simple materials. Camera, timing and action.",
     src: "/studio/cream/motion-guide.mp4",
-    poster: "/studio/cream/motion-guide-poster.jpg",
+    poster: "/studio/cream/motion-guide-compare.jpg",
     openLabel: "Open motion guide",
+    provenance: "Authored in Blender",
   },
   {
     id: "render",
@@ -39,12 +35,31 @@ export const CREAM_PANES: readonly CreamPane[] = [
     spec: "1080 × 1920",
     note: "Higher fidelity. Lighting, texture and colour.",
     src: "/studio/cream/shaded-render.mp4",
-    poster: "/studio/cream/shaded-render-poster.jpg",
+    poster: "/studio/cream/shaded-compare.jpg",
     openLabel: "Open shaded render",
+    provenance: "Authored in Blender",
   },
 ] as const;
 
-/** Both files are exactly this long; metadata overrides it once loaded. */
+export const CREAM_FINAL: CreamPane = {
+  id: "seedance",
+  label: "Seedance film",
+  spec: "480 × 854",
+  note: "Generated from the motion guide and five appearance references.",
+  src: "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/icecream-example/5T8tOp3A7U99ZSKVs9H_y_video.mp4",
+  poster: "/studio/cream/seedance-poster.jpg",
+  openLabel: "Open finished film",
+  provenance: "Generated with Seedance 2.5",
+  hasAudio: true,
+};
+
+export const CREAM_COMPARISONS = [
+  { id: "guide-final", label: "Guide → Film", panes: [CREAM_PANES[0], CREAM_FINAL] },
+  { id: "shaded-final", label: "Shaded → Film", panes: [CREAM_PANES[1], CREAM_FINAL] },
+  { id: "blender", label: "Blender passes", panes: CREAM_PANES },
+] as const;
+
+/** Shared edit length; the generated container reports 18.041667 seconds. */
 export const CREAM_DURATION = 18;
 
 export type CreamChapter = {
@@ -54,7 +69,7 @@ export type CreamChapter = {
   action: string;
 };
 
-/** Seven shots, one camera plan — the same map applies to both passes. */
+/** Chapters describe the Blender plan; generative timing can differ. */
 export const CREAM_CHAPTERS: readonly CreamChapter[] = [
   { from: 0, to: 2, name: "Macro", action: "Grazing macro arc across vanilla ridges" },
   { from: 2, to: 5, name: "Spoon lift", action: "Rising three-quarter dolly and cream release" },

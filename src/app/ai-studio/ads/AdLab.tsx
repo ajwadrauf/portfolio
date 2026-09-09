@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
 import { SpendChip } from "@/components/SpendChip";
+import { RenderWaiting } from "@/components/studio/RenderWaiting";
 import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
@@ -171,20 +172,7 @@ function relativeTime(then: number) {
 }
 const POLL_INTERVAL_MS = 12_000;
 
-/*
- * Render-time landmarks, taken from a measured run rather than a guess: a 12s
- * 4:3 reference render at 480p came back in 447 seconds and cost $3.05.
- *
- * The point of showing these is that a seven-minute wait with a bare spinner
- * is indistinguishable from a hung request, and the natural response to that
- * is to reload — which, before the job handle was persisted, threw the render
- * away. Naming what is normal keeps someone from acting on a wait that is
- * going fine.
- */
-const TYPICAL_RENDER_MS = 450_000;
-/** Past here it is nearly always in its last stretch. */
-const ALMOST_READY_MS = 350_000;
-/** Past here something is more likely wrong than slow. */
+/** Existing long-wait threshold; elapsed time is not completion progress. */
 const OVERDUE_MS = 500_000;
 
 /** A pre-addressed report for a render that has run long. */
@@ -1643,21 +1631,6 @@ export function AdLab({
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, [rendering, renderStartedAt]);
-
-  /**
-   * What to say about a wait, and how full to draw the bar.
-   *
-   * The bar is capped below full while the render is still running: a
-   * progress indicator sitting at 100% next to a spinner reads as broken, and
-   * the finish time is an estimate, not a promise.
-   */
-  const renderStage =
-    elapsedMs >= OVERDUE_MS
-      ? "overdue"
-      : elapsedMs >= ALMOST_READY_MS
-        ? "almost"
-        : "running";
-  const renderProgress = Math.min(0.94, elapsedMs / TYPICAL_RENDER_MS);
 
   /** This endpoint interpolates between a first and a last frame. */
   const endFrameActive = supportsEndFrame(modelId);
@@ -3848,7 +3821,7 @@ export function AdLab({
         {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed") && (
           <div className="card overflow-hidden">
             <div className="mx-auto w-full max-w-md">
-              <div className={`relative w-full bg-surface-2 ${ASPECT_CLASS[aspect] ?? "aspect-[16/9]"}`}>
+              <div className={`relative w-full bg-surface-2 ${rendering ? "" : ASPECT_CLASS[aspect] ?? "aspect-[16/9]"}`}>
                 {videoUrl ? (
                   <video
                     ref={videoRef}
@@ -3869,7 +3842,7 @@ export function AdLab({
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted">
+                  <div className={rendering ? "w-full" : "absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted"}>
                     {phase === "failed" ? (
                       <div className="max-w-[85%] text-center">
                         <p role="alert" className="text-danger">
@@ -3892,71 +3865,14 @@ export function AdLab({
                         )}
                       </div>
                     ) : (
-                      <div className="w-full max-w-xs px-4">
-                        <div className="flex items-center justify-center gap-2.5">
-                          <span
-                            className={`inline-block h-5 w-5 animate-spin rounded-full border-2 ${
-                              renderStage === "overdue"
-                                ? "border-warning/30 border-t-warning"
-                                : "border-muted/40 border-t-accent"
-                            }`}
-                          />
-                          <p className="font-semibold">
-                            {phase === "starting"
-                              ? "Starting…"
-                              : renderStage === "overdue"
-                                ? "Taking longer than expected"
-                                : renderStage === "almost"
-                                  ? "Almost ready…"
-                                  : "Rendering"}
-                          </p>
-                        </div>
-
-                        {/* A wait you can watch move is a wait you sit through. */}
-                        <div
-                          role="progressbar"
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-valuenow={Math.round(renderProgress * 100)}
-                          aria-label="Render progress"
-                          className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-border-soft"
-                        >
-                          <div
-                            className={`h-full rounded-full transition-[width] duration-1000 ease-linear ${
-                              renderStage === "overdue" ? "bg-warning" : "bg-accent"
-                            }`}
-                            style={{ width: `${Math.max(2, renderProgress * 100)}%` }}
-                          />
-                        </div>
-
-                        <p className="mt-2 font-mono text-[11px] text-muted">
-                          {elapsedLabel(elapsedMs)} elapsed
-                          {renderStage !== "overdue" && (
-                            <span> · usually about {elapsedLabel(TYPICAL_RENDER_MS)}</span>
-                          )}
-                        </p>
-
-                        {renderStage === "overdue" ? (
-                          <p className="mt-2 text-xs leading-relaxed text-warning">
-                            This has run past the point where it is normally
-                            done. It is still being polled and nothing is lost
-                            — the render is paid for and can be collected later
-                            — but something may be up.{" "}
-                            <a
-                              href={STUCK_RENDER_MAILTO}
-                              className="font-semibold underline"
-                            >
-                              Let Ajwad know
-                            </a>
-                            .
-                          </p>
-                        ) : (
-                          <p className="mt-2 text-xs leading-relaxed text-muted">
-                            Safe to leave this tab — the render is tracked and
-                            can be collected when you come back.
-                          </p>
-                        )}
-                      </div>
+                      <RenderWaiting
+                        starting={phase === "starting"}
+                        overdue={elapsedMs >= OVERDUE_MS}
+                        elapsed={elapsedLabel(elapsedMs)}
+                        modelName={modelName}
+                        requestId={pendingJob?.falRequestId ?? pendingJob?.operationName}
+                        contactHref={STUCK_RENDER_MAILTO}
+                      />
                     )}
                   </div>
                 )}

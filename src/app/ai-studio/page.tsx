@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CreamCompare } from "@/components/studio/CreamCompare";
-import { CREAM_PANES } from "@/components/studio/creamStudy";
 
 export const metadata: Metadata = {
   title: "AI Content Studio — Ajwad Rauf",
   description:
-    "A working AI content studio: product imagery, bilingual campaigns, motion and sound, with the model routing, quality gates and cost controls written down. Includes a Blender motion study shown in two passes.",
+    "A working AI content studio: product imagery, bilingual campaigns, motion and sound. Watch a finished Seedance film beside its Blender motion guide and explore the tools behind it.",
 };
 
 const SHELL = "mx-auto w-full max-w-6xl px-6";
@@ -128,20 +127,20 @@ export default function StudioOverview() {
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
           Product imagery, campaigns and motion, connected by clear briefs, model
           choices and quality checks. Explore the tools, then see how I plan the
-          work in Blender before taking it into generative video.
+          work in Blender and bring it to life with Seedance.
         </p>
         <div className="mt-9 flex max-w-lg flex-col gap-3 sm:flex-row">
           <a href="#tools" className="btn-block">
             Explore the tools <span aria-hidden>↓</span>
           </a>
           <a href="#motion-study" className="btn-block">
-            Watch the Blender study <span aria-hidden>↓</span>
+            See Blender → Seedance <span aria-hidden>↓</span>
           </a>
         </div>
       </section>
 
       {/* ------------------------- The work, first ------------------------- */}
-      <CreamCompare panes={CREAM_PANES} />
+      <CreamCompare />
 
       {/* ------------------------------ The tools -------------------------- */}
       <section id="tools" className={`${SHELL} scroll-mt-4 py-16 lg:py-20`}>

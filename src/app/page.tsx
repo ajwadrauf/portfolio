@@ -5,6 +5,7 @@ import { HomeNav } from "@/components/HomeNav";
 import { SmoothAnchors } from "@/components/home/SmoothAnchors";
 import { TokenFilm } from "@/components/home/TokenFilm";
 import { TokenSculpture } from "@/components/home/TokenSculpture";
+import { CreamFilm } from "@/components/home/CreamFilm";
 import "@/components/home/home.css";
 
 /**
@@ -29,11 +30,8 @@ export const metadata: Metadata = {
 /**
  * The three ice-cream frames.
  *
- * Labelled as concept references in the caption below them, and they have to
- * stay labelled that way: they are current exploration, not outputs a client
- * signed off, and a portfolio that blurs the two is only impressive until
- * someone asks which it was. Dimensions are on every image so the triptych
- * reserves its space before the files land.
+ * Appearance references behind the finished film. Keep them available as
+ * process material, clearly distinguished from the generated video.
  */
 const REFERENCES = [
   { src: "/homepage/macro.jpg", alt: "Close study of vanilla ice-cream texture" },
@@ -170,6 +168,11 @@ export default function Home() {
                 sound. Built around the decisions that make AI useful: which model, which
                 reference, which quality gate, and at what cost.
               </p>
+              <p className="ar-film-project-note">
+                See it in practice: an ice-cream film choreographed in Blender and
+                brought to life with Seedance. The camera plan, the references and
+                the result — all part of the work.
+              </p>
               <div className="ar-tags">
                 <span>Retail &amp; CPG</span>
                 <span>Stills + motion + sound</span>
@@ -183,6 +186,9 @@ export default function Home() {
               </p>
             </div>
             <div className="ar-studio-visual">
+              <CreamFilm />
+              <details className="ar-film-references">
+                <summary>Explore the appearance references</summary>
               <div className="ar-image-triptych">
                 {REFERENCES.map((r) => (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -197,9 +203,10 @@ export default function Home() {
                 ))}
               </div>
               <div className="ar-image-caption">
-                <span>Current exploration</span>
-                <span>Ice cream / concept references</span>
+                <span>Behind the film</span>
+                <span>Appearance references</span>
               </div>
+              </details>
             </div>
           </article>
 
