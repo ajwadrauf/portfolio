@@ -86,6 +86,9 @@ export const SYNC_CAVEATS = [
   "Preview playback follows play, pause, seek and playback speed. This is a listening preview, not sample-accurate editing or mastering.",
   `For a track added in the edit, ${MUSIC_HANDLE_SECONDS}s of extra duration gives you room to trim. Audio references use the cut length instead.`,
   "Adjust the preview music level to leave room for product sounds. Final level matching and mastering happen in the edit.",
+  // Restored: the rewrite dropped this, and it is the caveat with a price on
+  // it. Music bills a started minute, so variance is the real cost driver.
+  "Expect variance: 2–4 generations to land one you like. Each one bills a started minute, so budget the track at a few dollars rather than $0.60.",
 ];
 
 export const TIMING_REF_NOTES = [
