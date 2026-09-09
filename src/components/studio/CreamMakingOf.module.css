@@ -1,0 +1,53 @@
+.section { background: #101113; color: #f1ede5; scroll-margin-top: 110px; border-top: 1px solid #353137; }
+.wrap { max-width: 1120px; margin-inline: auto; padding: 64px 24px; }
+.heading { display: grid; grid-template-columns: 1.35fr 1fr; align-items: end; gap: 36px; }
+.eyebrow { color: #c6b8c1; font: 11px var(--font-jetbrains-mono), monospace; text-transform: uppercase; letter-spacing: .09em; line-height: 1.8; }
+.heading h2 { font-size: clamp(30px, 4vw, 46px); line-height: 1.12; font-weight: 500; letter-spacing: -.04em; margin-top: 16px; }
+.heading em { font-style: normal; color: #d2abbf; }
+.heading > p, .process p, .direction > p, .boundary p, .promptRecipe > div > p:last-child { font-size: 15px; line-height: 1.8; color: #b9b7b2; }
+.overview { margin-top: 36px; display: grid; grid-template-columns: .8fr 1.2fr; align-items: start; gap: 36px; }
+.process ol { margin: 0; padding: 0; list-style: none; }
+.process li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 22px 0; border-top: 1px solid #353137; }
+.process li > span { color: #d2abbf; font: 13px var(--font-jetbrains-mono), monospace; padding-top: 3px; }
+.process h3 { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+.process .note, .note { font-size: 12px; line-height: 1.7; color: #a09c99; }
+.referenceHeading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-top: 70px; }
+.referenceHeading h3, .promptRecipe h3 { font-size: 30px; line-height: 1.2; letter-spacing: -.03em; margin-top: 12px; }
+.referenceHeading > p { max-width: 290px; font-size: 14px; color: #b9b7b2; line-height: 1.6; }
+.selector { margin-top: 28px; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; }
+.selector button { position: relative; min-width: 0; text-align: left; background: #1b1a1c; color: #eee7e2; border: 1px solid #454046; padding: 0 0 14px; cursor: pointer; transition: border-color .15s; }
+.selector button[aria-pressed="true"] { border: 2px solid #edc8dc; padding-bottom: 13px; background: #372732; }
+.selector button:hover { border-color: #edc8dc; }
+.selector img { display: block; width: 100%; height: 150px; object-fit: cover; object-position: 50% 64%; }
+.imageNumber { display: block; margin: 13px 12px 5px; font: 11px var(--font-jetbrains-mono), monospace; color: #c6b8c1; }
+.imageName { display: block; margin-inline: 12px; font-size: 14px; }
+.referenceDetail { margin-top: 24px; padding: 24px; background: #19191c; border: 1px solid #454046; display: grid; grid-template-columns: minmax(0,.65fr) minmax(0,1fr); align-items: start; gap: 32px; }
+.referenceDetail figure { margin: 0; }
+.referenceDetail figure img { display: block; width: 100%; height: auto; max-height: 590px; object-fit: contain; background: #11151a; }
+.referenceDetail figcaption { color: #a09c99; font-size: 12px; line-height: 1.6; margin-top: 12px; }
+.direction { min-width: 0; }
+.direction h3 { font-size: 27px; line-height: 1.2; font-weight: 500; letter-spacing: -.03em; margin: 12px 0; }
+.boundary { border-left: 2px solid #997487; padding-left: 18px; margin-top: 20px; }
+.boundary h4, .prompt h4 { font-size: 13px; font-weight: 500; color: #f1ede5; }
+.boundary p { font-size: 14px; margin-top: 6px; }
+.cue { display: inline-flex; align-items: center; justify-content: space-between; gap: 18px; background: #ead9e3; color: #2e1927; padding: 12px 16px; min-height: 46px; border: 1px solid #ead9e3; border-radius: 3px; font-size: 13px; font-weight: 500; cursor: pointer; margin: 20px 0 8px; text-align: left; }
+.cue:hover { background: #fff1f8; }
+.prompt { background: #0b0c0e; border: 1px solid #383239; padding: 20px; min-width: 0; }
+.direction .prompt { margin-top: 24px; }
+.promptHead { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.promptHead button { min-height: 44px; padding: 8px 12px; background: #2a242c; border: 1px solid #776573; border-radius: 3px; color: #e9d6e2; font-size: 12px; cursor: pointer; }
+.promptHead button:hover { background: #45313e; }
+.prompt > p { font: 12px/1.9 var(--font-jetbrains-mono), monospace; color: #cdc2ca; overflow-wrap: anywhere; }
+.promptRecipe { display: grid; grid-template-columns: .8fr 1.2fr; align-items: start; gap: 36px; padding-top: 48px; margin-top: 48px; border-top: 1px solid #454046; }
+.promptRecipe > div > p:last-child { margin-top: 18px; }
+.fullPrompt { margin-top: 28px; padding: 0 20px; border: 1px solid #454046; }
+.fullPrompt summary { cursor: pointer; padding: 20px 0; font-size: 15px; }
+.fullPrompt pre { margin-block: 20px; max-height: 540px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.9 var(--font-jetbrains-mono), monospace; color: #cdc2ca; }
+.copyStatus { min-height: 24px; margin-top: 14px; font-size: 13px; color: #edc8dc; }
+.footer { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.footer a { display: inline-flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 12px 16px; border: 1px solid #776573; color: #f1ede5; background: #2a242c; font-size: 13px; }
+.footer a:hover { background: #45313e; }
+.section :focus-visible { outline: 3px solid #edc8dc; outline-offset: 4px; }
+@media (max-width: 900px) { .heading, .overview { grid-template-columns: 1fr; } .overview > section { max-width: 580px; width: 100%; margin-inline: auto; } .process ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; } .referenceDetail { gap: 24px; padding: 20px; } .selector img { height: 120px; } }
+@media (max-width: 600px) { .wrap { padding: 44px 20px; } .heading { gap: 24px; } .process ol { grid-template-columns: 1fr; } .referenceHeading { display: block; margin-top: 48px; } .referenceHeading > p { margin-top: 14px; } .selector { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; } .selector img { height: 106px; } .imageName { font-size: 12px; margin-inline: 8px; } .imageNumber { font-size: 10px; margin-inline: 8px; } .referenceDetail, .promptRecipe { grid-template-columns: 1fr; } .referenceDetail { padding: 16px; } .referenceDetail figure img { max-height: 370px; } .direction h3 { font-size: 26px; } .prompt { padding: 16px; } .footer a { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .selector button { transition: none; } }

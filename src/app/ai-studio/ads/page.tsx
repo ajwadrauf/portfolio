@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Metadata } from "next";
 import { REFERENCE_CLIPS, clipEnvKey, isHostedClip } from "@/lib/referenceClips";
 import { AdLab } from "./AdLab";
+import { CreamMakingOf } from "@/components/studio/CreamMakingOf";
 
 export const metadata: Metadata = {
   title: "Ad Lab — AI Content Studio",
@@ -48,5 +49,10 @@ function resolvedClips(): Record<string, string> {
 
 export default function AdsPage() {
   const clips = resolvedClips();
-  return <AdLab availableClipIds={Object.keys(clips)} clipSources={clips} />;
+  return (
+    <>
+      <AdLab availableClipIds={Object.keys(clips)} clipSources={clips} />
+      <CreamMakingOf />
+    </>
+  );
 }
