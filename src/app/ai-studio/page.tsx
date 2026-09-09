@@ -143,7 +143,9 @@ export default function StudioOverview() {
       <CreamCompare />
 
       {/* ------------------------------ The tools -------------------------- */}
-      <section id="tools" className={`${SHELL} scroll-mt-4 py-16 lg:py-20`}>
+      {/* 28, not 4: the studio header is sticky and ~100px tall stacked on a
+          phone, so a 16px margin dropped the heading underneath it. */}
+      <section id="tools" className={`${SHELL} scroll-mt-28 py-16 lg:py-20`}>
         <div className="max-w-2xl">
           <p className="label !text-accent">Six surfaces, one production system</p>
           <h2 className="mt-2 text-[clamp(1.7rem,3.4vw,2.4rem)] tracking-[-0.035em]">

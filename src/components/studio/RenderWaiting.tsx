@@ -12,7 +12,14 @@ type Props = {
   contactHref: string;
 };
 
-/** Indeterminate activity, never an invented estimate of provider progress. */
+/**
+ * Indeterminate activity, never an invented estimate of provider progress.
+ *
+ * The adapter reports pending, done or failed — no percentage — so the art is
+ * decorative and the three stages come from the application's own phase rather
+ * than from elapsed time. The copy is first person singular like the rest of
+ * the site: there is no "we" here to be checking on anything.
+ */
 export function RenderWaiting({ starting, overdue, elapsed, modelName, requestId, contactHref }: Props) {
   const [paused, setPaused] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
@@ -60,10 +67,10 @@ export function RenderWaiting({ starting, overdue, elapsed, modelName, requestId
           <h3>{starting ? "A little direction.\nA lot of possibility." : overdue ? "Still working\non your film." : "Your idea,\nfinding its motion."}</h3>
           <p className={styles.message}>
             {starting
-              ? "Sending your brief to the model. Your request ID will appear once it’s accepted."
+              ? "Sending your brief to the model. The request ID appears here once it is accepted."
               : overdue
-                ? "This one is taking a little longer. We’re still checking for the result — no need to submit again."
-                : "The model has your brief. We’ll bring the finished film here as soon as it’s ready."}
+                ? "This one is taking a little longer. The result is still being polled — nothing is lost, and there is no need to submit again."
+                : "The model has your brief. The finished film lands here as soon as it is ready — this tab is safe to leave."}
           </p>
         </div>
         <p className={styles.timer}><span>{elapsed}</span> elapsed <span className={styles.divider}>/</span> {modelName}</p>

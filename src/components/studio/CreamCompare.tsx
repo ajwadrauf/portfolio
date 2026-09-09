@@ -347,6 +347,15 @@ export function CreamCompare() {
                     <span>{pane.label}</span>
                     <span className={styles.paneSpec}>{pane.spec}</span>
                   </p>
+                  {/*
+                    How this pass was made, on screen and not only in the
+                    aria-label. The caveat above promises that each pass is
+                    labelled by how it was made; with a real generative result
+                    now sitting beside two authored renders, that promise has
+                    to be visible to the people most likely to mistake one for
+                    the other.
+                  */}
+                  <p className={styles.paneProvenance}>{pane.provenance}</p>
                   <p className={styles.paneNote}>{pane.note}</p>
                 </div>
               ))}
