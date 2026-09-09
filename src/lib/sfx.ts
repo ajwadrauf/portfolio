@@ -1,18 +1,6 @@
-/**
- * Spot effects — the layer between "the video model made a noise" and
- * "the ad has the right noise".
- *
- * Video models with native audio render effects from the picture they are
- * making, which is why those effects land on the correct frame. What they
- * do not do is render a SPECIFIC effect on demand: ask for the pshhht of a
- * can seal and you get a plausible hiss, take after take, never the one the
- * brand is actually selling. A dedicated sound-effect model is the opposite
- * trade — it renders exactly the effect you describe, and knows nothing
- * about where in the cut it belongs.
- *
- * So they are complements, not competitors. The video model gives you the
- * bed of ambience and incidental foley in sync; this gives you the two or
- * three hero hits you place by hand.
+/** Separate spot effects for deliberate placement in the final edit.
+ * Native video audio can provide useful synchronized ambience and effects;
+ * dedicated generations add independently directed sounds to audition.
  */
 
 export const SFX_MODEL_ID = "eleven-sfx";
@@ -20,7 +8,7 @@ export const SFX_MODEL_ID = "eleven-sfx";
 /** The model's own limits (ElevenLabs text-to-sound-effects v2). */
 export const SFX_LIMITS = {
   minSeconds: 0.5,
-  maxSeconds: 30,
+  maxSeconds: 22,
   /** Long enough for a transient plus its tail; short enough to place. */
   defaultSeconds: 3,
   /** How literally to follow the text, 0-1. The API's own default. */
@@ -35,9 +23,9 @@ export const clampSfxSeconds = (n: number) =>
  * answer is not obvious and getting it wrong wastes a render.
  */
 export const LAYER_NOTES = [
-  "Native audio is baked into the MP4. It cannot be separated out later — if the model rendered a pour, that pour is in the file. Switch native audio off (Silent) when you want the effects track entirely under your control.",
+  "Native audio is baked into the MP4; this workflow does not provide separate native stems. Switch native audio off (Silent) when you want the effects track entirely under your control.",
   "Spot effects arrive as separate files, one per effect. Nothing is placed for you: you drop each one on its frame in the edit, which is exactly the point — placement is a decision, not a guess.",
-  "Music is a third file, laid under both. On a model that reads audio in, it can also steer the cut — see the timing reference above.",
+  "Music is a third file, laid under both. On a model that reads audio in, it can also guide rhythm — see the timing reference above.",
   "Layered on top of native audio, a spot effect is a sweetener: it thickens the hit the model already made. Over a silent take it is the whole effects track.",
 ];
 

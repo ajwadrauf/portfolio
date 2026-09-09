@@ -21,6 +21,7 @@ import { falStartVideo } from "@/lib/fal";
 import { dataUrlToInline, startVeo } from "@/lib/gemini";
 import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib/models";
 import { mockImageDataUrl } from "@/lib/mock";
+import { audioReferenceProblem } from "@/lib/adAudio";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,7 @@ export async function POST(req: Request) {
       referenceVideoUrls?: string[];
       /** Audio reference URLs, already uploaded — timing signals, not stems. */
       referenceAudioUrls?: string[];
+      referenceAudioDurations?: number[];
       /** False renders the take silent at the API level, where the model allows it. */
       generateAudio?: boolean;
       /** Pixel tier. On token-billed models this drives most of the cost. */
@@ -113,6 +115,15 @@ export async function POST(req: Request) {
     }
 
     const model = getModel(body.modelId);
+    if (AUDIO_REF_MODELS.includes(body.modelId) && body.referenceAudioUrls?.length) {
+      const audioCount = body.referenceAudioUrls.length;
+      const visualCount = (body.imageDataUrl ? 1 : 0) + (body.referenceImageDataUrls?.length ?? 0) + (body.referenceVideoUrls?.length ?? 0);
+      if (audioCount > 10 || visualCount === 0) return NextResponse.json({ error: "Seedance audio needs at least one image or video and at most 10 audio files." }, { status: 400 });
+      if (body.referenceAudioDurations) {
+        const problem = body.referenceAudioDurations.length !== audioCount ? "Audio durations must match the audio references." : audioReferenceProblem(body.referenceAudioDurations, visualCount);
+        if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+      }
+    }
     // Clamped to the model's ceiling, then snapped to a length it will
     // actually accept — Kling publishes duration as an enum, so an in-range
     // value it does not list is still a 422.

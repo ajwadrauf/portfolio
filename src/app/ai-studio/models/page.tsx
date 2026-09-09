@@ -52,6 +52,7 @@ const VIDEO_NOTES = [
 export default function ModelsPage() {
   const images = Object.values(MODELS).filter((m) => m.kind === "image");
   const videos = Object.values(MODELS).filter((m) => m.kind === "video");
+  const audio = Object.values(MODELS).filter((m) => ["music", "sfx", "voice"].includes(m.kind));
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-14">
@@ -77,11 +78,11 @@ export default function ModelsPage() {
             </tr>
           </thead>
           <tbody>
-            {[...images, ...videos].map((m) => (
+            {[...images, ...videos, ...audio].map((m) => (
               <tr key={m.id} className="border-b border-border-soft/50 align-top">
                 <td className="py-3 pr-4 font-semibold">{m.label}</td>
                 <td className="py-3 pr-4 whitespace-nowrap text-muted">
-                  {m.unit === "image" ? `$${m.unitCost}/image` : `$${m.unitCost}/second`}
+                  {m.unit === "character" ? `$${(m.unitCost * 1000).toFixed(2)}/1,000 characters` : m.billingIncrementSeconds ? `$${(m.unitCost * m.billingIncrementSeconds).toFixed(2)}/started minute` : m.unit === "image" ? `$${m.unitCost}/image` : `$${m.unitCost}/second`}
                 </td>
                 <td className="py-3 text-muted">{m.bestFor}</td>
               </tr>
