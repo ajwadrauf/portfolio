@@ -1,19 +1,6 @@
-/**
- * Music bed styles for mini ads.
- *
- * Why this exists: video models render sound effects, ambience and dialogue
- * convincingly, but none of them compose music — asking a video model for "an
- * upbeat synth track" yields a texture, not a track. The production answer is
- * the same one a real studio uses: generate the SFX with the video, score it
- * separately, and layer the two. These descriptions are written the way a
- * music brief is written — genre, tempo, instrumentation, arc — because
- * that is what music models actually respond to.
- *
- * On a model that takes reference audio (Seedance 2.5 Reference), the bed
- * stops being a layer applied afterwards and becomes an input: hand the
- * finished track back as [Audio1] and the picture is cut to its beats. That
- * is the difference between a bed that has to be nudged into place in the
- * edit and one the render was built around.
+/** Musical briefs for a separate ElevenLabs track. Native video audio remains
+ * a useful first pass; a dedicated score adds independent musical control.
+ * Reference audio can guide Seedance, but does not guarantee exact beat sync.
  */
 
 export type MusicStyle = {
@@ -85,7 +72,8 @@ export const MUSIC_MODEL_ID = "eleven-music";
  */
 export const MUSIC_HANDLE_SECONDS = 2;
 
-export const musicLengthFor = (cutSeconds: number) => cutSeconds + MUSIC_HANDLE_SECONDS;
+export const musicLengthFor = (cutSeconds: number, timingReference = false) =>
+  timingReference ? Math.min(cutSeconds, 30) : cutSeconds + MUSIC_HANDLE_SECONDS;
 
 /**
  * What the layered-audio approach does and does not guarantee. Surfaced in the
@@ -93,23 +81,17 @@ export const musicLengthFor = (cutSeconds: number) => cutSeconds + MUSIC_HANDLE_
  * that implies the mix is finished.
  */
 export const SYNC_CAVEATS = [
-  "Sound effects sync; music does not. The video model generates SFX from the picture it is making, so hits land on frame. The music model never sees the video — it composes from text alone.",
-  "You get two files, not one. Nothing is muxed: the finished ad exists after you combine the MP4 and the track in an editor.",
-  "The preview is an approximation. Two media elements synced on play/pause/seek — enough to judge the vibe, not sample-accurate.",
-  `The bed is generated ${MUSIC_HANDLE_SECONDS}s longer than the cut, giving you handles to slide a downbeat onto the money moment.`,
-  "No mix is applied — no ducking under SFX, no level matching, no mastering.",
-  "Expect variance: 2–4 generations to land one you like.",
+  "Native audio is generated with the picture; check the result for convincing timing. A separately composed track does not see the video.",
+  "The video and music remain separate downloads. Combine them in an editor to deliver one finished MP4.",
+  "Preview playback follows play, pause, seek and playback speed. This is a listening preview, not sample-accurate editing or mastering.",
+  `For a track added in the edit, ${MUSIC_HANDLE_SECONDS}s of extra duration gives you room to trim. Audio references use the cut length instead.`,
+  "Adjust the preview music level to leave room for product sounds. Final level matching and mastering happen in the edit.",
 ];
 
-/**
- * The same list, for the case where the bed is fed back into the render as a
- * timing reference. The first caveat above is the one that changes — and it
- * is the whole reason to do it.
- */
 export const TIMING_REF_NOTES = [
-  "The cuts are built around the track, not nudged onto it afterwards. Seedance reads the supplied audio as a timing signal in the same pass that makes the picture, so accents land where the beats are.",
-  "It is a signal, not a stem. The track is not guaranteed to come back inside the rendered MP4 — you still lay the bed under the cut in the edit, but now it already fits.",
-  "Generate the music first. The reference has to exist before the render starts, so the order is: pick a style, compose the bed, then generate the video.",
-  "Trim to the cut length. A 30-second track handed to an 8-second render gives the model the first 8 seconds of structure, which may not be the part you liked.",
-  "Native sound effects still render alongside it, unless you switch native audio off.",
+  "Seedance accepts audio as a guide. Exact beat-aligned cuts or an unchanged music stem are not guaranteed.",
+  "With Blender guidance, keep its camera route and edit timing in charge. Use the track for mood and accents without asking it to recut the film.",
+  "Generate and audition the music first. A timing reference must exist before the video request starts.",
+  "Seedance accepts MP3/WAV audio, 1.8–30.2 seconds per file and 30.2 seconds combined, with at least one image or video.",
+  "Keep the original track for the final mix. Listen to the generated MP4 first so you do not layer the same music twice.",
 ];

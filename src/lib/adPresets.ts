@@ -729,7 +729,7 @@ const AUDIO_CAPABILITIES: Record<string, AudioCapability> = {
     native: true,
     switchable: true,
     refAudio: true,
-    note: "Sound and picture are generated jointly in one latent space, and this endpoint also takes audio IN — a supplied track becomes a timing signal the cuts key off, which is the one thing that makes a beat-driven concept land on purpose instead of by luck.",
+    note: "Generates synchronized audio with the picture and accepts MP3/WAV audio references. A track can guide rhythm and mood; exact beat alignment is not guaranteed. Native audio has no extra Seedance generation charge.",
   },
   "kling-3.0": SILENT_MODEL,
   /*
@@ -769,11 +769,11 @@ export const audioCapability = (modelId: string): AudioCapability =>
 export const AUDIO_REF_LIMITS = {
   maxBytes: 4 * 1024 * 1024,
   maxMB: 4,
-  maxBytesDirect: 64 * 1024 * 1024,
-  maxMBDirect: 64,
-  formats: "MP3, WAV or M4A",
-  mimeTypes: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/mp4", "audio/aac"],
-  extensions: [".mp3", ".wav", ".m4a", ".aac"],
+  maxBytesDirect: 15 * 1024 * 1024,
+  maxMBDirect: 15,
+  formats: "MP3 or WAV",
+  mimeTypes: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav"],
+  extensions: [".mp3", ".wav"],
 } as const;
 
 export const VIDEO_REF_LIMITS = {

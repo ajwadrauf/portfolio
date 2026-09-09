@@ -4,6 +4,7 @@ import { falGenerateSoundEffect } from "@/lib/fal";
 import { mockSfxDataUrl } from "@/lib/mockAudio";
 import { estimateCost, getModel, hasFalKey, isDryRun } from "@/lib/models";
 import { SFX_LIMITS, SFX_MODEL_ID, clampSfxSeconds } from "@/lib/sfx";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -11,11 +12,9 @@ export const maxDuration = 60;
 /** Generates one named spot effect. One event per call — see lib/sfx.ts. */
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as {
-      text?: string;
-      durationSeconds?: number;
-      loop?: boolean;
-    };
+    const parsed = z.object({ text: z.string().trim().min(1).max(600), durationSeconds: z.number().min(SFX_LIMITS.minSeconds).max(SFX_LIMITS.maxSeconds).default(SFX_LIMITS.defaultSeconds), loop: z.boolean().default(false) }).safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "Describe one effect in 1–600 characters and choose a duration from 0.5 to 22 seconds." }, { status: 400 });
+    const body = parsed.data;
 
     const text = (body.text ?? "").trim();
     if (!text) {
@@ -41,14 +40,14 @@ export async function POST(req: Request) {
       });
     }
 
-    const { url } = await falGenerateSoundEffect({
+    const { requestId } = await falGenerateSoundEffect({
       endpoint: model.endpoint,
       text,
       durationSeconds: seconds,
       promptInfluence: SFX_LIMITS.defaultInfluence,
       loop: body.loop === true,
     });
-    return liveJson(spend, { mock: false, audioUrl: url, cost });
+    return liveJson(spend, { mock: false, status: "pending", requestId, modelId: SFX_MODEL_ID, seconds, cost });
   } catch (e) {
     console.error("sound effect generation failed", e);
     return NextResponse.json(

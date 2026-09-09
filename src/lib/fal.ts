@@ -1,5 +1,6 @@
 import "server-only";
 import { fal } from "@fal-ai/client";
+import type { CompositionPlan } from "./soundPlan";
 
 let configured = false;
 
@@ -231,62 +232,80 @@ export async function falUpload(file: Blob): Promise<{ url: string }> {
   }
 }
 
-/**
- * Music generation (ElevenLabs Music). Tracks this short return in seconds,
- * so a blocking subscribe is fine — no queue/poll needed.
- */
+/** Queue audio and return its handle immediately; rendering may outlive a Function. */
 export async function falGenerateMusic(opts: {
   endpoint: string;
   prompt: string;
   durationSeconds: number;
-}): Promise<{ url: string }> {
-  const f = client();
-  const result = await f.subscribe(opts.endpoint, {
-    input: {
-      prompt: opts.prompt,
-      // API accepts 3_000 – 600_000 ms.
-      music_length_ms: Math.min(Math.max(Math.round(opts.durationSeconds * 1000), 3000), 600000),
-    },
-    logs: false,
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = result.data as any;
-  const url: string | undefined = data?.audio?.url ?? data?.audio_url ?? data?.audio_file?.url;
-  if (!url) throw new Error(`Music model returned no audio URL (endpoint ${opts.endpoint})`);
-  return { url };
+  compositionPlan?: CompositionPlan;
+}): Promise<{ requestId: string }> {
+  try {
+    const result = await client().queue.submit(opts.endpoint, {
+      input: opts.compositionPlan ? {
+        composition_plan: opts.compositionPlan,
+        respect_sections_durations: true,
+        output_format: "mp3_44100_128",
+      } : {
+        prompt: opts.prompt,
+        music_length_ms: Math.round(opts.durationSeconds * 1000),
+        force_instrumental: true,
+        output_format: "mp3_44100_128",
+      },
+    });
+    return { requestId: result.request_id };
+  } catch (e) { throw new Error(describeAudioError(e)); }
 }
 
-/**
- * Sound-effect generation (ElevenLabs text-to-sound-effects).
- *
- * Effects are seconds long and return fast, so a blocking subscribe is fine.
- * `duration_seconds` is optional at the API — omitting it lets the model
- * pick a length from the description, which is usually right for a transient
- * and usually wrong for anything that needs to fill a known gap.
- */
+export async function falGenerateVoice(opts: { endpoint: string; text: string; voice: string; stability: number }): Promise<{ requestId: string }> {
+  try {
+    const result = await client().queue.submit(opts.endpoint, { input: {
+      text: opts.text, voice: opts.voice, stability: opts.stability,
+      apply_text_normalization: "auto",
+    } });
+    return { requestId: result.request_id };
+  } catch (e) { throw new Error(describeAudioError(e)); }
+}
+
 export async function falGenerateSoundEffect(opts: {
   endpoint: string;
   text: string;
   durationSeconds?: number;
   promptInfluence?: number;
   loop?: boolean;
-}): Promise<{ url: string }> {
-  const f = client();
-  const input: Record<string, unknown> = { text: opts.text };
-  if (opts.durationSeconds !== undefined) input.duration_seconds = opts.durationSeconds;
-  if (opts.promptInfluence !== undefined) input.prompt_influence = opts.promptInfluence;
-  if (opts.loop) input.loop = true;
-
+}): Promise<{ requestId: string }> {
   try {
-    const result = await f.subscribe(opts.endpoint, { input, logs: false });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = result.data as any;
-    const url: string | undefined =
-      data?.audio?.url ?? data?.audio_url ?? data?.audio_file?.url;
-    if (!url) throw new Error(`Sound-effect model returned no audio URL (endpoint ${opts.endpoint})`);
-    return { url };
+    const result = await client().queue.submit(opts.endpoint, { input: {
+      text: opts.text,
+      duration_seconds: opts.durationSeconds,
+      prompt_influence: opts.promptInfluence,
+      loop: opts.loop ?? false,
+      output_format: "mp3_44100_128",
+    } });
+    return { requestId: result.request_id };
+  } catch (e) { throw new Error(describeAudioError(e)); }
+}
+
+function describeAudioError(e: unknown): string {
+  const status = (e as { status?: number })?.status;
+  if (status === 401) return "fal rejected the configured FAL_KEY. Check the server’s fal credential in the deployment settings; no separate ElevenLabs key is required.";
+  if (status === 403) return "fal refused this audio model request. Check this fal key’s model permissions and the configured ElevenLabs endpoint. A separate ElevenLabs key is not needed.";
+  return describeFalError(e);
+}
+
+export async function falPollAudio(opts: { endpoint: string; requestId: string }): Promise<
+  { status: "pending" } | { status: "done"; audioUrl: string } | { status: "failed"; error: string }
+> {
+  try {
+    const status = await client().queue.status(opts.endpoint, { requestId: opts.requestId, logs: false });
+    if (status.status !== "COMPLETED") return { status: "pending" };
+    const result = await client().queue.result(opts.endpoint, { requestId: opts.requestId });
+    const data = result.data as { audio?: { url?: string } };
+    return data.audio?.url ? { status: "done", audioUrl: data.audio.url } : { status: "failed", error: "The audio job completed without an audio file. Keep its request ID for support." };
   } catch (e) {
-    throw new Error(describeFalError(e));
+    const status = (e as { status?: number })?.status;
+    if (status && status >= 400 && status < 500 && status !== 429) return { status: "failed", error: describeAudioError(e) };
+    // Network errors, rate limits and provider outages do not mean the job failed.
+    throw new Error(describeAudioError(e));
   }
 }
 

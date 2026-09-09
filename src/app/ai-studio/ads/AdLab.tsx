@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
 import { SpendChip } from "@/components/SpendChip";
 import { RenderWaiting } from "@/components/studio/RenderWaiting";
+import { useAudioJobs } from "@/lib/useAudioJobs";
+import { soundDirection, audioReferenceProblem, ICE_CREAM_MUSIC_BRIEF } from "@/lib/adAudio";
+import { SoundPlanner } from "@/components/studio/SoundPlanner";
+import { buildComposition, planProblem, planSeconds, planVideoDirection, soundPlanSchema, type SoundPlan } from "@/lib/soundPlan";
 import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
@@ -209,7 +213,7 @@ const ASPECT_CLASS: Record<string, string> = {
 };
 
 const REF_ACCEPT =
-  "image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav,audio/mp4,audio/aac";
+  "image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav";
 
 const toLines = (xs: string[]) => xs.join("\n");
 const fromLines = (v: string) =>
@@ -556,13 +560,35 @@ export function AdLab({
   const [editingRecipe, setEditingRecipe] = useState(false);
 
   // Audio layer
-  const [audioMode, setAudioMode] = useState<AudioMode>("layered");
+  const [audioMode, setAudioMode] = useState<AudioMode>("native");
   const [musicStyleId, setMusicStyleId] = useState<string>(AD_PRESETS[0].musicStyleId);
   const [musicUrl, setMusicUrl] = useState<string | null>(null);
   const [musicBusy, setMusicBusy] = useState(false);
+  const [musicCustomPrompt, setMusicCustomPrompt] = useState("");
+  const [musicSpec, setMusicSpec] = useState("");
+  const [musicMock, setMusicMock] = useState(false);
+  const [sfxMocks, setSfxMocks] = useState<Record<string, boolean>>({});
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [musicVolume, setMusicVolume] = useState(0.35);
+  const [audioDurations, setAudioDurations] = useState<Record<string, number>>({});
   const [musicOn, setMusicOn] = useState(true);
   /** Feed the composed bed back into the render as a timing signal. */
   const [musicAsTimingRef, setMusicAsTimingRef] = useState(false);
+  const [soundPlan, setSoundPlan] = useState<SoundPlan | null>(null);
+  const [scoreToPlan, setScoreToPlan] = useState(false);
+  const [planLoaded, setPlanLoaded] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("adlab-sound-plan-v1") ?? "null");
+      const parsed = soundPlanSchema.safeParse(saved?.plan);
+      if (parsed.success) { setSoundPlan(parsed.data); setScoreToPlan(saved.scoreToPlan === true); }
+    } catch { /* Planning still works without local storage. */ }
+    setPlanLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (!planLoaded) return;
+    try { localStorage.setItem("adlab-sound-plan-v1", JSON.stringify({ plan: soundPlan, scoreToPlan })); } catch { /* Optional persistence. */ }
+  }, [soundPlan, scoreToPlan, planLoaded]);
   /**
    * Spot effects, keyed by the recipe's sound-design line they came from.
    * The recipe already names the effects this concept needs; generating them
@@ -571,6 +597,9 @@ export function AdLab({
   const [sfxTracks, setSfxTracks] = useState<Record<string, string>>({});
   const [sfxBusy, setSfxBusy] = useState<string | null>(null);
   const [sfxSeconds, setSfxSeconds] = useState<number>(SFX_LIMITS.defaultSeconds);
+  const [customEffect, setCustomEffect] = useState("");
+  const [extraEffects, setExtraEffects] = useState<string[]>([]);
+  const effectLines = [...new Set([...recipe.sfx, ...extraEffects])];
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -669,17 +698,21 @@ export function AdLab({
     () => (supportsRefs ? unmetCriticalSteps(preset.referenceRecipe, allRefSpecs) : []),
     [preset.referenceRecipe, allRefSpecs, supportsRefs],
   );
-  const musicCost = estimateCost(MUSIC_MODEL_ID, {
-    seconds: musicLengthFor(duration),
-  });
+  const soundPlanIssue = planProblem(soundPlan, duration, cap.native, audioMode === "silent");
+  const musicBrief = musicCustomPrompt.trim() || MUSIC_STYLES.find((style) => style.id === musicStyleId)?.prompt || "";
+  const musicComposition = scoreToPlan && soundPlan ? buildComposition(soundPlan, musicBrief) : undefined;
+  const musicSeconds = musicComposition ? duration : musicLengthFor(duration, musicAsTimingRef);
+  const musicCost = estimateCost(MUSIC_MODEL_ID, { seconds: musicSeconds });
   /** True when a separate music model will actually be billed. */
   const scoringSeparately = audioMode === "layered" && musicStyleId !== NO_MUSIC_ID;
-  const cost = videoCost + (scoringSeparately ? musicCost : 0);
+  const musicKey = JSON.stringify([musicStyleId, musicCustomPrompt.trim(), duration, musicAsTimingRef, musicComposition]);
+  const musicReady = Boolean(musicUrl && musicSpec === musicKey);
+  const cost = videoCost + (scoringSeparately && !musicReady ? musicCost : 0);
   /** Clips and tracks leave the browser, so demo mode can't accept them. */
   const clipsUploadable = health?.live ?? true;
   /** The bed can only steer the render on a model that reads audio in. */
   const timingRefAvailable = cap.refAudio && scoringSeparately;
-  const timingRefActive = Boolean(timingRefAvailable && musicAsTimingRef && musicUrl);
+  const timingRefActive = Boolean(timingRefAvailable && musicAsTimingRef && musicReady);
 
   /** Audio references sent to the model, in the order the prompt numbers them. */
   const audioRefUrls = useMemo(
@@ -689,6 +722,20 @@ export function AdLab({
     ],
     [refs, timingRefActive, musicUrl],
   );
+  useEffect(() => {
+    const elements = audioRefUrls.filter((url) => audioDurations[url] === undefined).map((url) => {
+      const el = document.createElement("audio");
+      el.preload = "metadata";
+      el.onloadedmetadata = () => {
+        if (Number.isFinite(el.duration)) setAudioDurations((previous) => ({ ...previous, [url]: el.duration }));
+      };
+      el.src = url;
+      return el;
+    });
+    return () => elements.forEach((el) => { el.onloadedmetadata = null; el.removeAttribute("src"); el.load(); });
+  }, [audioRefUrls, audioDurations]);
+  const audioRefProblem = cap.refAudio ? audioReferenceProblem(audioRefUrls.map((url) => audioDurations[url]), (productImage ? 1 : 0) + refs.filter((r) => r.media !== "audio").length) : null;
+  const soundBlock = soundDirection(audioMode, musicBrief, timingRefActive ? audioRefUrls.length : undefined, imported || refs.some((r) => r.media === "video")) + planVideoDirection(soundPlan);
   /** Reference jobs, ordered to match the URLs above per media type. */
   const composeRefs = useMemo<ReferenceSpec[]>(
     () => [
@@ -897,6 +944,8 @@ export function AdLab({
     });
   }, []);
 
+  const audioJobs = useAudioJobs(addSpend);
+
   /**
    * Photo is the source of truth: every field the vision model can ground in
    * the image is overwritten; fields it can't determine (e.g. no printed
@@ -947,6 +996,9 @@ export function AdLab({
       // into the editor; a worked preset is worth reading first.
       setEditingRecipe(id === CUSTOM_PRESET_ID);
       setMusicStyleId(next.musicStyleId);
+      setMusicCustomPrompt("");
+      setSoundPlan(null);
+      setScoreToPlan(false);
       setModelId(next.preferredModelId ?? "seedance-2.5-ref");
       setMusicUrl(null);
       setMusicAsTimingRef(false);
@@ -1147,6 +1199,10 @@ export function AdLab({
       const media = referenceMediaOf(file.name, file.type);
       const isAudio = media === "audio";
       try {
+        if ((isAudio || /\.(m4a|aac)$/i.test(file.name)) && !/\.(mp3|wav)$/i.test(file.name)) {
+          setRefError("Seedance audio references must be MP3 or WAV. Convert this track before uploading.");
+          return;
+        }
         if (media !== "image") {
           const limits = isAudio ? AUDIO_REF_LIMITS : VIDEO_REF_LIMITS;
           // Clips and tracks leave the browser, so they need live mode. Say so
@@ -1253,53 +1309,43 @@ export function AdLab({
   /** One effect per call — two events in one prompt gives a muddle of both. */
   const generateSfx = useCallback(
     async (text: string) => {
-      setError(null);
+      setAudioError(null);
       setSfxBusy(text);
       try {
-        const res = await fetch("/api/ad/sfx", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, durationSeconds: sfxSeconds }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? "Sound effect failed");
-        if (!json.mock) addSpend(json.cost ?? 0);
+        const json = await audioJobs.run("/api/ad/sfx", { text, durationSeconds: sfxSeconds }, text);
         setSfxTracks((prev) => ({ ...prev, [text]: json.audioUrl }));
+        setSfxMocks((prev) => ({ ...prev, [text]: json.mock }));
       } catch (e) {
-        fail(e instanceof Error ? e.message : "Sound effect failed");
+        setAudioError(e instanceof Error ? e.message : "Sound effect failed");
       } finally {
         setSfxBusy(null);
       }
     },
-    [addSpend, sfxSeconds],
+    [audioJobs, sfxSeconds],
   );
 
   const generateMusic = useCallback(async () => {
-    setError(null);
+    setAudioError(null);
+    if (musicComposition && soundPlanIssue) { setAudioError(soundPlanIssue); return; }
     setMusicBusy(true);
     try {
-      const res = await fetch("/api/ad/music", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ styleId: musicStyleId, durationSeconds: duration }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Music generation failed");
-      if (!json.mock) addSpend(json.cost ?? 0);
+      const json = await audioJobs.run("/api/ad/music", { styleId: musicStyleId, durationSeconds: duration, customPrompt: musicCustomPrompt.trim() || undefined, timingReference: musicAsTimingRef, compositionPlan: musicComposition }, `${MUSIC_STYLES.find((s) => s.id === musicStyleId)?.label ?? "Custom music"} · ${duration}s cut`);
       setMusicUrl(json.audioUrl);
+      setMusicSpec(musicKey);
+      setMusicMock(json.mock);
       setMusicOn(true);
       // A bed used as a timing signal changes the prompt, so it goes stale.
       if (musicAsTimingRef) invalidatePrompt();
     } catch (e) {
-      fail(e instanceof Error ? e.message : "Music generation failed");
+      setAudioError(e instanceof Error ? e.message : "Music generation failed");
     } finally {
       setMusicBusy(false);
     }
-  }, [addSpend, duration, invalidatePrompt, musicAsTimingRef, musicStyleId]);
+  }, [audioJobs, duration, invalidatePrompt, musicAsTimingRef, musicStyleId, musicCustomPrompt, musicKey, musicComposition, soundPlanIssue]);
 
   /** Keep the separately generated music bed locked to the video's transport. */
   const syncAudio = useCallback(
-    (action: "play" | "pause" | "seek") => {
+    (action: "play" | "pause" | "seek", enabled = musicOn) => {
       const v = videoRef.current;
       const a = audioRef.current;
       if (!v || !a) return;
@@ -1308,13 +1354,24 @@ export function AdLab({
         return;
       }
       a.currentTime = Math.min(v.currentTime, a.duration || v.currentTime);
-      if (action === "play" && musicOn) void a.play().catch(() => {});
+      a.playbackRate = v.playbackRate;
+      a.volume = musicVolume;
+      if (enabled && (action === "play" || (action === "seek" && !v.paused))) void a.play().catch(() => setAudioError("The browser paused the music. Press play on the video again to enable the mix preview."));
     },
-    [musicOn],
+    [musicOn, musicVolume],
   );
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = musicVolume;
+    if (!musicReady || !scoringSeparately) audioRef.current?.pause();
+    const pause = () => { if (document.hidden) { videoRef.current?.pause(); audioRef.current?.pause(); } };
+    document.addEventListener("visibilitychange", pause);
+    return () => document.removeEventListener("visibilitychange", pause);
+  }, [musicVolume, musicReady, scoringSeparately]);
+  useEffect(() => () => audioRef.current?.pause(), []);
 
   const generate = useCallback(async () => {
     setError(null);
+    if (audioJobs.busy || audioRefProblem || soundPlanIssue) { setAudioError(soundPlanIssue ?? audioRefProblem ?? "Wait for the audio request to finish before generating video."); return; }
     if (health?.live) {
       const ok = window.confirm(
         `This will run one live ${duration}s video generation at an estimated cost of $${cost.toFixed(2)}. Proceed?`,
@@ -1326,16 +1383,12 @@ export function AdLab({
     setElapsedMs(0);
     setVideoUrl(null);
     setPosterDataUrl(null);
-    // Score in parallel with the render — music returns in seconds, video in
-    // minutes. Not when the bed is a timing reference: then it has to exist
-    // before the render starts, and the button blocks until it does.
-    if (scoringSeparately && !musicUrl && !timingRefActive) void generateMusic();
     try {
       const res = await fetch("/api/ad/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: finalPrompt,
+          prompt: `${finalPrompt}\n\n${soundBlock}`,
           negativePrompt,
           modelId,
           aspect,
@@ -1353,6 +1406,7 @@ export function AdLab({
             ? refs.filter((r) => r.media === "video").map((r) => r.url)
             : undefined,
           referenceAudioUrls: supportsRefs ? audioRefUrls : undefined,
+          referenceAudioDurations: cap.refAudio ? audioRefUrls.map((url) => audioDurations[url]) : undefined,
           generateAudio: audioMode !== "silent",
           presetName: preset.name,
         }),
@@ -1365,6 +1419,9 @@ export function AdLab({
         return;
       }
       addSpend(json.cost ?? 0);
+      // Start music only after the video response has updated the budget cookie.
+      // Both jobs can then render concurrently without racing that cookie.
+      if (scoringSeparately && !musicReady && !musicAsTimingRef) void generateMusic();
       // Save the handle before the first poll, not after the last one: from
       // here on the render is paid for, and every path out of this function
       // has to leave it recoverable.
@@ -1439,6 +1496,7 @@ export function AdLab({
     scoringSeparately,
     supportsRefs,
     timingRefActive,
+    audioJobs.busy, audioRefProblem, soundPlanIssue, soundBlock, audioDurations, cap.refAudio, musicReady, musicAsTimingRef,
   ]);
 
   /**
@@ -1652,19 +1710,30 @@ export function AdLab({
    * all — so a fixed "step 3 of 8" would be wrong half the time. This asks
    * the same questions the Generate button asks, in the order they block on.
    */
+  /** The bed must exist before a render that uses it as a reference. */
+  const blockedOnMusic = timingRefAvailable && musicAsTimingRef && !musicReady;
+  const soundNext: { label: string; href: string } | null = audioJobs.busy
+    ? { label: "Wait for the audio request", href: "#ad-sound" }
+    : soundPlanIssue
+      ? { label: "Check the sound plan", href: "#ad-sound" }
+    : audioRefProblem
+      ? { label: "Resolve the audio reference", href: "#ad-sound" }
+      : blockedOnMusic
+        ? { label: "Generate the music reference", href: "#ad-sound" }
+        : null;
   const nextUp: { label: string; href: string } = blenderLane
     ? !finalPrompt.trim()
       ? { label: "Paste or import the prompt", href: "#ad-prompt" }
       : slotGaps.length > 0
         ? { label: "Attach the references the prompt names", href: "#ad-refs" }
-        : { label: "Ready to generate", href: "#ad-generate" }
+        : soundNext ?? { label: "Ready to generate", href: "#ad-generate" }
     : !productImage
       ? { label: "Upload the product photo", href: "#ad-product" }
       : unmet.length > 0
         ? { label: "Add the references this recipe needs", href: "#ad-refs" }
         : !finalPrompt.trim()
           ? { label: "Compose the prompt", href: "#ad-prompt" }
-          : { label: "Ready to generate", href: "#ad-generate" };
+          : soundNext ?? { label: "Ready to generate", href: "#ad-generate" };
 
   /*
    * Keep the step you need next inside the strip.
@@ -1705,36 +1774,33 @@ export function AdLab({
         ]
   ) as { href: string; label: string }[];
 
-  /** The bed must exist before a render that keys off it. */
-  const blockedOnMusic = timingRefAvailable && musicAsTimingRef && !musicUrl;
-
   const audioChoices = [
     ...(cap.native
       ? [
           {
             id: "native" as AudioMode,
-            title: `Native — ${modelName} carries all of it`,
-            body: cap.refAudio
-              ? "Sound and picture are generated in one pass, so effects land on frame. One call, one file — but the model approximates music rather than composing it."
-              : "One call, one file: effects, ambience and an attempt at music, all rendered with the picture. The effects are good; the music is a texture, not a track.",
+            title: `Native sound — start here`,
+            body: modelId.startsWith("seedance")
+              ? "One video request, one MP4 with sound. Seedance generates effects, ambience and musical direction with no extra native-audio charge. Audition this first."
+              : "Sound is generated with the picture in one file. Listen to the result before deciding whether it needs a separate score or effects.",
           },
         ]
       : []),
     {
       id: "layered" as AudioMode,
       title: cap.native
-        ? `Layered — ${modelName} does effects, a music model scores it`
+        ? `Layered — add an ElevenLabs score`
         : `Layered — a composed music bed (${modelName} renders no sound)`,
       body: cap.native
-        ? "How a studio actually does it. The video model renders the effects it can see itself making; ElevenLabs Music writes a real track over the top."
+        ? "Ask the video model for effects and ambience, then compose an instrumental track through fal. Extra audio charge; the track stays a separate file for your final edit."
         : "This model returns a silent MP4, so the whole soundtrack is built here: ElevenLabs Music writes the bed and you add effects in the edit.",
     },
     {
       id: "silent" as AudioMode,
       title: "Silent — deliver picture only",
       body: cap.switchable
-        ? `Native audio is switched off at the API, not just asked off in the prompt. The right choice when the ad will be cut to a licensed track.`
-        : "The prompt asks for a silent take. The right choice when the ad will be cut to a licensed track.",
+        ? `Native audio is switched off at the API, not just asked off in the prompt. Use this for a soundtrack you will build entirely in the edit.`
+        : "The prompt asks for a silent take. Use this for a soundtrack you will build entirely in the edit.",
     },
   ];
 
@@ -3364,6 +3430,18 @@ export function AdLab({
             <span className="font-semibold text-foreground">{modelName}:</span>{" "}
             {cap.note}
           </p>
+          <div className="mt-4 rounded-[6px] border border-border-soft bg-surface-2 p-4 text-sm">
+            <p className="font-semibold">ElevenLabs through fal.ai · {health === null ? "Checking configuration…" : health.fal ? "fal key configured" : "fal key missing"}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">Music, voiceover and sound effects use your existing fal connection. No separate ElevenLabs key is needed. This checks key presence; model access and balance are verified when you generate.</p>
+            {health && !health.live && <p className="mt-2 text-xs text-warning">Audio generation is in demo mode for this session. The preview tones are mocks, not ElevenLabs output. {gateable && <button type="button" className="min-h-11 font-semibold underline" onClick={requestLiveUnlock}>Unlock live audio</button>}</p>}
+          </div>
+
+          <SoundPlanner plan={soundPlan} onChange={(plan) => { setSoundPlan(plan); if (plan?.narration === "native" && soundPlan?.narration !== "native" && cap.native) setAudioMode("native"); }}
+            duration={duration} problem={soundPlanIssue} onMatchDuration={setSeconds}
+            canMatchDuration={Boolean(soundPlan && planSeconds(soundPlan) <= secondsCap && snapAdSeconds(modelId, planSeconds(soundPlan)) === planSeconds(soundPlan))}
+            busy={audioJobs.busy || phase === "starting"} live={health?.live ?? false}
+            scoreToPlan={scoreToPlan} onScoreToPlan={(enabled) => { setScoreToPlan(enabled); if (enabled) { setAudioMode("layered"); if (musicStyleId === NO_MUSIC_ID) setMusicStyleId("premium-cinematic"); } }}
+            onVoice={(body, label) => audioJobs.run("/api/ad/voice", body, label)} />
 
           <div className="mt-4 grid gap-2 md:grid-cols-3">
             {audioChoices.map((c) => (
@@ -3395,6 +3473,15 @@ export function AdLab({
             ))}
           </div>
 
+          <details className="mt-4 rounded-[6px] border border-border-soft p-3">
+            <summary className="cursor-pointer text-sm font-semibold">Sound direction sent with the video</summary>
+            <p className="mt-2 text-xs leading-relaxed text-muted">This block is appended to the video prompt, including imported Blender briefs. It changes sound instructions only. Silent mode also switches native audio off at the API where supported.</p>
+            <pre className="mt-3 whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">{soundBlock}</pre>
+          </details>
+
+          {audioError && <p role="alert" className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-sm text-warning">{audioError}</p>}
+          {audioRefProblem && <p role="alert" className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-sm text-warning">{audioRefProblem}</p>}
+
           {audioMode !== "silent" && (
             <label className="mt-4 block max-w-md">
               <span className="mb-1 block label">Music style</span>
@@ -3403,7 +3490,7 @@ export function AdLab({
                 value={musicStyleId}
                 onChange={(e) => {
                   setMusicStyleId(e.target.value);
-                  setMusicUrl(null);
+                  setMusicCustomPrompt("");
                   // In native mode the brief is written into the video prompt.
                   if (audioMode === "native") invalidatePrompt();
                 }}
@@ -3421,8 +3508,7 @@ export function AdLab({
                     {" "}
                     It runs as an endpoint on fal and bills to the same fal key
                     as the video — there is no separate ElevenLabs account to
-                    connect, and the fal.ai status at the top of the page covers
-                    it.
+                    connect, and the configuration status above shows whether that key is present.
                   </>
                 )}
               </span>
@@ -3439,24 +3525,30 @@ export function AdLab({
             </label>
           )}
 
-          {/* Spot effects — available whenever effects are being built outside
-              the video model, which is both layered and silent. */}
+          {/* A separate instrumental score, optionally structured by scene. */}
           {scoringSeparately && (
             <div className="mt-4 border-t border-border-soft pt-4">
+              <label className="mb-3 block">
+                <span className="label">Custom music brief (optional)</span>
+                <textarea className="input mt-2 min-h-24" maxLength={2000} value={musicCustomPrompt} onChange={(e) => setMusicCustomPrompt(e.target.value)} placeholder="Describe instruments, tempo, mood and how the score should build and end." />
+              </label>
+              <button type="button" className="mb-3 min-h-11 text-sm font-semibold text-accent underline underline-offset-4" onClick={() => { setMusicStyleId("premium-cinematic"); setMusicCustomPrompt(ICE_CREAM_MUSIC_BRIEF); }}>Use the Cream in motion music brief</button>
+              <p className="mb-3 text-xs leading-relaxed text-muted">{musicComposition ? "The scene plan sets section lengths and requests an instrumental score with no lyrics. Audition it for unwanted vocals." : "Instrumental only is enforced in the ElevenLabs request."} Music is estimated at $0.60 per started minute: a short ad track is about $0.60 each time you generate it.</p>
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   className="btn-secondary !px-3 !py-1.5 text-xs"
                   onClick={() => void generateMusic()}
-                  disabled={musicBusy}
+                  disabled={audioJobs.busy || phase === "starting" || Boolean(musicComposition && soundPlanIssue)}
                 >
                   {musicBusy
                     ? "Composing…"
                     : musicUrl
-                      ? "Regenerate music"
-                      : `Generate music (${duration + MUSIC_HANDLE_SECONDS}s, ~$${musicCost.toFixed(2)})`}
+                      ? `Generate another track (~$${musicCost.toFixed(2)})`
+                      : `Generate instrumental (${musicSeconds}s, ~$${musicCost.toFixed(2)})`}
                 </button>
-                {musicUrl && <span className="chip border-success/40 !text-success">track ready</span>}
+                {musicReady && <span className="chip border-success/40 !text-success">{musicMock ? "Demo tone — not ElevenLabs output" : "ElevenLabs track ready"}</span>}
               </div>
+              {musicUrl && !musicReady && <p className="mt-2 text-xs text-warning">This track belongs to earlier sound settings. You can still download it, but it will not be attached to the new brief. Generate a matching track first.</p>}
 
               {musicUrl && (
                 <div className="mt-3 max-w-md">
@@ -3471,9 +3563,7 @@ export function AdLab({
                     Download track
                   </a>
                   <p className="mt-1 text-xs text-muted">
-                    Generated {MUSIC_HANDLE_SECONDS}s longer than the cut for
-                    trim handles — slide a downbeat onto the price stamp in
-                    the edit.
+                    {musicComposition ? "Requested to match the scene lengths exactly. Audition the musical accents against the picture." : musicAsTimingRef ? "For reference use, the requested duration matches the cut. The file’s actual duration is checked before submission." : `Requested with ${MUSIC_HANDLE_SECONDS}s of trim handles. Align and finish the mix in your editor.`}
                   </p>
                 </div>
               )}
@@ -3499,19 +3589,16 @@ export function AdLab({
                     />
                     <span>
                       <span className="text-sm font-semibold">
-                        Cut the picture to this track ({modelName} only)
+                        Use this track as an audio reference
                       </span>
                       <span className="mt-1 block text-xs leading-relaxed text-muted">
-                        The bed is handed back to the model as{" "}
-                        <span className="font-mono text-accent">[Audio1]</span>{" "}
-                        and read as a timing signal in the same pass that makes
-                        the picture. This is the difference between beats you
-                        nudge into place afterwards and cuts the render was
-                        built around.
+                        The track is sent as{" "}
+                        <span className="font-mono text-accent">[Audio{refs.filter((r) => r.media === "audio").length + 1}]</span>.
+                        It can guide rhythm and mood. For Blender films, keep the camera plan and cut timing in charge; exact beat sync is not guaranteed.
                       </span>
                     </span>
                   </label>
-                  {musicAsTimingRef && !musicUrl && (
+                  {musicAsTimingRef && !musicReady && (
                     <p className="mt-2 rounded-[6px] border border-warning/40 bg-warning/10 p-2 text-xs leading-relaxed text-warning">
                       Compose the bed first — the reference has to exist before
                       the render starts.
@@ -3559,7 +3646,16 @@ export function AdLab({
             </div>
           )}
 
-          {audioMode !== "native" && recipe.sfx.length > 0 && (
+          {audioJobs.jobs.length > 0 && <details className="mt-4 rounded-[6px] border border-border-soft bg-surface-2 p-3" open>
+            <summary className="cursor-pointer text-sm font-semibold">Audio requests · saved on this browser</summary>
+            <p className="mt-2 text-xs text-muted">A slow request can be checked again without generating or charging for another track. Saved downloads remain available after a reload.</p>
+            <ul className="mt-3 space-y-3">{audioJobs.jobs.map((job) => <li key={job.requestId} className="rounded border border-border-soft p-3">
+              <p className="text-sm">{job.label}</p><code className="mt-1 block break-all text-[11px] text-muted">{job.requestId}</code>
+              {job.audioUrl ? <div className="mt-2"><audio src={job.audioUrl} controls preload="none" className="w-full max-w-sm" /><a href={job.audioUrl} target="_blank" rel="noreferrer" download className="inline-flex min-h-11 items-center text-sm font-semibold text-accent underline">Download audio</a></div> : <button type="button" className="btn-secondary mt-2" disabled={audioJobs.busy} onClick={() => { setAudioError(null); void audioJobs.resume(job).catch((e) => setAudioError(e instanceof Error ? e.message : "Could not check audio")); }}>{audioJobs.busy ? "Checking audio…" : "Check result · no new generation"}</button>}
+            </li>)}</ul>
+          </details>}
+
+          {(
             <details className="group mt-4 border-t border-border-soft pt-4">
               <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2 [&::-webkit-details-marker]:hidden">
                 <span className="flex items-baseline gap-2 text-sm font-semibold">
@@ -3572,23 +3668,25 @@ export function AdLab({
                   Spot effects — {MODELS[SFX_MODEL_ID].label.split(" (")[0]}
                 </span>
                 <span className="label-sm">
-                  {Object.keys(sfxTracks).length} of {recipe.sfx.length} generated ·
+                  {Object.keys(sfxTracks).length} of {effectLines.length} generated ·
                   ~${sfxCost.toFixed(3)} each
                 </span>
               </summary>
               <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted">
-                {cap.native && audioMode === "layered"
-                  ? `${modelName} already renders effects from the picture it is making, which is why they land on the right frame — but it approximates a described effect rather than producing it. These are the hero hits: generated exactly as described, delivered as separate files, and placed by you in the edit.`
-                  : `${modelName} gives you no audio here, so these are the effects track. Each one is a separate file you place in the edit.`}{" "}
-                One event per generation.
+                Optional sounds for the final edit, available with any sound mode. Describe one physical event per generation, audition it, then place it against the picture. These files are not automatically mixed into the MP4.
               </p>
+              <label className="mt-3 block"><span className="label">Describe a spot effect</span><input className="input mt-1" maxLength={600} value={customEffect} onChange={(e) => setCustomEffect(e.target.value)} placeholder="Close, dry scrape of a stainless spoon through dense frozen cream" /></label>
+              <div className="mt-2 flex flex-wrap gap-3">
+                <button type="button" className="btn-secondary" disabled={!customEffect.trim()} onClick={() => { setExtraEffects((previous) => [...previous, customEffect.trim()]); setCustomEffect(""); }}>Add to effects list</button>
+                <button type="button" className="min-h-11 text-sm font-semibold text-accent underline" onClick={() => setExtraEffects((previous) => [...previous, "Close, dry scrape of a stainless spoon through dense frozen ice cream, soft granular texture, no music or speech.", "A paper ice-cream tub settling softly on stone, followed by a light lid click; close microphone, short natural tail, no music."])}>Add ice-cream examples</button>
+              </div>
 
               <label className="mt-3 flex flex-wrap items-center gap-3">
                 <span className="label">Length</span>
                 <input
                   type="range"
-                  min={1}
-                  max={10}
+                  min={SFX_LIMITS.minSeconds}
+                  max={SFX_LIMITS.maxSeconds}
                   step={0.5}
                   value={sfxSeconds}
                   onChange={(e) => setSfxSeconds(Number(e.target.value))}
@@ -3602,7 +3700,7 @@ export function AdLab({
               </label>
 
               <ul className="mt-3 space-y-2">
-                {recipe.sfx.map((line, i) => (
+                {effectLines.map((line, i) => (
                   <li
                     key={i}
                     className="rounded-[6px] border border-border-soft bg-surface p-3"
@@ -3614,7 +3712,7 @@ export function AdLab({
                       <button
                         className="btn-secondary shrink-0 !px-3 !py-1.5 text-xs"
                         onClick={() => void generateSfx(line)}
-                        disabled={sfxBusy !== null}
+                        disabled={audioJobs.busy || phase === "starting"}
                       >
                         {sfxBusy === line
                           ? "Generating…"
@@ -3625,6 +3723,7 @@ export function AdLab({
                     </div>
                     {sfxTracks[line] && (
                       <div className="mt-2">
+                        <p className="mb-2 text-xs text-muted">{sfxMocks[line] ? "Demo noise — not an ElevenLabs effect" : "ElevenLabs effect · separate audio file"}</p>
                         <audio src={sfxTracks[line]} controls className="h-9 w-full max-w-sm" />
                         <a
                           href={sfxTracks[line]}
@@ -3641,10 +3740,9 @@ export function AdLab({
                 ))}
               </ul>
               <p className="mt-2 text-xs leading-relaxed text-muted">
-                These lines come from the recipe&apos;s sound design — edit them
-                {blenderLane
-                  ? " in your prompt to change what gets generated."
-                  : ` in step ${STEP.recipe} to change what gets generated.`}
+                Generate one physical event at a time. Recipe effects and your
+                added sounds are separate files to place against the action in
+                your editor.
               </p>
 
               <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
@@ -3795,7 +3893,7 @@ export function AdLab({
               <span className="font-bold text-accent">~${cost.toFixed(2)}</span>
               {scoringSeparately && (
                 <span className="block text-xs">
-                  video ${videoCost.toFixed(2)} + music ${musicCost.toFixed(2)}
+                  video ${videoCost.toFixed(2)} + {musicReady ? "existing music $0 additional" : `new music $${musicCost.toFixed(2)}`}
                 </span>
               )}
               {health && !health.live && (
@@ -3805,7 +3903,7 @@ export function AdLab({
             <button
               className={flagged ? "btn-secondary !border-warning !text-warning" : "btn-primary"}
               disabled={
-                !finalPrompt || blockedOnMusic || phase === "starting" || phase === "polling"
+                !finalPrompt || blockedOnMusic || Boolean(audioRefProblem) || Boolean(soundPlanIssue) || audioJobs.busy || phase === "starting" || phase === "polling"
               }
               onClick={() => void generate()}
             >
@@ -3817,7 +3915,7 @@ export function AdLab({
           )}
           {finalPrompt && blockedOnMusic && (
             <p className="mt-2 text-xs text-warning">
-              Compose the music bed in step {STEP.sound} — the render is set to cut against it.
+              Compose the music bed in step {STEP.sound} — it must be ready before the video can use it.
             </p>
           )}
         </Step>
@@ -3836,6 +3934,13 @@ export function AdLab({
                     onPlay={() => syncAudio("play")}
                     onPause={() => syncAudio("pause")}
                     onSeeked={() => syncAudio("seek")}
+                    onRateChange={() => syncAudio("seek")}
+                    onWaiting={() => syncAudio("pause")}
+                    onPlaying={() => syncAudio("play")}
+                    onTimeUpdate={() => {
+                      const v = videoRef.current; const a = audioRef.current;
+                      if (v && a && !v.paused && !a.paused && Math.abs(v.currentTime - a.currentTime) > 0.2) a.currentTime = Math.min(v.currentTime, a.duration || v.currentTime);
+                    }}
                     onEnded={() => syncAudio("pause")}
                   />
                 ) : posterDataUrl ? (
@@ -3926,7 +4031,7 @@ export function AdLab({
             )}
             {videoUrl && (
               <div className="p-4">
-                {musicUrl && scoringSeparately && (
+                {musicReady && musicUrl && scoringSeparately && (
                   <>
                     {/* Hidden bed, transport-locked to the video above. */}
                     <audio ref={audioRef} src={musicUrl} className="hidden" />
@@ -3938,11 +4043,13 @@ export function AdLab({
                         onChange={(e) => {
                           setMusicOn(e.target.checked);
                           if (!e.target.checked) audioRef.current?.pause();
-                          else if (!videoRef.current?.paused) syncAudio("play");
+                          else if (!videoRef.current?.paused) syncAudio("play", true);
                         }}
                       />
                       Play music bed with the video
                     </label>
+                    <label className="mb-3 flex flex-wrap items-center gap-3 text-xs text-muted"><span>Music preview level</span><input aria-label="Music preview level" type="range" min={0} max={1} step={0.05} value={musicVolume} onChange={(e) => setMusicVolume(Number(e.target.value))} /><span>{Math.round(musicVolume * 100)}%</span></label>
+                    <p className="mb-3 text-xs text-muted">Preview mix only. Download MP4 contains the video model’s audio; download the music separately and combine them in your editor. If the generated video already includes the reference music, turn off this extra layer to avoid doubling it.</p>
                   </>
                 )}
                 <details className="mb-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">

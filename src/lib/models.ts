@@ -20,10 +20,12 @@ export type ModelInfo = {
   /** Provider-side model ID / endpoint slug (env-overridable). */
   endpoint: string;
   label: string;
-  kind: "image" | "video" | "music" | "sfx";
+  kind: "image" | "video" | "music" | "sfx" | "voice";
   /** USD. Images: per image. Video/music: per second. */
   unitCost: number;
-  unit: "image" | "second";
+  unit: "image" | "second" | "character";
+  /** Round billable duration up to this increment, where the provider does. */
+  billingIncrementSeconds?: number;
   /**
    * Which field this fal endpoint uses to size its output.
    *
@@ -405,7 +407,15 @@ export const MODELS: Record<string, ModelInfo> = {
     bestFor: "Product-identity-critical ads: the packaging must stay exactly itself while the camera moves.",
   },
 
-  // ---------------- Music ----------------
+  // ---------------- Audio ----------------
+  "eleven-voice": {
+    id: "eleven-voice", provider: "fal",
+    endpoint: env("FAL_VOICE_ENDPOINT", "fal-ai/elevenlabs/tts/eleven-v3"),
+    label: "ElevenLabs Voice v3 (via fal.ai)", kind: "voice",
+    unitCost: 0.0001, unit: "character", // $0.10 / 1,000 characters; fal, 2026-09-09.
+    strengths: "Separate spoken narration with a selected voice and delivery stability.",
+    bestFor: "Auditioning scene narration before picture, then placing the original voice files in the final edit.",
+  },
   "eleven-sfx": {
     id: "eleven-sfx",
     provider: "fal",
@@ -415,7 +425,7 @@ export const MODELS: Record<string, ModelInfo> = {
     unitCost: 0.002,
     unit: "second",
     strengths:
-      "Text-to-sound-effect: one named effect at a time, 0.5-30s, optionally seamless-looping. Made to be dropped on a frame, not to underscore a whole cut.",
+      "Text-to-sound-effect: one named effect at a time, 0.5-22s, optionally seamless-looping. Delivered as a separate file for placement in an edit.",
     bestFor:
       "The hero product sound — the crack, the pour, the seal breaking. The one noise the ad is actually selling, which a video model only ever approximates.",
   },
@@ -426,12 +436,13 @@ export const MODELS: Record<string, ModelInfo> = {
     endpoint: env("FAL_MUSIC_ENDPOINT", "fal-ai/elevenlabs/music"),
     label: "ElevenLabs Music (via fal.ai)",
     kind: "music",
-    unitCost: 0.0133, // ~$0.80 / minute
+    unitCost: 0.01, // $0.60/minute, rounded UP to the next whole minute (fal, 2026-09-09).
     unit: "second",
+    billingIncrementSeconds: 60,
     strengths:
       "Generates an actual composed track — genre, tempo, instrumentation and arrangement — from 3s to 10 minutes.",
     bestFor:
-      "The music bed under an ad. Video models render SFX and ambience well but do not compose music; this layer does.",
+      "A separately directed instrumental music bed for an ad, with control over genre, instrumentation and musical arc.",
   },
 };
 
@@ -449,6 +460,7 @@ export function estimateCost(
   opts?: {
     seconds?: number;
     images?: number;
+    characters?: number;
     /** Seedance only: pixel area drives the token count, so it drives the bill. */
     resolution?: VideoResolution;
     aspect?: string;
@@ -462,6 +474,7 @@ export function estimateCost(
   },
 ): number {
   const m = getModel(modelId);
+  if (m.unit === "character") return m.unitCost * (opts?.characters ?? 0);
   // Seedance bills per token, not per second, and the token count scales with
   // pixel area — a per-second rate would be wrong by a factor that changes
   // with resolution. See lib/videoCost.ts.
@@ -474,7 +487,11 @@ export function estimateCost(
       hasVideoInputs: opts?.hasVideoInputs,
     });
   }
-  if (m.unit === "second") return m.unitCost * (opts?.seconds ?? 8);
+  if (m.unit === "second") {
+    const seconds = opts?.seconds ?? 8;
+    const increment = m.billingIncrementSeconds;
+    return m.unitCost * (increment ? Math.ceil(seconds / increment) * increment : seconds);
+  }
   // Reference input is billed separately on some edit endpoints, and a
   // packshot run supplies up to six of them.
   const refs = (m.refImageCost ?? 0) * (opts?.referenceImages ?? 0);
