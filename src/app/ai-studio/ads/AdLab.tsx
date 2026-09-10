@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import styles from "./AdLab.module.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
 import { SpendChip } from "@/components/SpendChip";
@@ -77,27 +78,6 @@ import {
   SFX_PROMPT_TIPS,
   clampSfxSeconds,
 } from "@/lib/sfx";
-
-/**
- * How far down the sticky studio header reaches, in pixels.
- *
- * The summary bar has to sit directly under it, and the header is two stacked
- * rows on a phone and one on a desktop — so the offset is measured rather than
- * hardcoded per breakpoint and left to drift the next time the nav changes.
- */
-function useHeaderHeight() {
-  const [top, setTop] = useState(0);
-  useEffect(() => {
-    const header = document.querySelector("header");
-    if (!header) return;
-    const measure = () => setTop(header.getBoundingClientRect().height);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(header);
-    return () => observer.disconnect();
-  }, []);
-  return top;
-}
 
 /** "a, b and c" — the receipt is a sentence, not a bulleted list. */
 function listOf(items: string[]): string {
@@ -375,7 +355,7 @@ function ClipPreview({ src, poster }: { src: string; poster?: string }) {
   );
 }
 
-/** One numbered card in the single-column flow. */
+/** Clear chapter boundaries without hiding controls or unmounting audio work. */
 function Step({
   n,
   title,
@@ -390,18 +370,22 @@ function Step({
   /** Anchor target, so something further up the page can jump to this step. */
   id?: string;
 }) {
+  const chapter: Record<string, string> = {
+    "ad-concept": "Find the idea", "ad-product": "Ground the picture", "ad-recipe": "Shape the story",
+    "ad-prompt": "Set the direction", "ad-refs": "Guide the look & motion", "ad-format": "Choose the output",
+    "ad-sound": "Build the soundtrack", "ad-generate": "From direction to film",
+  };
   return (
-    <section id={id} className="card scroll-mt-28 p-5 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-3 font-semibold">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/12 font-mono text-[11px] text-accent">
-            {n}
-          </span>
-          {title}
-        </h2>
-        {aside}
+    <section id={id} className={styles.step} aria-labelledby={`${id}-title`}>
+      <div className={styles.stepHeader}>
+        <span className={styles.stepNumber} aria-hidden>{String(n).padStart(2, "0")}</span>
+        <div className={styles.stepHeading}>
+          <p className={styles.eyebrow}>{chapter[id ?? ""]}</p>
+          <h2 id={`${id}-title`} className={styles.stepTitle}>{title}</h2>
+        </div>
+        {aside && <div className={styles.stepAside}>{aside}</div>}
       </div>
-      {children}
+      <div className={styles.stepBody}>{children}</div>
     </section>
   );
 }
@@ -1766,9 +1750,6 @@ export function AdLab({
   /** Something was flagged above the spend button, whichever lane raised it. */
   const flagged = blenderLane ? slotGaps.length > 0 : unmet.length > 0;
 
-  const headerHeight = useHeaderHeight();
-  const jumpRowRef = useRef<HTMLElement>(null);
-
   /*
    * The one thing left to do, read off the state the page already keeps.
    *
@@ -1802,45 +1783,6 @@ export function AdLab({
           ? { label: "Compose the prompt", href: "#ad-prompt" }
           : soundNext ?? { label: "Ready to generate", href: "#ad-generate" };
 
-  /*
-   * Keep the step you need next inside the strip.
-   *
-   * Eight chips do not fit 390px, and a row that silently scrolls with the
-   * relevant item off the right-hand edge is the same failure the studio nav
-   * had. scrollLeft is set directly rather than via scrollIntoView, which
-   * would also move the page vertically.
-   */
-  useEffect(() => {
-    const row = jumpRowRef.current;
-    if (!row) return;
-    const target = row.querySelector<HTMLElement>(`a[href="${nextUp.href}"]`);
-    if (!target) return;
-    const left = target.offsetLeft - row.clientWidth / 2 + target.offsetWidth / 2;
-    row.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [nextUp.href]);
-
-  /** Only the steps this lane actually renders. */
-  const jumps = (
-    blenderLane
-      ? [
-          { href: "#ad-prompt", label: "Prompt" },
-          { href: "#ad-refs", label: "References" },
-          { href: "#ad-format", label: "Format" },
-          { href: "#ad-sound", label: "Sound" },
-          { href: "#ad-generate", label: "Generate" },
-        ]
-      : [
-          { href: "#ad-concept", label: "Concept" },
-          { href: "#ad-product", label: "Product" },
-          { href: "#ad-recipe", label: "Recipe" },
-          ...(supportsRefs ? [{ href: "#ad-refs", label: "References" }] : []),
-          { href: "#ad-format", label: "Format" },
-          { href: "#ad-sound", label: "Sound" },
-          { href: "#ad-prompt", label: "Prompt" },
-          { href: "#ad-generate", label: "Generate" },
-        ]
-  ) as { href: string; label: string }[];
-
   const audioChoices = [
     ...(cap.native
       ? [
@@ -1872,10 +1814,22 @@ export function AdLab({
   ];
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
-      {/* status */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className={styles.page}>
+      <div className={styles.hero}>
+        <div>
+          <p className={styles.eyebrow}>AI Content Studio · Video workspace</p>
+          <h1 id="ad-lab-workspace" className={styles.heroTitle}>Ad Lab</h1>
+          <p className={styles.lead}>Shape the picture. Plan the sound. Make the film.</p>
+        </div>
+        <a href="#cream-making-of" className={styles.heroLink}>See how a film was made <span aria-hidden>↘</span></a>
+      </div>
+
+      <div className={styles.utilities}>
+        <div className={styles.sessionControls}>
+          <LiveGate />
+          <details className={styles.connections}>
+            <summary>Connections</summary>
+            <div className="flex flex-wrap gap-2 pb-2">
           <span className="chip">
             <span className={`inline-block h-2 w-2 rounded-full ${health?.gemini ? "bg-success" : "bg-muted/50"}`} />
             Gemini API {health?.gemini ? "connected" : "not configured"}
@@ -1884,32 +1838,30 @@ export function AdLab({
             <span className={`inline-block h-2 w-2 rounded-full ${health?.fal ? "bg-success" : "bg-muted/50"}`} />
             fal.ai {health?.fal ? "connected" : "not configured"}
           </span>
-          {/* Live-mode state sits with the other connection chips, not in the nav. */}
-          <LiveGate />
+            </div>
+          </details>
           {health && !health.live && !health.gemini && !health.fal && (
             <span className="chip border-warning/40 text-warning">
-              Demo mode — zero-cost mocks; add API keys to go live
+              Demo · no generation charges
             </span>
           )}
-        </div>
-        <SpendChip amount={sessionSpend} />
-      </div>
-
-      {/* Recovery: a render that was paid for but never made it onto the page. */}
-      <div className="mt-3">
         <button
-          className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-muted underline decoration-dotted underline-offset-4 hover:text-foreground"
+          className="inline-flex min-h-11 items-center text-xs font-semibold text-muted underline underline-offset-4 hover:text-foreground"
+          aria-expanded={recoverOpen}
+          aria-controls="ad-past-renders"
           onClick={() => {
             setRecoverOpen((v) => !v);
             if (!recent && !recovering) void loadRecent();
           }}
         >
-          {recoverOpen ? "Hide past renders" : "Looking for a render you already paid for?"}
+          {recoverOpen ? "Hide past renders" : "Past renders"}
         </button>
+        </div>
+        <SpendChip amount={sessionSpend} />
       </div>
 
       {recoverOpen && (
-        <div className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-4">
+        <div id="ad-past-renders" className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-4">
           <p className="label">Past renders on this fal key</p>
           <p className="mt-1.5 text-xs leading-relaxed text-muted">
             A render that timed out, or one started before this page began
@@ -1977,7 +1929,7 @@ export function AdLab({
             <p className="mt-1 text-xs leading-relaxed text-muted">
               fal dashboard → Requests. Collected against{" "}
               <span className="font-semibold text-foreground">{modelName}</span>,
-              the model selected above — switch models first if the render was
+              the model selected in Format — switch models first if the render was
               made with a different one.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -2037,86 +1989,6 @@ export function AdLab({
         </div>
       )}
 
-      <h1 id="ad-lab-workspace" className="mt-6 scroll-mt-32 text-[1.75rem] tracking-[-0.03em]">Ad Lab</h1>
-      <a href="#cream-making-of" className="mt-4 flex min-h-12 items-center justify-between gap-4 rounded-[4px] border border-accent/35 bg-accent/5 px-4 py-3 text-sm font-medium text-accent hover:bg-accent/10">
-        <span>How I made Cream in motion <span className="font-normal text-muted">— Blender, five images &amp; the prompts</span></span>
-        <span aria-hidden>↓</span>
-      </a>
-      <p className="mt-2 max-w-3xl text-muted">
-        {blenderLane ? (
-          <>
-            Running a prompt written against a{" "}
-            <span className="font-semibold text-foreground">clay control pass</span>. The
-            blockout has already decided camera, timing and blocking, so the
-            lab does not ask about them again — it attaches the references,
-            picks the shape and length, and spends.
-          </>
-        ) : (
-          <>
-            Mini product ads as{" "}
-            <span className="font-semibold text-foreground">preset recipes</span>: each
-            concept is a structured, deconstructed prompt — aesthetics,
-            beat-by-beat action, text overlay spec, sound design — with the
-            product swappable per SKU. Design the concept once; run any product
-            through it, and edit any part of it when the brief moves.
-          </>
-        )}
-      </p>
-
-      {/*
-        A summary you do not have to scroll back to the top to read.
-        
-        The workflow runs to roughly 11,000px on a phone, so the settings that
-        decide the bill and the one thing still blocking a run were a long way
-        from wherever you happened to be. It sits under the studio header
-        rather than over the content, is one row tall, and never covers the
-        mobile keyboard because it is pinned to the top rather than the bottom.
-        
-        The jump links are plain anchors: none of them submits anything, and
-        the list is built from the lane's own steps rather than a fixed eight.
-      */}
-      <div
-        className="sticky z-30 -mx-6 mt-6 border-y border-border-soft bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] px-6 py-2 backdrop-blur"
-        style={{ top: headerHeight }}
-      >
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-muted">
-            <span className="font-semibold text-foreground">{modelName}</span>
-            <span aria-hidden>·</span>
-            <span>{duration}s</span>
-            <span aria-hidden>·</span>
-            <span>{aspect}</span>
-            <span aria-hidden>·</span>
-            <span className="font-semibold text-foreground">~${cost.toFixed(2)}</span>
-          </span>
-
-          <a
-            href={nextUp.href}
-            className="ml-auto inline-flex min-h-[32px] items-center gap-1.5 rounded-[6px] border border-accent/30 bg-accent/[0.07] px-2.5 font-semibold text-accent transition hover:border-accent"
-          >
-            <span className="label-sm !text-[10px] !text-accent/70">Next</span>
-            {nextUp.label}
-            <span aria-hidden className="font-mono">↓</span>
-          </a>
-        </div>
-
-        <nav
-          ref={jumpRowRef}
-          aria-label="Jump to a step"
-          className="no-scrollbar mt-1.5 flex gap-1 overflow-x-auto text-[11px]"
-        >
-          {jumps.map((j) => (
-            <a
-              key={j.href}
-              href={j.href}
-              className="whitespace-nowrap rounded-[5px] px-2 py-1 text-muted transition hover:bg-accent/8 hover:text-accent"
-            >
-              {j.label}
-            </a>
-          ))}
-        </nav>
-      </div>
-
       {/*
         The receipt for a handover from the Prompts or Blender page.
         
@@ -2165,18 +2037,20 @@ export function AdLab({
         Which lane you are in changes which steps exist, so it is the first
         decision on the page rather than a toggle buried in the format step.
       */}
-      <div className="mt-7 grid gap-3 sm:grid-cols-2">
+      <div className={styles.startingPoint}>
+      <p className={styles.eyebrow}>Choose your starting point</p>
+      <div className={styles.laneGrid}>
         {(
           [
             {
               id: "recipe" as Lane,
               title: "Start from a concept",
-              body: "Pick a recipe, upload the pack, and the lab writes the prompt. Eight steps, nothing needed beforehand.",
+              body: "Choose a concept and product photo. Build and edit the prompt here.",
             },
             {
               id: "blender" as Lane,
               title: "I already have a prompt",
-              body: "For a shot blocked out in Blender first. Skips concept, product and recipe — the clay pass already settled all three. Five steps.",
+              body: "Bring a Blender brief or your own prompt. Add its references and choose the output.",
             },
           ]
         ).map((l) => (
@@ -2184,51 +2058,17 @@ export function AdLab({
             key={l.id}
             onClick={() => switchLane(l.id)}
             aria-pressed={lane === l.id}
-            className={`rounded-[6px] border p-4 text-left transition ${
-              lane === l.id
-                ? "border-accent bg-accent/[0.05] ring-1 ring-accent"
-                : "border-border-soft hover:border-accent/50"
-            }`}
+            className={`${styles.laneButton} ${lane === l.id ? styles.laneActive : ""}`}
           >
             <h2 className="text-sm font-semibold">{l.title}</h2>
             <p className="mt-1.5 text-xs leading-relaxed text-muted">{l.body}</p>
           </button>
         ))}
       </div>
+      {blenderLane && <p className="mt-3 text-xs text-muted">Need to write the brief first? <Link href="/ai-studio/blender" className="inline-flex min-h-6 items-center font-semibold text-accent underline underline-offset-4">Open the Blender prompt builder ↗</Link></p>}
+      </div>
 
-      {blenderLane && (
-        <p className="mt-3 max-w-3xl text-xs leading-relaxed text-muted">
-          Concept, product and recipe are not hidden to shorten the page — they
-          are hidden because running them here would produce a prompt you are
-          not going to use, and a product photo that shifts every reference
-          index in the one you are.{" "}
-          <Link href="/ai-studio/blender" className="font-semibold text-accent hover:underline">
-            Write the prompt on the Blender page →
-          </Link>
-        </p>
-      )}
-
-      {/*
-        A brief that renders, one click away. Everything else on this page is a
-        claim about how the workflow goes; this is the workflow, loaded.
-      */}
-      {blenderLane && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-accent/40 bg-accent/[0.05] p-4">
-          <p className="min-w-0 flex-1 text-sm leading-relaxed">
-            <span className="font-semibold">New here?</span>{" "}
-            <span className="text-muted">
-              Load a brief that is known to render — the prompt, a clay control
-              pass, a product still, and the exact settings the finished take
-              used.
-            </span>
-          </p>
-          <button className="btn-primary shrink-0" onClick={loadBlenderExample}>
-            Load the worked example →
-          </button>
-        </div>
-      )}
-
-      <div className="mt-8 space-y-6">
+      <div className={styles.flow}>
         {/* ---------- the Blender lane opens on the prompt itself ---------- */}
         {blenderLane && (
           <Step
@@ -2238,7 +2078,7 @@ export function AdLab({
             aside={
               <div className="flex flex-wrap items-center gap-3">
                 <button
-                  className="text-xs font-semibold text-accent hover:underline"
+                  className="inline-flex min-h-11 items-center text-xs font-semibold text-accent underline underline-offset-4"
                   onClick={loadBlenderExample}
                 >
                   Load the worked example
@@ -2248,11 +2088,7 @@ export function AdLab({
             }
           >
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
-              Paste the prompt the Blender page composed, or import the{" "}
-              <code className="font-mono text-xs">.txt</code> you saved next to
-              the .blend. Reference tokens are converted to the bracketed form
-              the API resolves on the way in — <code className="font-mono text-xs">@Image 1</code>{" "}
-              becomes <code className="font-mono text-xs">[Image1]</code>.
+              Paste your brief or import its text file. Add the referenced images and clips in the next section.
             </p>
 
             {importError && (
@@ -2716,7 +2552,7 @@ export function AdLab({
           <Step
             id="ad-refs"
             n={STEP.refs}
-            title={blenderLane ? "References — the clay pass and the look" : "References"}
+            title="References"
             aside={
               <div className="flex items-center gap-3">
                 <span className="label-sm">
@@ -2793,8 +2629,10 @@ export function AdLab({
               tells you when that is off by one.
             */}
             {blenderLane && (
-              <div className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-4">
-                <p className="label !text-accent">Upload in prompt order</p>
+              <>
+              <p className="text-sm leading-relaxed text-muted">Add references in the order your prompt names them. Images, video and audio each have their own numbering.</p>
+              <details className={styles.guide}>
+                <summary>How reference order and tokens work</summary>
                 <p className="mt-2 text-xs leading-relaxed text-muted">
                   Order is the only thing here the model reads. The job
                   dropdown on each reference feeds the recipe composer, which
@@ -2830,14 +2668,15 @@ export function AdLab({
                   references positionally and has never seen what your file is
                   called.
                 </p>
-              </div>
+              </details>
+              </>
             )}
 
             {/* Reference recipe — the concept ships with instructions */}
             {!blenderLane && preset.referenceRecipe && (
-              <details open className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.04] p-3">
+              <details className={styles.guide}>
                 <summary className="cursor-pointer text-xs font-semibold text-accent">
-                  Reference recipe for {preset.name} — what to add, and why
+                  Reference guide · {preset.name}{unmet.length > 0 ? ` · ${unmet.length} important reference${unmet.length === 1 ? "" : "s"} missing` : ""}
                 </summary>
                 <ol className="mt-3 grid gap-3 md:grid-cols-2">
                   {recipeChecklist.map(({ step, satisfied }, i) => (
@@ -3167,11 +3006,8 @@ export function AdLab({
             </div>
 
             {/* Starter clips — motion you can borrow without shooting it. */}
-            <div className="mt-5 border-t border-border-soft pt-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="label">Starter motion clips</span>
-                <span className="label-sm">or add your own above</span>
-              </div>
+            <details className={styles.guide}>
+              <summary>Browse starter motion clips <span className="font-normal text-muted">· optional</span></summary>
               <p className="mt-1.5 max-w-3xl text-xs leading-relaxed text-muted">
                 Abstract on purpose. The model reads a clip&apos;s camera move,
                 cutting rhythm and energy and applies them to your product, so
@@ -3245,7 +3081,7 @@ export function AdLab({
                   restart.
                 </p>
               )}
-            </div>
+            </details>
 
           </Step>
         )}
@@ -3282,14 +3118,17 @@ export function AdLab({
                 </option>
               ))}
             </select>
-            <span className="mt-2 block max-w-3xl text-xs leading-relaxed text-muted">
+          </label>
+          <details className={styles.guide}>
+            <summary>How this model uses references</summary>
+            <p className="pb-3 text-xs leading-relaxed text-muted">
               {supportsRefs
                 ? "Reference-to-video: every uploaded reference is addressed positionally in the prompt ([Image1], [Video1], [Audio1]…), which is what stops the product drifting as the camera moves."
                 : endFrameActive
                   ? "First frame and, optionally, last frame: give it both ends and it generates only the move between them, which is the tightest control available without a clay pass. No video input means no input duration on the bill, so it is markedly cheaper than the reference endpoint — the trade is that identity is held by one still rather than several."
                   : "Single grounding frame: the product photo conditions the first frame, then the model extrapolates. Cheaper, but the pack can drift as the camera moves."}
-            </span>
-          </label>
+            </p>
+          </details>
 
           {/* Shape — one concept usually has to ship in several. */}
           <div className="mt-5">
@@ -3496,11 +3335,13 @@ export function AdLab({
             <span className="font-semibold text-foreground">{modelName}:</span>{" "}
             {cap.note}
           </p>
-          <div className="mt-4 rounded-[6px] border border-border-soft bg-surface-2 p-4 text-sm">
-            <p className="font-semibold">ElevenLabs through fal.ai · {health === null ? "Checking configuration…" : health.fal ? "fal key configured" : "fal key missing"}</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">Music, voiceover and sound effects use your existing fal connection. No separate ElevenLabs key is needed. This checks key presence; model access and balance are verified when you generate.</p>
-            {health && !health.live && <p className="mt-2 text-xs text-warning">Audio generation is in demo mode for this session. The preview tones are mocks, not ElevenLabs output. {gateable && <button type="button" className="min-h-11 font-semibold underline" onClick={requestLiveUnlock}>Unlock live audio</button>}</p>}
-          </div>
+          <details className={styles.guide}>
+            <summary>ElevenLabs connection &amp; audio delivery</summary>
+            <p className="text-xs font-semibold">{health === null ? "Checking configuration…" : health.fal ? "Connected through your fal key" : "fal key not configured"}</p>
+            <p className="mt-1 pb-3 text-xs leading-relaxed text-muted">Music, voiceover and sound effects use your existing fal connection. No separate ElevenLabs key is needed. This checks key presence; model access and balance are verified when you generate.</p>
+          </details>
+          {health && !health.live && <p className="mt-3 text-xs leading-relaxed text-warning">Audio is in demo mode. Preview tones are mocks, not ElevenLabs output. {gateable && <button type="button" className="min-h-11 font-semibold underline" onClick={requestLiveUnlock}>Unlock live audio</button>}</p>}
+          {health?.live && !health.fal && <p className="mt-3 text-xs text-warning">Connect fal to generate ElevenLabs voice, music and sound effects.</p>}
 
           <SoundPlanner plan={soundPlan} onChange={(plan) => { setSoundPlan(plan); if (plan?.narration === "native" && soundPlan?.narration !== "native" && cap.native) setAudioMode("native"); }}
             duration={duration} problem={soundPlanIssue} onMatchDuration={setSeconds}
@@ -3953,17 +3794,21 @@ export function AdLab({
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-            <div className="text-sm text-muted">
-              {duration}s · {aspect} · {frame.width}×{frame.height} ·{" "}
-              <span className="font-bold text-accent">~${cost.toFixed(2)}</span>
+          <div className={styles.renderSummary}>
+            <div className={styles.renderMeta}>
+              <p className="mb-2 text-sm font-semibold">{modelName}</p>
+              <p>{duration}s · {aspect} · {frame.width}×{frame.height}</p>
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span className={styles.renderCost}>~${cost.toFixed(2)}</span>
+                <span className="text-xs">estimated total</span>
+              </div>
               {scoringSeparately && (
                 <span className="block text-xs">
                   video ${videoCost.toFixed(2)} + {musicReady ? "existing music $0 additional" : `new music $${musicCost.toFixed(2)}`}
                 </span>
               )}
               {health && !health.live && (
-                <span className="ml-1 text-xs text-warning">(demo — $0)</span>
+                <span className="mt-1 block text-xs text-warning">Demo mode · no generation charge</span>
               )}
             </div>
             <button
@@ -3976,14 +3821,7 @@ export function AdLab({
               {flagged ? "Generate anyway →" : "Generate ad →"}
             </button>
           </div>
-          {!finalPrompt && (
-            <p className="mt-2 text-xs text-muted">Compose the prompt first.</p>
-          )}
-          {finalPrompt && blockedOnMusic && (
-            <p className="mt-2 text-xs text-warning">
-              Compose the music bed in step {STEP.sound} — it must be ready before the video can use it.
-            </p>
-          )}
+          {nextUp.href !== "#ad-generate" && <p className="mt-4 text-sm leading-relaxed text-muted">Before you render: <a href={nextUp.href} className="inline-flex min-h-6 items-center font-semibold text-accent underline underline-offset-4">{nextUp.label} ↗</a></p>}
         </Step>
 
         {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed") && (
