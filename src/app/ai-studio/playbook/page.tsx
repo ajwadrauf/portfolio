@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionNav, type NavSection } from "@/components/SectionNav";
 import { PreflightChecklist } from "./PreflightChecklist";
+import { PLAYBOOK_CHECKLIST } from "@/lib/adPreflight";
 
 export const metadata: Metadata = {
   title: "Production Playbook — AI Content Studio",
@@ -156,47 +157,6 @@ const ENFORCED_HERE = [
   ["The demo states its own limits", "Where the pipeline cannot guarantee something — music that is not frame-synced, a take that needs an alignment pass — it says so in the interface rather than in a footnote."],
 ];
 
-const CHECKLIST: { group: string; items: string[] }[] = [
-  {
-    group: "Before you generate",
-    items: [
-      "The platform is on the approved list for this kind of work",
-      "Nothing confidential, personal, biometric or third-party-licensed is going into the prompt or the references",
-      "Source assets are ours, or the rights to process them are confirmed in writing",
-      "If a real person appears, consent and usage rights exist and are documented",
-    ],
-  },
-  {
-    group: "If a real product is shown",
-    items: [
-      "The product in frame originates from authentic capture of the actual item",
-      "AI work is confined to the surroundings — no synthetic substitution of the product",
-      "Nothing has been added, enlarged, improved or made more appetising than the real thing",
-      "The authentic source file is filed and traceable to this final asset",
-    ],
-  },
-  {
-    group: "If a person appears",
-    items: [
-      "Synthetic talent is original and not a recognisable individual",
-      "Not presented as a customer, employee, expert or regulated professional unless true and documented",
-      "No manufactured testimonial, endorsement or before-and-after",
-      "Broadcast or OLV on-camera synthetic talent has specific approval",
-      "Any voice is original synthetic, non-impersonative, and rights-cleared",
-    ],
-  },
-  {
-    group: "Before it ships",
-    items: [
-      "Both tests answered — fidelity, and the catch-all",
-      "Child-directed and food-advertising requirements checked, unchanged by AI being involved",
-      "Material AI use is disclosed internally in the approval workflow",
-      "External disclosure decided against channel, platform and regulatory requirements",
-      "The provenance record is complete: platform, component, source, rights, consent, exceptions",
-      "A named human has approved it",
-    ],
-  },
-];
 
 const METRICS = [
   ["Speed", "Brief-to-delivery time per pack", "Same-day for standard versioning"],
@@ -608,7 +568,12 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
               title="Pre-flight"
               lede="The guardrails above, as something you run against an actual asset. Tick it before the asset ships, not after someone asks."
             />
-            <PreflightChecklist groups={CHECKLIST} />
+            <div className="mb-5 rounded-[6px] border border-accent/25 bg-accent/[0.05] p-4">
+              <p className="font-semibold text-foreground">Run this against a finished take.</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted">Ad Lab can review a generated video and its embedded audio, fill this checklist with evidence, and flag what still needs a human decision. Rights, consent and publishing approval remain documentary checks.</p>
+              <Link href="/ai-studio/ads#ad-generate" className="mt-2 inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Open Ad Lab’s video review →</Link>
+            </div>
+            <PreflightChecklist groups={PLAYBOOK_CHECKLIST} />
           </section>
 
           {/* 08 Teaching */}

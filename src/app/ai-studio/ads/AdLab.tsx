@@ -8,6 +8,8 @@ import { RenderWaiting } from "@/components/studio/RenderWaiting";
 import { useAudioJobs } from "@/lib/useAudioJobs";
 import { soundDirection, audioReferenceProblem, ICE_CREAM_MUSIC_BRIEF } from "@/lib/adAudio";
 import { SoundPlanner } from "@/components/studio/SoundPlanner";
+import { AdPreflight } from "@/components/ad/AdPreflight";
+import type { CompletedPreflightTake, GenerationSnapshot } from "@/lib/adPreflight";
 import { buildComposition, planProblem, planSeconds, planVideoDirection, soundPlanSchema, type SoundPlan } from "@/lib/soundPlan";
 import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
 import {
@@ -139,7 +141,26 @@ type PendingJob = {
   /** For the resume prompt, so it says what is waiting rather than "a job". */
   label: string;
   aspect: string;
+  /** Captured when submitted; never reconstructed from the edited form. */
+  generationSnapshot?: GenerationSnapshot;
 };
+
+type CompletedTake = CompletedPreflightTake & {
+  /** Browser memory only; the source files are not written to local storage. */
+  referenceImages?: { name: string; role: string; dataUrl: string }[];
+};
+
+const TAKE_KEY = "adlab-completed-takes-v1";
+
+/** Metadata only: reference files and signed reference links are not retained. */
+function previousTakes(): CompletedTake[] {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(TAKE_KEY) ?? "[]");
+    return Array.isArray(saved) ? saved.filter((take): take is CompletedTake =>
+      typeof take?.videoUrl === "string" && typeof take?.id === "string",
+    ).slice(0, 12) : [];
+  } catch { return []; }
+}
 
 /**
  * A pre-addressed request for an access code.
@@ -413,6 +434,8 @@ export function AdLab({
   const [negativePrompt, setNegativePrompt] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [completedTake, setCompletedTake] = useState<CompletedTake | null>(null);
+  const [videoMetadata, setVideoMetadata] = useState<{ durationSeconds: number; width: number; height: number } | null>(null);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
   /*
    * An error knows where it came from.
@@ -607,6 +630,8 @@ export function AdLab({
   const cap = audioCapability(modelId);
   const modelName = MODELS[modelId].label.split(" (")[0];
   const supportsRefs = MULTI_REF_MODELS.includes(modelId);
+  /** This endpoint interpolates between a first and a last frame. */
+  const endFrameActive = supportsEndFrame(modelId);
   const secondsCap = maxAdSeconds(modelId);
   /*
    * Snapped to what the endpoint publishes. Kling takes duration as an enum of
@@ -834,6 +859,28 @@ export function AdLab({
     } catch {}
   }, []);
 
+  const showCompletedTake = useCallback((url: string, requestId: string, generationSnapshot?: GenerationSnapshot | null, referenceImages?: CompletedTake["referenceImages"]) => {
+    const history = previousTakes();
+    const saved = history.find((take) => take.videoUrl === url && take.id === requestId);
+    const take: CompletedTake = {
+      videoUrl: url,
+      id: requestId,
+      context: generationSnapshot ?? saved?.context ?? null,
+      referenceImages,
+    };
+    setCompletedTake(take);
+    setVideoUrl(url);
+    const displayed = videoRef.current;
+    setVideoMetadata(displayed?.currentSrc === url && Number.isFinite(displayed.duration)
+      ? { durationSeconds: displayed.duration, width: displayed.videoWidth, height: displayed.videoHeight }
+      : null);
+    setPhase("done");
+    try {
+      const retained = { id: take.id, videoUrl: take.videoUrl, context: take.context };
+      localStorage.setItem(TAKE_KEY, JSON.stringify([retained, ...history.filter((item) => item.videoUrl !== url)].slice(0, 12)));
+    } catch { /* The take stays usable if browser storage is full or disabled. */ }
+  }, []);
+
   /**
    * One status check against an already-paid render. Free — it reads a result
    * fal has already produced — so the button that calls it says so.
@@ -859,8 +906,7 @@ export function AdLab({
         error?: string;
       };
       if (status.status === "done" && status.videoUrl) {
-        setVideoUrl(status.videoUrl);
-        setPhase("done");
+        showCompletedTake(status.videoUrl, pendingJob.falRequestId ?? pendingJob.operationName ?? status.videoUrl, pendingJob.generationSnapshot);
         rememberJob(null);
         return;
       }
@@ -875,7 +921,7 @@ export function AdLab({
     } finally {
       setChecking(false);
     }
-  }, [pendingJob, rememberJob]);
+  }, [pendingJob, rememberJob, showCompletedTake]);
 
   /** Ask fal what this key has actually rendered lately. */
   const loadRecent = useCallback(async () => {
@@ -913,8 +959,7 @@ export function AdLab({
           error?: string;
         };
         if (status.status === "done" && status.videoUrl) {
-          setVideoUrl(status.videoUrl);
-          setPhase("done");
+          showCompletedTake(status.videoUrl, id);
           setRecoverOpen(false);
           rememberJob(null);
           return;
@@ -931,7 +976,7 @@ export function AdLab({
         setRecovering(false);
       }
     },
-    [modelId, rememberJob],
+    [modelId, rememberJob, showCompletedTake],
   );
 
   const addSpend = useCallback((amount: number) => {
@@ -1378,10 +1423,33 @@ export function AdLab({
       );
       if (!ok) return;
     }
+    // Freeze the actual request, including the sound directions. Editing the
+    // form while it renders must not rewrite the evidence for the finished take.
+    const generationSnapshot: GenerationSnapshot = {
+      submittedAt: new Date().toISOString(),
+      prompt: `${finalPrompt}\n\n${soundBlock}`,
+      negativePrompt,
+      modelId,
+      durationSeconds: duration,
+      aspect,
+      resolution,
+      audioMode,
+      references: [
+        ...(productImage ? [{ name: "Product photo", media: "image", role: "product" }] : []),
+        ...(endFrameActive && endImage ? [{ name: "End frame", media: "image", role: "composition" }] : []),
+        ...(supportsRefs ? refs.map(({ name, media, role }) => ({ name, media, role })) : []),
+        ...(timingRefActive && musicUrl ? [{ name: "Generated music timing reference", media: "audio", role: "rhythm" }] : []),
+      ],
+    };
+    const takeReferenceImages = [
+      ...(productImage?.startsWith("data:image/") ? [{ name: "Product photo", role: "product", dataUrl: productImage }] : []),
+      ...(supportsRefs ? refs.filter((r) => r.media === "image" && r.role === "product" && r.url.startsWith("data:image/")).map((r) => ({ name: r.name, role: r.role, dataUrl: r.url })) : []),
+    ].slice(0, 3);
     setPhase("starting");
     setRenderStartedAt(Date.now());
     setElapsedMs(0);
     setVideoUrl(null);
+    setCompletedTake(null);
     setPosterDataUrl(null);
     try {
       const res = await fetch("/api/ad/start", {
@@ -1433,6 +1501,7 @@ export function AdLab({
         startedAt: Date.now(),
         label: `${preset.name} · ${duration}s`,
         aspect,
+        generationSnapshot,
       });
       setPhase("polling");
       const deadline = Date.now() + POLL_DEADLINE_MS;
@@ -1456,8 +1525,7 @@ export function AdLab({
           continue;
         }
         if (status?.status === "done") {
-          setVideoUrl(status.videoUrl!);
-          setPhase("done");
+          showCompletedTake(status.videoUrl!, json.falRequestId ?? json.operationName ?? status.videoUrl, generationSnapshot, takeReferenceImages);
           rememberJob(null);
           return;
         }
@@ -1490,12 +1558,14 @@ export function AdLab({
     negativePrompt,
     preset,
     rememberJob,
+    showCompletedTake,
     resolution,
     productImage,
     refs,
     scoringSeparately,
     supportsRefs,
     timingRefActive,
+    endFrameActive, endImage,
     audioJobs.busy, audioRefProblem, soundPlanIssue, soundBlock, audioDurations, cap.refAudio, musicReady, musicAsTimingRef,
   ]);
 
@@ -1690,9 +1760,6 @@ export function AdLab({
     return () => clearInterval(t);
   }, [rendering, renderStartedAt]);
 
-  /** This endpoint interpolates between a first and a last frame. */
-  const endFrameActive = supportsEndFrame(modelId);
-
   /** There is a passcode gate on this deployment, so a code can be entered. */
   const gateable = health?.gate === "locked" || health?.gate === "exhausted";
 
@@ -1874,8 +1941,7 @@ export function AdLab({
                     <button
                       className="btn-secondary !py-1 !text-xs"
                       onClick={() => {
-                        setVideoUrl(r.videoUrl!);
-                        setPhase("done");
+                        showCompletedTake(r.videoUrl!, r.requestId);
                         setRecoverOpen(false);
                       }}
                     >
@@ -3923,14 +3989,19 @@ export function AdLab({
         {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed") && (
           <div className="card overflow-hidden">
             <div className="mx-auto w-full max-w-md">
-              <div className={`relative w-full bg-surface-2 ${rendering ? "" : ASPECT_CLASS[aspect] ?? "aspect-[16/9]"}`}>
+              <div className={`relative w-full bg-surface-2 ${rendering ? "" : ASPECT_CLASS[completedTake?.context?.aspect ?? aspect] ?? "aspect-[16/9]"}`} style={videoUrl && videoMetadata ? { aspectRatio: `${videoMetadata.width} / ${videoMetadata.height}` } : undefined}>
                 {videoUrl ? (
                   <video
                     ref={videoRef}
+                    id="ad-result-video"
                     src={videoUrl}
                     controls
                     playsInline
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-contain"
+                    onLoadedMetadata={(event) => {
+                      const video = event.currentTarget;
+                      setVideoMetadata({ durationSeconds: video.duration, width: video.videoWidth, height: video.videoHeight });
+                    }}
                     onPlay={() => syncAudio("play")}
                     onPause={() => syncAudio("pause")}
                     onSeeked={() => syncAudio("seek")}
@@ -4110,6 +4181,27 @@ export function AdLab({
                     </a>
                   )}
                 </div>
+                {completedTake && (
+                  <div className="mt-6">
+                    <AdPreflight
+                      key={`${completedTake.id}:${completedTake.videoUrl}`}
+                      take={completedTake}
+                      metadata={videoMetadata}
+                      referenceImages={completedTake.referenceImages ?? []}
+                      health={health}
+                      onSpend={addSpend}
+                      onSeek={(seconds) => {
+                        const video = videoRef.current;
+                        if (!video) return;
+                        video.pause();
+                        audioRef.current?.pause();
+                        video.currentTime = Math.max(0, Math.min(seconds, video.duration || seconds));
+                        video.focus({ preventScroll: true });
+                        video.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
