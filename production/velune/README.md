@@ -2,7 +2,7 @@
 
 This directory preserves the repaired, executed camera-study generator, supplied VELUNE artwork, integer timeline, appearance/audio instructions, safe queue runner and dated validation evidence. The original ZIP is preserved separately on Ajwad's computer. Source reference footage and its contact sheet are deliberately excluded.
 
-The current website serves the actual silent camera study from `public/studio/velune/animatic.mp4`. It is 1920 × 1080, 24 fps, exactly 360 pictures / 15.000 seconds. It is not a finished commercial. Camera, appearance, spending and publication approvals remain pending.
+The website serves the actual silent camera study from `public/studio/velune/animatic.mp4`. It is 1920 × 1080, 24 fps, exactly 360 pictures / 15.000 seconds. It is not a finished commercial. Ajwad authorized GitHub publication and the live case-study update on 10 September 2026. Appearance generation, audio and provider spending remain unapproved.
 
 ## Rebuild locally
 

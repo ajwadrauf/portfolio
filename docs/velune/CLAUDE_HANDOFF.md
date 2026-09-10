@@ -1,4 +1,4 @@
-# VELUNE — local camera study and portfolio integration
+# VELUNE — camera study and portfolio integration
 
 ## Review status
 
@@ -7,7 +7,9 @@ Production branch: `claude/loblaw-ai-content-studio-701jhf`, **not `main`**.
 
 Read `AGENTS.md` before editing. This Next.js 16.3.3 project includes the relevant documentation in `node_modules/next/dist/docs/`.
 
-This is an **independent fictional concept in production**. The website presents actual Blender camera-study frames and supplied concept artwork. It does not present a finished Seedance film, commissioned client work, approved hero product imagery, generated voiceover or a mixed soundtrack. Camera approval, paid appearance/audio generation and publication are still separate next steps. Do not publish this branch until Ajwad approves publication.
+This is an **independent fictional concept in production**. The website presents actual Blender camera-study frames and supplied concept artwork. It does not present a finished Seedance film, commissioned client work, approved hero product imagery, generated voiceover or a mixed soundtrack.
+
+On 10 September 2026, Ajwad explicitly authorized pushing this work to GitHub and having Codex update the live website directly. That approval covers publishing the current camera-study case study and its home/AI Studio cards. Paid appearance/audio generation still requires its own approval; publication does not authorize provider spending. Codex can continue website implementation without a separate Claude handoff.
 
 ## Website changes
 
@@ -75,7 +77,7 @@ This worktree shares the existing installation via a gitignored `node_modules` s
 2. Approve appearance references and a spending ceiling before paid Seedance/ElevenLabs submissions.
 3. Audition voice, score and effects separately, then finish the exact edit and final mix. The proposed narration on this page is a plan, not a transcript of existing audio.
 4. Replace provisional media/status only with actual reviewed results. Preserve deterministic packaging/report typography where generation drifts.
-5. Obtain publication approval before pushing, merging or deploying. Merge all VELUNE components, page entries and required web media together.
+5. Publication of the current camera-study integration is authorized. Ship all VELUNE components, page entries and required web media together through the existing production branch. Review later finished-film replacements when those assets exist.
 
 ## Production outputs and playback verification
 
