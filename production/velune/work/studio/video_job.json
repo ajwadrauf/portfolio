@@ -1,0 +1,16 @@
+{
+  "endpoint": "bytedance/seedance-2.5/reference-to-video",
+  "guide": "blender/renders/guide_15s.mp4",
+  "approved": false,
+  "image_paths": [],
+  "prompt_file": "prompts/seedance_master.txt",
+  "input": {
+    "duration": "15",
+    "resolution": "720p",
+    "aspect_ratio": "16:9",
+    "generate_audio": false,
+    "seed": 70419,
+    "bitrate_mode": "high"
+  },
+  "note": "Add only approved CHOCOLATE design references, not source ice-cream images. @Video1 is the approved Blender guide. No paid requests have run."
+}

@@ -6,6 +6,7 @@ import { SmoothAnchors } from "@/components/home/SmoothAnchors";
 import { TokenFilm } from "@/components/home/TokenFilm";
 import { TokenSculpture } from "@/components/home/TokenSculpture";
 import { CreamFilm } from "@/components/home/CreamFilm";
+import { VeluneCard } from "@/components/velune/VeluneCard";
 import "@/components/home/home.css";
 
 /**
@@ -209,6 +210,8 @@ export default function Home() {
               </details>
             </div>
           </article>
+
+          <VeluneCard />
 
           <div className="ar-project-pair">
             <article>

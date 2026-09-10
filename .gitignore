@@ -45,3 +45,16 @@ next-env.d.ts
 # nothing more — at 20-35MB each. Git keeps every version of a binary forever,
 # so keep them out rather than discover it later. The MP4 is the preview.
 public/references/*.gif
+
+# VELUNE production sources are tracked; local renders and private jobs are not.
+/production/velune/source/
+/production/velune/exports/
+/production/velune/work/blender/*.blend*
+/production/velune/work/blender/renders/
+/production/velune/work/references/
+/production/velune/work/studio/outputs/
+/production/velune/work/studio/shot_jobs/
+/production/velune/work/studio/.submission.lock/
+/production/velune/work/audio/
+/production/velune/work/plates/
+__pycache__/

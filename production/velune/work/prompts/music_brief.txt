@@ -1,0 +1,9 @@
+Create one original 15-second instrumental premium confectionery score. Warm curiosity rather than exaggerated luxury. Suggested tempo 80 BPM, 4/4; this is a new creative choice, not an estimate of the source. A soft marimba or felt-piano motif, muted pizzicato and understated bass are enough. Avoid vocals, choir, busy counter-melodies, loud drums, comedy boings, epic trailer impacts and artist imitation.
+
+0–4.708s: sparse inviting motif, tiny pulse; leave space for “What’s within?” and “Something wonderful.” Build gently into the question-mark assembly, then soften beneath the chocolate merging texture.
+4.708–10.083s: continue the same motif. Broaden harmony during the studio pullback without an EDM drop. Leave short punctuation space for ingredient cuts. No new musical section for each sub-second product shot.
+10.083–15.000s: reduce arrangement for three seconds of report reading and voice. Resolve warmly under the wide tunnel. Final decay must finish before the program ends; no tail that requires a 16th second.
+
+The supplied composition plan uses 4,708 + 5,375 + 4,917 ms. That API rounding is distinct from the exact video cut at frame 113 (4.708333s). Match frame/sample-precise accents in the editor. At 80 BPM a half beat equals 0.375s, matching the product-shot duration, but the whole edit is NOT on a single beat grid. Do not move cuts to force beat alignment.
+
+Deliver music separately from voice and effects. The editor will lower music approximately 4–7 dB beneath voice as a starting mix choice, using short non-pumping fades. Listen and adjust rather than applying a universal loudness target blindly.

@@ -1,0 +1,182 @@
+[
+  {
+    "picture": 93,
+    "vertices": 1500,
+    "faces": 1760,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 94,
+    "vertices": 1582,
+    "faces": 1892,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 95,
+    "vertices": 1792,
+    "faces": 2156,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 96,
+    "vertices": 2200,
+    "faces": 2618,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 97,
+    "vertices": 2912,
+    "faces": 3388,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 98,
+    "vertices": 3826,
+    "faces": 4303,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 99,
+    "vertices": 4340,
+    "faces": 4718,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 100,
+    "vertices": 4586,
+    "faces": 4962,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 101,
+    "vertices": 4580,
+    "faces": 4948,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 102,
+    "vertices": 4582,
+    "faces": 4952,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 103,
+    "vertices": 4570,
+    "faces": 4932,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 104,
+    "vertices": 4566,
+    "faces": 4920,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 105,
+    "vertices": 4582,
+    "faces": 4945,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 106,
+    "vertices": 4594,
+    "faces": 4950,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 107,
+    "vertices": 4604,
+    "faces": 4950,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 108,
+    "vertices": 4620,
+    "faces": 4976,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 109,
+    "vertices": 4648,
+    "faces": 5024,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 110,
+    "vertices": 4664,
+    "faces": 5041,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 111,
+    "vertices": 4684,
+    "faces": 5069,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  },
+  {
+    "picture": 112,
+    "vertices": 4690,
+    "faces": 5081,
+    "nonmanifold": 0,
+    "nonadjacent_intersections": 0,
+    "connected_components": 1,
+    "minimum_z": -0.019999999552965164
+  }
+]

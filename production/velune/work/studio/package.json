@@ -1,0 +1,6 @@
+{
+  "name": "velune-production-templates",
+  "private": true,
+  "type": "module",
+  "description": "Dry-run-by-default server-side generation templates. SDK installation and authenticated execution have not been tested in this pack."
+}

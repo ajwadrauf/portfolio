@@ -1,0 +1,60 @@
+{
+  "status": "proposed fictional creative, not trademark-cleared",
+  "brand": "VELUNE",
+  "pronunciation": "veh-LOON",
+  "product_line": "The Filled Collection",
+  "report": "The Centre Report",
+  "report_edition": "Edition 01",
+  "tagline": "Wonder within.",
+  "report_badge": "03 CENTRES",
+  "package_count": "06 FILLED CHOCOLATES",
+  "flavours": [
+    {
+      "id": "PIS",
+      "name": "Pistachio Praline",
+      "colour": "#A9BB82",
+      "filling": "soft muted green praline, fine nut flecks, not fluorescent"
+    },
+    {
+      "id": "RAS",
+      "name": "Raspberry Ganache",
+      "colour": "#A74662",
+      "filling": "dense berry-red ganache with a restrained raspberry insert, not liquid jelly"
+    },
+    {
+      "id": "CAR",
+      "name": "Salted Caramel",
+      "colour": "#CA9558",
+      "filling": "amber viscous caramel, one slow meniscus, never a watery gush"
+    }
+  ],
+  "palette": {
+    "cocoa": "#241512",
+    "plum": "#3F1E30",
+    "cream": "#F5ECD9",
+    "gold": "#C8A46B",
+    "pistachio": "#A9BB82",
+    "raspberry": "#A74662",
+    "caramel": "#CA9558"
+  },
+  "physical_design_proposal": {
+    "box_metres": [
+      0.12,
+      0.04,
+      0.18
+    ],
+    "bonbon_metres": [
+      0.03,
+      0.03,
+      0.018
+    ],
+    "shell_thickness_metres": 0.0015,
+    "tray_count": 6
+  },
+  "notes": [
+    "Packaging is concept artwork, not a production-ready print dieline or regulated retail label.",
+    "No cocoa-percentage, origin, nutrition, certification, price, health or retailer claims.",
+    "Same pillow-shaped dark chocolate shell across flavours; the coloured centre is the reveal.",
+    "Lettering and report artwork stay deterministic. No original retailer branding or source soundtrack is reused."
+  ]
+}

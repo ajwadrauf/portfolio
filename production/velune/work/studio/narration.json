@@ -1,0 +1,55 @@
+{
+  "voice": "UNSELECTED",
+  "voice_direction": "Original licensed adult voice; warm neutral English, conversational luxury rather than whispery perfume-ad parody. No celebrity or source-actor imitation.",
+  "lines": [
+    {
+      "id": "VO01",
+      "in_frame": 7,
+      "out_frame_exclusive": 29,
+      "in_seconds": 0.2916666666666667,
+      "out_seconds": 1.2083333333333333,
+      "in_sample": 14000,
+      "max_duration_seconds": 0.9166666666666666,
+      "text": "What’s within?",
+      "direction": "Warm curious question; light smile, not breathy or theatrical.",
+      "status": "new replacement script; not generated or listened to"
+    },
+    {
+      "id": "VO02",
+      "in_frame": 79,
+      "out_frame_exclusive": 110,
+      "in_seconds": 3.2916666666666665,
+      "out_seconds": 4.583333333333333,
+      "in_sample": 158000,
+      "max_duration_seconds": 1.2916666666666667,
+      "text": "Something wonderful.",
+      "direction": "A small, sincere discovery; let the second word land softly.",
+      "status": "new replacement script; not generated or listened to"
+    },
+    {
+      "id": "VO03",
+      "in_frame": 249,
+      "out_frame_exclusive": 298,
+      "in_seconds": 10.375,
+      "out_seconds": 12.416666666666666,
+      "in_sample": 498000,
+      "max_duration_seconds": 2.0416666666666665,
+      "text": "Velune. The Centre Report.",
+      "direction": "Brand pronounced veh-LOON; a short pause, then a clear report title.",
+      "status": "new replacement script; not generated or listened to"
+    },
+    {
+      "id": "VO04",
+      "in_frame": 322,
+      "out_frame_exclusive": 351,
+      "in_seconds": 13.416666666666666,
+      "out_seconds": 14.625,
+      "in_sample": 644000,
+      "max_duration_seconds": 1.2083333333333333,
+      "text": "Wonder within.",
+      "direction": "Low-key confident resolution. No rising sales pitch.",
+      "status": "new replacement script; not generated or listened to"
+    }
+  ],
+  "spoken_word_count": 10
+}

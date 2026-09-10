@@ -1,0 +1,266 @@
+{
+  "fps": 24,
+  "frame_count": 360,
+  "duration_seconds": 15,
+  "frame_convention": "zero-based picture indices; end exclusive; Blender frame = picture index + 1",
+  "shots": [
+    {
+      "id": "S01",
+      "start_frame": 0,
+      "end_frame_exclusive": 42,
+      "blender_start": 1,
+      "blender_end_inclusive": 42,
+      "start_seconds": 0.0,
+      "end_seconds": 1.75,
+      "duration_frames": 42,
+      "title": "Curiosity through chocolate",
+      "setup": "TUNNEL_CLOSE",
+      "action": "Chocolate folds frame fictional host A. Upward gaze, small head tilt, emerging smile.",
+      "composition": "Normal close, fixed camera; near rim, receding folds, host, plum background.",
+      "motion": "No dolly or camera roll. Head and eyes move only; no eating yet.",
+      "typography": "Header: VELUNE / The Centre Report.",
+      "pose_refs": [
+        "P01",
+        "P02",
+        "P03"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S02",
+      "start_frame": 42,
+      "end_frame_exclusive": 51,
+      "blender_start": 43,
+      "blender_end_inclusive": 51,
+      "start_seconds": 1.75,
+      "end_seconds": 2.125,
+      "duration_frames": 9,
+      "title": "Pistachio box",
+      "setup": "BOX",
+      "action": "Pistachio Praline carton on plum pedestal, short rigid yaw.",
+      "composition": "75 mm proposal; fixed camera and contact plane; preserve source mattes.",
+      "motion": "Yaw -9° to +9° about Z; near-linear. No bounce or airborne entry.",
+      "typography": "Exact cocoa wordmark; pistachio face.",
+      "pose_refs": [
+        "P04"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S03",
+      "start_frame": 51,
+      "end_frame_exclusive": 60,
+      "blender_start": 52,
+      "blender_end_inclusive": 60,
+      "start_seconds": 2.125,
+      "end_seconds": 2.5,
+      "duration_frames": 9,
+      "title": "Raspberry box",
+      "setup": "BOX",
+      "action": "Hard replacement with Raspberry Ganache carton; identical silhouette and staging.",
+      "composition": "Same camera, lens, lights, pedestal, crop and object pivot as S02.",
+      "motion": "Yaw -9° to +9°; hard asset replacement at n51. No colour morph.",
+      "typography": "Exact cream wordmark; raspberry face.",
+      "pose_refs": [
+        "P05"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S04",
+      "start_frame": 60,
+      "end_frame_exclusive": 69,
+      "blender_start": 61,
+      "blender_end_inclusive": 69,
+      "start_seconds": 2.5,
+      "end_seconds": 2.875,
+      "duration_frames": 9,
+      "title": "Caramel box",
+      "setup": "BOX",
+      "action": "Hard replacement with Salted Caramel carton.",
+      "composition": "Same camera and staging; do not zoom or re-centre.",
+      "motion": "Yaw -9° to +9°; hard replacement at n60.",
+      "typography": "Exact cocoa wordmark; caramel face.",
+      "pose_refs": [
+        "P06"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S05",
+      "start_frame": 69,
+      "end_frame_exclusive": 113,
+      "blender_start": 70,
+      "blender_end_inclusive": 113,
+      "start_seconds": 2.875,
+      "end_seconds": 4.708333333333333,
+      "duration_frames": 44,
+      "title": "The question becomes chocolate",
+      "setup": "QUESTION",
+      "action": "Bare tasting fork low-centre. Twelve bonbons appear into a question mark, then merge into a thick chocolate spread.",
+      "composition": "Fixed orthographic action-plane view; pale pistachio field; hand/handle lower centre.",
+      "motion": "Bare n69–78; births n79–90; clear question n91–92; bridging n93–99; opening fills n100; spread lands n112.",
+      "typography": "No text. Keep the implied question opening legible before the melt.",
+      "pose_refs": [
+        "P07",
+        "P08",
+        "P09",
+        "P10",
+        "P11",
+        "P12",
+        "P13",
+        "P14"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S06",
+      "start_frame": 113,
+      "end_frame_exclusive": 140,
+      "blender_start": 114,
+      "blender_end_inclusive": 140,
+      "start_seconds": 4.708333333333333,
+      "end_seconds": 5.833333333333333,
+      "duration_frames": 27,
+      "title": "The centre reveal",
+      "setup": "MACRO",
+      "action": "One enlarged pistachio-filled chocolate half on an upright stainless tasting fork. Two observers move behind it.",
+      "composition": "85 mm proposal; hero cut-face sharp, observers soft, dark warm background; side mattes.",
+      "motion": "Product and handle fixed; background observer arrangement changes from lower-left/upper-right to upper-left/lower-right.",
+      "typography": "No label or text. No fresh break action: the chocolate enters already opened.",
+      "pose_refs": [
+        "P15",
+        "P16",
+        "P17"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S07",
+      "start_frame": 140,
+      "end_frame_exclusive": 190,
+      "blender_start": 141,
+      "blender_end_inclusive": 190,
+      "start_seconds": 5.833333333333333,
+      "end_seconds": 7.916666666666667,
+      "duration_frames": 50,
+      "title": "The discovery studio",
+      "setup": "LAB",
+      "action": "Two specimen stacks: three whole bonbons left and two right on a plinth. Pull back to reveal two chocolatiers and a tasting console.",
+      "composition": "50 mm proposal; fixed close n140–163, backward camera route n164–189.",
+      "motion": "World-fixed stacks; subtle shoulder gestures only. Left stack always taller. No internal cut; no digital zoom.",
+      "typography": "No text; central product spotlight.",
+      "pose_refs": [
+        "P18",
+        "P19",
+        "P20",
+        "P21",
+        "P22"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S08",
+      "start_frame": 190,
+      "end_frame_exclusive": 207,
+      "blender_start": 191,
+      "blender_end_inclusive": 207,
+      "start_seconds": 7.916666666666667,
+      "end_seconds": 8.625,
+      "duration_frames": 17,
+      "title": "Raspberry",
+      "setup": "INGREDIENT",
+      "action": "One raspberry rotates on the plum pedestal.",
+      "composition": "75 mm proposal; ingredient at lower centre, generous upper negative space.",
+      "motion": "Yaw -7° to +7°, linear; stable surface contact.",
+      "typography": "No text; natural seeds/drupelets, not strawberry skin.",
+      "pose_refs": [
+        "P23"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S09",
+      "start_frame": 207,
+      "end_frame_exclusive": 223,
+      "blender_start": 208,
+      "blender_end_inclusive": 223,
+      "start_seconds": 8.625,
+      "end_seconds": 9.291666666666666,
+      "duration_frames": 16,
+      "title": "Pistachio",
+      "setup": "INGREDIENT",
+      "action": "One opened pistachio shell with its visible green kernel replaces the raspberry.",
+      "composition": "Same camera, crop, support and lighting.",
+      "motion": "Yaw -7° to +7°; hard swap; no shell-opening action in this shot.",
+      "typography": "No text; kernel and shell form one contact-stable assembly.",
+      "pose_refs": [
+        "P24"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S10",
+      "start_frame": 223,
+      "end_frame_exclusive": 242,
+      "blender_start": 224,
+      "blender_end_inclusive": 242,
+      "start_seconds": 9.291666666666666,
+      "end_seconds": 10.083333333333334,
+      "duration_frames": 19,
+      "title": "Filled chocolate serving",
+      "setup": "INGREDIENT",
+      "action": "One whole bonbon behind one opened salted-caramel half on a low cream dish.",
+      "composition": "Same product stage; centre-facing cut surface, two-piece arrangement remains stable.",
+      "motion": "Yaw -7° to +7° as one rigid assembly. Caramel stays contained, no stream or splash.",
+      "typography": "No text. Visible shell thickness and amber centre.",
+      "pose_refs": [
+        "P25",
+        "P26"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S11",
+      "start_frame": 242,
+      "end_frame_exclusive": 314,
+      "blender_start": 243,
+      "blender_end_inclusive": 314,
+      "start_seconds": 10.083333333333334,
+      "end_seconds": 13.083333333333334,
+      "duration_frames": 72,
+      "title": "The Centre Report",
+      "setup": "REPORT",
+      "action": "One printed plum artwork card: fictional report title, three cartons, centre illustrations, 03 CENTRES badge.",
+      "composition": "Front-facing planar artwork; 3 seconds protected; source side mattes.",
+      "motion": "Small initial rock decays by n254, then quiet reading hold. All printed elements move together.",
+      "typography": "VELUNE; The Centre Report; The Filled Collection; 03 CENTRES; EDITION 01.",
+      "pose_refs": [
+        "P27",
+        "P28"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    },
+    {
+      "id": "S12",
+      "start_frame": 314,
+      "end_frame_exclusive": 360,
+      "blender_start": 315,
+      "blender_end_inclusive": 360,
+      "start_seconds": 13.083333333333334,
+      "end_seconds": 15.0,
+      "duration_frames": 46,
+      "title": "Wonder within",
+      "setup": "TUNNEL_WIDE",
+      "action": "Wide view of the chocolate-fold tunnel. Host A tastes one small piece with a fork, then a subtle pleased response.",
+      "composition": "Separate locked 30 mm proposal, full-width; person central, tagline right of aperture.",
+      "motion": "Small fork withdrawal and facial gesture only. No new camera move, no fade, no end frame added.",
+      "typography": "Wonder within. Persistent from first shot frame through n359.",
+      "pose_refs": [
+        "P29",
+        "P30"
+      ],
+      "evidence": "P: new adaptation; exact cut boundaries inherited from source analysis"
+    }
+  ]
+}

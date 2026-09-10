@@ -1,0 +1,543 @@
+{
+  "file": "/Users/ajwadrauf/Documents/New project/velune-production/work/blender/VELUNE_camera_review.blend",
+  "blender_version": "5.2.1 LTS",
+  "passed": 30,
+  "failed": 0,
+  "checks": [
+    {
+      "check": "15 seconds / 360 pictures / 24 fps",
+      "passed": true,
+      "details": {
+        "start": 1,
+        "end": 360,
+        "fps": 24,
+        "fps_base": 1.0
+      }
+    },
+    {
+      "check": "Twelve exact camera markers",
+      "passed": true,
+      "details": [
+        {
+          "frame": 1,
+          "camera": "CAM_S01",
+          "name": "S01 Curiosity through chocolate"
+        },
+        {
+          "frame": 43,
+          "camera": "CAM_BOX",
+          "name": "S02 Pistachio box"
+        },
+        {
+          "frame": 52,
+          "camera": "CAM_BOX",
+          "name": "S03 Raspberry box"
+        },
+        {
+          "frame": 61,
+          "camera": "CAM_BOX",
+          "name": "S04 Caramel box"
+        },
+        {
+          "frame": 70,
+          "camera": "CAM_QUESTION",
+          "name": "S05 The question becomes chocolate"
+        },
+        {
+          "frame": 114,
+          "camera": "CAM_MACRO",
+          "name": "S06 The centre reveal"
+        },
+        {
+          "frame": 141,
+          "camera": "CAM_LAB",
+          "name": "S07 The discovery studio"
+        },
+        {
+          "frame": 191,
+          "camera": "CAM_INGREDIENT",
+          "name": "S08 Raspberry"
+        },
+        {
+          "frame": 208,
+          "camera": "CAM_INGREDIENT",
+          "name": "S09 Pistachio"
+        },
+        {
+          "frame": 224,
+          "camera": "CAM_INGREDIENT",
+          "name": "S10 Filled chocolate serving"
+        },
+        {
+          "frame": 243,
+          "camera": "CAM_REPORT",
+          "name": "S11 The Centre Report"
+        },
+        {
+          "frame": 315,
+          "camera": "CAM_S12",
+          "name": "S12 Wonder within"
+        }
+      ]
+    },
+    {
+      "check": "Three cartons share the nine-frame rigid motion",
+      "passed": true,
+      "details": {
+        "carton_count": 3,
+        "sample_count_each": 9
+      }
+    },
+    {
+      "check": "Exactly twelve bonbon roots",
+      "passed": true,
+      "details": [
+        "QUESTION_BONBON_00",
+        "QUESTION_BONBON_01",
+        "QUESTION_BONBON_02",
+        "QUESTION_BONBON_03",
+        "QUESTION_BONBON_04",
+        "QUESTION_BONBON_05",
+        "QUESTION_BONBON_06",
+        "QUESTION_BONBON_07",
+        "QUESTION_BONBON_08",
+        "QUESTION_BONBON_09",
+        "QUESTION_BONBON_10",
+        "QUESTION_BONBON_11"
+      ]
+    },
+    {
+      "check": "Empty fork through n78 and one bonbon birth each n79..90",
+      "passed": true,
+      "details": {
+        "78": 0,
+        "79": 1,
+        "80": 2,
+        "81": 3,
+        "82": 4,
+        "83": 5,
+        "84": 6,
+        "85": 7,
+        "86": 8,
+        "87": 9,
+        "88": 10,
+        "89": 11,
+        "90": 12,
+        "91": 12,
+        "92": 12
+      }
+    },
+    {
+      "check": "Twelve visible bonbons at n91 and n92",
+      "passed": true,
+      "details": {
+        "n91": 12,
+        "n92": 12
+      }
+    },
+    {
+      "check": "Bonbon solids hidden from n100",
+      "passed": true,
+      "details": "n100..112"
+    },
+    {
+      "check": "Exactly one spread mesh visible per picture n93..112",
+      "passed": true,
+      "details": {
+        "92": [],
+        "93": [
+          "S05_CHOCOLATE_SPREAD_n093"
+        ],
+        "94": [
+          "S05_CHOCOLATE_SPREAD_n094"
+        ],
+        "100": [
+          "S05_CHOCOLATE_SPREAD_n100"
+        ],
+        "112": [
+          "S05_CHOCOLATE_SPREAD_n112"
+        ],
+        "113": []
+      }
+    },
+    {
+      "check": "Saved spread geometry is connected and manifold",
+      "passed": true,
+      "details": [
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n093",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n094",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n095",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n096",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n097",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n098",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n099",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n100",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n101",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n102",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n103",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n104",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n105",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n106",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n107",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n108",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n109",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n110",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n111",
+          "components": 1,
+          "nonmanifold": 0
+        },
+        {
+          "object": "S05_CHOCOLATE_SPREAD_n112",
+          "components": 1,
+          "nonmanifold": 0
+        }
+      ]
+    },
+    {
+      "check": "CAM_MACRO remains stationary throughout S06",
+      "passed": true,
+      "details": "n113..139"
+    },
+    {
+      "check": "PISTACHIO_HALF remains stationary throughout S06",
+      "passed": true,
+      "details": "n113..139"
+    },
+    {
+      "check": "OBSERVER_A moves during S06",
+      "passed": true,
+      "details": {
+        "113": [
+          149.29656982421875,
+          1.0,
+          1.0464760065078735
+        ],
+        "126": [
+          149.22999572753906,
+          1.0,
+          1.3799999952316284
+        ],
+        "139": [
+          149.29656982421875,
+          1.0,
+          1.7135241031646729
+        ]
+      }
+    },
+    {
+      "check": "OBSERVER_B moves during S06",
+      "passed": true,
+      "details": {
+        "113": [
+          150.70343017578125,
+          1.1200000047683716,
+          1.7135241031646729
+        ],
+        "126": [
+          150.77000427246094,
+          1.1200000047683716,
+          1.3799999952316284
+        ],
+        "139": [
+          150.70343017578125,
+          1.1200000047683716,
+          1.0464760065078735
+        ]
+      }
+    },
+    {
+      "check": "Laboratory contains three left / two right specimens",
+      "passed": true,
+      "details": {
+        "left": [
+          "LAB_STACK_-0.3_0",
+          "LAB_STACK_-0.3_1",
+          "LAB_STACK_-0.3_2"
+        ],
+        "right": [
+          "LAB_STACK_0.3_0",
+          "LAB_STACK_0.3_1"
+        ]
+      }
+    },
+    {
+      "check": "Laboratory products stay fixed",
+      "passed": true,
+      "details": "n140..189"
+    },
+    {
+      "check": "Specimen pedestal meets the plinth underside",
+      "passed": true,
+      "details": {
+        "column_bottom_z": 0.0,
+        "column_top_z": 0.8999999761581421,
+        "plinth_bottom_z": 0.8999999761581421
+      }
+    },
+    {
+      "check": "Lab camera holds through n164",
+      "passed": true,
+      "details": "n140..164"
+    },
+    {
+      "check": "Lab camera physically dollies n164..189 at 50 mm",
+      "passed": true,
+      "details": {
+        "164": {
+          "position": [
+            200.0,
+            -2.5,
+            1.649999976158142
+          ],
+          "lens": 50.0
+        },
+        "174": {
+          "position": [
+            200.0,
+            -5.139999866485596,
+            1.7380000352859497
+          ],
+          "lens": 50.0
+        },
+        "189": {
+          "position": [
+            200.0,
+            -10.0,
+            1.899999976158142
+          ],
+          "lens": 50.0
+        }
+      }
+    },
+    {
+      "check": "Lab camera centre remains outside foreground bodies/console",
+      "passed": true,
+      "details": {
+        "sampled_every_picture": true,
+        "scope": "Conservative world-space object bounds at n164..189; not a general mesh collision certificate",
+        "intersections": []
+      }
+    },
+    {
+      "check": "Report gets exactly 72 consecutive pictures",
+      "passed": true,
+      "details": {
+        "count": 72,
+        "first": 242,
+        "last": 313
+      }
+    },
+    {
+      "check": "Opening title visible only n0..41",
+      "passed": true,
+      "details": "exact visibility sequence"
+    },
+    {
+      "check": "Closing title visible only n314..359",
+      "passed": true,
+      "details": "exact visibility sequence"
+    },
+    {
+      "check": "Taste fork absent opening, present ending",
+      "passed": true,
+      "details": "n0..313 hidden / n314..359 shown"
+    },
+    {
+      "check": "HOST_A has final-shot movement",
+      "passed": true,
+      "details": {
+        "314": [
+          0.02500000037252903,
+          4.449999809265137,
+          1.524999976158142
+        ],
+        "338": [
+          0.02500000037252903,
+          4.449999809265137,
+          1.524999976158142
+        ],
+        "359": [
+          0.02500000037252903,
+          4.449999809265137,
+          1.524999976158142
+        ]
+      }
+    },
+    {
+      "check": "TASTE_FORK has final-shot movement",
+      "passed": true,
+      "details": {
+        "314": [
+          -0.10000000149011612,
+          4.170000076293945,
+          1.3899999856948853
+        ],
+        "338": [
+          -0.20999999344348907,
+          4.170000076293945,
+          1.3650000095367432
+        ],
+        "359": [
+          -0.20999999344348907,
+          4.170000076293945,
+          1.3650000095367432
+        ]
+      }
+    },
+    {
+      "check": "HOST_A_eye-1 has subtle final local eye response",
+      "passed": true,
+      "details": "n314..359; small positional gaze response, not a blink rig"
+    },
+    {
+      "check": "HOST_A_eye1 has subtle final local eye response",
+      "passed": true,
+      "details": "n314..359; small positional gaze response, not a blink rig"
+    },
+    {
+      "check": "Host mouth changes in ending",
+      "passed": true,
+      "details": {
+        "n314": [
+          [
+            -0.054999999701976776,
+            -0.164000004529953,
+            -0.09200000017881393,
+            1.0
+          ],
+          [
+            0.0,
+            -0.17399999499320984,
+            -0.10000000149011612,
+            1.0
+          ],
+          [
+            0.054999999701976776,
+            -0.164000004529953,
+            -0.09200000017881393,
+            1.0
+          ]
+        ],
+        "n359": [
+          [
+            -0.054999999701976776,
+            -0.164000004529953,
+            -0.06700000166893005,
+            1.0
+          ],
+          [
+            0.0,
+            -0.17399999499320984,
+            -0.10000000149011612,
+            1.0
+          ],
+          [
+            0.054999999701976776,
+            -0.164000004529953,
+            -0.06700000166893005,
+            1.0
+          ]
+        ]
+      }
+    },
+    {
+      "check": "Same host object used by both tunnel views",
+      "passed": true,
+      "details": {
+        "host": "HOST_A",
+        "shared_parent": "SET_TUNNEL"
+      }
+    },
+    {
+      "check": "Validator left the source blend unchanged",
+      "passed": true,
+      "details": {
+        "sha256": "e56058fde612727c1d4b42e7646095bc7d3640a9a3ccb6d331f35458d7652df3"
+      }
+    }
+  ],
+  "visual_observations": [
+    "Inspected rendered n91: twelve distinct bonbons form the question; fork remains below them and the hand is deliberately cropped.",
+    "Inspected rendered n112: the question interior is filled and the spread remains connected over the fork; this is a motion-guide surface, not final food beauty.",
+    "Inspected rendered n189: the foreground people frame the five fixed specimens without hiding their count. Intended shoulder/arm construction overlaps are proxy modelling joints.",
+    "Inspected updated rendered n174/n189: the plum pedestal column now supports the specimen plinth, replacing the previous floating appearance. Its upper face meets the underside of the plinth; all five specimens remain visible.",
+    "Inspected rendered n113/n139: macro observers exchange lower/upper positions around a fixed cut chocolate and fork. Their eyes remain camera-forward rather than dynamically tracking the product. No unintended product/body overlap is visible.",
+    "Inspected rendered n42: carton is supported by the pedestal; the label stays on its front face and the intended side mattes remain.",
+    "Inspected rendered n314: host sits in the central tunnel aperture; tasting fork is at mouth height; closing tagline remains legible. Mouth/fork contact is deliberate.",
+    "Characters, eyes and facial response are intentionally stylized proxy geometry. This test establishes rig motion and visibility, not photoreal performance or final identity quality.",
+    "No broad all-object intersection scan was run: nested shell/filling, fork contact and assembled proxy anatomy contain intended overlaps. The targeted lab-camera check is scoped explicitly above."
+  ]
+}

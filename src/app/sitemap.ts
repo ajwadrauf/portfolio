@@ -6,6 +6,7 @@ const BASE = "https://ajwadrauf.com";
 const ROUTES = [
   "",
   "/project-forge",
+  "/velune",
   "/ai-studio",
   "/ai-studio/studio",
   "/ai-studio/packshots",

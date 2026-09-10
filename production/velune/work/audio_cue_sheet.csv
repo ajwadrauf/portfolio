@@ -1,0 +1,15 @@
+id,type,in_frame,out_frame_exclusive,in_seconds,out_seconds,in_sample_48k,content,note
+VO01,VO,7,29,0.2916666666666667,1.2083333333333333,14000,What’s within?,"Warm curious question; light smile, not breathy or theatrical."
+VO02,VO,79,110,3.2916666666666665,4.583333333333333,158000,Something wonderful.,"A small, sincere discovery; let the second word land softly."
+VO03,VO,249,298,10.375,12.416666666666666,498000,Velune. The Centre Report.,"Brand pronounced veh-LOON; a short pause, then a clear report title."
+VO04,VO,322,351,13.416666666666666,14.625,644000,Wonder within.,Low-key confident resolution. No rising sales pitch.
+FX01,SFX,0,20,0.0,0.8333333333333334,0,Warm opening air,optional stylised opening; not a foil unwrap
+FX02,SFX,42,47,1.75,1.9583333333333333,84000,Package punctuation,"reuse trimmed take at frames 42,51,60; no physical impact is depicted"
+FX03,SFX,79,91,3.2916666666666665,3.7916666666666665,158000,Bonbon appearance tick,"place selected ticks at 79,82,85,88,90; not all twelve births need a sound"
+FX04,SFX,93,112,3.875,4.666666666666667,186000,Chocolate merging,trim to 93–112 and duck under VO02
+FX05,SFX,113,121,4.708333333333333,5.041666666666667,226000,Macro reveal accent,optional; not evidence of an on-screen fracture
+FX06,SFX,164,189,6.833333333333333,7.875,328000,Studio reveal air,"shape to pullback, do not imply moving product"
+FX07,SFX,190,196,7.916666666666667,8.166666666666666,380000,Ingredient accent,"alternate trims at 190,207,223; editorial not physical drops"
+FX08,SFX,242,253,10.083333333333334,10.541666666666666,484000,Printed card movement,ends before report narration becomes busy
+FX09,SFX,314,321,13.083333333333334,13.375,628000,Taste gesture,only use if final approved animation supports contact; otherwise omit
+FX10,SFX,349,360,14.541666666666666,15.0,698000,Brand tail,"optional; finish before sample 720000, keep below final VO"

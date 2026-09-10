@@ -1,0 +1,8 @@
+{
+  "approved": false,
+  "camera_approved": false,
+  "upload_approved": false,
+  "ceiling_usd": 0,
+  "allowed_fingerprints": [],
+  "note": "No paid generation or external asset uploads authorized. Complete camera review first, present the exact dry-run plan and budget, then record the user's approval. Estimates reserve 25% uncertainty; this is a local planning guard, not a provider-enforced hard invoice cap."
+}

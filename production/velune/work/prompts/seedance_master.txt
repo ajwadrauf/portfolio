@@ -1,0 +1,21 @@
+Create a premium filled-chocolate film for the fictional brand VELUNE. Treat @Video1, the APPROVED Blender guide, as the motion and composition reference. It is exactly 15 seconds at 24 fps. Preserve the guide's framing, camera route, subject scale, object count, action ordering, hard-cut rhythm, background/foreground occlusion and final held composition. This is an appearance-finishing pass, not a request to invent a different commercial. Preserve the specific count of chocolate pieces and the same fictional people across shots.
+
+LOOK: tactile dark chocolate, a fine moulded shell, dense muted-green pistachio praline, rich berry-red ganache, warm amber caramel, satin cartons, plum stages and restrained cream/gold reflections. Natural food detail; no plastic shine, black featureless chocolate, fluorescent fillings, watery caramel, ice cream, waffle cones or random confectionery. Use only the approved appearance references explicitly attached to this job. Do not borrow the former ice-cream brand, its labels, its performer identities or its music.
+
+TIMELINE — target hard cuts at 1.750000, 2.125000, 2.500000, 2.875000, 4.708333, 5.833333, 7.916667, 8.625000, 9.291667, 10.083333 and 13.083333 seconds:
+0.000–1.750: Close through layered chocolate folds. One curious adult host looks up, tilts the head slightly and smiles. Fixed camera. Keep title space clear; do not invent text.
+1.750–2.125: Pistachio carton on fixed pedestal, short rigid yaw.
+2.125–2.500: Hard replacement by raspberry carton with identical staging.
+2.500–2.875: Hard replacement by caramel carton. No transitions or interpolation between packages.
+2.875–4.708333: Low-centre tasting fork starts bare. Twelve bonbons appear successively into a readable question mark; completed arrangement at 3.791667s, then surfaces bridge, the opening fills and a thick chocolate spread settles by the last shot frame. Follow the exact guide silhouettes. No falling-ball simulation or explosive splash.
+4.708333–5.833333: Already opened pistachio chocolate half on an upright fork. Stable hero food and support; two observers change their relative background positions. DO NOT roll the entire camera or fork. Preserve food shell thickness and one visible centre.
+5.833333–7.916667: Two specimen stacks: three bonbons left, two right. Hold the close composition, then follow the guide's real backward camera route beginning around 6.833333s. Reveal two back-facing chocolatiers and a console. Keep the props world-fixed and the left stack taller. No internal cut or digital zoom.
+7.916667–8.625: One raspberry rotates on the pedestal.
+8.625–9.291667: Hard replacement by an already opened pistachio shell/kernel assembly.
+9.291667–10.083333: Hard replacement by one whole bonbon and one caramel half on a low cream dish. Stable contact; no new breaking or pouring event.
+10.083333–13.083333: Preserve the guide's flat printed-report plate as one surface with a very small initial settling motion. Do not animate the pictured boxes separately. This shot will be replaced by deterministic approved artwork in the final edit; do not invent typography.
+13.083333–15.000: Wide chocolate tunnel, same host. A tiny tasting/withdrawal gesture and subtle pleased expression. Fixed composition. Leave the right-side space clear for the final tagline. No fade, no dramatic zoom, no additional shot, no freeze-frame substitute for the living hold.
+
+No spoken dialogue, no music, no effects; audio is created separately. All exact package lettering, the opening header, printed report and closing tagline are protected assets and will be rendered/composited deterministically. Do not smear or reinterpret them. Preserve the guide's side mattes where present. No extra fingers, faces, products, props or floating particles.
+
+Acceptance is evaluated against the supplied guide and pose references. A pleasing result with different cuts or a different camera route is not an acceptable replacement. Exact cut restoration and the 360-frame conform are performed in the editor after generation.

@@ -1,0 +1,20 @@
+{
+  "status": "Camera study rendered; user camera approval pending",
+  "video": "/Users/ajwadrauf/Documents/New project/velune-production/exports/VELUNE_camera_animatic_15s.mp4",
+  "sha256": "0d86410969827339dac4876fa749a531653c3c7bdc9a9375b26f00504c29fdca",
+  "bytes": 6365478,
+  "codec": "h264",
+  "pixel_format": "yuv420p",
+  "width": 1920,
+  "height": 1080,
+  "fps": "24/1",
+  "decoded_pictures": 360,
+  "first_picture_seconds": 0,
+  "last_picture_seconds": 14.958333333333334,
+  "container_duration_seconds": 15.0,
+  "all_picture_timestamps_match_24fps": true,
+  "audio_streams": 0,
+  "audio_status": "Silent animatic; audio production pending",
+  "final_commercial": false,
+  "paid_requests": 0
+}

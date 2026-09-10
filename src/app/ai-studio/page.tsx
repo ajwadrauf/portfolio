@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CreamCompare } from "@/components/studio/CreamCompare";
+import { VeluneCard } from "@/components/velune/VeluneCard";
 
 export const metadata: Metadata = {
   title: "AI Content Studio — Ajwad Rauf",
@@ -141,6 +142,10 @@ export default function StudioOverview() {
 
       {/* ------------------------- The work, first ------------------------- */}
       <CreamCompare />
+
+      <section className={`${SHELL} py-12`} aria-label="New film in production">
+        <VeluneCard compact />
+      </section>
 
       {/* ------------------------------ The tools -------------------------- */}
       {/* 28, not 4: the studio header is sticky and ~100px tall stacked on a

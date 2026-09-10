@@ -1,0 +1,59 @@
+{
+  "positive_global_styles": [
+    "Original instrumental premium confectionery advertising score",
+    "80 BPM suggestion; 4/4; warm restrained playful curiosity",
+    "Soft marimba or felt-piano motif, muted pizzicato, understated warm bass",
+    "Space for spoken voice and small food effects; one continuous musical identity"
+  ],
+  "negative_global_styles": [
+    "vocals",
+    "lyrics",
+    "choir",
+    "busy lead melody",
+    "epic trailer drums",
+    "EDM drops",
+    "artist imitation",
+    "comedy cartoon music"
+  ],
+  "sections": [
+    {
+      "section_name": "Curiosity and assembly",
+      "duration_ms": 4708,
+      "positive_local_styles": [
+        "Small opening motif; understated pulse; slight rise toward 3.8s; graceful softening during chocolate spread"
+      ],
+      "negative_local_styles": [
+        "hard ending",
+        "new song",
+        "dense percussion"
+      ],
+      "lines": []
+    },
+    {
+      "section_name": "The centre and discovery studio",
+      "duration_ms": 5375,
+      "positive_local_styles": [
+        "Same theme; add a little harmonic warmth; gentle expansion through camera pullback; short clean ingredient accents"
+      ],
+      "negative_local_styles": [
+        "extra vocals",
+        "big drop",
+        "busy fill at every cut"
+      ],
+      "lines": []
+    },
+    {
+      "section_name": "Report reading and brand resolve",
+      "duration_ms": 4917,
+      "positive_local_styles": [
+        "Thin arrangement from section start for narration and reading; a warm restrained final chord; decay complete within section"
+      ],
+      "negative_local_styles": [
+        "new melody",
+        "long tail beyond duration",
+        "loud final hit"
+      ],
+      "lines": []
+    }
+  ]
+}
