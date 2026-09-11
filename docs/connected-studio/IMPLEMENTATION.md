@@ -2,6 +2,8 @@
 
 Implemented 11 September 2026 on `codex/connected-studio`.
 
+Update: the eight supplied VELUNE appearance images are now integrated into the public walkthrough and new working copies. See [visual reference integration](../velune/VISUAL_REFERENCES.md) for file order, shot assignments and preserving older drafts.
+
 The Studio now carries a named project, its source assets, drafts and completed work between tools. The existing photo-based Packshot workflow remains available. Loading the VELUNE example creates an editable copy and never submits a generation request.
 
 ## Walkthrough

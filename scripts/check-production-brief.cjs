@@ -19,6 +19,8 @@ function load(relative) {
     if (url.startsWith("data:")) return fetch(url);
     if (url === "/blender/CLAUDE.md") return new Response(fs.readFileSync(path.join(root, "public/blender/CLAUDE.md")), { headers: { "content-type": "text/plain" } });
     if (url === "/studio/velune/packaging-concepts.jpg") return new Response(fs.readFileSync(path.join(root, "public/studio/velune/packaging-concepts.jpg")), { headers: { "content-type": "image/jpeg" } });
+    if (url === "/studio/velune/animatic.mp4") return new Response(fs.readFileSync(path.join(root, "public/studio/velune/animatic.mp4")), { headers: { "content-type": "video/mp4" } });
+    if (url.startsWith("/studio/velune/references/")) return new Response(fs.readFileSync(path.join(root, "public", url)), { headers: { "content-type": "image/jpeg" } });
     return new Response("missing", { status: 404 });
   } }, { filename });
   return module.exports;
@@ -40,6 +42,34 @@ async function main() {
   check(prompts.EXAMPLE_SLOTS[0].job.includes("yellow vanilla"), "example purpose matches subject");
   check(prompts.assemble({}, [{ seconds: 1.5, role: "open", action: "Open", audio: "snap" }, { seconds: 2.5, role: "climax", action: "Close", audio: "" }], 4, "").includes("0:00–0:01.5"), "export retains half-second boundary");
   const general = production.velunePromptDraft(), brief = production.veluneBlenderBrief();
+  const visualRefs = load("src/lib/veluneReferences.ts");
+  const expectedImageIds = ["velune-ref-packaging", "velune-ref-bonbon", "velune-ref-pistachio", "velune-ref-caramel", "velune-ref-host", "velune-ref-chocolatier", "velune-ref-tunnel", "velune-ref-studio"];
+  check(general.slots.length === 9 && general.slots[0].id === "velune-motion" && general.slots[0].media === "video", "one actual motion clip precedes eight visual references");
+  check(JSON.stringify(general.slots.slice(1).map((slot) => slot.id)) === JSON.stringify(expectedImageIds), "all eight images use the supplied stable order");
+  check(JSON.stringify(general.slots.map((slot, index) => prompts.tokenFor(general.slots, index))) === JSON.stringify(["[Video1]", ...expectedImageIds.map((_, index) => `[Image${index + 1}]`)]), "reference tokens match upload indices without a ninth image");
+  const assigned = production.veluneBlenderReferenceAssets();
+  check(Object.keys(assigned).length === 9 && assigned["@Video 1"] === "velune-motion", "Blender board has nine actual assignments");
+  for (const reference of visualRefs.VELUNE_REFERENCES) {
+    check(assigned[`@Image ${reference.index}`] === reference.id, `Blender assignment matches Image${reference.index}`);
+    check(general.slots[reference.index].assetId === reference.id, `new prompt slot attaches Image${reference.index}`);
+    check(brief.subjects.some((subject) => subject.ref === `Image ${reference.index}`), `Blender subject maps Image${reference.index}`);
+  }
+  check(blender.uploadPlan(brief).length === 9, "unreferenced report does not add a phantom image upload");
+  const sequence = load("src/components/velune/veluneStudy.ts").VELUNE_SHOTS;
+  for (const [index, shot] of sequence.entries()) {
+    const wanted = visualRefs.VELUNE_REFERENCES.filter((reference) => visualRefs.veluneShotReferenceIds(shot.id).includes(reference.id)).map((reference) => `[Image${reference.index}]`);
+    const actual = general.beats[index].action.match(/\[Image\d+\]/g) ?? [];
+    check(JSON.stringify(actual) === JSON.stringify(wanted), `${shot.id} uses exactly its shared-manifest references`);
+  }
+  check(general.beats[7].action.includes("INGREDIENT") && !/\[Image[34]\]/.test(general.beats[7].action), "raspberry ingredient is not replaced by a chocolate cutaway");
+  check(general.beats[8].action.includes("INGREDIENT") && !/\[Image[34]\]/.test(general.beats[8].action), "pistachio ingredient is not replaced by its filling reference");
+  check(general.beats[6].action.includes("both wear ivory jackets and plum aprons") && general.beats[6].action.includes("face away"), "studio workers retain scene-specific back-facing wardrobe");
+  check(general.values.bindings.includes("No clean raspberry-filling reference was supplied"), "missing raspberry filling is disclosed");
+  check(!Object.values(general.values).join(" ").includes("[Image9]") && general.beats[10].action.includes("exact compositing"), "report remains a post-production artifact, not Image9");
+  check(general.values.bindings.includes("authority for camera routes") && general.values.bindings.includes("does not override [Video1]"), "tunnel reference cannot replace the Blender motion authority");
+  const authored = { version: 1, brief: { ...brief, subjects: [{ color: "my #112233", proxy: "custom edited proxy", becomes: "my subject", ref: "Image 1" }] }, referenceAssets: { "@Video 1": "my-motion", "@Image 1": "velune-packaging", "@Image 2": "velune-report" } };
+  const preserved = production.normalizeBlenderDraft(authored);
+  check(JSON.stringify(preserved.brief.subjects) === JSON.stringify(authored.brief.subjects) && JSON.stringify(preserved.referenceAssets) === JSON.stringify(authored.referenceAssets), "existing saved references and user mapping edits are not migrated to the new set");
   check(general.duration === 15 && brief.seconds === "15", "VELUNE is 15 seconds in both composers");
   check(general.beats.length === 12 && brief.beats.length === 12, "all twelve real shots retained");
   check(Math.abs(prompts.beatsTotal(general.beats) - 15) < 1e-9, "VELUNE beat durations total fifteen");
@@ -84,6 +114,15 @@ async function main() {
   check(manifest[1].status === "missing", "missing reference is explicit");
   check(manifest[2].status.includes("external link"), "external source remains a labelled link");
   check(!requested.some((url) => url.startsWith("https:")), "bundle never calls a remote provider");
+  const freshReferences = [
+    { token: "[Video1]", job: "Actual camera study", asset: { id: "velune-motion", name: "animatic.mp4", kind: "video", status: "ready", url: "/studio/velune/animatic.mp4" } },
+    ...visualRefs.VELUNE_REFERENCES.map((reference) => ({ token: `[Image${reference.index}]`, job: reference.role, asset: { id: reference.id, name: reference.fileName, kind: "image", status: "ready", url: reference.url } })),
+  ];
+  await production.downloadProductionBundle({ name: "VELUNE", prompt: prompts.assemble(general.values, general.beats, general.duration, general.throughline), buildBrief: editedBuild, draft: { version: 1, brief, referenceAssets: assigned }, cues: general.beats, references: freshReferences });
+  const freshEntries = unzipSync(new Uint8Array(await download.arrayBuffer()));
+  const freshManifest = JSON.parse(strFromU8(freshEntries["05_reference_manifest.json"]));
+  check(freshManifest.length === 9 && freshManifest.every((row) => row.status === "ready" && row.file), "new VELUNE ZIP contains all eight ready images and the real motion clip");
+  for (const [index, reference] of visualRefs.VELUNE_REFERENCES.entries()) check(Buffer.from(freshEntries[freshManifest[index + 1].file]).equals(fs.readFileSync(path.join(root, "public", reference.url))), `reference ${reference.index} JPEG bytes are preserved in the bundle`);
   download = undefined;
   await assert.rejects(() => production.downloadProductionBundle({ name: "missing", prompt: "x", draft: {}, cues: [], references: [{ token: "[Image1]", job: "bad", asset: { ...ready, url: "/missing.jpg" } }] })); checks++;
   check(!download, "failed attachment never downloads an incomplete ZIP");

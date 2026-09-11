@@ -1,5 +1,6 @@
 import { CampaignBriefSchema, ProductContextSchema, type CampaignBrief, type ClarifyingQuestion, type ProductContext } from "./types";
 import { DELIVERABLES } from "./deliverables";
+import { VELUNE_REFERENCES } from "./veluneReferences";
 
 export type CampaignStep = "upload" | "clarify" | "brief" | "deliverables" | "generating";
 export type CampaignReceipt = { provider: "gemini" | "fal"; modelId: string; operationName?: string; falRequestId?: string };
@@ -68,12 +69,12 @@ export function readCampaignDraft(value: unknown): CampaignDraft | null {
 export function veluneCampaignDraft(): CampaignDraft {
   const draft = emptyCampaignDraft();
   draft.step = "brief"; draft.workflow = "hero"; draft.exactText = true;
-  draft.imageDataUrl = "/studio/velune/packaging-concepts.jpg";
-  draft.productContext = { name: "VELUNE chocolate", category: "fictional chocolate concept", colors: ["plum", "ivory", "chocolate"], texture: "matte carton, glossy chocolate", packagingType: "concept packaging board — not final artwork" };
+  draft.imageDataUrl = VELUNE_REFERENCES[0].url;
+  draft.productContext = { name: "VELUNE chocolate", category: "fictional chocolate concept", colors: ["pistachio green", "raspberry plum", "caramel gold", "chocolate"], texture: "matte carton, glossy chocolate", packagingType: "AI-generated three-carton appearance reference — not flat label artwork" };
   draft.brief = {
     productName: "VELUNE · concept study", mood: "Cinematic, tactile, curious", setting: "Sculptural chocolate forms against a deep plum studio", palette: "Deep plum, warm ivory, cocoa brown and restrained caramel highlights",
     targetAudience: "Portfolio viewers exploring a fictional premium chocolate campaign", headlineEN: "Discover the centre", headlineFR: "Découvrez le cœur",
-    stillPrompt: "Create one premium VELUNE chocolate campaign hero. The supplied board is provisional packaging direction, not a final approved pack: use its plum and ivory palette and one clearly identifiable box rather than reproducing the entire board or its presentation headings. Show a glossy pillow-shaped bonbon with a subtle V groove, controlled soft lighting, and clear negative space for separately typeset campaign copy. Treat all branding as a fictional concept.",
+    stillPrompt: "Create one premium VELUNE chocolate campaign hero from the supplied three-carton reference. Preserve the pistachio-green Pistachio Praline, raspberry-plum Raspberry Ganache and caramel-gold Salted Caramel designs, their proportions and rounded V-groove chocolate illustration. Keep all three flavour identities separate and leave clear negative space for separately typeset campaign copy. Treat the supplied AI image as a fictional concept appearance reference; review any regenerated lettering against the original artwork.",
     videoPrompt: "A cinematic fictional VELUNE chocolate study: glide past a glossy bonbon, reveal its layered centre, then settle on a restrained plum-and-ivory product composition. Preserve the approved hero's product proportions and visual identity. Audio: quiet chocolate snap, subtle room tone, restrained instrumental pulse. No spoken claims.",
     negativePrompt: "No invented nutrition claims, no presentation-board headings, no warped packaging, no extra products or illegible decorative text.", seasonalTheme: "Warm gifting season with understated ivory ribbon; preserve product identity",
   };

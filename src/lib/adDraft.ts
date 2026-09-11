@@ -46,7 +46,7 @@ export function referenceRole(kind: "image" | "video" | "audio", role: string) {
   return exact?.id ?? (kind === "video" ? "motion" : kind === "audio" ? "ambience" : "product");
 }
 export function readyAdReferences(assets: StudioAsset[]): AdLabSeed["references"] {
-  return assets.filter((a) => a.status === "ready" && a.kind !== "document" && (a.url || a.dataUrl)).map((a) => ({ id: a.id, name: a.name, kind: a.kind as "image" | "video" | "audio", role: referenceRole(a.kind as "image" | "video" | "audio", a.role ?? ""), ...(a.url ? { url: a.url } : {}), ...(a.dataUrl ? { dataUrl: a.dataUrl } : {}) }));
+  return assets.filter((a) => a.status === "ready" && a.kind !== "document" && (a.url || a.dataUrl)).map((a) => ({ id: a.id, name: a.name, kind: a.kind as "image" | "video" | "audio", role: referenceRole(a.kind as "image" | "video" | "audio", typeof a.metadata?.referenceRole === "string" ? a.metadata.referenceRole : a.role ?? ""), ...(a.url ? { url: a.url } : {}), ...(a.dataUrl ? { dataUrl: a.dataUrl } : {}) }));
 }
 
 /** Positional providers must receive every imported asset in the slot named by its prompt. */

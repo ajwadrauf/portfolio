@@ -17,7 +17,7 @@ import {
 } from "@/lib/blender";
 import { useStudioProject } from "@/components/studio/StudioProjectProvider";
 import { useProductionDraft } from "@/components/studio/useProductionDraft";
-import { downloadProductionBundle, isBlenderDraft, normalizeBlenderDraft, referenceAsset, veluneBlenderBrief, type BlenderDraft } from "@/lib/productionBrief";
+import { downloadProductionBundle, isBlenderDraft, normalizeBlenderDraft, referenceAsset, veluneBlenderBrief, veluneBlenderReferenceAssets, type BlenderDraft } from "@/lib/productionBrief";
 import { normalizeRefTokens } from "@/lib/promptImport";
 import { CameraRehearsal } from "./CameraRehearsal";
 
@@ -90,7 +90,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
   const router = useRouter();
   const build = mode === "build";
   const { project, saveDraft } = useStudioProject();
-  const { value: draft, setValue: setDraft, loaded, error: saveError, flush } = useProductionDraft("blender", EMPTY_DRAFT, isBlenderDraft, () => ({ version: 1 as const, brief: veluneBlenderBrief(), referenceAssets: { "@Video 1": "velune-motion", "@Image 1": "velune-packaging", "@Image 2": "velune-report" } }), normalizeBlenderDraft);
+  const { value: draft, setValue: setDraft, loaded, error: saveError, flush } = useProductionDraft("blender", EMPTY_DRAFT, isBlenderDraft, () => ({ version: 1 as const, brief: veluneBlenderBrief(), referenceAssets: veluneBlenderReferenceAssets() }), normalizeBlenderDraft);
   const b = draft.brief;
   const setB = (next: SetStateAction<BlenderBrief>) => setDraft((prev) => ({ ...prev, brief: typeof next === "function" ? next(prev.brief) : next }));
   const [actionError, setActionError] = useState("");

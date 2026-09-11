@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useStudioProject } from "./StudioProjectProvider";
 import { VeluneExampleButton } from "./ProjectDock";
-import { downloadStudioFile, portableProject, type StudioAsset } from "@/lib/studioProjects";
+import { downloadStudioFile, portableProject, veluneVisualAssets, type StudioAsset } from "@/lib/studioProjects";
 import { VELUNE_SHOTS } from "@/components/velune/veluneStudy";
 
 const DESTINATIONS = [
@@ -42,6 +42,16 @@ export function ProjectWorkspace() {
   const prompt = typeof ad?.prompt === "string" ? ad.prompt : "No creative direction saved in this project yet.";
 
   const humanReviews = project.drafts.manualReviews ?? {};
+  const missingVeluneReferences = project.example === "velune" ? veluneVisualAssets().filter((asset) => !project.assets.some((existing) => existing.id === asset.id)) : [];
+
+  async function addVisualReferences() {
+    setBusy(true); setMessage("");
+    try {
+      for (const asset of missingVeluneReferences) await saveAsset(asset);
+      setMessage("Visual references added. Your existing drafts and assigned files were preserved; choose the new assets in each tool when ready.");
+    } catch (e) { setMessage(e instanceof Error ? e.message : "Some references could not be added. Retry to add the remaining files."); }
+    finally { setBusy(false); }
+  }
 
   async function attach(file: File) {
     if (!project) return;
@@ -76,6 +86,7 @@ export function ProjectWorkspace() {
     <div className="mt-7 flex flex-wrap gap-3"><VeluneExampleButton /><button className="btn-secondary" onClick={() => downloadStudioFile("project.studio.json", JSON.stringify(portableProject(project), null, 2))}>Export editable project</button><button className="btn-secondary" disabled={busy} onClick={() => { setTarget(null); fileRef.current?.click(); }}>Add an asset</button></div>
     <input ref={fileRef} className="sr-only" type="file" aria-label="Add project media" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,audio/wav,audio/mpeg,audio/ogg,application/pdf,application/json" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void attach(file); }} />
     {message && <p role="status" className="mt-4 text-sm text-accent">{message}</p>}
+    {project.example === "velune" && <div className="mt-5 rounded-md border border-border-soft bg-surface p-5"><p className="font-semibold">Eight images. Eight specific jobs.</p><p className="mt-2 text-sm text-muted">The supplied AI references define the packaging, bonbon, fillings, cast and scene design. The Blender guide remains the motion plan. New example copies include all eight; existing drafts keep their current assignments.</p><div className="mt-3 flex flex-wrap gap-3">{missingVeluneReferences.length > 0 && <button className="btn-secondary" disabled={busy} onClick={() => void addVisualReferences()}>{busy ? "Adding references…" : `Add ${missingVeluneReferences.length} visual references to this project`}</button>}<Link href="/velune#visual-references" className="inline-flex min-h-11 items-center text-sm font-semibold text-accent underline">See what each reference directs ↗</Link></div></div>}
     <nav aria-label="Continue this project" className="my-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{DESTINATIONS.map((d, i) => <Link key={d.href} href={d.href} className="card p-5 transition hover:border-accent"><span className="label-sm">0{i + 1} · {d.task}</span><strong className="mt-2 flex justify-between text-lg">{d.name}<span aria-hidden>↗</span></strong></Link>)}</nav>
 
     <section aria-labelledby="project-assets"><div className="flex flex-wrap items-baseline justify-between gap-3"><h2 id="project-assets" className="text-2xl">The project assets</h2><span className="label-sm">{completed.length} ready · {project.assets.length - completed.length} pending</span></div>

@@ -1,5 +1,6 @@
 import { EMPTY_BRIEF, type BlenderBrief } from "./blender";
 import { VELUNE_SHOTS } from "@/components/velune/veluneStudy";
+import { VELUNE_REFERENCES, veluneShotReferenceIds } from "./veluneReferences";
 import type { Beat, Slot } from "./promptBuilder";
 
 export type ProductionAsset = {
@@ -12,6 +13,38 @@ export type PromptDraft = {
   beats: Beat[]; throughline: string;
 };
 
+const VELUNE_SUBJECTS: Record<string, { color: string; proxy: string; becomes: string }> = {
+  "velune-ref-packaging": { color: "plum #6B2949", proxy: "three flavour carton proxies", becomes: "VELUNE pistachio, raspberry and caramel cartons matching the supplied generated packaging reference; preserve the carton family and finish exact typography in post" },
+  "velune-ref-bonbon": { color: "brown #673B27", proxy: "whole bonbons", becomes: "the whole chocolate bonbon with its characteristic V-groove, coherent shell thickness and shape across the film" },
+  "velune-ref-pistachio": { color: "green #488144", proxy: "pistachio-filled chocolate half", becomes: "the pistachio chocolate half, retaining the whole bonbon's shell shape and the supplied green filling; this is not a reference for a whole pistachio ingredient" },
+  "velune-ref-caramel": { color: "amber #BB752A", proxy: "caramel-filled chocolate half", becomes: "the caramel chocolate half with filling contained in its shell; retain the whole bonbon's shape and avoid unplanned pouring or dripping" },
+  "velune-ref-host": { color: "blue #245DB4", proxy: "host figure", becomes: "the fictional host from the supplied generated portrait, wearing plum clothing in the chocolate-world shots; this portrait does not determine the discovery-studio workers' wardrobe" },
+  "velune-ref-chocolatier": { color: "orange #D96637", proxy: "chocolatier figure", becomes: "the fictional chocolatier from the supplied generated portrait, wearing an ivory jacket and plum apron" },
+  "velune-ref-tunnel": { color: "magenta #B44592", proxy: "chocolate tunnel forms", becomes: "the chocolate tunnel's supplied material and compositional direction; retain the actual Blender clip as the camera, cut and motion authority" },
+  "velune-ref-studio": { color: "cyan #258C98", proxy: "discovery-studio set and two worker figures", becomes: "the supplied discovery studio, with TWO BACK-FACING workers, both in ivory jackets and plum aprons; the host portrait's plum clothing must not replace this scene-specific wardrobe" },
+};
+
+/** New example drafts use this exact upload order. Existing draft assignments are never replaced. */
+export function veluneBlenderReferenceAssets(): Record<string, string> {
+  return { "@Video 1": "velune-motion", ...Object.fromEntries(VELUNE_REFERENCES.map((reference) => [`@Image ${reference.index}`, reference.id])) };
+}
+
+function veluneShotAction(shot: (typeof VELUNE_SHOTS)[number]): string {
+  const referenceIds = new Set(veluneShotReferenceIds(shot.id));
+  const references = VELUNE_REFERENCES.filter((reference) => referenceIds.has(reference.id));
+  const appearance = references.length ? ` Appearance references: ${references.map((reference) => `[Image${reference.index}] — ${reference.role}`).join("; ")}.` : "";
+  const clarification = shot.id === "S07"
+    ? " The two foreground workers face away from camera; both wear ivory jackets and plum aprons. Preserve this scene-specific wardrobe even though the host portrait uses plum clothing."
+    : shot.id === "S08"
+      ? " This is a whole raspberry INGREDIENT insert, not a raspberry-filled chocolate cutaway. No clean raspberry-filling reference was supplied; do not invent one or substitute a pistachio/caramel half."
+      : shot.id === "S09"
+        ? " This is an opened pistachio INGREDIENT insert with shell and kernel, not a pistachio-filled chocolate half. Do not substitute the cut-centre reference for the ingredient."
+        : shot.id === "S11"
+          ? " Reserve this single printed surface for exact compositing of The Centre Report artifact in post, held for frames 242–313. The report is not a ninth image reference."
+          : shot.id === "S10" ? " Keep the caramel filling contained and the whole bonbon's V-groove and shell shape consistent with the half." : "";
+  return `${shot.id} — ${shot.title}. ${shot.note}${appearance}${clarification}`;
+}
+
 export function veluneBlenderBrief(): BlenderBrief {
   return {
     ...EMPTY_BRIEF, editMode: "cuts", shotId: "VELUNE-15s", aspect: "16:9", seconds: "15", lens: "50", move: "",
@@ -19,14 +52,13 @@ export function veluneBlenderBrief(): BlenderBrief {
     startFraming: "Chocolate folds frame the host in the existing opening composition.",
     endFraming: "Return to the chocolate world, retaining the composition through frame 359.",
     keyLight: "Soft studio key from camera left; keep contact and object shape visible.",
-    lightCharacter: "Rich chocolate, plum and cream palette. Appearance references are still pending approval.",
+    lightCharacter: "Rich chocolate, plum and cream palette. The eight supplied AI-generated images guide appearance for this fictional concept; they are not approved real-product photographs.",
     subjects: [
-      { color: "plum #6B2949", proxy: "three flavour carton proxies", becomes: "VELUNE pistachio, raspberry and caramel cartons; supplied artwork is a flat concept, not approved product photography", ref: "Image 1" },
-      { color: "cream #E8D6B9", proxy: "single report surface", becomes: "The Centre Report concept, with the exact artwork composited after generation", ref: "Image 2" },
-      { color: "brown #673B27", proxy: "bonbons and chocolate folds", becomes: "rich chocolate forms; appearance references still required", ref: "" },
+      ...VELUNE_REFERENCES.map((reference) => ({ ...VELUNE_SUBJECTS[reference.id], ref: `Image ${reference.index}` })),
+      { color: "cream #E8D6B9", proxy: "single report surface", becomes: "The Centre Report artifact, with its exact artwork composited after generation; do not invent an additional reference image", ref: "" },
     ],
-    beats: VELUNE_SHOTS.map((shot) => ({ from: String(shot.start / 24), to: String(shot.end / 24), action: `${shot.id} — ${shot.title}. ${shot.note}` })),
-    creative: "An independent fictional VELUNE chocolate concept. Recreate the existing 15-second camera study and its twelve cuts. The final Seedance film and approved appearance photography are not yet produced.",
+    beats: VELUNE_SHOTS.map((shot) => ({ from: String(shot.start / 24), to: String(shot.end / 24), action: veluneShotAction(shot) })),
+    creative: "An independent fictional VELUNE chocolate concept. Recreate the existing 15-second camera study and its twelve shots. The eight user-supplied AI-generated images guide appearance, not new camera paths or edits. The final Seedance film and approved real-product photography are not yet produced. Keep the control pass as simple ID-coloured geometry; map the generated references to its subjects for the later video generation.",
     composited: "Exact packaging type and The Centre Report artwork; preserve the three-second report interval (frames 242–313).",
     medium: "", physics: "resolve",
   };
@@ -44,18 +76,22 @@ export function velunePromptDraft(): PromptDraft {
     version: 1, duration: 15, throughline: "Proposed sound only: delicate chocolate movement and a restrained discovery motif. No existing soundtrack is supplied.",
     values: {
       register: "A premium chocolate concept film in a plum, cream and cocoa studio world.",
-      subject: "VELUNE chocolates in pistachio, raspberry and caramel. Independent fictional concept; final appearance still requires approval.",
-      bindings: "[Video1] is the actual 15-second Blender camera study: inherit its edit, composition, registered object motion and camera routes. [Image1] is flat packaging concept artwork, used for design direction only. [Image2] is The Centre Report artwork concept; reserve its lettering for exact compositing in post.",
-      arrangement: "Keep each composition and visible count from the camera study. Retain twelve chocolates in the question silhouette and one printed report surface.",
-      text: "Do not invent new claims or legal copy. Composite exact packaging and report typography after generation.",
+      subject: "VELUNE chocolates in pistachio, raspberry and caramel. Use the whole bonbon's V-groove and shell consistently across the pistachio and contained-caramel halves. The eight supplied AI-generated references belong to an independent fictional concept; they are not approved real-product photographs, and the final film is still pending.",
+      bindings: [
+        "[Video1] is the actual 15-second, 360-frame Blender camera study at 24 fps. It remains the authority for camera routes, composition, registered object motion, timing and the twelve-shot edit.",
+        ...VELUNE_REFERENCES.map((reference) => `[Image${reference.index}] is the supplied generated ${reference.title}: ${reference.role}.`),
+        "The tunnel reference supplies compositional evidence and appearance direction only; it does not override [Video1]'s motion or edit. Keep the host in plum clothing. The chocolatier wears an ivory jacket and plum apron. In the discovery studio, BOTH BACK-FACING workers wear ivory jackets and plum aprons; do not transfer the host portrait's wardrobe to these workers.",
+        "No clean raspberry-filling reference was supplied. S08 and S09 show raspberry and pistachio INGREDIENTS, not filling cutaways; do not substitute the chocolate-half images for those inserts.",
+      ].join(" "),
+      arrangement: "Keep each composition and visible count from the Blender camera study. Retain twelve chocolates in the question silhouette, two back-facing discovery-studio workers, and one printed report surface. Keep caramel contained inside its chocolate half.",
+      text: "Do not invent new claims or legal copy. Composite exact packaging type and The Centre Report artifact after generation. The report is held at S11 for frames 242–313 and is not an additional image upload or an invented ninth reference.",
       music: "No music baked into this generation; plan and finish the soundtrack separately.",
     },
     slots: [
-      { id: "velune-motion", media: "video", job: "Actual Blender camera study — edit and motion" },
-      { id: "velune-packaging", media: "image", job: "Flat packaging concept — design direction, not approved photography" },
-      { id: "velune-report", media: "image", job: "The Centre Report — concept artwork for post" },
+      { id: "velune-motion", assetId: "velune-motion", media: "video", job: "Actual Blender camera study — camera, edit, motion and timing" },
+      ...VELUNE_REFERENCES.map((reference) => ({ id: reference.id, assetId: reference.id, media: "image" as const, job: reference.role })),
     ],
-    beats: VELUNE_SHOTS.map((shot, index) => ({ seconds: (shot.end - shot.start) / 24, role: index === 0 ? "open" : index === 4 ? "climax" : index === 11 ? "resolve" : "build", action: `${shot.id} — ${shot.title}. ${shot.note}`, audio: "" })),
+    beats: VELUNE_SHOTS.map((shot, index) => ({ seconds: (shot.end - shot.start) / 24, role: index === 0 ? "open" : index === 4 ? "climax" : index === 11 ? "resolve" : "build", action: veluneShotAction(shot), audio: "" })),
   };
 }
 

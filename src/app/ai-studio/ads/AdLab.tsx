@@ -14,9 +14,7 @@ import { useStudioProject } from "@/components/studio/StudioProjectProvider";
 import { AdSceneBoard } from "@/components/ad/AdSceneBoard";
 import { AdFinishing } from "@/components/ad/AdFinishing";
 import { parseAdDraft, readyAdReferences, referenceRole, referenceBindingProblems, adReferenceAdditionProblem, adDocumentDataUrl, type AdLabSeed, type AdSceneCard, type AdMixTrack, type VoiceTake, type AdReferenceBinding } from "@/lib/adDraft";
-import { VELUNE_SHOTS } from "@/components/velune/veluneStudy";
-import { velunePromptDraft } from "@/lib/productionBrief";
-import { assemble } from "@/lib/promptBuilder";
+import { veluneAdExample } from "@/lib/veluneAdExample";
 import type { CompletedPreflightTake, GenerationSnapshot } from "@/lib/adPreflight";
 import { buildComposition, planProblem, planSeconds, planVideoDirection, soundPlanSchema, timedCues, type SoundPlan } from "@/lib/soundPlan";
 import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
@@ -791,10 +789,7 @@ function AdLabWorkspace({
       setDraftStatus("This saved Ad draft uses unsupported fields. It is preserved; export the project before replacing the draft.");
     }
     if (!draft && !project.drafts.ad && project.example === "velune") {
-      const seed = velunePromptDraft();
-      draft = { schema: "adlab-draft-v1", source: "velune", prompt: assemble(seed.values, seed.beats, seed.duration, seed.throughline), modelId: "seedance-2.5-ref", duration: 15, aspect: "16:9", lane: "blender", imported: true, audioMode: "silent", references: readyAdReferences(project.assets.filter((a) => ["velune-motion", "velune-packaging", "velune-report"].includes(a.id))),
-        unattachedSlots: ["Approved per-flavour packaging / product photography", "Host and chocolatier appearance references with usage approval", "Chocolate, filling and ingredient texture photography", "Approved final packaging and Centre Report graphics"],
-        sceneCards: VELUNE_SHOTS.map((shot) => ({ id: shot.id, title: shot.title, start: shot.start / 24, end: shot.end / 24, action: shot.note, camera: shot.id === "S07" ? "Camera pullback from the actual Blender study" : "Follow the supplied Blender composition and registered motion", sound: "Soundtrack not supplied — plan and audition separately", referenceIds: ["velune-motion", ...(shot.id === "S11" ? ["velune-report"] : ["S02", "S03", "S04"].includes(shot.id) ? ["velune-packaging"] : [])] })) };
+      draft = veluneAdExample(project.assets);
     }
     if (draft) {
       setPresetId(AD_PRESETS.some((p) => p.id === draft.presetId) ? draft.presetId! : AD_PRESETS[0].id);
@@ -1910,7 +1905,7 @@ function AdLabWorkspace({
       <p role="status" className="mt-4 text-xs text-muted">{workspaceReady ? draftStatus : "Opening project storage…"}</p>
       {draftSaveBlocked && <button type="button" className="btn-secondary mt-2" onClick={() => { if (window.confirm("Replace the unsupported Ad draft with the current form? Export the project first if you need to preserve that draft.")) setDraftSaveBlocked(false); }}>Replace unsupported Ad draft</button>}
       {routeNote && <p role="status" className="mt-3 rounded-lg border border-accent/30 p-3 text-sm">{routeNote}</p>}
-      {project?.example === "velune" && <div className="mt-5 rounded-xl border border-border-soft p-4"><p className="text-sm font-semibold">VELUNE · actual camera study, final film pending</p><p className="mt-2 text-xs leading-relaxed text-muted">The attached Blender animatic and packaging/report concepts are available. Appearance photography, approval and a final Seedance film have not been supplied.</p>{unattachedSlots.length > 0 && <details className="mt-3" open><summary className="min-h-8 cursor-pointer text-xs font-semibold">Remaining reference checklist</summary><ul className="list-disc space-y-1 pl-4 text-xs text-muted">{unattachedSlots.map((slot) => <li key={slot}>{slot}</li>)}</ul></details>}<video controls preload="metadata" src={project.assets.find((a) => a.id === "velune-motion" && a.status === "ready")?.url} className="mt-3 max-h-72 w-full rounded-lg bg-black" /></div>}
+      {project?.example === "velune" && <div className="mt-5 rounded-xl border border-border-soft p-4"><p className="text-sm font-semibold">VELUNE · camera plan + visual references</p><p className="mt-2 text-xs leading-relaxed text-muted">Eight supplied AI images now define the packaging, chocolate, cast and scenes. New example copies attach them in order beside the Blender motion guide. Existing drafts keep their chosen files. Exact report graphics and final-film review remain finishing work.</p><div className="mt-2 flex flex-wrap gap-4"><Link href="/velune#visual-references" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">See what each image directs ↗</Link><Link href="/ai-studio/projects" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">Add references to an older project ↗</Link></div>{unattachedSlots.length > 0 && <details className="mt-3" open><summary className="min-h-8 cursor-pointer text-xs font-semibold">Remaining reference checklist</summary><ul className="list-disc space-y-1 pl-4 text-xs text-muted">{unattachedSlots.map((slot) => <li key={slot}>{slot}</li>)}</ul></details>}<video controls preload="metadata" src={project.assets.find((a) => a.id === "velune-motion" && a.status === "ready")?.url} className="mt-3 max-h-72 w-full rounded-lg bg-black" /></div>}
       <div className={styles.utilities}>
         <div className={styles.sessionControls}>
           <LiveGate />

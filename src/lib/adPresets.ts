@@ -854,6 +854,13 @@ export const REFERENCE_ROLES = [
     media: ["image"],
   },
   {
+    id: "character",
+    label: "Character appearance",
+    hint: "Appearance for the named character; scene-specific clothing takes priority.",
+    instruction: "the named character's facial appearance, hair and wardrobe, with scene-specific clothing taking priority where directed",
+    media: ["image"],
+  },
+  {
     id: "style",
     label: "Style / palette",
     hint: "Colour, lighting and mood to borrow — not the subject.",
