@@ -115,7 +115,7 @@ export async function falGenerateImage(opts: {
  * about which of several very different problems you have, and the cost of
  * guessing wrong is topping up an account that was never short of money.
  */
-export function describeFalError(e: unknown): string {
+export function describeFalError(e: unknown, operation: "upload" | "generation" = "upload"): string {
   const err = e as { status?: number; message?: string; body?: unknown };
   const status = typeof err?.status === "number" ? err.status : undefined;
   const text = `${err?.message ?? ""} ${JSON.stringify(err?.body ?? "")}`;
@@ -128,6 +128,7 @@ export function describeFalError(e: unknown): string {
     return "fal rejected the API key. Check FAL_KEY in .env.local — it should be the whole key, in the form <id>:<secret> — then restart the server.";
   }
   if (status === 403) {
+    if (operation === "generation") return "fal refused access to this model or request (403). Check the configured endpoint and the fal key’s model permissions.";
     return (
       "fal refused the upload (403). Uploads go to a different service than generation — rest.fal.ai rather than fal.run — " +
       "and a key can be allowed to run models while still not being allowed to use storage. This is a key-permission problem, not a billing one: " +
@@ -139,7 +140,7 @@ export function describeFalError(e: unknown): string {
     return "fal rejected the file as too large. Trim it and try again.";
   }
   /*
-   * 422 is a schema rejection, and fal says exactly what it rejected — in the
+   * 422 can be validation, content policy, or a model failure. Details live in the
    * response body, not the message. Left unread, every one of these surfaces
    * as the bare string "Unprocessable Entity", which says only that something
    * about the request was wrong and gives no way to find out what. The body
@@ -147,26 +148,11 @@ export function describeFalError(e: unknown): string {
    * offending field. Reading it turns an unsolvable error into a named one.
    */
   if (status === 422) {
-    /*
-     * fal publishes a typed error taxonomy, and `type` is the machine-readable
-     * field — `msg` is explicitly documented as something client code should
-     * not parse. Reading `type` matters here because the types are disjoint:
-     * a file that could not be downloaded is `file_download_error`, wrong
-     * dimensions are `image_too_small`/`image_too_large`, too many references
-     * are `sequence_too_long`, a bad format is `unsupported_image_format`.
-     *
-     * That has a consequence worth stating plainly, because this code used to
-     * assume the opposite: `content_policy_violation` is NOT a catch-all that
-     * a fetch failure hides inside. When it comes back, the files were
-     * downloaded, decoded and looked at, and a safety or IP filter refused
-     * them. Telling someone to re-check their URLs at that point sends them
-     * to fix something that already worked.
-     *
-     * https://docs.fal.ai/errors
-     */
+    // Use the published type to classify the error; show the provider's message
+    // without speculating about which image, person, brand or processing step caused it.
     const detail = (err?.body as { detail?: unknown })?.detail;
     const items = Array.isArray(detail)
-      ? (detail as {
+      ? (detail.filter((item) => item && typeof item === "object") as {
           loc?: unknown[];
           msg?: string;
           type?: string;
@@ -180,10 +166,9 @@ export function describeFalError(e: unknown): string {
         ? policy.loc.filter((x) => x !== "body").join(".")
         : "";
       return (
-        `The generation provider's content filter refused ${field === "prompt" ? "the prompt" : `the files in ${field || "the request"}`}. ` +
-        "This is a filter decision, not a technical one: fal reports an unreachable file as file_download_error, a mis-sized one as image_too_small or image_too_large, and a bad format as unsupported_image_format \u2014 so the files were fetched, decoded and looked at. " +
-        "The wording about likenesses is generic; fal's own list for this error also covers imagery judged to infringe third-party intellectual property, which is what branded commercial packaging and product photography tend to trip. " +
-        "Retrying, re-hosting or re-exporting the same picture will not change the answer. Substitute the reference, or verify the boundary with a plain unbranded image."
+        `The generation provider's content filter refused ${field === "prompt" ? "the prompt" : `the files in ${field || "the request"}`} (content_policy_violation). ` +
+        (typeof policy.msg === "string" ? `Provider message: ${policy.msg.slice(0, 1500)} ` : "") +
+        "This response does not identify the exact cause or prove that a depicted person is real. Review the flagged content and contact fal support with the request ID if you believe it is a mistake. No automatic retry was made."
       );
     }
 
@@ -205,7 +190,9 @@ export function describeFalError(e: unknown): string {
 
     return lines.length
       ? `The generation provider rejected the request (422): ${lines.join("; ")}.`
-      : `The generation provider rejected the request (422) without saying which field. Raw body: ${JSON.stringify(err?.body ?? null).slice(0, 500)}`;
+      : typeof detail === "string" && detail.trim()
+        ? `The generation provider rejected the request (422): ${detail.slice(0, 2000)}`
+        : "The generation provider rejected the request (422) without field details. Check the request in fal’s dashboard or share its request ID with support.";
   }
   return err?.message ?? "Upload failed";
 }
@@ -390,7 +377,7 @@ export async function falStartVideo(opts: {
   } catch (e) {
     // Without this the caller reports fal's bare status text — "Unprocessable
     // Entity" — and throws away the body that names the field at fault.
-    throw new Error(describeFalError(e));
+    throw new Error(describeFalError(e, "generation"));
   }
 }
 
@@ -403,23 +390,28 @@ export async function falPollVideo(opts: {
   endpoint: string;
   requestId: string;
 }): Promise<FalPollResult> {
-  const f = client();
   try {
+    const f = client();
     const status = await f.queue.status(opts.endpoint, {
       requestId: opts.requestId,
       logs: false,
     });
     if (status.status !== "COMPLETED") return { status: "pending" };
+    // A queued job can fail only when its result is read. Preserve that error
+    // body exactly as we do for an immediate submission rejection.
+    const result = await f.queue.result(opts.endpoint, { requestId: opts.requestId });
+    const data = result.data as { video?: { url?: string }; videos?: { url?: string }[] };
+    const url = data?.video?.url ?? data?.videos?.[0]?.url;
+    if (!url) return { status: "failed", error: `fal job completed without a video URL. Request ID: ${opts.requestId}` };
+    return { status: "done", videoUrl: url };
   } catch (e) {
-    return { status: "failed", error: e instanceof Error ? e.message : String(e) };
+    const status = (e as { status?: number })?.status;
+    const error = `${describeFalError(e, "generation")} Request ID: ${opts.requestId}`;
+    if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) return { status: "failed", error };
+    // A temporary inability to fetch status/results does not establish that
+    // the generation failed. Keep the saved handle available for polling.
+    throw new Error(error);
   }
-
-  const result = await f.queue.result(opts.endpoint, { requestId: opts.requestId });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = result.data as any;
-  const url: string | undefined = data?.video?.url ?? data?.videos?.[0]?.url;
-  if (!url) return { status: "failed", error: "fal job completed without a video URL" };
-  return { status: "done", videoUrl: url };
 }
 
 /**

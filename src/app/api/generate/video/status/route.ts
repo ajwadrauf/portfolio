@@ -35,10 +35,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "falRequestId and modelId required" }, { status: 400 });
     }
     const endpoint = getModel(body.modelId).endpoint;
-    const result = await falPollVideo({ endpoint, requestId: body.falRequestId });
-    return NextResponse.json(
-      result.status === "done" ? { status: "done", videoUrl: result.videoUrl } : result,
-    );
+    try {
+      const result = await falPollVideo({ endpoint, requestId: body.falRequestId });
+      return NextResponse.json(
+        result.status === "done" ? { status: "done", videoUrl: result.videoUrl } : result,
+      );
+    } catch (e) {
+      // Preserve the job on timeouts, rate limits and provider outages. Polling
+      // the same handle never submits another generation.
+      return NextResponse.json({ status: "pending", error: e instanceof Error ? e.message : "Could not check the existing fal request. Try checking it again." }, { status: 503 });
+    }
   } catch (e) {
     console.error("video status failed", e);
     return NextResponse.json(

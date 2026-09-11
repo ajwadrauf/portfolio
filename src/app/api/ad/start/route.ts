@@ -91,10 +91,6 @@ async function resolveClipUrl(pathname: string, origin: string): Promise<string>
 
 /** Starts a mini-ad video job from a composed prompt. Polled via /api/generate/video/status. */
 export async function POST(req: Request) {
-  // Hoisted so the error path can tell whether the stills were fetched by the
-  // provider or carried inside the request, which changes what a rejection
-  // can possibly mean.
-  let allImageRefs: string[] = [];
   try {
     const raw = await req.text();
     if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return NextResponse.json({ error: "The combined prompt and references exceed the 4 MiB request limit. Use smaller images or hosted media links." }, { status: 413 });
@@ -233,7 +229,7 @@ export async function POST(req: Request) {
     // Reference-to-video models take every reference positionally; the rest
     // take a single grounding frame.
     const multiRef = MULTI_REF_MODELS.includes(body.modelId);
-    allImageRefs = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter(
+    const allImageRefs = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter(
       (u): u is string => Boolean(u),
     );
     const origin = new URL(req.url).origin;
@@ -294,19 +290,7 @@ export async function POST(req: Request) {
     return liveJson(spend, { mock: false, provider: "fal", falRequestId: requestId, cost });
   } catch (e) {
     console.error("ad start failed", e);
-    let error = e instanceof Error ? e.message : "Ad generation failed to start";
-    /*
-     * A content-filter rejection already establishes that the files were read,
-     * because fal reports an unreachable file under a different type entirely.
-     * Inlining adds one more thing that cannot be at fault, so it is worth a
-     * clause rather than a different explanation.
-     */
-    const inlinedOnly =
-      allImageRefs.length > 0 && allImageRefs.every((u) => u.startsWith("data:"));
-    if (inlinedOnly && /content filter/i.test(error)) {
-      error +=
-        " These stills were also sent inline rather than fetched, and resized, flattened and re-encoded on the way, so nothing about hosting or file handling is involved either.";
-    }
+    const error = e instanceof Error ? e.message : "Ad generation failed to start";
     return NextResponse.json({ error }, { status: 500 });
   }
 }
