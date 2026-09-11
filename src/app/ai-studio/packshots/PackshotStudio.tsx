@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { LiveGate } from "@/components/LiveGate";
 import { Why } from "@/components/Why";
 import { SpendChip } from "@/components/SpendChip";
@@ -15,13 +16,19 @@ import {
   briefCompleteness,
   gs1FileName,
   isGrounded,
+  getCoverage,
+  sizeRequestForModel,
+  MAX_PACKSHOT_BODY_BYTES,
   resolveSize,
   suggestModel,
   type PackAngle,
   type PackBrief,
 } from "@/lib/packshot";
+import styles from "./PackshotStudio.module.css";
 
-type Reference = { angle: PackAngle; dataUrl: string };
+const ArtworkStudio = dynamic(() => import("@/components/packshots/ArtworkStudio").then((m) => m.ArtworkStudio), { loading: () => <p className="p-6 text-muted" role="status">Opening the artwork workspace…</p> });
+type Reference = { id: string; name: string; angle: PackAngle; dataUrl: string };
+type RunInput = { references: Reference[]; brief: PackBrief; requestedPx?: number; sku: string; lang: string };
 
 /**
  * Marks a field the studio will happily run without.
@@ -55,6 +62,8 @@ const EXAMPLE_PACK = {
 };
 
 type Job = {
+  id: string;
+  input: RunInput;
   angle: PackAngle;
   modelId: string;
   role: "primary" | "challenger";
@@ -65,6 +74,9 @@ type Job = {
   grounded?: boolean;
   error?: string;
   cost: number;
+  renderedPx?: number;
+  sizeNote?: string;
+  reviewedAt?: string;
   /**
    * The result of a finishing pass, kept beside the original rather than
    * replacing it — a cutout you cannot compare against the render it came
@@ -83,9 +95,8 @@ const LANGS = ["enfr", "en", "fr"] as const;
  * Per-reference byte ceiling.
  *
  * References ride the route's JSON body, and a serverless request body is
- * capped at 4.5MB. Six references therefore have to share it, with headroom
- * for the prompt and the rest of the payload — so 600KB each, enforced per
- * file rather than hoped for in aggregate.
+ * capped at 4.5MB. Each image has its own ceiling and the staged set also
+ * shares a 4MiB wire budget, including base64 expansion and JSON overhead.
  */
 const MAX_REF_BYTES = 600 * 1024;
 
@@ -113,7 +124,9 @@ const dataUrlBytes = (u: string) => Math.ceil((u.length - (u.indexOf(",") + 1)) 
  * big keeps the detail on the packs that need it, without risking a body the
  * route cannot accept.
  */
-async function toProcessedDataUrl(file: File): Promise<string> {
+async function toProcessedDataUrl(file: File, wireBudget = Math.floor(MAX_REF_BYTES * 4 / 3)): Promise<string> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("Choose a JPEG, PNG or WebP. Use From artwork for PDF proofs.");
+  if (file.size > 30 * 1024 * 1024) throw new Error("Choose an image smaller than 30 MB.");
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -135,15 +148,27 @@ async function toProcessedDataUrl(file: File): Promise<string> {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       last = canvas.toDataURL("image/jpeg", tier.quality);
-      if (dataUrlBytes(last) <= MAX_REF_BYTES) return last;
+      if (dataUrlBytes(last) <= MAX_REF_BYTES && last.length <= wireBudget) return last;
     }
-    return last;
+    throw new Error("This reference cannot fit without losing too much detail. Remove another image or upload a tighter product crop.");
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
 export function PackshotStudio() {
+  const [mode, setMode] = useState<"photos" | "artwork">("photos");
+  const [artworkOpened, setArtworkOpened] = useState(false);
+  const [running, setRunning] = useState(false);
+  const runLock = useRef(false);
+  const activeJobs = useRef(new Set<string>());
+  const uploadLock = useRef(false);
+  const [uploading, setUploading] = useState(false);
+  const [zoomReference, setZoomReference] = useState<{ name: string; dataUrl: string } | null>(null);
+  const zoomDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (zoomReference) zoomDialog.current?.showModal();
+  }, [zoomReference]);
   /**
    * Shared with the gate control. This used to derive `live` from keys alone,
    * which reported live on a gated deployment where generation was in fact
@@ -257,25 +282,50 @@ export function PackshotStudio() {
   };
   const perAngleCost =
     estimateCost(modelId, costOpts) +
-    (challengerId ? estimateCost(challengerId, costOpts) : 0);
+    (challengerId ? estimateCost(challengerId, { referenceImages: references.length, ...sizeRequestForModel(challenger?.outputSizes, resolved.px) }) : 0);
   const totalEstimate = selectedAngles.length * perAngleCost;
   const groundedCount = selectedAngles.filter((a) => isGrounded(a, providedAngles)).length;
 
-  const addReference = useCallback(
-    async (file: File) => {
-      setError(null);
-      try {
-        const dataUrl = await toProcessedDataUrl(file);
-        setReferences((prev) => [
-          ...prev.filter((r) => r.angle !== uploadAngle),
-          { angle: uploadAngle, dataUrl },
-        ]);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not read that image");
+  const addReference = useCallback(async (files: File[]) => {
+    if (uploadLock.current) return;
+    uploadLock.current = true;
+    setUploading(true);
+    setError(null);
+    const staged = [...references];
+    try {
+      for (const file of files) {
+        if (staged.length >= 16) throw new Error("A reference set can contain up to 16 images. Remove an image before adding another.");
+        const remaining = MAX_PACKSHOT_BODY_BYTES - JSON.stringify(staged).length - 24_000;
+        const dataUrl = await toProcessedDataUrl(file, Math.min(Math.floor(MAX_REF_BYTES * 4 / 3), remaining));
+        staged.push({ id: crypto.randomUUID(), name: file.name, angle: uploadAngle, dataUrl });
       }
-    },
-    [uploadAngle],
-  );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not read that image");
+    } finally {
+      setReferences(staged);
+      uploadLock.current = false;
+      setUploading(false);
+    }
+  }, [references, uploadAngle]);
+
+  const useBoxReferences = useCallback(async (images: { angle: PackAngle; dataUrl: string }[]) => {
+    if (runLock.current || uploadLock.current) return;
+    uploadLock.current = true;
+    setUploading(true);
+    try {
+      const staged: Reference[] = [];
+      for (const image of images) {
+        const blob = await (await fetch(image.dataUrl)).blob();
+        const dataUrl = await toProcessedDataUrl(new File([blob], `box-${image.angle}.png`, { type: blob.type }),
+          Math.floor((MAX_PACKSHOT_BODY_BYTES - 24_000) / images.length));
+        staged.push({ id: crypto.randomUUID(), name: `Box render · ${image.angle}`, angle: image.angle, dataUrl });
+      }
+      setReferences(staged);
+      setMode("photos");
+      setError(null);
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not prepare the box references."); }
+    finally { uploadLock.current = false; setUploading(false); }
+  }, []);
 
   /**
    * Pulls the example in and puts it through the same processing a dropped
@@ -285,19 +335,23 @@ export function PackshotStudio() {
    */
   const [exampleBusy, setExampleBusy] = useState(false);
   const loadExample = useCallback(async () => {
+    if (uploadLock.current || runLock.current) return;
+    uploadLock.current = true;
+    setUploading(true);
     setError(null);
     setExampleBusy(true);
     try {
+      if (references.length >= 16) throw new Error("Remove a reference before adding the example.");
       const res = await fetch(EXAMPLE_PACK.url);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const blob = await res.blob();
       const dataUrl = await toProcessedDataUrl(
         new File([blob], "example-pack.png", { type: blob.type || "image/png" }),
+        Math.min(Math.floor(MAX_REF_BYTES * 4 / 3), MAX_PACKSHOT_BODY_BYTES - JSON.stringify(references).length - 24_000),
       );
-      setReferences((prev) => [
-        ...prev.filter((r) => r.angle !== EXAMPLE_PACK.angle),
-        { angle: EXAMPLE_PACK.angle, dataUrl },
-      ]);
+      setReferences((prev) => prev.length < 16 ? [...prev,
+        { id: crypto.randomUUID(), name: "Example cookie pack", angle: EXAMPLE_PACK.angle, dataUrl },
+      ] : prev);
       setUploadAngle(EXAMPLE_PACK.angle);
     } catch (e) {
       setError(
@@ -305,64 +359,52 @@ export function PackshotStudio() {
       );
     } finally {
       setExampleBusy(false);
+      uploadLock.current = false;
+      setUploading(false);
     }
+  }, [references]);
+
+  const updateJob = useCallback((id: string, patch: Partial<Job>) => {
+    setJobs((prev) => prev.map((j) => j.id === id ? { ...j, ...patch } : j));
   }, []);
 
-  const updateJob = useCallback(
-    (angle: PackAngle, jobModelId: string, patch: Partial<Job>) => {
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.angle === angle && j.modelId === jobModelId ? { ...j, ...patch } : j,
-        ),
-      );
-    },
-    [],
-  );
-
-  /**
-   * One angle on one model.
-   *
-   * Pulled out of the batch loop so a single failure can be retried on its
-   * own. Re-running the whole set to recover one angle means paying again for
-   * the ones that already worked, which on a seven-angle A/B is thirteen
-   * wasted generations to fix one.
-   */
-  const runOne = useCallback(
-    async (angle: PackAngle, jobModelId: string) => {
-      updateJob(angle, jobModelId, { status: "running", error: undefined });
-      try {
-        const res = await fetch("/api/packshot", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            targetAngle: angle,
-            modelId: jobModelId,
-            references,
-            brief,
-            sizePresetId: sizePresetId === "custom" ? undefined : (activePresetId ?? undefined),
-            sizePx: sizePresetId === "custom" ? resolved.px : undefined,
-          }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? "Generation failed");
-        if (!json.mock) addSpend(json.cost ?? 0);
-        updateJob(angle, jobModelId, {
-          status: json.mock ? "mock" : "done",
-          imageDataUrl: json.imageDataUrl,
-          imageUrl: json.imageUrl,
-          prompt: json.prompt,
-          grounded: json.grounded,
-          cost: json.mock ? 0 : (json.cost ?? 0),
-        });
-      } catch (e) {
-        updateJob(angle, jobModelId, {
-          status: "failed",
-          error: e instanceof Error ? e.message : "Generation failed",
-        });
+  // Every job carries the input snapshot it was priced and submitted with.
+  // A late result cannot update a different run with the same angle/model.
+  const runOne = useCallback(async (job: Job) => {
+    if (activeJobs.current.has(job.id)) return;
+    activeJobs.current.add(job.id);
+    updateJob(job.id, { status: "running", error: undefined, reviewedAt: undefined });
+    try {
+      const body = JSON.stringify({
+        targetAngle: job.angle, modelId: job.modelId,
+        references: job.input.references, brief: job.input.brief,
+        ...sizeRequestForModel(MODELS[job.modelId].outputSizes, job.input.requestedPx),
+      });
+      if (new TextEncoder().encode(body).byteLength > MAX_PACKSHOT_BODY_BYTES) {
+        throw new Error("These references exceed the request limit. Remove an image or use a smaller crop before starting a new run.");
       }
-    },
-    [addSpend, activePresetId, brief, references, resolved.px, sizePresetId, updateJob],
-  );
+      const res = await fetch("/api/packshot", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Generation failed");
+      if (!json.mock) addSpend(json.cost ?? 0);
+      updateJob(job.id, {
+        status: json.mock ? "mock" : "done", imageDataUrl: json.imageDataUrl,
+        imageUrl: json.imageUrl, prompt: json.prompt, grounded: json.grounded,
+        cost: json.mock ? 0 : (json.cost ?? 0), renderedPx: json.renderedPx, sizeNote: json.sizeNote,
+      });
+    } catch (e) {
+      updateJob(job.id, { status: "failed", error: e instanceof Error ? e.message : "Generation failed" });
+    } finally { activeJobs.current.delete(job.id); }
+  }, [addSpend, updateJob]);
+
+  const runBatch = useCallback(async (queue: Job[]) => {
+    const pending = [...queue];
+    const worker = async () => {
+      for (;;) { const job = pending.shift(); if (!job) return; await runOne(job); }
+    };
+    try { await Promise.all([worker(), worker()]); }
+    finally { runLock.current = false; setRunning(false); }
+  }, [runOne]);
 
   /*
    * Advice about the current setup, not about models in general. It only
@@ -385,9 +427,12 @@ export function PackshotStudio() {
    */
   const finish = useCallback(
     async (job: Job, op: FinishOp) => {
+      if (job.status === "mock") return;
       const source = job.finished?.url ?? job.imageUrl ?? job.imageDataUrl;
       if (!source) return;
-      updateJob(job.angle, job.modelId, { finishing: op, finishError: undefined });
+      if (activeJobs.current.has(job.id)) return;
+      activeJobs.current.add(job.id);
+      updateJob(job.id, { finishing: op, finishError: undefined, reviewedAt: undefined });
       try {
         const res = await fetch("/api/packshot/finish", {
           method: "POST",
@@ -397,37 +442,33 @@ export function PackshotStudio() {
         const json = await res.json();
         if (!res.ok || json.error) throw new Error(json.error ?? "Finishing failed");
         addSpend(json.cost ?? 0);
-        updateJob(job.angle, job.modelId, {
+        updateJob(job.id, {
           finishing: undefined,
           finished: { op, url: json.url },
         });
       } catch (e) {
-        updateJob(job.angle, job.modelId, {
+        updateJob(job.id, {
           finishing: undefined,
           finishError: e instanceof Error ? e.message : "Finishing failed",
         });
-      }
+      } finally { activeJobs.current.delete(job.id); }
     },
     [addSpend, updateJob],
   );
 
   const done = jobs.filter((j) => j.imageDataUrl || j.imageUrl);
   const failed = jobs.filter((j) => j.status === "failed");
-  const needsQA = done.filter((j) => j.grounded === false);
+  const needsQA = done.filter((j) => !j.reviewedAt);
 
-  const retryFailed = useCallback(async () => {
-    // Two at a time, matching the batch loop — the providers rate-limit and a
-    // retry storm is how a recoverable failure becomes a permanent one.
-    const queue = [...failed];
-    const worker = async () => {
-      for (;;) {
-        const j = queue.shift();
-        if (!j) return;
-        await runOne(j.angle, j.modelId);
-      }
-    };
-    await Promise.all([worker(), worker()]);
-  }, [failed, runOne]);
+  const retryFailed = useCallback(async (only?: Job) => {
+    if (runLock.current || activeJobs.current.size) return;
+    const queue = only ? [only] : failed;
+    if (!queue.length) return;
+    if (health?.live && !window.confirm("Retry submits a new paid generation using the original inputs. If a previous request timed out, check its provider log before paying again. Continue?")) return;
+    runLock.current = true;
+    setRunning(true);
+    await runBatch(queue);
+  }, [failed, health?.live, runBatch]);
 
   /**
    * Save the whole set.
@@ -439,7 +480,7 @@ export function PackshotStudio() {
    */
   const downloadAll = useCallback(async () => {
     for (const j of done) {
-      const gs1 = gs1FileName(sku, lang, j.angle);
+      const gs1 = gs1FileName(j.input.sku, j.input.lang, j.angle);
       const name =
         j.role === "challenger" ? gs1.replace(/\.jpg$/, `__${j.modelId}.jpg`) : gs1;
       const a = document.createElement("a");
@@ -453,87 +494,61 @@ export function PackshotStudio() {
   }, [done, lang, sku]);
 
   const generate = useCallback(async () => {
-    if (references.length === 0 || selectedAngles.length === 0) return;
-    // Refused here as well as server-side: over the cap the run would fail
-    // partway, after the confirm dialog and after spending on the angles that
-    // happened to go first.
-    if (overCap) return;
-    setError(null);
-    const runs: { angle: PackAngle; modelId: string; role: "primary" | "challenger" }[] =
-      selectedAngles.flatMap((angle) => [
-        { angle, modelId, role: "primary" as const },
-        ...(challengerId
-          ? [{ angle, modelId: challengerId, role: "challenger" as const }]
-          : []),
-      ]);
-    if (health?.live) {
-      const ok = window.confirm(
-        `This will run ${runs.length} live packshot generation${runs.length === 1 ? "" : "s"}${challengerId ? " (A/B: primary + challenger per angle)" : ""} at an estimated cost of $${totalEstimate.toFixed(2)}. Proceed?`,
-      );
-      if (!ok) return;
+    if (runLock.current || uploadLock.current || activeJobs.current.size || uploading || !references.length || !selectedAngles.length || overCap) return;
+    const input: RunInput = { references: references.map((r) => ({ ...r })), brief: { ...brief }, requestedPx: resolved.px, sku, lang };
+    const runId = crypto.randomUUID();
+    const models = [...new Set([modelId, ...(challengerId ? [challengerId] : [])])];
+    const runs: Job[] = selectedAngles.flatMap((angle) => models.map((id, index) => ({
+      id: `${runId}:${angle}:${id}`, input, angle, modelId: id,
+      role: index === 0 ? "primary" as const : "challenger" as const,
+      status: "queued" as const, cost: 0,
+    })));
+    // Validate every body before any member of a paid batch can be submitted.
+    if (runs.some((job) => new TextEncoder().encode(JSON.stringify({ targetAngle: job.angle, modelId: job.modelId,
+      references: input.references, brief: input.brief,
+      ...sizeRequestForModel(MODELS[job.modelId].outputSizes, input.requestedPx) })).byteLength > MAX_PACKSHOT_BODY_BYTES)) {
+      setError("This reference set is too large to send. Remove an image or use a tighter crop."); return;
     }
-    setJobs(runs.map((r) => ({ ...r, status: "queued", cost: 0 })));
-
-    const queue = [...runs];
-    const worker = async () => {
-      for (;;) {
-        const run = queue.shift();
-        if (!run) return;
-        await runOne(run.angle, run.modelId);
-      }
-    };
-    await Promise.all([worker(), worker()]);
-  }, [challengerId, health, modelId, overCap, references.length, runOne, selectedAngles, totalEstimate]);
+    if (health?.live && !window.confirm(`This will run ${runs.length} live packshot generations at an estimated cost of $${totalEstimate.toFixed(2)}. Proceed?`)) return;
+    runLock.current = true;
+    setRunning(true);
+    setError(null);
+    setJobs(runs);
+    await runBatch(runs);
+  }, [brief, challengerId, health?.live, lang, modelId, overCap, references, resolved.px, runBatch, selectedAngles, sku, totalEstimate, uploading]);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-6 py-10">
-      {/* status */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="chip">
-            <span className={`inline-block h-2 w-2 rounded-full ${health?.gemini ? "bg-success" : "bg-muted/50"}`} />
-            Gemini API {health?.gemini ? "connected" : "not configured"}
-          </span>
-          <span className="chip">
-            <span className={`inline-block h-2 w-2 rounded-full ${health?.fal ? "bg-success" : "bg-muted/50"}`} />
-            fal.ai {health?.fal ? "connected" : "not configured"}
-          </span>
-          {/*
-            Recraft is a third provider with its own key, and this is the only
-            studio that offers a Recraft model — so the chip lives here rather
-            than in the shared status bars, where it would report on a key
-            nothing on the page could spend.
-          */}
-          <span className="chip">
-            <span className={`inline-block h-2 w-2 rounded-full ${health?.recraft ? "bg-success" : "bg-muted/50"}`} />
-            Recraft {health?.recraft ? "connected" : "not configured"}
-          </span>
-          {/* Live-mode state sits with the other connection chips, not in the nav. */}
-          <LiveGate />
-          {health && !health.live && !health.gemini && !health.fal && !health.recraft && (
-            <span className="chip border-warning/40 text-warning">
-              Demo mode — zero-cost mocks; add API keys to go live
-            </span>
-          )}
+    <div className={styles.workspace}>
+      <header className={styles.heading}>
+        <p className={styles.eyebrow}>AI Content Studio · Product imagery</p>
+        <h1>Packshot Studio</h1>
+        <p>Start with the artwork. Or the photograph. Bring the whole package into view.</p>
+      </header>
+      <div className={styles.utilities}>
+        <div className={styles.utilityLeft}><LiveGate />
+          <details className={styles.connections}>
+            <summary>Connections</summary>
+            <div>{[["Gemini", health?.gemini], ["fal.ai", health?.fal], ["Recraft", health?.recraft]].map(([name, connected]) =>
+              <span className="chip" key={String(name)}>{name} · {connected ? "connected" : "not configured"}</span>)}</div>
+          </details>
         </div>
         <SpendChip amount={sessionSpend} />
       </div>
-
-      <h1 className="mt-6 text-[1.75rem] tracking-[-0.03em]">Packshot Studio</h1>
-      <p className="mt-2 max-w-3xl text-muted">
-        The planogram case: every SKU needs product-on-white at up to 7 angles.
-        Upload the reference photos you already have, and generate the missing
-        GS1 angles instead of re-shooting them. Angles backed by a real
-        reference are marked <span className="font-semibold text-success">grounded</span>;
-        angles the camera never saw are{" "}
-        <span className="font-semibold text-warning">reconstructed</span> and
-        flagged for mandatory label QA — the model can&apos;t know what an unseen
-        face of the package says.
-      </p>
-
+      <div className={styles.modeGrid} role="group" aria-label="Choose your starting point">
+        <button type="button" className={mode === "photos" ? styles.selectedMode : styles.mode} aria-pressed={mode === "photos"} onClick={() => setMode("photos")}>
+          <span className={styles.modeEyebrow}>The familiar workflow</span><strong>From product photos</strong>
+          <span>Use the photos you have. Create the angles you need.</span><b aria-hidden="true">↗</b>
+        </button>
+        <button type="button" className={mode === "artwork" ? styles.selectedMode : styles.mode} aria-pressed={mode === "artwork"} onClick={() => { setArtworkOpened(true); setMode("artwork"); }}>
+          <span className={styles.modeEyebrow}>New · No generation cost</span><strong>From artwork / dielines</strong>
+          <span>Place your artwork on a measured box. Preview every face.</span><b aria-hidden="true">↗</b>
+        </button>
+      </div>
       {error && (
-        <div className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">{error}</div>
+        <div role="alert" className="card mb-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">{error}</div>
       )}
+      {artworkOpened && <div hidden={mode !== "artwork"} className={styles.artwork}><ArtworkStudio onUseAsReferences={useBoxReferences} /></div>}
+      <div hidden={mode !== "photos"}>
 
       {/*
         Intake runs the full width rather than down a 380px rail.
@@ -545,136 +560,15 @@ export function PackshotStudio() {
         sit two and three abreast, and the whole intake is visible at once —
         which is what makes it obvious that most of it is blank.
       */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-12">
-        <div className="contents">
-          <div className="card p-5 lg:col-span-4">
-            <h2 className="font-semibold">1 · Product</h2>
-            <label className="mt-3 block">
-              <span className="mb-1 flex items-baseline justify-between gap-2 label">
-                <span>SKU / GTIN</span>
-                <Optional />
-              </span>
-              <input
-                className="input"
-                placeholder="6565170002"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-              />
-              <span className="mt-1 block text-[11px] leading-[1.5] text-muted/80">
-                Names the downloads in GS1 planogram form. Left blank they are
-                named SKU_… and can be renamed later.
-              </span>
-            </label>
-            <label className="mt-3 block">
-              <span className="mb-1 flex items-baseline justify-between gap-2 label">
-                <span>Language code</span>
-                <Optional />
-              </span>
-              <select
-                className="input"
-                value={lang}
-                onChange={(e) => setLang(e.target.value as (typeof LANGS)[number])}
-              >
-                {LANGS.map((l) => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          {/*
-            The variables.
-            
-            A front photo carries the label and roughly the silhouette. It
-            carries nothing about volume, material or how the pack holds its
-            shape — and those are what every unphotographed angle is a guess
-            about. Six one-line fields turn the guess into a reconstruction,
-            which is the whole difference between a usable planogram asset and
-            a plausible picture.
-          */}
-          <div className="card p-5 lg:col-span-8">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-semibold">2 · What the pack is</h2>
-              <span
-                className={`chip shrink-0 ${filled === 0 ? "!border-warning/50 !text-warning" : filled === total ? "!border-success/50 !text-success" : ""}`}
-              >
-                {filled}/{total} set
-              </span>
-            </div>
-            <p className="mt-1 text-xs leading-relaxed text-muted">
-              All of this is optional — nothing here blocks a run. It matters
-              in proportion to how much you are asking the model to invent: for
-              an angle your photos already show, skip it; for a face no photo
-              shows, it is doing most of the work. A photo of the front tells
-              the model what the label says, not what the object is.
-            </p>
-
-            {/*
-              Three abreast on a wide screen. The reason each field exists is
-              worth reading once and then never again, so it shows under an
-              empty field and gets out of the way as soon as it is answered.
-            */}
-            <div className="mt-4 grid gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-              {PACK_VARIABLES.map((v) => (
-                <label key={v.id} className="block" title={v.why}>
-                  <span className="mb-1 flex items-baseline justify-between gap-2 label">
-                    <span>{v.label}</span>
-                    <Optional />
-                  </span>
-                  <input
-                    className="input"
-                    list={v.options ? `pack-${v.id}` : undefined}
-                    placeholder={v.placeholder}
-                    value={brief[v.id]}
-                    onChange={(e) => setBrief((b) => ({ ...b, [v.id]: e.target.value }))}
-                  />
-                  {v.options && (
-                    <datalist id={`pack-${v.id}`}>
-                      {v.options.map((o) => (
-                        <option key={o} value={o} />
-                      ))}
-                    </datalist>
-                  )}
-                  {!brief[v.id].trim() && (
-                    <span className="mt-1 block text-[11px] leading-[1.5] text-muted/80">
-                      {v.why}
-                    </span>
-                  )}
-                </label>
-              ))}
-
-              <label className="block sm:col-span-2 xl:col-span-3">
-                <span className="mb-1 flex items-baseline justify-between gap-2 label">
-                  <span>Anything else</span>
-                  <Optional />
-                </span>
-                <input
-                  className="input"
-                  placeholder="e.g. the window panel is on the front only, or the cap is a different plastic"
-                  value={brief.notes}
-                  onChange={(e) => setBrief((b) => ({ ...b, notes: e.target.value }))}
-                />
-              </label>
-            </div>
-
-            {filled < 3 && (
-              <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed">
-                <span className="font-bold text-warning">Thin brief.</span>{" "}
-                With this little to go on the model will render a rigid box with
-                a gloss finish, because that is the average of everything it has
-                seen. Format, material and dimensions are the three that change
-                the result most.
-              </p>
-            )}
-          </div>
-
-          <div className="card p-5 lg:col-span-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-semibold">3 · Reference photos</h2>
+      <div className={styles.photoGrid}>
+        <fieldset className="contents" disabled={running || uploading}>
+          <div className={styles.stage}>
+            <div className={styles.stageHeading}>
+              <h2 className="font-semibold">1 · Bring your references</h2>
               <span className="label"><Required /></span>
             </div>
             <p className="mt-1 text-xs text-muted">
-              Every face you add turns a reconstruction into a grounded angle.
+              Add photos of the same product. Label each view so the coverage stays clear.
             </p>
 
             {/*
@@ -687,23 +581,14 @@ export function PackshotStudio() {
               them, so a single generic "add every face you have" was good
               advice for two of the six models and wrong for the rest.
             */}
-            <div
+            <details open={overCap || undefined}
               className={`mt-3 rounded-[6px] border p-3 ${
                 overCap
                   ? "border-danger/40 bg-danger/10"
                   : "border-accent/30 bg-accent/[0.04]"
               }`}
             >
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="label !text-accent">
-                  {cappedBy.label.split(" (")[0]}
-                </span>
-                <span
-                  className={`font-mono text-[11px] ${overCap ? "text-danger" : "text-muted"}`}
-                >
-                  {references.length}/{refCap} used
-                </span>
-              </div>
+              <summary className="cursor-pointer text-sm"><strong>{references.length} / {refCap} references</strong><span className="ml-2 text-muted">{cappedBy.label.split(" (")[0]} · input guidance</span></summary>
               {overCap ? (
                 <p className="mt-1.5 text-xs leading-relaxed">
                   <span className="font-bold text-danger">Too many references.</span>{" "}
@@ -731,7 +616,7 @@ export function PackshotStudio() {
                     takes {challenger.maxReferenceImages}.
                   </p>
                 )}
-            </div>
+            </details>
 
             {/*
               The dropdown selects which angle the photo you are about to add
@@ -748,21 +633,22 @@ export function PackshotStudio() {
                 value={uploadAngle}
                 onChange={(e) => setUploadAngle(e.target.value as PackAngle)}
               >
-                {PACK_ANGLES.filter((a) => a.id !== "hero34").map((a) => (
+                {PACK_ANGLES.map((a) => (
                   <option key={a.id} value={a.id}>{a.label}</option>
                 ))}
               </select>
-              <button className="btn-secondary" onClick={() => fileInput.current?.click()}>
-                Add photo
+              <button className="btn-secondary" disabled={uploading} onClick={() => fileInput.current?.click()}>
+                {uploading ? "Adding…" : "Add photos"}
               </button>
               <input
                 ref={fileInput}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                multiple
                 className="hidden"
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void addReference(f);
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length) void addReference(files);
                   e.target.value = "";
                 }}
               />
@@ -781,35 +667,108 @@ export function PackshotStudio() {
               {exampleBusy ? "Loading the example…" : "or load an example pack →"}
             </button>
 
-            {references.length > 0 && (
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                {references.map((r) => (
-                  <div key={r.angle} className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={r.dataUrl}
-                      alt={r.angle}
-                      className="aspect-square w-full rounded-[6px] border border-border-soft object-cover"
-                    />
-                    <span className="absolute left-1 top-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[10px] font-semibold text-background">
-                      {r.angle}
-                    </span>
-                    <button
-                      className="absolute right-1 top-1 rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white"
-                      onClick={() =>
-                        setReferences((prev) => prev.filter((x) => x.angle !== r.angle))
-                      }
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            {references.length > 0 && <div className={styles.referenceGrid}>
+              {references.map((r) => <div key={r.id} className={styles.reference}>
+                <button className={styles.referenceImage} onClick={() => setZoomReference(r)} aria-label={`Enlarge ${r.name}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}<img src={r.dataUrl} alt={r.name} />
+                  <span>View larger ↗</span>
+                </button>
+                <p title={r.name}>{r.name}</p>
+                <select className="input" aria-label={`View shown by ${r.name}`} value={r.angle} onChange={(e) => setReferences((prev) => prev.map((x) => x.id === r.id ? { ...x, angle: e.target.value as PackAngle } : x))}>
+                  {PACK_ANGLES.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                </select>
+                <button className={styles.remove} aria-label={`Remove ${r.name}`} onClick={() => setReferences((prev) => prev.filter((x) => x.id !== r.id))}>Remove</button>
+              </div>)}
+            </div>}
           </div>
 
-          <div className="card p-5 lg:col-span-7">
-            <h2 className="font-semibold">4 · Model and output size</h2>
+          <details className={styles.optionalPanel}>
+            <summary>Product details <span>SKU and language · optional</span></summary>
+            <label className="mt-3 block">
+              <span className="mb-1 flex items-baseline justify-between gap-2 label">
+                <span>SKU / GTIN</span>
+                <Optional />
+              </span>
+              <input
+                className="input"
+                placeholder="6565170002"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+              />
+              <span className="mt-1 block text-[11px] leading-[1.5] text-muted/80">
+                Names downloads by SKU, language and angle. Left blank they are
+                named SKU_… and can be renamed later.
+              </span>
+            </label>
+            <label className="mt-3 block">
+              <span className="mb-1 flex items-baseline justify-between gap-2 label">
+                <span>Language code</span>
+                <Optional />
+              </span>
+              <select
+                className="input"
+                value={lang}
+                onChange={(e) => setLang(e.target.value as (typeof LANGS)[number])}
+              >
+                {LANGS.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </label>
+          </details>
+
+          <details className={styles.optionalPanel}>
+            <summary>Package details <span>{filled}/{total} provided · optional</span></summary>
+            <p className="mt-3 text-sm text-muted">Add the shape, material and dimensions when your photos do not show the whole package.</p>
+
+            {/*
+              Three abreast on a wide screen. The reason each field exists is
+              worth reading once and then never again, so it shows under an
+              empty field and gets out of the way as soon as it is answered.
+            */}
+            <div className="mt-4 grid gap-x-5 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+              {PACK_VARIABLES.map((v) => (
+                <label key={v.id} className="block" title={v.why}>
+                  <span className="mb-1 flex items-baseline justify-between gap-2 label">
+                    <span>{v.label}</span>
+                    <Optional />
+                  </span>
+                  <input
+                    className="input"
+                    list={v.options ? `pack-${v.id}` : undefined}
+                    placeholder={v.placeholder}
+                    value={brief[v.id]}
+                    onChange={(e) => setBrief((b) => ({ ...b, [v.id]: e.target.value }))}
+                  />
+                  {v.options && (
+                    <datalist id={`pack-${v.id}`}>
+                      {v.options.map((o) => (
+                        <option key={o} value={o} />
+                      ))}
+                    </datalist>
+                  )}
+                  <span className="mt-1 block text-xs text-muted"><Why title={v.label}>{v.why}</Why></span>
+                </label>
+              ))}
+
+              <label className="block sm:col-span-2 xl:col-span-3">
+                <span className="mb-1 flex items-baseline justify-between gap-2 label">
+                  <span>Anything else</span>
+                  <Optional />
+                </span>
+                <input
+                  className="input"
+                  placeholder="e.g. the window panel is on the front only, or the cap is a different plastic"
+                  value={brief.notes}
+                  onChange={(e) => setBrief((b) => ({ ...b, notes: e.target.value }))}
+                />
+              </label>
+            </div>
+
+          </details>
+
+          <div className={styles.stage}>
+            <div className={styles.stageHeading}><h2>2 · Choose your finish</h2><span>Model and output size</span></div>
             <label className="mt-3 block">
               <span className="mb-1 block label">
                 Primary
@@ -819,6 +778,7 @@ export function PackshotStudio() {
                 value={modelId}
                 onChange={(e) => {
                 setModelId(e.target.value);
+                if (challengerId === e.target.value) setChallengerId("");
                 // A size chosen for one model means nothing on the next.
                 setSizePresetId(null);
                 setCustomPx("");
@@ -839,6 +799,7 @@ export function PackshotStudio() {
                 ))}
               </select>
             </label>
+            <details className={styles.comparison}><summary>Compare a second model <span>optional</span></summary>
             <label className="mt-3 block">
               <span className="mb-1 block label">
                 Challenger (A/B, optional)
@@ -864,6 +825,7 @@ export function PackshotStudio() {
                 ))}
               </select>
             </label>
+            </details>
             {suggestion && (
               <div
                 className={`mt-3 rounded-[6px] border p-3 ${
@@ -887,6 +849,7 @@ export function PackshotStudio() {
                     className="mt-2 text-xs font-semibold text-accent hover:underline"
                     onClick={() => {
                       setModelId(suggestion.suggest!);
+                      if (challengerId === suggestion.suggest) setChallengerId("");
                       setSizePresetId(null);
                       setCustomPx("");
                     }}
@@ -897,6 +860,7 @@ export function PackshotStudio() {
               </div>
             )}
 
+            <details className={styles.modelHelp}><summary>Which model should I use?</summary>
             <p className="mt-3 text-xs leading-relaxed text-muted">
               <span className="font-semibold text-foreground">Picking one:</span>{" "}
               Nano Banana Pro holds label text best and reads the most
@@ -909,6 +873,8 @@ export function PackshotStudio() {
               side: the bake-off that should decide your default.
             </p>
 
+
+            </details>
 
             {/* Output size, per model. */}
             {sizeSupport && (
@@ -1013,18 +979,19 @@ export function PackshotStudio() {
               </div>
             )}
           </div>
-        </div>
+        </fieldset>
 
         {/* targets + results, full width beneath the intake */}
         <div className="lg:col-span-12">
-          <div className="card p-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-semibold">5 · Target angles</h2>
+          <div className={styles.stage}>
+            <div className={styles.stageHeading}>
+              <h2 className="font-semibold">3 · Choose your angles</h2>
               <span className="label"><Required /></span>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {PACK_ANGLES.map((a) => {
-                const grounded = isGrounded(a.id, providedAngles);
+                const coverage = getCoverage(a.id, providedAngles);
+                const grounded = coverage.status === "full";
                 return (
                   <label
                     key={a.id}
@@ -1044,16 +1011,17 @@ export function PackshotStudio() {
                     <span
                       className={`chip ${grounded ? "border-success/40 text-success" : "border-warning/40 text-warning"}`}
                     >
-                      {grounded ? "grounded" : "reconstructed"}
+                      {grounded ? "Faces supplied" : coverage.status === "partial" ? "Partly supplied" : "Inferred"}
                     </span>
                   </label>
                 );
               })}
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border-soft pt-4">
+            <p className="mt-3 text-xs text-muted">Coverage describes your inputs. Review every generated label before delivery, including views with supplied references.</p>
+            <div className={styles.receipt}>
               <div className="text-sm text-muted">
                 {selectedAngles.length} angle{selectedAngles.length === 1 ? "" : "s"} ·{" "}
-                {groundedCount} grounded ·{" "}
+                {groundedCount} with all visible faces supplied ·{" "}
                 <span className="font-bold text-accent">~${totalEstimate.toFixed(2)}</span>
                 {health && !health.live && (
                   <span className="ml-2 text-xs text-warning">(demo mode — $0)</span>
@@ -1061,10 +1029,10 @@ export function PackshotStudio() {
               </div>
               <button
                 className="btn-primary"
-                disabled={references.length === 0 || selectedAngles.length === 0 || overCap}
+                disabled={running || uploading || jobs.some((j) => !!j.finishing) || references.length === 0 || selectedAngles.length === 0 || overCap}
                 onClick={() => void generate()}
               >
-                Generate packshots →
+                {running ? "Generating packshots…" : "Generate packshots →"}
               </button>
             </div>
             {references.length === 0 && (
@@ -1095,6 +1063,7 @@ export function PackshotStudio() {
                 {failed.length > 0 && (
                   <button
                     className="btn-secondary !px-3 !py-1.5 text-xs"
+                    disabled={running}
                     onClick={() => void retryFailed()}
                   >
                     Retry {failed.length} failed
@@ -1121,18 +1090,20 @@ export function PackshotStudio() {
                 apart — comparing them is the entire point of the A/B.
               */
               className={`mt-6 grid gap-4 ${
-                challengerId
+                jobs.some((j) => j.role === "challenger")
                   ? "sm:grid-cols-2 xl:grid-cols-4"
                   : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               }`}
             >
               {jobs.map((j) => (
                 <PackshotCard
-                  key={`${j.angle}:${j.modelId}`}
+                  key={j.id}
                   job={j}
-                  sku={sku}
-                  lang={lang}
-                  onRetry={() => void runOne(j.angle, j.modelId)}
+                  sku={j.input.sku}
+                  lang={j.input.lang}
+                  onRetry={running ? undefined : () => void retryFailed(j)}
+                  onReview={(reviewed) => updateJob(j.id, { reviewedAt: reviewed ? new Date().toISOString() : undefined })}
+                  onInspect={(name, dataUrl) => setZoomReference({ name, dataUrl })}
                   onFinish={(op) => void finish(j, op)}
                 />
               ))}
@@ -1140,6 +1111,11 @@ export function PackshotStudio() {
           )}
         </div>
       </div>
+      </div>
+      {zoomReference && <dialog ref={zoomDialog} className={styles.zoomDialog} aria-labelledby="reference-zoom-title" onCancel={() => setZoomReference(null)} onClose={() => setZoomReference(null)}>
+        <div><h2 id="reference-zoom-title">{zoomReference.name}</h2><button autoFocus className="btn-secondary" onClick={() => setZoomReference(null)}>Close</button></div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}<img src={zoomReference.dataUrl} alt={zoomReference.name} />
+      </dialog>}
     </div>
   );
 }
@@ -1163,12 +1139,16 @@ function PackshotCard({
   lang,
   onRetry,
   onFinish,
+  onReview,
+  onInspect,
 }: {
   job: Job;
   sku: string;
   lang: string;
   onRetry?: () => void;
   onFinish?: (op: FinishOp) => void;
+  onReview?: (reviewed: boolean) => void;
+  onInspect: (name: string, dataUrl: string) => void;
 }) {
   const spec = PACK_ANGLES.find((a) => a.id === job.angle)!;
   const model = MODELS[job.modelId];
@@ -1214,9 +1194,9 @@ function PackshotCard({
             DEMO
           </span>
         )}
-        {job.grounded === false && (
+        {media && !job.reviewedAt && (
           <span className="absolute right-2 top-2 rounded bg-warning px-2 py-0.5 text-xs font-bold text-white">
-            LABEL QA REQUIRED
+            LABEL REVIEW
           </span>
         )}
       </div>
@@ -1250,7 +1230,18 @@ function PackshotCard({
             {job.cost > 0 && <span className="chip">${job.cost.toFixed(2)}</span>}
           </span>
         </div>
-        <p className="mt-0.5 text-xs text-muted">{model.label}</p>
+        <p className="mt-0.5 text-xs text-muted">{model.label}{job.renderedPx ? ` · ${job.renderedPx}px` : ""}</p>
+        {job.sizeNote && <p className="mt-1 text-xs text-warning">{job.sizeNote}</p>}
+        {media && <details className="mt-3 rounded border border-border-soft p-2">
+          <summary className="cursor-pointer text-xs font-semibold text-accent">Compare with source images</summary>
+          <div className="mt-2 grid grid-cols-2 gap-2">{job.input.references.map((ref) => <button key={ref.id} type="button" onClick={() => onInspect(ref.name, ref.dataUrl)} aria-label={`Open source ${ref.name}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}<img className="aspect-square w-full object-contain bg-white" src={ref.dataUrl} alt={ref.name} />
+            <span className="block truncate text-[11px]">{ref.name}</span>
+          </button>)}</div>
+          <button className="mt-2 block min-h-8 text-xs font-semibold text-accent" onClick={() => onInspect(`${spec.label} · ${model.label}`, media)}>Open result at full size ↗</button>
+          <label className="mt-3 flex items-start gap-2 text-xs"><input type="checkbox" checked={!!job.reviewedAt} disabled={job.status === "mock" || !!job.finishing} onChange={(e) => onReview?.(e.target.checked)} />I reviewed the label, geometry and visible faces against the sources.</label>
+          {job.status === "mock" && <p className="mt-1 text-xs text-muted">Demo placeholders cannot be marked reviewed.</p>}
+        </details>}
         <p className="mt-1 break-all font-mono text-[11px] text-muted">{fileName}</p>
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5">
           {media && (
@@ -1296,7 +1287,7 @@ function PackshotCard({
           carries the case for itself — these are the two steps most likely to
           be skipped precisely because nobody explains why they matter.
         */}
-        {media && onFinish && (
+        {media && onFinish && job.status !== "mock" && (
           <div className="mt-3 border-t border-border-soft pt-3">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               {(Object.values(FINISH_OPS) as (typeof FINISH_OPS)[FinishOp][]).map((op) => {

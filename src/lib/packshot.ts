@@ -47,13 +47,31 @@ export type PackAngle =
   | "bottom"
   | "hero34";
 
+export type PackFace = Exclude<PackAngle, "hero34">;
+
+/** Explicit faces describe what this photograph actually shows. */
+export type PackReference = {
+  angle: PackAngle;
+  dataUrl: string;
+  visibleFaces?: PackFace[];
+  name?: string;
+  id?: string;
+};
+
+export type ReferenceEvidence = PackAngle | Pick<PackReference, "angle" | "visibleFaces">;
+
+/** Shared limits count decoded images separately from the serialized JSON. */
+export const MAX_PACKSHOT_REFERENCES = 16;
+export const MAX_PACKSHOT_REFERENCE_BYTES = 600 * 1024;
+export const MAX_PACKSHOT_BODY_BYTES = 4 * 1024 * 1024;
+
 export type AngleSpec = {
   id: PackAngle;
   label: string;
   /** GS1-style facing token used in the output filename. */
   fileToken: string;
-  /** Which reference angles fully ground this target (visible face shown). */
-  groundedBy: PackAngle[];
+  /** Every face visible in this target must have reference evidence. */
+  groundedBy: PackFace[];
   prompt: string;
 };
 
@@ -107,7 +125,7 @@ export const PACK_ANGLES: AngleSpec[] = [
     id: "hero34",
     label: "3/4 Hero",
     fileToken: "hero",
-    groundedBy: ["front", "left", "right"],
+    groundedBy: ["front", "right", "top"],
     prompt: `${BASE} Camera: three-quarter hero angle, rotated roughly 30 degrees from front toward the right side and slightly above mid-height, giving gentle dimensionality while the front panel stays dominant and fully legible.`,
   },
 ];
@@ -125,12 +143,32 @@ export function gs1FileName(sku: string, lang: string, angle: PackAngle): string
   return `${safeSku}_${lang}_${token}_GS1_Planogram.jpg`;
 }
 
-/**
- * A target angle is "grounded" when at least one uploaded reference shows
- * that face. Ungrounded targets are reconstructions → mandatory label QA.
- */
-export function isGrounded(target: PackAngle, provided: PackAngle[]): boolean {
-  return getAngle(target).groundedBy.some((g) => provided.includes(g));
+export type FaceCoverage = {
+  status: "full" | "partial" | "missing";
+  required: PackFace[];
+  covered: PackFace[];
+  missing: PackFace[];
+};
+
+/** Legacy hero references mean the same front/right/top camera as the target. */
+export function referenceFaces(reference: ReferenceEvidence): PackFace[] {
+  if (typeof reference !== "string" && reference.visibleFaces !== undefined) {
+    return reference.visibleFaces;
+  }
+  return getAngle(typeof reference === "string" ? reference : reference.angle).groundedBy;
+}
+
+export function getCoverage(target: PackAngle, provided: readonly ReferenceEvidence[]): FaceCoverage {
+  const required = [...getAngle(target).groundedBy];
+  const shown = new Set(provided.flatMap(referenceFaces));
+  const covered = required.filter((face) => shown.has(face));
+  const missing = required.filter((face) => !shown.has(face));
+  return { status: missing.length === 0 ? "full" : covered.length ? "partial" : "missing", required, covered, missing };
+}
+
+/** Coverage means reference evidence exists; generated label accuracy still needs review. */
+export function isGrounded(target: PackAngle, provided: readonly ReferenceEvidence[]): boolean {
+  return getCoverage(target, provided).status === "full";
 }
 
 /**
@@ -293,6 +331,17 @@ export function resolveSize(
   requested: { presetId?: string; px?: number },
 ): { presetId?: string; px?: number; note?: string } {
   if (!support) return {};
+  const exact = support.presets.find((p) => p.id === requested.presetId);
+  // Older callers may still send another provider's tier name. Preserve its
+  // pixel meaning instead of silently falling back to the second preset.
+  const commonTierPx: Record<string, number> = {
+    "1K": 1024, "2K": 2048, "4K": 4096, "1MP": 1024, "1:1": 2048,
+    square_hd: 1024, auto_2K: 2048, auto_4K: 4096,
+    "1024": 1024, "1536": 1536, "2048": 2048, "1024x1024": 1024,
+  };
+  const desiredPx = Number.isFinite(requested.px) && requested.px! > 0
+    ? requested.px
+    : exact?.px ?? (requested.presetId ? commonTierPx[requested.presetId] : undefined);
   if (support.mode === "aspect") {
     return {
       px: support.presets[0]?.px,
@@ -301,36 +350,55 @@ export function resolveSize(
         : undefined,
     };
   }
-  if (requested.px && support.custom) {
+  if (desiredPx && support.custom) {
     const { min, max, multipleOf } = support.custom;
-    const clamped = Math.min(Math.max(requested.px, min), max);
-    const snapped = Math.round(clamped / multipleOf) * multipleOf;
+    const minStep = Math.ceil(min / multipleOf) * multipleOf;
+    const maxStep = Math.floor(max / multipleOf) * multipleOf;
+    const snapped = Math.min(maxStep, Math.max(minStep, Math.round(desiredPx / multipleOf) * multipleOf));
     return {
+      presetId: support.presets.find((p) => p.px === snapped)?.id,
       px: snapped,
       note:
-        snapped !== requested.px
-          ? `${requested.px}px is not renderable here — using ${snapped}px, the nearest size within ${min}–${max} that divides by ${multipleOf}.`
+        snapped !== desiredPx
+          ? `${desiredPx}px is not renderable here — using ${snapped}px, the nearest size within ${min}–${max} that divides by ${multipleOf}.`
           : undefined,
     };
   }
-  // Tier models, and pixel models asked for a named preset.
-  const exact = support.presets.find((p) => p.id === requested.presetId);
-  if (exact) return { presetId: exact.id, px: exact.px };
-  if (requested.px) {
+  if (desiredPx && support.presets.length) {
     const nearest = support.presets.reduce((best, p) =>
-      Math.abs(p.px - requested.px!) < Math.abs(best.px - requested.px!) ? p : best,
+      Math.abs(p.px - desiredPx) < Math.abs(best.px - desiredPx) ? p : best,
     );
     return {
       presetId: nearest.id,
       px: nearest.px,
       note:
-        nearest.px !== requested.px
-          ? `This model renders at named tiers only — ${requested.px}px was rounded to ${nearest.label}.`
+        nearest.px !== desiredPx
+          ? `This model renders at named tiers only — ${desiredPx}px was rounded to ${nearest.label}.`
           : undefined,
     };
   }
   const fallback = support.presets[Math.min(1, support.presets.length - 1)];
-  return { presetId: fallback.id, px: fallback.px };
+  if (!fallback) return {};
+  return {
+    presetId: fallback.id,
+    px: fallback.px,
+    note: requested.presetId
+      ? `Unknown output-size preset "${requested.presetId}" — using ${fallback.label}.`
+      : undefined,
+  };
+}
+
+/** Translate the shared pixel request to each provider's enum before sending. */
+export function sizeRequestForModel(
+  support: OutputSizeSupport | undefined,
+  requestedPx?: number,
+): { sizePresetId?: string; sizePx?: number } {
+  const resolved = resolveSize(support, { px: requestedPx });
+  return {
+    sizePresetId: resolved.presetId,
+    // Keep the requested pixels so the server can report any size adjustment.
+    sizePx: requestedPx ?? resolved.px,
+  };
 }
 
 /**
@@ -348,7 +416,7 @@ export function resolveSize(
 export function suggestModel(opts: {
   modelId: string;
   targets: PackAngle[];
-  provided: PackAngle[];
+  provided: ReferenceEvidence[];
   maxReferenceImages: number;
 }): { severity: "warn" | "tip"; text: string; suggest?: string } | null {
   const { modelId, targets, provided, maxReferenceImages } = opts;
@@ -370,7 +438,7 @@ export function suggestModel(opts: {
       severity: "warn",
       text:
         `${ungrounded.length} of your ${targets.length} target angle${targets.length === 1 ? "" : "s"} ` +
-        `(${ungrounded.join(", ")}) are not shown in any reference photo. This model restages a single ` +
+        `(${ungrounded.join(", ")}) have missing face evidence. This model restages a single ` +
         `photo rather than reading a set, so it cannot turn the pack around — it will hand back the face ` +
         `it was given, restaged. Either untick those angles, or switch to a model that reads several references.`,
       suggest: "nano-banana-pro",
@@ -390,12 +458,12 @@ export function suggestModel(opts: {
 
   // Everything asked for is already photographed: this is cleanup, not
   // synthesis, and the cheapest tool that restages well is the right one.
-  if (ungrounded.length === 0 && !modelId.startsWith("recraft") && modelId !== "seedream-4") {
+  if (ungrounded.length === 0 && provided.length === 1 && !modelId.startsWith("recraft") && modelId !== "seedream-4") {
     return {
       severity: "tip",
       text:
-        "Every angle you have selected is shown in a reference photo, so nothing here needs reconstructing — " +
-        "this is a restage, not a synthesis. Recraft Utility does that for $0.035 an angle, and you can " +
+        "Every visible face has reference evidence. For a target already shown in one photo, " +
+        "Recraft Utility can restage it for $0.035 an angle, and you can " +
         "re-run the keepers on Utility Pro at 2K.",
       suggest: "recraft-v4.1-utility",
     };
@@ -406,17 +474,18 @@ export function suggestModel(opts: {
 
 export function buildPackshotPrompt(
   target: PackAngle,
-  provided: PackAngle[],
+  provided: readonly ReferenceEvidence[],
   brief?: Partial<PackBrief> | string,
 ): string {
   const spec = getAngle(target);
   const refList =
     provided.length > 0
-      ? `Reference photos provided show these faces of the product: ${provided.join(", ")}.`
+      ? `Reference photos in input order: ${provided.map((ref, index) => `image ${index + 1} shows ${referenceFaces(ref).join(", ") || "no declared faces"}`).join("; ")}.`
       : "";
-  const grounded = isGrounded(target, provided)
+  const coverage = getCoverage(target, provided);
+  const grounded = coverage.status === "full"
     ? ""
-    : " The requested face is not shown in any reference photo: reconstruct it conservatively and consistently with the visible packaging design, keeping brand elements coherent — this output will be flagged for label review.";
+    : ` Missing reference evidence for these visible faces: ${coverage.missing.join(", ")}. Reconstruct those faces conservatively and consistently with the visible packaging design, keeping brand elements coherent — this output will be flagged for label review.`;
   /*
    * The physical description leads, before the camera instruction.
    *
