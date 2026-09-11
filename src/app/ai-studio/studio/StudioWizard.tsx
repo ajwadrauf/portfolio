@@ -6,6 +6,9 @@ import { SpendChip } from "@/components/SpendChip";
 import { useHealth, type Health } from "@/lib/useHealth";
 import { DELIVERABLES, type DeliverableSpec } from "@/lib/deliverables";
 import { MODELS, estimateCost } from "@/lib/models";
+import { loadCampaignHandoff, validCampaignHandoffId, type CampaignHandoffRecord } from "@/lib/campaignHandoff";
+import { prepareCampaignReference } from "@/lib/campaignReferenceImage";
+import { getAngle } from "@/lib/packshot";
 import type {
   AnalyzeResponse,
   Answer,
@@ -49,29 +52,13 @@ const SAMPLES = [
   { label: "Coffee bag", file: "/samples/coffee.svg" },
 ];
 
-/** Downscale + JPEG-encode any input so base64 payloads stay small. */
-async function toProcessedDataUrl(src: string | File): Promise<string> {
-  const url = typeof src === "string" ? src : URL.createObjectURL(src);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("Could not read that image"));
-      el.src = url;
-    });
-    const maxSide = 1024;
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale) || maxSide;
-    canvas.height = Math.round(img.height * scale) || maxSide;
-    const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.9);
-  } finally {
-    if (typeof src !== "string") URL.revokeObjectURL(url);
-  }
+type ImportedPackshot = CampaignHandoffRecord & { previewUrl: string };
+
+function removeHandoffFromUrl() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("packshot")) return;
+  url.searchParams.delete("packshot");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -82,6 +69,14 @@ export function StudioWizard() {
   const { health } = useHealth();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importedPackshot, setImportedPackshot] = useState<ImportedPackshot | null>(null);
+  const [handoffId, setHandoffId] = useState<string | null>(null);
+  const [handoffLoading, setHandoffLoading] = useState(false);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+  const analyzeLock = useRef(false);
+  const briefLock = useRef(false);
+  const intakeSequence = useRef(0);
+  const intakeMounted = useRef(false);
 
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [productContext, setProductContext] = useState<ProductContext | null>(null);
@@ -105,6 +100,54 @@ export function StudioWizard() {
     } catch {}
   }, []);
 
+  const readHandoff = useCallback(async (id: string) => {
+    const sequence = ++intakeSequence.current;
+    setHandoffId(id);
+    setHandoffError(null);
+    if (!validCampaignHandoffId(id)) {
+      setHandoffLoading(false);
+      setHandoffError("This packshot link is incomplete or invalid. Send the completed view again from Packshots, or choose a product photo below.");
+      return;
+    }
+    setHandoffLoading(true);
+    try {
+      const record = await loadCampaignHandoff(id);
+      // A manual image choice, dismissal or newer intake always wins over a slow read.
+      if (!intakeMounted.current || sequence !== intakeSequence.current) return;
+      if (!record) throw new Error("This packshot is no longer available in this browser. Transfers last 24 hours and stay in the browser where you sent them. Send the view again from Packshots, or upload its downloaded PNG.");
+      setImportedPackshot({ ...record, previewUrl: URL.createObjectURL(record.blob) });
+    } catch (e) {
+      if (!intakeMounted.current || sequence !== intakeSequence.current) return;
+      setHandoffError(e instanceof Error ? e.message : "This browser could not open the packshot. Try again, or upload the downloaded image below.");
+    } finally {
+      if (intakeMounted.current && sequence === intakeSequence.current) setHandoffLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    intakeMounted.current = true;
+    const id = new URL(window.location.href).searchParams.get("packshot");
+    if (id !== null) void readHandoff(id);
+    return () => {
+      intakeMounted.current = false;
+      intakeSequence.current += 1;
+    };
+  }, [readHandoff]);
+
+  useEffect(() => {
+    if (!importedPackshot) return;
+    return () => URL.revokeObjectURL(importedPackshot.previewUrl);
+  }, [importedPackshot]);
+
+  const clearHandoff = useCallback(() => {
+    intakeSequence.current += 1;
+    setImportedPackshot(null);
+    setHandoffId(null);
+    setHandoffError(null);
+    setHandoffLoading(false);
+    removeHandoffFromUrl();
+  }, []);
+
   const addSpend = useCallback((amount: number) => {
     setSessionSpend((prev) => {
       const next = Number((prev + amount).toFixed(4));
@@ -120,11 +163,16 @@ export function StudioWizard() {
   }, []);
 
   // ---------- Step 1 → 2: analyze ----------
-  const handleImage = useCallback(async (src: string | File) => {
+  const handleImage = useCallback(async (src: string | Blob, fromPackshots = false) => {
+    if (analyzeLock.current) return;
+    analyzeLock.current = true;
+    intakeSequence.current += 1;
+    setHandoffLoading(false);
+    if (!fromPackshots) clearHandoff();
     setError(null);
     setBusy(true);
     try {
-      const dataUrl = await toProcessedDataUrl(src);
+      const dataUrl = await prepareCampaignReference(src);
       setImageDataUrl(dataUrl);
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -138,10 +186,11 @@ export function StudioWizard() {
       setQuestions(data.questions);
       setAnswers(Object.fromEntries(data.questions.map((q) => [q.id, q.defaultAnswer])));
       setStep(data.questions.length > 0 ? "clarify" : "brief");
-      if (data.questions.length === 0) void generateBrief(dataUrl, data.productContext, []);
+      if (data.questions.length === 0) await generateBrief(dataUrl, data.productContext, []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
+      analyzeLock.current = false;
       setBusy(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,6 +199,8 @@ export function StudioWizard() {
   // ---------- Step 2 → 3: brief ----------
   const generateBrief = useCallback(
     async (img: string, ctx: ProductContext, answerList: Answer[]) => {
+      if (briefLock.current) return;
+      briefLock.current = true;
       setError(null);
       setBusy(true);
       try {
@@ -165,6 +216,7 @@ export function StudioWizard() {
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");
       } finally {
+        briefLock.current = false;
         setBusy(false);
       }
     },
@@ -333,6 +385,7 @@ export function StudioWizard() {
   }, [addSpend, brief, health, imageDataUrl, modelChoice, pollVideo, selectedSpecs, totalEstimate, updateJob]);
 
   const reset = useCallback(() => {
+    clearHandoff();
     setStep("upload");
     setImageDataUrl(null);
     setProductContext(null);
@@ -341,7 +394,7 @@ export function StudioWizard() {
     setBrief(null);
     setJobs([]);
     setError(null);
-  }, []);
+  }, [clearHandoff]);
 
   const allSettled =
     jobs.length > 0 && jobs.every((j) => ["done", "failed", "mock"].includes(j.status));
@@ -353,18 +406,46 @@ export function StudioWizard() {
       <StepTracker step={step} />
 
       {error && (
-        <div className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">
+        <div role="alert" className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">
           {error}
         </div>
       )}
 
       {step === "upload" && (
-        <UploadStep
-          busy={busy}
-          fileInput={fileInput}
-          onFile={(f) => void handleImage(f)}
-          onSample={(src) => void handleImage(src)}
-        />
+        <>
+          {handoffLoading && (
+            <div role="status" className="card mt-8 flex items-center gap-3 p-6 text-muted">
+              <Spinner /> Opening your completed packshot…
+            </div>
+          )}
+          {handoffError && (
+            <section aria-label="Packshot transfer" className="card mt-8 border-warning/40 p-6">
+              <h2 className="text-lg font-semibold">Let’s reconnect your packshot</h2>
+              <p role="alert" className="mt-2 max-w-2xl text-muted">{handoffError}</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {handoffId && validCampaignHandoffId(handoffId) && <button type="button" className="btn-primary" disabled={busy || handoffLoading} onClick={() => void readHandoff(handoffId)}>Try opening again</button>}
+                <a className="btn-secondary" href="/ai-studio/packshots">Back to Packshots</a>
+                <button type="button" className="btn-secondary" disabled={busy} onClick={clearHandoff}>Dismiss transfer</button>
+              </div>
+              <p className="mt-3 text-sm text-muted">Opening a transfer does not run analysis or generate anything.</p>
+            </section>
+          )}
+          {importedPackshot && <ImportedPackshotCard packshot={importedPackshot} busy={busy} onAnalyze={() => void handleImage(importedPackshot.blob, true)} onDismiss={() => { clearHandoff(); setError(null); setImageDataUrl(null); }} />}
+          <UploadStep
+            busy={busy}
+            hasImportedPackshot={Boolean(importedPackshot)}
+            fileInput={fileInput}
+            onFile={(f) => void handleImage(f)}
+            onSample={(src) => void handleImage(src)}
+          />
+        </>
+      )}
+
+      {step !== "upload" && importedPackshot && (
+        <div className="card mt-6 flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+          <p className="min-w-0 break-words"><span className="font-semibold">From Packshots:</span> {importedPackshot.meta.name} · {getAngle(importedPackshot.meta.angle).label} · {importedPackshot.meta.variant}</p>
+          <span className={importedPackshot.meta.review === "reviewed" ? "text-muted" : "text-warning"}>{importedPackshot.meta.review === "reviewed" ? "Review marked in Packshots" : "Human review still needed"}</span>
+        </div>
       )}
 
       {step === "clarify" && productContext && (
@@ -384,6 +465,8 @@ export function StudioWizard() {
           brief={brief}
           setBrief={setBrief}
           busy={busy}
+          error={error}
+          onRetry={submitAnswers}
           onNext={() => setStep("deliverables")}
         />
       )}
@@ -410,6 +493,49 @@ export function StudioWizard() {
 }
 
 // ================================================================ pieces
+
+function ImportedPackshotCard({
+  packshot,
+  busy,
+  onAnalyze,
+  onDismiss,
+}: {
+  packshot: ImportedPackshot;
+  busy: boolean;
+  onAnalyze: () => void;
+  onDismiss: () => void;
+}) {
+  const meta = packshot.meta;
+  return (
+    <section aria-labelledby="imported-packshot-heading" className="card mt-8 overflow-hidden border-accent/35">
+      <div className="grid md:grid-cols-[minmax(220px,0.7fr)_1fr]">
+        <div className="flex min-h-64 items-center justify-center border-b border-border-soft p-6 md:border-r md:border-b-0" style={{ backgroundColor: "#eeeae3", backgroundImage: "conic-gradient(#ffffff80 25%, transparent 0 50%, #ffffff80 0 75%, transparent 0)", backgroundSize: "20px 20px" }}>
+          {/* Preserve the actual source and its alpha here; analysis gets a separate white-backed copy. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={packshot.previewUrl} alt={`${meta.name}, ${getAngle(meta.angle).label} view from Packshots`} className="max-h-80 w-full object-contain" />
+        </div>
+        <div className="min-w-0 p-6 md:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Packshots → Campaign Studio</p>
+          <h1 id="imported-packshot-heading" className="mt-3 text-[1.75rem] leading-tight tracking-[-0.03em]">One finished view. A new campaign.</h1>
+          <p className="mt-3 break-words text-lg font-semibold">{meta.name}</p>
+          <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-5 gap-y-2 text-sm">
+            <dt className="text-muted">Source</dt><dd>{meta.source === "artwork" ? "Artwork render" : "Generated packshot"}</dd>
+            <dt className="text-muted">View</dt><dd className="break-words">{getAngle(meta.angle).label}</dd>
+            <dt className="text-muted">Version</dt><dd className="break-words">{meta.variant}</dd>
+            <dt className="text-muted">Review</dt><dd>{meta.review === "reviewed" ? "Marked reviewed in Packshots" : "Needs human review"}</dd>
+          </dl>
+          <p className="mt-4 text-sm text-muted">Check the artwork, copy and proportions before using this view in a campaign. A completed render is not a product approval.</p>
+          {meta.note && <p className="mt-3 break-words border-l-2 border-accent/30 pl-3 text-sm text-muted">{meta.note}</p>}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button type="button" className="btn-primary" disabled={busy} onClick={onAnalyze}>{busy ? <><Spinner /> Analyzing the packshot…</> : "Analyze this packshot →"}</button>
+            <button type="button" className="btn-secondary" disabled={busy} onClick={onDismiss}>Use a different image</button>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-muted">Opening this view is free. Analyze starts the campaign flow and uses paid APIs in live mode. Transparent areas are placed on white for analysis; this source stays intact.</p>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function StatusBar({
   health,
@@ -483,11 +609,13 @@ function StepTracker({ step }: { step: Step }) {
 
 function UploadStep({
   busy,
+  hasImportedPackshot,
   fileInput,
   onFile,
   onSample,
 }: {
   busy: boolean;
+  hasImportedPackshot: boolean;
   fileInput: React.RefObject<HTMLInputElement | null>;
   onFile: (f: File) => void;
   onSample: (src: string) => void;
@@ -495,7 +623,7 @@ function UploadStep({
   const [dragging, setDragging] = useState(false);
   return (
     <section className="mt-8">
-      <h1 className="text-[1.75rem] tracking-[-0.03em]">Start with one product photo</h1>
+      {hasImportedPackshot ? <h2 className="text-xl tracking-[-0.02em]">Or start with a different product photo</h2> : <h1 className="text-[1.75rem] tracking-[-0.03em]">Start with one product photo</h1>}
       <p className="mt-2 max-w-2xl text-muted">
         The pipeline analyzes the image, interviews you only where it needs to,
         writes the campaign brief, and produces the full multi-format pack.
@@ -513,6 +641,7 @@ function UploadStep({
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
+          if (busy) return;
           const f = e.dataTransfer.files?.[0];
           if (f && f.type.startsWith("image/")) onFile(f);
         }}
@@ -550,6 +679,7 @@ function UploadStep({
           ref={fileInput}
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          disabled={busy}
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -680,13 +810,26 @@ function BriefStep({
   brief,
   setBrief,
   busy,
+  error,
+  onRetry,
   onNext,
 }: {
   brief: CampaignBrief | null;
   setBrief: React.Dispatch<React.SetStateAction<CampaignBrief | null>>;
   busy: boolean;
+  error: string | null;
+  onRetry: () => void;
   onNext: () => void;
 }) {
+  if (!brief && !busy && error) {
+    return (
+      <section className="card mt-8 p-6">
+        <h1 className="text-xl">The campaign brief didn’t finish</h1>
+        <p className="mt-2 max-w-2xl text-muted">Your product image and analysis are still here. You can retry the brief without analyzing the packshot again.</p>
+        <button type="button" className="btn-primary mt-5" onClick={onRetry}>Retry campaign brief</button>
+      </section>
+    );
+  }
   if (busy || !brief) {
     return (
       <section className="card mt-8 flex min-h-64 flex-col items-center justify-center gap-3 p-10">

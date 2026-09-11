@@ -17,6 +17,7 @@ import {
   readPackagePreset, serializePresetLibrary, type PackagePreset, type PresetProvenance,
 } from "@/lib/package-presets";
 import { BoxPreview, type BoxPreviewHandle } from "./BoxPreview";
+import { CampaignHandoffButton } from "./CampaignHandoffButton";
 import styles from "./ArtworkStudio.module.css";
 
 type PanelOrigin = { sourceName: string; page: number; crop: ArtworkCrop; pixels: { width: number; height: number } };
@@ -603,7 +604,16 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
               const label = PACK_ANGLES.find((angle) => angle.id === view.angle)!.label;
               return <article className={styles.result} key={view.angle}>
                 <a href={view.dataUrl} download={`${artworkFileName(batch.name)}_${view.angle}.png`} aria-label={`Download ${label} PNG`}><img src={view.dataUrl} alt={`${label} view of ${batch.name || "the box"}`} /></a>
-                <div><strong>{label}</strong><span>{coverage.complete ? (batch.settings.shape === "pillow-bag" ? "Visible regions assigned" : "Visible faces assigned") : `Plain: ${coverage.blank.join(", ")}`}</span><a className={styles.downloadLink} href={view.dataUrl} download={`${artworkFileName(batch.name)}_${view.angle}.png`}>Download PNG ↓</a></div>
+                <div><strong>{label}</strong><span>{coverage.complete ? (batch.settings.shape === "pillow-bag" ? "Visible regions assigned" : "Visible faces assigned") : `Plain: ${coverage.blank.join(", ")}`}</span><a className={styles.downloadLink} href={view.dataUrl} download={`${artworkFileName(batch.name)}_${view.angle}.png`}>Download PNG ↓</a>
+                  {!stale && !rendering && !!view.dataUrl && coverage.mapped.length > 0 && <CampaignHandoffButton source={view.dataUrl} meta={{
+                    name: `${batch.name || "Package"} · ${label}`,
+                    angle: view.angle,
+                    source: "artwork",
+                    variant: "Local artwork render",
+                    review: "needs-review",
+                    note: `${batch.settings.shape === "pillow-bag" ? "Illustrative pillow bag. " : "Measured carton. "}${coverage.complete ? "Visible artwork regions are assigned; check crop, orientation and labels." : `Unassigned visible regions: ${coverage.blank.join(", ")}.`}`,
+                  }} />}
+                </div>
               </article>;
             })}</div>
             {batch.settings.shape === "pillow-bag" && <p className={styles.hint}>Bag coverage includes neighbouring regions that can appear along the curved flanks and shoulders.</p>}

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { LiveGate } from "@/components/LiveGate";
 import { Why } from "@/components/Why";
 import { SpendChip } from "@/components/SpendChip";
+import { CampaignHandoffButton } from "@/components/packshots/CampaignHandoffButton";
 import { FINISH_OPS, type FinishOp } from "@/lib/recraft.client";
 import { useHealth } from "@/lib/useHealth";
 import { MODELS, estimateCost } from "@/lib/models";
@@ -1153,10 +1154,16 @@ function PackshotCard({
   const spec = PACK_ANGLES.find((a) => a.id === job.angle)!;
   const model = MODELS[job.modelId];
   const [showPrompt, setShowPrompt] = useState(false);
+  const [campaignVariant, setCampaignVariant] = useState<"original" | "finished" | null>(null);
   const gs1 = gs1FileName(sku, lang, job.angle);
   const fileName =
     job.role === "challenger" ? gs1.replace(/\.jpg$/, `__${job.modelId}.jpg`) : gs1;
   const media = job.imageDataUrl ?? job.imageUrl;
+  const useFinished = !!job.finished && campaignVariant !== "original";
+  const campaignImage = useFinished ? job.finished!.url : media;
+  const variantLabel = useFinished
+    ? (job.finished!.op === "cutout" ? "Background removed" : "Crisp upscale")
+    : "Original generated image";
 
   return (
     <div className="card overflow-hidden">
@@ -1279,6 +1286,26 @@ function PackshotCard({
             </button>
           )}
         </div>
+
+        {job.status === "done" && campaignImage && !job.finishing && (
+          <div className="mt-4 border-t border-border-soft pt-4">
+            {job.finished && <label className="mb-3 block text-xs font-semibold">Campaign image
+              <select className="mt-1 block w-full rounded border border-border-soft bg-background px-3 py-2 text-sm font-normal" value={useFinished ? "finished" : "original"} onChange={(event) => setCampaignVariant(event.target.value as "original" | "finished")}>
+                <option value="finished">{job.finished.op === "cutout" ? "Background removed" : "Crisp upscale"}</option>
+                <option value="original">Original generated image</option>
+              </select>
+            </label>}
+            <CampaignHandoffButton source={campaignImage} meta={{
+              name: `${sku || "Packshot"} · ${spec.label}`,
+              angle: job.angle,
+              source: "generated",
+              variant: variantLabel,
+              model: model.label,
+              review: job.reviewedAt ? "reviewed" : "needs-review",
+              ...(job.reviewedAt ? { reviewedAt: job.reviewedAt } : {}),
+            }} />
+          </div>
+        )}
 
         {/*
           Finishing.

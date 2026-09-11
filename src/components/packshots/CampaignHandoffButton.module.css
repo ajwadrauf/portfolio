@@ -1,0 +1,7 @@
+.handoff { display: grid; gap: 7px; min-width: 0; }
+.action { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 11px 13px; border: 1px solid var(--accent); border-radius: 3px; background: #eee4ea; color: var(--accent); font: inherit; font-size: 12px; line-height: 1.45; text-align: left; text-decoration: none; cursor: pointer; }
+.action:hover { background: #e6d6df; }
+.action:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.action:disabled { cursor: not-allowed; opacity: .5; }
+.hint { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.error { margin: 0; color: #923e36; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
