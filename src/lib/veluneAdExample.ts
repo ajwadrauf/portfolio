@@ -1,7 +1,7 @@
 import { VELUNE_SHOTS } from "@/components/velune/veluneStudy";
 import { VELUNE_REFERENCES, veluneShotReferenceIds } from "./veluneReferences";
 import { velunePromptDraft } from "./productionBrief";
-import { assemble } from "./promptBuilder";
+import { VELUNE_SEEDANCE_PROMPT, VELUNE_MUSIC_BRIEF, VELUNE_SOUND_PLAN, VELUNE_EFFECT_CUES } from "./veluneAdContent";
 import { readyAdReferences, type AdLabSeed } from "./adDraft";
 import type { StudioAsset } from "./studioProjects";
 
@@ -12,14 +12,23 @@ export function veluneAdExample(assets: StudioAsset[]): AdLabSeed {
   const available = readyAdReferences(assets);
   const references = specs.flatMap((spec) => { const asset = available.find((a) => a.id === spec.id); return asset ? [{ ...asset, token: spec.token, role: spec.role }] : []; });
   return {
-    schema: "adlab-draft-v1", source: "velune", prompt: assemble(seed.values, seed.beats, seed.duration, seed.throughline), modelId: "seedance-2.5-ref", duration: 15, aspect: "16:9", lane: "blender", imported: true, audioMode: "silent", references,
+    schema: "adlab-draft-v1", source: "velune", prompt: VELUNE_SEEDANCE_PROMPT, modelId: "seedance-2.5-ref", duration: 15, aspect: "16:9", resolution: "720p", lane: "blender", imported: true, audioMode: "silent", references,
+    negativePrompt: "", productImage: null, endImage: null,
+    recipe: { aesthetics: [], scenes: [], overlay: "", sfx: [] },
+    soundPlan: { ...VELUNE_SOUND_PLAN, voice: { ...VELUNE_SOUND_PLAN.voice! }, scenes: VELUNE_SOUND_PLAN.scenes.map((cue) => ({ ...cue })) },
+    scoreToPlan: false, voiceTakes: {}, musicStyleId: "premium-cinematic", musicCustomPrompt: VELUNE_MUSIC_BRIEF,
+    musicAsTimingRef: false, musicUrl: null, musicSpec: "", musicMock: false, musicVolume: 0.35, musicOn: true,
+    effectCues: VELUNE_EFFECT_CUES.map((cue) => ({ ...cue, placements: cue.placements.map((p) => ({ ...p })) })),
+    extraEffects: [], sfxSeconds: 0.5, sfxTracks: {}, sfxMocks: {}, customEffect: "", mixTracks: [], ducking: 0.45, completedTake: null,
     referenceManifest: specs.map((spec) => ({ token: spec.token, job: spec.job, assetId: references.some((ref) => ref.id === spec.id) ? spec.id : null })),
     unattachedSlots: specs.filter((spec) => !references.some((ref) => ref.id === spec.id)).map((spec) => `${spec.token}: ${spec.job}`),
     sceneCards: VELUNE_SHOTS.map((shot) => {
       const ids = veluneShotReferenceIds(shot.id);
       // A scene-wide still makes a more useful storyboard thumbnail than its cast portrait.
       ids.sort((a, b) => Number(VELUNE_REFERENCES.find((r) => r.id === b)?.kind === "scene") - Number(VELUNE_REFERENCES.find((r) => r.id === a)?.kind === "scene"));
-      return { id: shot.id, title: shot.title, start: shot.start / 24, end: shot.end / 24, action: seed.beats.find((_, i) => VELUNE_SHOTS[i].id === shot.id)?.action ?? shot.note, camera: shot.id === "S07" ? "Camera pullback from the actual Blender study" : "Follow the supplied Blender composition and registered motion", sound: "Soundtrack not supplied — plan and audition separately", referenceIds: ["velune-motion", ...ids] };
+      const voice = VELUNE_SOUND_PLAN.scenes.filter((cue) => cue.line && cue.voiceStart! >= shot.start / 24 && cue.voiceStart! < shot.end / 24).map((cue) => `Voice at ${cue.voiceStart!.toFixed(3)}s: ${cue.line}`);
+      const effects = VELUNE_EFFECT_CUES.flatMap((cue) => cue.placements.filter((p) => p.start >= shot.start / 24 && p.start < shot.end / 24).map((p) => `${cue.name} at ${p.start.toFixed(3)}s`));
+      return { id: shot.id, title: shot.title, start: shot.start / 24, end: shot.end / 24, action: seed.beats.find((_, i) => VELUNE_SHOTS[i].id === shot.id)?.action ?? shot.note, camera: shot.id === "S07" ? "Camera pullback from the actual Blender study" : "Follow the supplied Blender composition and registered motion", sound: [...voice, ...effects, "Separate 80 BPM instrumental score; silent picture first."].join(" · "), referenceIds: ["velune-motion", ...ids] };
     }),
   };
 }

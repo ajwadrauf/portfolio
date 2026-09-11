@@ -15,8 +15,9 @@ import { AdSceneBoard } from "@/components/ad/AdSceneBoard";
 import { AdFinishing } from "@/components/ad/AdFinishing";
 import { parseAdDraft, readyAdReferences, referenceRole, referenceBindingProblems, adReferenceAdditionProblem, adDocumentDataUrl, type AdLabSeed, type AdSceneCard, type AdMixTrack, type VoiceTake, type AdReferenceBinding } from "@/lib/adDraft";
 import { veluneAdExample } from "@/lib/veluneAdExample";
+import { effectMixTracks } from "@/lib/adAudioPlacement";
 import type { CompletedPreflightTake, GenerationSnapshot } from "@/lib/adPreflight";
-import { buildComposition, planProblem, planSeconds, planVideoDirection, soundPlanSchema, timedCues, type SoundPlan } from "@/lib/soundPlan";
+import { buildComposition, planProblem, planSeconds, planVideoDirection, soundPlanSchema, timedCues, voiceWindow, type EffectCue, type SoundPlan } from "@/lib/soundPlan";
 import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
@@ -65,7 +66,6 @@ import {
 } from "@/lib/promptImport";
 import { REFERENCE_CLIPS } from "@/lib/referenceClips";
 import type { RefFinding } from "@/lib/refCheck";
-import { BLENDER_EXAMPLE } from "@/lib/blenderExample";
 import {
   ASPECTS,
   VIDEO_RESOLUTIONS,
@@ -630,7 +630,8 @@ function AdLabWorkspace({
   const [sfxSeconds, setSfxSeconds] = useState<number>(SFX_LIMITS.defaultSeconds);
   const [customEffect, setCustomEffect] = useState("");
   const [extraEffects, setExtraEffects] = useState<string[]>([]);
-  const effectLines = [...new Set([...recipe.sfx, ...extraEffects])];
+  const [effectCues, setEffectCues] = useState<EffectCue[]>([]);
+  const effectLines = [...new Set([...recipe.sfx, ...effectCues.map((cue) => cue.prompt), ...extraEffects])];
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -802,7 +803,7 @@ function AdLabWorkspace({
       if (draft.recipe) setRecipe(draft.recipe);
       setAudioMode(draft.audioMode ?? "native"); setSoundPlan(draft.soundPlan ?? null); setScoreToPlan(draft.scoreToPlan ?? false); setVoiceTakes(draft.voiceTakes ?? {});
       setMusicStyleId(draft.musicStyleId ?? AD_PRESETS[0].musicStyleId); setMusicUrl(draft.musicUrl ?? null); setMusicSpec(draft.musicSpec ?? ""); setMusicMock(draft.musicMock ?? false); setMusicCustomPrompt(draft.musicCustomPrompt ?? ""); setMusicAsTimingRef(draft.musicAsTimingRef ?? false); setMusicVolume(draft.musicVolume ?? 0.35); setMusicOn(draft.musicOn ?? true);
-      setSfxTracks(draft.sfxTracks ?? {}); setSfxMocks(draft.sfxMocks ?? {}); setExtraEffects(draft.extraEffects ?? []); setSfxSeconds(draft.sfxSeconds ?? SFX_LIMITS.defaultSeconds); setCustomEffect(draft.customEffect ?? "");
+      setEffectCues(draft.effectCues ?? []); setSfxTracks(draft.sfxTracks ?? {}); setSfxMocks(draft.sfxMocks ?? {}); setExtraEffects(draft.extraEffects ?? []); setSfxSeconds(draft.sfxSeconds ?? SFX_LIMITS.defaultSeconds); setCustomEffect(draft.customEffect ?? "");
       setSceneCards(draft.sceneCards ?? []); setMixTracks(draft.mixTracks ?? []); setDucking(draft.ducking ?? 0.7); setUnattachedSlots(draft.unattachedSlots ?? []);
       setReferenceManifest(draft.referenceManifest ?? draft.references.filter((r) => r.token).map((r) => ({ token: r.token!, job: r.role, assetId: r.id })));
       setCompletedTake(draft.completedTake ?? null); setVideoUrl(draft.completedTake?.videoUrl ?? null);
@@ -823,7 +824,7 @@ function AdLabWorkspace({
     setHydrated(true);
   }, [workspaceReady, project]);
 
-  const draft = useMemo<AdLabSeed>(() => ({ schema: "adlab-draft-v1", source: "ad", prompt: finalPrompt, modelId, duration, aspect, references: refs.map((r, i) => ({ id: r.id ?? `ad-ref-${i}`, name: r.name, kind: r.media, role: r.role, ...(r.url.startsWith("data:") ? { dataUrl: r.url } : { url: r.url }) })), presetId, params, productImage, endImage, negativePrompt, lane, imported, resolution, recipe, audioMode, soundPlan, scoreToPlan, voiceTakes, musicStyleId, musicUrl, musicSpec, musicMock, musicCustomPrompt, musicAsTimingRef, musicVolume, musicOn, sfxTracks, sfxMocks, extraEffects, sfxSeconds, customEffect, sceneCards, mixTracks, ducking, completedTake, unattachedSlots, referenceManifest }), [finalPrompt, modelId, duration, aspect, refs, presetId, params, productImage, endImage, negativePrompt, lane, imported, resolution, recipe, audioMode, soundPlan, scoreToPlan, voiceTakes, musicStyleId, musicUrl, musicSpec, musicMock, musicCustomPrompt, musicAsTimingRef, musicVolume, musicOn, sfxTracks, sfxMocks, extraEffects, sfxSeconds, customEffect, sceneCards, mixTracks, ducking, completedTake, unattachedSlots, referenceManifest]);
+  const draft = useMemo<AdLabSeed>(() => ({ schema: "adlab-draft-v1", source: "ad", prompt: finalPrompt, modelId, duration, aspect, references: refs.map((r, i) => ({ id: r.id ?? `ad-ref-${i}`, name: r.name, kind: r.media, role: r.role, ...(r.url.startsWith("data:") ? { dataUrl: r.url } : { url: r.url }) })), presetId, params, productImage, endImage, negativePrompt, lane, imported, resolution, recipe, audioMode, soundPlan, scoreToPlan, voiceTakes, musicStyleId, musicUrl, musicSpec, musicMock, musicCustomPrompt, musicAsTimingRef, musicVolume, musicOn, sfxTracks, sfxMocks, extraEffects, sfxSeconds, customEffect, effectCues, sceneCards, mixTracks, ducking, completedTake, unattachedSlots, referenceManifest }), [finalPrompt, modelId, duration, aspect, refs, presetId, params, productImage, endImage, negativePrompt, lane, imported, resolution, recipe, audioMode, soundPlan, scoreToPlan, voiceTakes, musicStyleId, musicUrl, musicSpec, musicMock, musicCustomPrompt, musicAsTimingRef, musicVolume, musicOn, sfxTracks, sfxMocks, extraEffects, sfxSeconds, customEffect, effectCues, sceneCards, mixTracks, ducking, completedTake, unattachedSlots, referenceManifest]);
   const latestDraft = useRef({ draft, saveable: hydrated && !draftSaveBlocked });
   latestDraft.current = { draft, saveable: hydrated && !draftSaveBlocked };
   useEffect(() => {
@@ -1382,7 +1383,7 @@ function AdLabWorkspace({
       setAudioError(null);
       setSfxBusy(text);
       try {
-        const json = await audioJobs.run("/api/ad/sfx", { text, durationSeconds: sfxSeconds }, text);
+        const json = await audioJobs.run("/api/ad/sfx", { text, durationSeconds: effectCues.find((cue) => cue.prompt === text)?.seconds ?? sfxSeconds }, text);
         setSfxTracks((prev) => ({ ...prev, [text]: json.audioUrl }));
         setSfxMocks((prev) => ({ ...prev, [text]: json.mock }));
         if (!json.mock) keepAudio(json.audioUrl, text, "Sound effect · separate take");
@@ -1392,7 +1393,7 @@ function AdLabWorkspace({
         setSfxBusy(null);
       }
     },
-    [audioJobs, sfxSeconds, keepAudio],
+    [audioJobs, sfxSeconds, effectCues, keepAudio],
   );
 
   const generateMusic = useCallback(async () => {
@@ -1464,11 +1465,11 @@ function AdLabWorkspace({
     const cues = soundPlan ? timedCues(soundPlan) : [];
     return [
       ...(musicUrl && !musicMock ? [{ ...base, id: "music-bed", name: "Music bed", url: musicUrl, kind: "music" as const, start: 0, length: finishingDuration, gain: musicVolume, fadeIn: 0.25, fadeOut: 0.75 }] : []),
-      ...Object.entries(voiceTakes).filter(([id, take]) => !take.mock && cues.some((cue) => cue.id === id)).map(([id, take]) => { const cue = cues.find((c) => c.id === id); return { ...base, id: `voice-${id}`, name: take.label ?? cue?.title ?? "Scene voice", url: take.url, kind: "voice" as const, start: cue?.start ?? 0, length: cue?.seconds ?? finishingDuration, gain: 1 }; }),
+      ...Object.entries(voiceTakes).filter(([id, take]) => !take.mock && cues.some((cue) => cue.id === id)).map(([id, take]) => { const cue = cues.find((c) => c.id === id); const window = cue ? voiceWindow(cue) : null; return { ...base, id: `voice-${id}`, name: take.label ?? cue?.title ?? "Scene voice", url: take.url, kind: "voice" as const, start: window?.start ?? 0, length: window?.seconds ?? finishingDuration, gain: 1 }; }),
       ...refs.filter((ref) => ref.media === "audio" && ref.url !== musicUrl && !Object.values(voiceTakes).some((take) => take.url === ref.url) && !Object.values(sfxTracks).includes(ref.url)).map((ref, i) => ({ ...base, id: `reference-${ref.id ?? i}`, name: `Attached audio · ${ref.name}`.slice(0, 300), url: ref.url, kind: ref.role === "voice" ? "voice" as const : ref.role === "rhythm" ? "music" as const : "effect" as const, start: 0, length: Math.min(audioDurations[ref.url] ?? finishingDuration, finishingDuration), gain: 1 })),
-      ...Object.entries(sfxTracks).filter(([line]) => !sfxMocks[line]).map(([line, url], i) => ({ ...base, id: `effect-${i}`, name: line.slice(0, 300), url, kind: "effect" as const, start: 0, length: Math.min(audioDurations[url] ?? sfxSeconds, finishingDuration), gain: 0.8 })),
+      ...Object.entries(sfxTracks).filter(([line]) => !sfxMocks[line]).flatMap(([line, url], i) => effectMixTracks(line, url, i, effectCues, Math.min(audioDurations[url] ?? sfxSeconds, finishingDuration))),
     ];
-  }, [musicUrl, musicMock, musicVolume, finishingDuration, voiceTakes, soundPlan, sfxTracks, sfxMocks, audioDurations, sfxSeconds, refs]);
+  }, [musicUrl, musicMock, musicVolume, finishingDuration, voiceTakes, soundPlan, sfxTracks, sfxMocks, effectCues, audioDurations, sfxSeconds, refs]);
 
   const generate = useCallback(async () => {
     if (generateLock.current || !hydrated || draftSaveBlocked) return;
@@ -1757,56 +1758,6 @@ function AdLabWorkspace({
       setCheckingRefs(false);
     }
   }, [productImage, refs]);
-
-  /**
-   * Loads a brief that is known to render, references and all.
-   *
-   * The settings come with it because they are part of what worked: this
-   * timeline is written for 12 seconds and loses its last beat at eight, the
-   * blockout was rendered 4:3, and the endpoint tops out at 720p. Landing the
-   * prompt alone would leave someone one wrong slider away from paying for a
-   * take that does not match the geometry it was built on.
-   */
-  const loadBlenderExample = useCallback(() => {
-    setSceneCards([]); setReferenceManifest([]); setUnattachedSlots([]);
-    setLane("blender");
-    setError(null);
-    setImportError(null);
-    setProductImage(null);
-    setModelId(BLENDER_EXAMPLE.modelId);
-    setFinalPrompt(BLENDER_EXAMPLE.prompt.trim());
-    setNegativePrompt(AD_NEGATIVE_PROMPT);
-    setSeconds(BLENDER_EXAMPLE.seconds);
-    setAspectOverride(BLENDER_EXAMPLE.aspect);
-    setResolution(BLENDER_EXAMPLE.resolution);
-    setAudioMode("native");
-    // Replaces rather than appends: loading the example twice should not leave
-    // the clay pass sitting at [Video1] and [Video2].
-    setRefs(
-      BLENDER_EXAMPLE.refs.map((r) => ({
-        url: r.url,
-        media: r.media as ReferenceMedia,
-        role: r.role as ReferenceRole,
-        name: r.name,
-      })),
-    );
-    setRefCheck(null);
-    // Seed the known clip length so the estimate is correct on the first
-    // paint rather than after the metadata request lands.
-    setClipSeconds(
-      Object.fromEntries(
-        BLENDER_EXAMPLE.refs
-          .filter((r) => r.seconds)
-          .map((r) => [r.url, r.seconds as number]),
-      ),
-    );
-    setImported(true);
-    setImportNotes([
-      `Loaded “${BLENDER_EXAMPLE.label}” — the prompt, both references, and the length, shape and resolution the successful render used.`,
-      ...BLENDER_EXAMPLE.refs.map((r) => `${r.name} — ${r.note}`),
-    ]);
-    setPhase("ready");
-  }, []);
 
   /*
    * Ticks once a second while a render is in flight, and only then. A timer
@@ -2161,12 +2112,6 @@ function AdLabWorkspace({
             title="Your prompt"
             aside={
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  className="inline-flex min-h-11 items-center text-xs font-semibold text-accent underline underline-offset-4"
-                  onClick={loadBlenderExample}
-                >
-                  Load the worked example
-                </button>
                 {importControl}
               </div>
             }
@@ -3449,6 +3394,13 @@ function AdLabWorkspace({
             scoreToPlan={scoreToPlan} onScoreToPlan={(enabled) => { setScoreToPlan(enabled); if (enabled) { setAudioMode("layered"); if (musicStyleId === NO_MUSIC_ID) setMusicStyleId("premium-cinematic"); } }}
             onVoice={async (body, label) => { const result = await audioJobs.run("/api/ad/voice", body, label); if (!result.mock) keepAudio(result.audioUrl, label, "Voice · separate take"); return result; }} />
 
+          {project?.example === "velune" && effectCues.some((cue) => cue.id.startsWith("velune-fx-")) && <div className="my-4 rounded-xl border border-border-soft bg-surface-2 p-4 sm:p-5">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted">VELUNE · picture first, sound after</p>
+            <p className="mt-2 text-sm leading-relaxed">The voice lines, music brief and spot-effect cues are loaded. Audition the voice, then generate the picture with Silent selected. Once the edit is settled, enable “Compose music to these scene lengths” and generate the instrumental track. Keep “Use this track as an audio reference” off for this workflow.</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted">Ready voice and effect takes carry their planned positions into Local finishing. Listen and trim silence before exporting the mixed WAV. Enabling composition switches to Layered sound; choose Silent again before any picture retry.</p>
+            <details className="mt-2"><summary className="min-h-11 cursor-pointer text-sm font-semibold text-accent">Preview the loaded music brief</summary><p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">{musicCustomPrompt}</p></details>
+          </div>}
+
           <div className="mt-4 grid gap-2 md:grid-cols-3">
             {audioChoices.map((c) => (
               <label
@@ -3675,7 +3627,7 @@ function AdLabWorkspace({
                 </span>
                 <span className="label-sm">
                   {Object.keys(sfxTracks).length} of {effectLines.length} generated ·
-                  ~${sfxCost.toFixed(3)} each
+                  {effectCues.length ? "lengths set per cue" : `~$${sfxCost.toFixed(3)} each`}
                 </span>
               </summary>
               <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted">
@@ -3688,7 +3640,7 @@ function AdLabWorkspace({
               </div>
 
               <label className="mt-3 flex flex-wrap items-center gap-3">
-                <span className="label">Length</span>
+                <span className="label">{effectCues.length ? "Custom effect length" : "Length"}</span>
                 <input
                   type="range"
                   min={SFX_LIMITS.minSeconds}
@@ -3706,15 +3658,18 @@ function AdLabWorkspace({
               </label>
 
               <ul className="mt-3 space-y-2">
-                {effectLines.map((line, i) => (
-                  <li
+                {effectLines.map((line, i) => {
+                  const cue = effectCues.find((item) => item.prompt === line);
+                  return <li
                     key={i}
                     className="rounded-[6px] border border-border-soft bg-surface p-3"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <p className="min-w-0 flex-1 basis-64 text-xs leading-relaxed text-muted">
-                        {line}
-                      </p>
+                      <div className="min-w-0 flex-1 basis-64 text-xs leading-relaxed text-muted">
+                        {cue && <p className="mb-1 font-semibold text-foreground">{cue.name} · place at {cue.placements.map((p) => `${p.start.toFixed(3)}s`).join(", ")}</p>}
+                        <p>{line}</p>
+                        {cue && <><p className="mt-1">{cue.note}</p><label className="mt-2 flex items-center gap-2">Generate length · s<input aria-label={`${cue.name} generation seconds`} type="number" min={0.5} max={22} step={0.1} value={cue.seconds} onChange={(e) => setEffectCues((previous) => previous.map((item) => item.id === cue.id ? { ...item, seconds: Math.min(22, Math.max(0.5, Number(e.target.value))) } : item))} className="input !w-20" /><span>~${estimateCost(SFX_MODEL_ID, { seconds: cue.seconds }).toFixed(3)}</span></label></>}
+                      </div>
                       <button
                         className="btn-secondary shrink-0 !px-3 !py-1.5 text-xs"
                         onClick={() => void generateSfx(line)}
@@ -3742,8 +3697,8 @@ function AdLabWorkspace({
                         </a>
                       </div>
                     )}
-                  </li>
-                ))}
+                  </li>;
+                })}
               </ul>
               <p className="mt-2 text-xs leading-relaxed text-muted">
                 Generate one physical event at a time. Recipe effects and your

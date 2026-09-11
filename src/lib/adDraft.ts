@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AD_VIDEO_MODELS, REFERENCE_ROLES, REF_CEILINGS } from "./adPresets";
 import type { StudioAsset } from "./studioProjects";
+import { voiceSettingsSchema, effectCueSchema } from "./soundPlan";
 
 // Drafts contain references and creative decisions, never live authorization or resumable jobs.
 const mediaSource = z.string().max(32_000_000).refine((s) => /^https:\/\/[^\s]+$/.test(s) || /^\/(?!\/)[^\s\\]+$/.test(s) || /^data:(image|video|audio)\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]*={0,2}$/i.test(s), "Unsupported media source");
@@ -13,7 +14,7 @@ export const adReferenceSchema = z.object({ id: z.string().min(1).max(200), name
 // Keep structurally valid but unfinished timing edits. The board and generation
 // validators show their problems; reopening a draft must not discard those edits.
 export const sceneCardSchema = z.object({ id: z.string().max(100), title: z.string().max(150), start: z.number().finite(), end: z.number().finite(), action: z.string().max(6000), camera: z.string().max(1500), sound: z.string().max(1500), referenceIds: z.array(z.string().max(200)).max(REF_CEILINGS.total) });
-const draftSoundPlanSchema = z.object({ title: z.string().max(120), bpm: z.number().finite(), narration: z.enum(["external", "native", "none"]), scenes: z.array(z.object({ id: z.string().max(80), title: z.string().max(80), seconds: z.number().finite(), line: z.string().max(1200), music: z.string().max(400) })).min(1).max(10) });
+const draftSoundPlanSchema = z.object({ title: z.string().max(120), bpm: z.number().finite(), narration: z.enum(["external", "native", "none"]), voice: voiceSettingsSchema.optional(), scenes: z.array(z.object({ id: z.string().max(80), title: z.string().max(80), seconds: z.number().finite(), line: z.string().max(1200), music: z.string().max(400), voiceStart: z.number().finite().optional(), voiceEnd: z.number().finite().optional() })).min(1).max(10) });
 export type AdSceneCard = z.infer<typeof sceneCardSchema>;
 export const mixTrackSchema = z.object({ id: z.string().max(300), name: z.string().max(300), url: mediaSource, kind: z.enum(["voice", "music", "effect"]), start: z.number().finite().min(0).max(60), trim: z.number().finite().min(0).max(600), length: z.number().finite().min(0.05).max(60), gain: z.number().finite().min(0).max(2), fadeIn: z.number().finite().min(0).max(30), fadeOut: z.number().finite().min(0).max(30), enabled: z.boolean() });
 export type AdMixTrack = z.infer<typeof mixTrackSchema>;
@@ -29,6 +30,7 @@ export const adDraftSchema = z.object({
   audioMode: z.enum(["native", "layered", "silent"]).optional(), scoreToPlan: z.boolean().optional(), voiceTakes: z.record(z.string(), voiceTakeSchema).optional(),
   musicStyleId: z.string().optional(), musicUrl: mediaSource.nullable().optional(), musicSpec: z.string().optional(), musicMock: z.boolean().optional(), musicCustomPrompt: z.string().max(10000).optional(), musicAsTimingRef: z.boolean().optional(), musicVolume: z.number().min(0).max(1).optional(), musicOn: z.boolean().optional(),
   sfxTracks: z.record(z.string(), mediaSource).optional(), sfxMocks: z.record(z.string(), z.boolean()).optional(), extraEffects: z.array(z.string()).optional(), sfxSeconds: z.number().finite().min(0.1).max(30).optional(), customEffect: z.string().optional(),
+  effectCues: z.array(effectCueSchema).max(30).optional(),
   sceneCards: z.array(sceneCardSchema).max(30).optional(), mixTracks: z.array(mixTrackSchema).max(60).optional(), ducking: z.number().finite().min(0).max(1).optional(),
   completedTake: z.object({ id: z.string(), videoUrl: mediaSource, context: z.object({ submittedAt: z.string(), prompt: z.string(), negativePrompt: z.string().optional(), modelId: z.string(), durationSeconds: z.number().finite().positive(), aspect: z.string(), resolution: z.string().optional(), audioMode: z.string().optional(), references: z.array(z.object({ name: z.string(), media: z.string(), role: z.string() })) }).nullable(), referenceImages: z.array(z.object({ name: z.string(), role: z.string(), dataUrl: mediaSource })).optional(), sceneCards: z.array(sceneCardSchema).max(30).optional() }).nullable().optional(),
 });

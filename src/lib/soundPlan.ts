@@ -2,14 +2,19 @@ import { z } from "zod";
 
 export const VOICE_MODEL_ID = "eleven-voice";
 export const VOICES = ["Rachel", "Aria", "Roger", "Sarah", "George"] as const;
+export const voiceSettingsSchema = z.object({ name: z.enum(VOICES), stability: z.union([z.literal(0), z.literal(0.5), z.literal(1)]), direction: z.string().max(600).optional() });
+export const effectCueSchema = z.object({ id: z.string().min(1).max(80), name: z.string().max(100), prompt: z.string().min(1).max(600), seconds: z.number().finite().min(0.5).max(22), placements: z.array(z.object({ start: z.number().finite().min(0).max(30), end: z.number().finite().min(0).max(30) }).refine((p) => p.end > p.start)).min(1).max(20), note: z.string().max(600).optional() });
+export type EffectCue = z.infer<typeof effectCueSchema>;
 export const cueSchema = z.object({
   id: z.string().min(1).max(80), title: z.string().trim().min(1).max(80),
   seconds: z.number().min(3).max(30),
   line: z.string().max(1200), music: z.string().max(400),
+  voiceStart: z.number().finite().optional(), voiceEnd: z.number().finite().optional(),
 });
 export const soundPlanSchema = z.object({
   title: z.string().max(120), bpm: z.number().min(40).max(200),
   narration: z.enum(["external", "native", "none"]),
+  voice: voiceSettingsSchema.optional(),
   scenes: z.array(cueSchema).min(1).max(10),
 });
 export type SoundPlan = z.infer<typeof soundPlanSchema>;
@@ -55,10 +60,17 @@ export function timedCues(plan: SoundPlan) {
   let start = 0;
   return plan.scenes.map((cue) => { const row = { ...cue, start, end: start + cue.seconds }; start += cue.seconds; return row; });
 }
+/** Voice placement is independent of the broader musical phrase. */
+export function voiceWindow(cue: SceneCue & { start: number; end: number }) {
+  const start = cue.voiceStart ?? cue.start;
+  const end = cue.voiceEnd ?? cue.end;
+  return { start, end, seconds: end - start };
+}
 export function planProblem(plan: SoundPlan | null, duration: number, nativeAvailable: boolean, silent: boolean) {
   if (!plan) return null;
   if (!soundPlanSchema.safeParse(plan).success) return "Give each sound section a name and at least 3 seconds, with a tempo from 40–200 BPM.";
   if (Math.abs(planSeconds(plan) - duration) > 0.01) return `Sound plan is ${planSeconds(plan)}s; video is ${duration}s. Match the lengths before generating.`;
+  if (plan.narration !== "none" && timedCues(plan).some((cue) => { const w = voiceWindow(cue); return cue.line.trim() && (w.start < 0 || w.end > duration || w.end <= w.start); })) return "Keep each voice window inside the video, with its finish after its start.";
   if (plan.narration === "native" && (!nativeAvailable || silent)) return "Native narration needs a model with sound and Native or Layered sound selected. Or choose a separate ElevenLabs voice.";
   return null;
 }
@@ -75,12 +87,12 @@ export function buildComposition(plan: SoundPlan, style: string): CompositionPla
 }
 export function planVideoDirection(plan: SoundPlan | null): string {
   if (!plan) return "";
-  const cues = timedCues(plan).map((s) => `${s.start.toFixed(1)}–${s.end.toFixed(1)}s (${s.title}): ${plan.narration === "native" && s.line.trim() ? `Off-screen narrator says: ${JSON.stringify(s.line.trim())}.` : "Leave space for the planned soundtrack."}`).join("\n");
+  const cues = timedCues(plan).map((s) => { const w = plan.narration === "native" && s.line.trim() ? voiceWindow(s) : s; return `${w.start.toFixed(3)}–${w.end.toFixed(3)}s (${s.title}): ${plan.narration === "native" && s.line.trim() ? `Off-screen narrator says: ${JSON.stringify(s.line.trim())}.` : "Leave space for the planned soundtrack."}`; }).join("\n");
   const instruction = plan.narration === "native"
     ? "Use one consistent off-screen narrator. Speak only the quoted lines in their intended windows; no invented speech, presenter or lip-sync."
     : "Do not generate speech, dialogue, narration, singing or lip-sync. Narration, if planned, is a separate voice recording for the final edit.";
   return `\n\n[Sound cue sheet]\nThis cue sheet takes precedence over earlier narration instructions only. Preserve the supplied visual direction and Blender edit; these are audio windows, not new camera instructions. ${instruction}\n${cues}`;
 }
 export function cueSheet(plan: SoundPlan) {
-  return `# ${plan.title}\n\n${planSeconds(plan)} seconds · ${plan.bpm} BPM · narration: ${plan.narration}\n\n${timedCues(plan).map((s) => `## ${s.start.toFixed(1)}–${s.end.toFixed(1)}s · ${s.title}\nVoice: ${plan.narration === "none" ? "None" : s.line || "Leave room for product sound"}\nMusic: ${s.music}\n`).join("\n")}\nPlan → audition voice → confirm picture timing → compose score → mix in editor.\nPlace each voice clip at its cue start; TTS files do not contain timeline silence. Measure actual speech and allow breaths before locking picture.\nThis is a planning template, not an analysis of an uploaded film. Verify its cue boundaries against the actual Blender or video edit.\n`;
+  return `# ${plan.title}\n\n${planSeconds(plan)} seconds · ${plan.bpm} BPM · narration: ${plan.narration}\n\n${timedCues(plan).map((s) => `## ${s.start.toFixed(1)}–${s.end.toFixed(1)}s · ${s.title}\nVoice: ${plan.narration === "none" ? "None" : s.line || "Leave room for product sound"}${plan.narration !== "none" && s.line ? `\nVoice placement: ${voiceWindow(s).start.toFixed(6)}–${voiceWindow(s).end.toFixed(6)}s` : ""}\nMusic: ${s.music}\n`).join("\n")}\nPlan → audition voice → confirm picture timing → compose score → mix in editor.\nPlace each voice clip at its voice-placement time when specified, otherwise its cue start; TTS files do not contain timeline silence. Measure actual speech and allow breaths before locking picture.\nThis is a planning template, not an analysis of an uploaded film. Verify its cue boundaries against the actual Blender or video edit.\n`;
 }

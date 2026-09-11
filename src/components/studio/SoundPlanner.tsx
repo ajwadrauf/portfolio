@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { estimateCost } from "@/lib/models";
-import { buildComposition, cueSheet, estimatedReadSeconds, planSeconds, soundTemplate, timedCues, VOICES, VOICE_MODEL_ID, wordCount, type SoundPlan } from "@/lib/soundPlan";
+import { buildComposition, cueSheet, estimatedReadSeconds, planSeconds, soundTemplate, timedCues, voiceWindow, VOICES, VOICE_MODEL_ID, wordCount, type SoundPlan } from "@/lib/soundPlan";
 import type { VoiceTake } from "@/lib/adDraft";
 
 type Props = {
@@ -17,8 +17,8 @@ type Props = {
 
 export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuration, canMatchDuration, busy, live, scoreToPlan, onScoreToPlan, onVoice, takes, onTakesChange, recoveredVoices }: Props) {
   const [selected, setSelected] = useState(0);
-  const [voice, setVoice] = useState<string>("Rachel");
-  const [stability, setStability] = useState(0.5);
+  const voice = plan?.voice?.name ?? "Rachel";
+  const stability = plan?.voice?.stability ?? 0.5;
   const [actual, setActual] = useState<Record<string, number>>({});
   const [message, setMessage] = useState("");
   const [voiceError, setVoiceError] = useState("");
@@ -30,10 +30,14 @@ export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuratio
   const fresh = take?.spec === spec;
   const cues = plan ? timedCues(plan) : [];
   const total = plan ? planSeconds(plan) : 0;
+  const placement = cues[index] ? voiceWindow(cues[index]) : null;
 
   useEffect(() => { setMessage(""); setVoiceError(""); }, [plan]);
   function changeCue(update: Partial<SoundPlan["scenes"][number]>) {
     if (plan) onChange({ ...plan, scenes: plan.scenes.map((s, i) => i === index ? { ...s, ...update } : s) });
+  }
+  function changeVoice(update: Partial<NonNullable<SoundPlan["voice"]>>) {
+    if (plan) onChange({ ...plan, voice: { name: voice, stability, ...plan.voice, ...update } });
   }
   function useTemplate(id: "narrated" | "rhythm" | "cream") {
     onChange(soundTemplate(id)); setSelected(0);
@@ -99,9 +103,18 @@ export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuratio
             <label className="block"><span className="label">Spoken words only · leave blank for breathing room</span><textarea aria-label="Scene narration script" className="input mt-1 min-h-20" maxLength={1200} value={scene.line} onChange={(e) => changeCue({ line: e.target.value })} placeholder="Write what the listener should hear. Keep stage directions out." /></label>
             <p className={`text-xs ${estimatedReadSeconds(scene.line) > scene.seconds - 0.5 ? 'text-warning' : 'text-muted'}`}>{wordCount(scene.line)} words · roughly {estimatedReadSeconds(scene.line).toFixed(1)}s at 140 words/min. {estimatedReadSeconds(scene.line) > scene.seconds - 0.5 ? "Tight fit: shorten the line or give it more time." : "Leave a little space for breaths and the product sound."} This is a planning estimate; measure the take.</p>
             {plan.narration === "external" && <>
+              {plan.voice?.direction && <p className="text-xs leading-relaxed text-muted">Audition direction: {plan.voice.direction}</p>}
+              {(scene.voiceStart !== undefined || scene.voiceEnd !== undefined) && placement && <div className="rounded-lg border border-border-soft p-3">
+                <p className="text-xs font-semibold">Voice placement in the final mix</p>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <label className="text-xs">Start · s<input aria-label="Voice timeline start" type="number" min={0} max={duration} step="any" className="input mt-1" value={Number((scene.voiceStart ?? cues[index].start).toFixed(6))} onChange={(e) => changeCue({ voiceStart: Number(e.target.value) })} /></label>
+                  <label className="text-xs">Target finish · s<input aria-label="Voice target finish" type="number" min={0} max={duration} step="any" className="input mt-1" value={Number((scene.voiceEnd ?? cues[index].end).toFixed(6))} onChange={(e) => changeCue({ voiceEnd: Number(e.target.value) })} /></label>
+                </div>
+                <p className="mt-2 text-xs text-muted">Local finishing uses this {placement.seconds.toFixed(3)}s window. Trim silence and audition the take so no words are cut off. Music sections keep their own timing.</p>
+              </div>}
               <div className="grid gap-3 sm:grid-cols-2">
-                <label><span className="label">ElevenLabs voice</span><select aria-label="ElevenLabs voice" className="input mt-1" value={voice} onChange={(e) => setVoice(e.target.value)}>{VOICES.map((v) => <option key={v}>{v}</option>)}</select></label>
-                <label><span className="label">Delivery stability</span><select aria-label="Voice stability" className="input mt-1" value={stability} onChange={(e) => setStability(Number(e.target.value))}><option value={0.5}>Natural · starting point</option><option value={1}>Steadier</option><option value={0}>More expressive</option></select></label>
+                <label><span className="label">ElevenLabs voice</span><select aria-label="ElevenLabs voice" className="input mt-1" value={voice} onChange={(e) => changeVoice({ name: e.target.value as typeof voice })}>{VOICES.map((v) => <option key={v}>{v}</option>)}</select></label>
+                <label><span className="label">Delivery stability</span><select aria-label="Voice stability" className="input mt-1" value={stability} onChange={(e) => changeVoice({ stability: Number(e.target.value) as 0 | 0.5 | 1 })}><option value={0.5}>Natural · starting point</option><option value={1}>Steadier</option><option value={0}>More expressive</option></select></label>
               </div>
               <button type="button" className="btn-secondary" disabled={busy || !scene.line.trim() || /<[^>]*>/.test(scene.line)} onClick={() => void generateVoice()}>{generating ? "Recording voice…" : `${live ? 'Generate' : 'Preview demo'} voice for scene ${index + 1} · ${live ? `~$${estimateCost(VOICE_MODEL_ID, { characters: scene.line.trim().length }).toFixed(3)}` : '$0'}`}</button>
               <p className="text-xs leading-relaxed text-muted">Eleven v3 through fal · $0.10 / 1,000 characters. Punctuation shapes delivery; use shorter sentences for tighter timing. SSML break tags and a speed parameter are not used by this v3 integration.</p>
@@ -110,8 +123,8 @@ export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuratio
               {take && <div className="space-y-2 border-t border-border-soft pt-3">
                 <p className="text-xs text-muted">{take.mock ? "Demo tone — no speech was generated" : take.recovered ? "Recovered voice assigned — listen to verify the words and delivery against this scene" : fresh ? "Voice take ready" : "Earlier take — the script or voice settings have changed"}</p>
                 <audio controls preload="metadata" src={take.url} className="w-full max-w-sm" onLoadedMetadata={(e) => { const seconds = e.currentTarget.duration; if (Number.isFinite(seconds)) setActual((previous) => ({ ...previous, [take.url]: seconds })); }} />
-                {actual[take.url] !== undefined && !take.mock && <p className={`text-xs ${actual[take.url] > scene.seconds ? 'text-warning' : 'text-muted'}`}>Actual take: {actual[take.url].toFixed(1)}s / {scene.seconds}s window. {actual[take.url] > scene.seconds ? "Too long: shorten the script or adjust the plan before locking picture." : "Audition pronunciation and leave room for the transition."}</p>}
-                <a className="inline-flex min-h-11 items-center text-xs font-semibold text-accent underline" href={take.url} target="_blank" rel="noreferrer" download>Download voice · place at {cues[index].start.toFixed(1)}s in editor</a>
+                {actual[take.url] !== undefined && !take.mock && <p className={`text-xs ${actual[take.url] > (placement?.seconds ?? scene.seconds) ? 'text-warning' : 'text-muted'}`}>Actual take: {actual[take.url].toFixed(1)}s / {(placement?.seconds ?? scene.seconds).toFixed(3)}s window. {actual[take.url] > (placement?.seconds ?? scene.seconds) ? "Too long: trim silence or audition a shorter delivery; do not truncate words in the mix." : "Audition pronunciation and leave room for the transition."}</p>}
+                <a className="inline-flex min-h-11 items-center text-xs font-semibold text-accent underline" href={take.url} target="_blank" rel="noreferrer" download>Download voice · place at {(placement?.start ?? cues[index].start).toFixed(3)}s in editor</a>
                 <button type="button" className="ml-3 min-h-11 text-xs text-muted underline" onClick={() => { const next = { ...takes }; delete next[scene.id]; onTakesChange(next); }}>Unassign voice</button>
               </div>}
               {recoveredVoices.length > 0 && <details className="rounded-lg border border-border-soft p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">Use a recovered voice take</summary><p className="mt-1 text-xs text-muted">Assignment costs nothing. A recovered recording is not verified against the current script.</p><ul className="mt-2 space-y-3">{recoveredVoices.map((job) => <li key={job.requestId}><p className="text-xs">{job.label}</p><audio controls preload="none" src={job.audioUrl} className="mt-1 w-full max-w-sm" /><button type="button" className="mt-1 min-h-11 text-xs font-semibold text-accent underline" onClick={() => onTakesChange({ ...takes, [scene.id]: { url: job.audioUrl, spec: "", mock: false, recovered: true, label: job.label } })}>Use for scene {index + 1}</button></li>)}</ul></details>}
@@ -119,7 +132,7 @@ export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuratio
           </>}
           <label className="block"><span className="label">Music direction for this scene</span><textarea aria-label="Scene music direction" className="input mt-1 min-h-20" maxLength={400} value={scene.music} onChange={(e) => changeCue({ music: e.target.value })} /></label>
         </div>}
-        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border-soft p-4 text-sm"><input type="checkbox" checked={scoreToPlan} onChange={(e) => onScoreToPlan(e.target.checked)} className="mt-1 accent-[var(--accent)]" /><span><span className="font-semibold">Compose music to these scene lengths</span><span className="mt-1 block text-xs leading-relaxed text-muted">Uses ElevenLabs’ structured section durations. Voice lines stay out of the music request. Sections need at least 3 seconds; group shorter shots into a musical phrase. Audition accents against picture and align the final mix.</span></span></label>
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border-soft p-4 text-sm"><input type="checkbox" checked={scoreToPlan} onChange={(e) => onScoreToPlan(e.target.checked)} className="mt-1 accent-[var(--accent)]" /><span><span className="font-semibold">Compose music to these scene lengths</span><span className="mt-1 block text-xs leading-relaxed text-muted">Uses ElevenLabs’ structured section durations. Voice lines stay out of the music request. Sections need at least 3 seconds; group shorter shots into a musical phrase. Enabling this selects Layered sound; for a silent picture workflow, enable it after the video render. Audition accents against picture and align the final mix.</span></span></label>
         <div className="flex flex-wrap gap-3"><button type="button" className="btn-secondary" onClick={() => void copy(cueSheet(plan))}>Copy cue sheet</button><button type="button" className="btn-secondary" onClick={download}>Download cue sheet</button></div>
         <p role="status" className="text-xs text-muted">{message}</p>
         <details className="text-xs leading-relaxed text-muted"><summary className="min-h-11 cursor-pointer font-semibold text-foreground">Production notes & handoff</summary>

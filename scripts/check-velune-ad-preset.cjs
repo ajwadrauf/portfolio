@@ -1,0 +1,65 @@
+// Offline contracts only: no credentials, providers, or paid calls.
+const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..'), ts = require(root + '/node_modules/typescript');
+let checks = 0;
+const check = (condition, message) => { assert(condition, message); checks++; };
+function loader(overrides = {}, globals = {}) {
+  const cache = {};
+  const load = (file) => {
+    file = path.resolve(root, file); if (!path.extname(file)) file += '.ts';
+    if (cache[file]) return cache[file].exports;
+    const mod = { exports: {} }; cache[file] = mod;
+    const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
+    const req = (name) => Object.hasOwn(overrides, name) ? overrides[name] : name === 'server-only' ? {} : name === 'next/server' ? { NextResponse: { json: (data, init) => Response.json(data, init) } } : name.startsWith('@/') ? load('src/' + name.slice(2)) : name.startsWith('.') ? load(path.resolve(path.dirname(file), name)) : require(require.resolve(name, { paths: [root] }));
+    vm.runInNewContext(source, { require: req, module: mod, exports: mod.exports, process: { env: {} }, console, URL, Buffer, Request, Response, Headers, Blob, TextEncoder, Float32Array, Uint8Array, ArrayBuffer, DataView, AbortController, AbortSignal, ReadableStream, btoa, setTimeout, clearTimeout, fetch: async () => { throw new Error('Unmocked network forbidden'); }, ...globals }, { filename: file });
+    return mod.exports;
+  };
+  return load;
+}
+
+const load = loader({}, { crypto: require("node:crypto").webcrypto });
+const { newStudioProject } = load('src/lib/studioProjects.ts');
+const { veluneAdExample } = load('src/lib/veluneAdExample.ts');
+const { parseAdDraft, referenceBindingProblems } = load('src/lib/adDraft.ts');
+const sound = load('src/lib/soundPlan.ts');
+const { effectMixTracks } = load('src/lib/adAudioPlacement.ts');
+const project = newStudioProject('VELUNE', 'velune');
+const seed = veluneAdExample(project.assets);
+check(seed.prompt === fs.readFileSync(root + '/production/velune/work/prompts/seedance_master.txt', 'utf8').trim(), 'Loads the exact shared production prompt');
+check(seed.musicCustomPrompt === fs.readFileSync(root + '/production/velune/work/prompts/adlab_music_brief.txt', 'utf8').trim(), 'Loads the full shared music brief');
+check(seed.duration === 15 && seed.aspect === '16:9' && seed.resolution === '720p', 'Motion-guide format and draft resolution');
+check(seed.modelId === 'seedance-2.5-ref' && seed.lane === 'blender', 'Correct reference endpoint and lane');
+check(seed.audioMode === 'silent' && seed.scoreToPlan === false && seed.musicAsTimingRef === false, 'Picture-only defaults do not accidentally enable native audio');
+check(seed.negativePrompt === '' && seed.prompt.includes('[Exclusions]'), 'Exclusions stay in the supplied prompt once');
+check(seed.productImage === null && seed.endImage === null && seed.references.length === 9, 'No stray first frame shifts eight slots');
+check(referenceBindingProblems(seed.references, seed.referenceManifest).length === 0, 'All nine positional bindings resolved');
+check(seed.sceneCards.length === 12 && seed.soundPlan.scenes.length === 5, 'Musical groups do not replace twelve picture shots');
+check(sound.planSeconds(seed.soundPlan) === 15 && !sound.planProblem(seed.soundPlan, 15, true, true), 'Sound and picture duration valid');
+check(seed.soundPlan.voice.name === 'Rachel' && seed.soundPlan.voice.stability === 0.5 && seed.soundPlan.bpm === 80, 'Voice audition and tempo loaded');
+const voiced = sound.timedCues(seed.soundPlan).filter(c => c.line);
+const expected = [[7/24,29/24],[79/24,110/24],[249/24,298/24],[322/24,351/24]];
+voiced.forEach((c,i) => { const w=sound.voiceWindow(c);check(w.start === expected[i][0] && w.end === expected[i][1], 'Voice window ' + (i+1)); });
+check(sound.cueSheet(seed.soundPlan).includes('10.375000–12.416667s'), 'Export preserves exact voice placement instead of section start');
+const score=sound.buildComposition(seed.soundPlan, seed.musicCustomPrompt);
+check(sound.compositionSchema.safeParse(score).success && score.sections.reduce((n,s)=>n+s.duration_ms,0)===15000, 'Five valid sections request exactly15 seconds');
+check(score.sections.every(s=>s.lines.length===0) && !JSON.stringify(score).includes('Something wonderful.'), 'Narration cannot become music lyrics');
+const effectTracks=seed.effectCues.flatMap((c,i)=>effectMixTracks(c.prompt,'https://v3.fal.media/'+i+'.mp3',i,seed.effectCues,2));
+check(seed.effectCues.length===5 && effectTracks.length===9, 'Five paid effect takes can supply nine placements');
+check(effectTracks.filter(t=>t.url==='https://v3.fal.media/0.mp3').map(t=>t.start).join(',')==='1.75,2.125,2.5', 'One carton tick reused at exact flavour cuts');
+check(new Set(effectTracks.map(t=>t.id)).size===9 && effectTracks.every(t=>t.start+t.length<=15), 'Stable unique track IDs and bounded timing');
+check(effectMixTracks('custom','https://v3.fal.media/custom.mp3',9,seed.effectCues,2)[0].start===0, 'Unplanned effects keep existing generic placement');
+check(seed.effectCues.map(c=>c.seconds).join(',')==='0.5,1.2,1.3,0.5,0.8', 'Individual generation lengths retained');
+check(seed.recipe.sfx.length===0 && seed.extraEffects.length===0, 'No cookie or ice-cream recipe effects bleed into VELUNE');
+check(!seed.completedTake && !seed.musicUrl && !Object.keys(seed.voiceTakes).length && !seed.mixTracks.length && !Object.keys(seed.sfxTracks).length, 'Loading creates no pretend outputs or generation jobs');
+const saved=parseAdDraft(JSON.parse(JSON.stringify(seed)));
+check(!!saved && saved.soundPlan.scenes[3].voiceStart===249/24 && saved.effectCues[3].placements.length===3, 'Reload/export round-trip preserves timing and cues');
+check(saved.soundPlan.voice.name==='Rachel' && saved.musicCustomPrompt===seed.musicCustomPrompt, 'Voice settings and music survive reload');
+const edited=JSON.parse(JSON.stringify(seed));edited.soundPlan.voice.name='Aria';edited.soundPlan.scenes[0].line='My revised line.';edited.effectCues[0].seconds=0.9;edited.prompt='My revised prompt';
+const retained=parseAdDraft(edited);
+check(retained.soundPlan.voice.name==='Aria' && retained.effectCues[0].seconds===0.9 && retained.prompt==='My revised prompt', 'Saved user edits are not reset to preset');
+const another=veluneAdExample(project.assets);seed.soundPlan.scenes[0].line='changed';seed.effectCues[0].placements[0].start=0;
+check(another.soundPlan.scenes[0].line!==seed.soundPlan.scenes[0].line && another.effectCues[0].placements[0].start===1.75, 'New copies do not share mutable cue state');
+const broken=JSON.parse(JSON.stringify(another.soundPlan));broken.scenes[0].voiceEnd=16;
+check(!!sound.planProblem(broken,15,true,true), 'Out-of-picture voice window blocks generation');
+check(!parseAdDraft({...another,effectCues:[{...another.effectCues[0],seconds:99}]}), 'Out-of-range effect requests rejected on import');
+console.log(`PASS: ${checks} VELUNE preset, audio cue, timing and persistence checks. Network disabled; no paid calls.`);
