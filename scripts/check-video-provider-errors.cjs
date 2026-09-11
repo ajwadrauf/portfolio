@@ -19,7 +19,7 @@ const fal = {
     result: async () => { resultCalls++; if (resultError) throw resultError; return { data: resultData }; },
   },
 };
-const api = load('src/lib/fal.ts', { 'server-only': {}, '@fal-ai/client': { fal } });
+const api = load('src/lib/fal.ts', { 'server-only': {}, '@fal-ai/client': { fal }, './h3Video': load('src/lib/h3Video.ts', {}) });
 const route = load('src/app/api/generate/video/status/route.ts', { 'next/server': { NextResponse: { json: (data, init) => Response.json(data, init) } }, '@/lib/fal': api, '@/lib/gemini': { pollVeo: () => { throw new Error('Wrong provider'); } }, '@/lib/models': { getModel: () => ({ endpoint: 'bytedance/seedance-2.5/reference-to-video' }) } });
 const requestId = 'existing-video-request';
 const post = () => route.POST(new Request('https://studio.example/api/generate/video/status', { method: 'POST', body: JSON.stringify({ provider: 'fal', modelId: 'seedance-2.5-ref', falRequestId: requestId }) }));

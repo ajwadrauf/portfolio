@@ -1,3 +1,4 @@
+import { H3_MODEL_ID, H3_RESOLUTIONS } from "./h3Video";
 /**
  * Token-based cost for Seedance 2.5.
  *
@@ -18,7 +19,7 @@
  * bill is in `seedanceCost` below — along with what it was checked against.
  */
 
-export type VideoResolution = "480p" | "720p" | "1080p";
+export type VideoResolution = "480p" | "720p" | "768p" | "1080p";
 
 /**
  * The "p" number is the SHORT edge, whatever the shape: 720p landscape is
@@ -29,11 +30,12 @@ export type VideoResolution = "480p" | "720p" | "1080p";
 const SHORT_EDGE: Record<VideoResolution, number> = {
   "480p": 480,
   "720p": 720,
+  "768p": 768,
   "1080p": 1080,
 };
 
 /** Dollars per 1000 tokens. 1080p is billed at a higher rate. */
-const RATE_PER_1K: Record<VideoResolution, number> = {
+const RATE_PER_1K: Record<Exclude<VideoResolution, "768p">, number> = {
   "480p": 0.0214,
   "720p": 0.0214,
   "1080p": 0.0234,
@@ -55,13 +57,14 @@ const FRAME_RATE = 24;
  * explained.
  */
 export const resolutionsFor = (modelId: string): VideoResolution[] =>
-  modelId === "seedance-2.5-ref" ? ["480p", "720p"] : ["480p", "720p", "1080p"];
+  modelId === H3_MODEL_ID ? [...H3_RESOLUTIONS] : modelId === "seedance-2.5-ref" ? ["480p", "720p"] : ["480p", "720p", "1080p"];
 
 export const VIDEO_RESOLUTIONS: {
   id: VideoResolution;
   label: string;
   note: string;
 }[] = [
+  { id: "768p", label: "768p — native", note: "H3 Max native generation. A good starting point for the full film." },
   {
     id: "480p",
     label: "480p — draft",
@@ -122,7 +125,7 @@ export const ASPECTS: {
 /** Which shapes this model will actually accept. */
 export const aspectsFor = (modelId: string) =>
   ASPECTS.filter(
-    (a) => a.models === "all" || modelId.startsWith("seedance-2.5"),
+    (a) => a.models === "all" || modelId.startsWith("seedance-2.5") || modelId === H3_MODEL_ID,
   );
 
 export function videoTokens(opts: {
@@ -164,7 +167,7 @@ export function seedanceCost(opts: {
   inputVideoSeconds?: number;
   hasVideoInputs?: boolean;
 }): number {
-  const rate = RATE_PER_1K[opts.resolution];
+  const rate = RATE_PER_1K[opts.resolution === "768p" ? "720p" : opts.resolution];
   const perSecond = (sec: number) =>
     (videoTokens({ ...opts, durationSeconds: sec, inputVideoSeconds: 0 }) / 1000) * rate;
 

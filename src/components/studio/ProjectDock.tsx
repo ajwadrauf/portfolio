@@ -55,7 +55,7 @@ export function ProjectDock() {
         </details>
         <div className="flex flex-wrap items-center gap-3"><Link href="/ai-studio/projects" className="inline-flex min-h-9 items-center font-semibold text-accent underline underline-offset-4">Project & assets ↗</Link><VeluneExampleButton className="btn-secondary !px-3 !py-2 text-xs" /></div>
       </div>
-      {project?.example === "velune" && <p className="mt-2 text-xs text-muted">VELUNE working copy · {VELUNE_REFERENCES.filter((ref) => project.assets.some((a) => a.id === ref.id && a.status === "ready")).length}/8 visual references · Blender camera study · {project.assets.some((a) => a.id === "velune-final" && a.status === "ready") ? "Final film attached to this project" : "Final Seedance film pending"}. Loading an example never generates or spends.</p>}
+      {project?.example === "velune" && <p className="mt-2 text-xs text-muted">VELUNE working copy · {VELUNE_REFERENCES.filter((ref) => project.assets.some((a) => a.id === ref.id && a.status === "ready")).length}/8 visual references · Blender camera study · {project.assets.some((a) => a.id === "velune-final" && a.status === "ready") ? "Final film attached to this project" : "Final AI film pending"}. Loading an example never generates or spends.</p>}
       {(error || message) && <p role="alert" className="mt-2 text-sm text-danger">{message || error}</p>}
     </div>
   </div>;

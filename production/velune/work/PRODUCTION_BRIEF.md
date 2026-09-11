@@ -1,3 +1,5 @@
+> Ad Lab update · 11 September 2026: new VELUNE example copies use H3 Max Reference at 15s / 16:9 / 768p. Use `prompts/h3_max_master.txt` for video; the existing ElevenLabs briefs and cue windows remain. H3 native audio is discarded in the final edit. Earlier Seedance notes below describe the archived route. See `docs/velune/AD_LAB_PRESET.md` in the repository for current validation and audio delivery.
+
 # VELUNE
 ## Wonder within. — Premium filled chocolate / 15-second production brief
 

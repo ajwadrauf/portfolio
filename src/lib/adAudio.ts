@@ -1,9 +1,10 @@
+import { H3_MODEL_ID, h3DurationProblem } from "./h3Video";
 import type { AudioMode } from "./adPresets";
 
 /** Only audio instructions are added; imported visual direction stays intact. */
-export function soundDirection(mode: AudioMode, musicBrief: string, audioSlot?: number, preserveMotion = false) {
+export function soundDirection(mode: AudioMode, musicBrief: string, audioSlot?: number, preserveMotion = false, modelId = "seedance-2.5-ref") {
   const direction = mode === "silent"
-    ? "Deliver silent picture: no music, dialogue, ambience or sound effects."
+    ? modelId === H3_MODEL_ID ? "No dialogue, lip-sync, music or singing. Keep any native ambience minimal; the final soundtrack will be replaced with separate voice, music and effects. Do not change the visual timing to accommodate sound." : "Deliver silent picture: no music, dialogue, ambience or sound effects."
     : mode === "layered"
       ? "Generate natural sound effects and ambience that fit the visible action. No music, score or singing: an instrumental music bed will be mixed separately. Preserve explicitly requested dialogue or voiceover from the brief; do not invent speech."
       : `Generate sound effects and ambience that fit the visible action. Preserve explicitly requested dialogue or voiceover from the brief; do not invent speech or singing. ${musicBrief ? `Musical direction: ${musicBrief}` : "No music; keep the product sounds clear."}`;
@@ -13,8 +14,9 @@ export function soundDirection(mode: AudioMode, musicBrief: string, audioSlot?: 
 
 export const ICE_CREAM_MUSIC_BRIEF = "Premium instrumental food-commercial score for vanilla, chocolate and strawberry ice cream. Warm felt piano, airy analog pads, delicate glassy notes and restrained brushed percussion at about 90 BPM. Leave space for close-up spoon scrapes and soft cream movement. Gently lift through the scoop reveal and cream spiral, open into a playful three-flavour moment, then resolve softly into the final product hold. No vocals, lyrics or speech. Support the existing edit without demanding new cuts.";
 
-export function audioReferenceProblem(durations: (number | undefined)[], visualCount: number): string | null {
+export function audioReferenceProblem(durations: (number | undefined)[], visualCount: number, modelId = "seedance-2.5-ref"): string | null {
   if (!durations.length) return null;
+  if (modelId === H3_MODEL_ID) return visualCount < 1 ? "H3 Max needs an image or video alongside reference audio." : h3DurationProblem("audio", durations);
   if (visualCount < 1) return "Seedance needs at least one image or video alongside reference audio.";
   if (durations.length > 10) return "Seedance accepts up to 10 audio references.";
   if (durations.some((n) => n === undefined || !Number.isFinite(n))) return "Audio duration could not be verified yet. Wait for metadata, or use a readable MP3/WAV file before generating.";

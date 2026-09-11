@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { H3_MODEL_ID, h3ReferenceProblem, videoPromptFor } from "@/lib/h3Video";
+import { VELUNE_REFERENCES } from "@/lib/veluneReferences";
+import { VELUNE_MEDIA } from "@/components/velune/veluneStudy";
+import { H3VideoSettings } from "@/components/ad/H3VideoSettings";
 import styles from "./AdLab.module.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiveGate } from "@/components/LiveGate";
@@ -28,7 +32,8 @@ import {
   MULTI_REF_MODELS,
   supportsEndFrame,
   REFERENCE_ROLES,
-  REF_CEILINGS,
+  referenceCeilingsFor,
+  minAdSeconds,
   audioCapability,
   referenceMediaOf,
   referenceMediaOfUrl,
@@ -642,6 +647,9 @@ function AdLabWorkspace({
   /** This endpoint interpolates between a first and a last frame. */
   const endFrameActive = supportsEndFrame(modelId);
   const secondsCap = maxAdSeconds(modelId);
+  const h3 = modelId === H3_MODEL_ID;
+  const refLabel = (token: string) => videoPromptFor(modelId, token);
+  const referenceCaps = referenceCeilingsFor(modelId);
   /*
    * Snapped to what the endpoint publishes. Kling takes duration as an enum of
    * 5 or 10, so a slider that offers every second between 4 and 10 was mostly
@@ -651,7 +659,7 @@ function AdLabWorkspace({
   const allowedDurations = DISCRETE_DURATIONS[modelId];
   const duration = snapAdSeconds(
     modelId,
-    Math.min(seconds ?? preset.durationSeconds, secondsCap),
+    Math.max(minAdSeconds(modelId), Math.min(seconds ?? preset.durationSeconds, secondsCap)),
   );
   const tokenBilled = usesTokenPricing(modelId);
   const allowedAspects = aspectsFor(modelId);
@@ -659,8 +667,9 @@ function AdLabWorkspace({
   const aspect =
     allowedAspects.find((a) => a.id === (aspectOverride ?? preset.aspect))?.id ??
     preset.aspect;
-  const aspectChanged = aspect !== preset.aspect;
+  const aspectChanged = !imported && aspect !== preset.aspect;
   const frame = frameSize(resolution, aspect);
+  const outputSizeLabel = h3 ? resolution : `${frame.width}×${frame.height}`;
   /*
    * Supplied clips are billed by their real duration, so the estimate has to
    * know it. This used to assume a nominal length per clip, which made the
@@ -701,19 +710,27 @@ function AdLabWorkspace({
     };
   }, [refs, clipSeconds]);
 
+  const [imageSizes, setImageSizes] = useState<Record<string, { width: number; height: number }>>({});
+  const imageUrls = useMemo(() => [...(productImage ? [productImage] : []), ...refs.filter((r) => r.media === "image").map((r) => r.url)], [productImage, refs]);
+  useEffect(() => {
+    if (!h3) return;
+    const elements = imageUrls.filter((url) => !imageSizes[url] && !VELUNE_REFERENCES.some((r) => r.url === url)).map((url) => {
+      const image = new Image();
+      image.onload = () => { if (image.naturalWidth && image.naturalHeight) setImageSizes((previous) => ({ ...previous, [url]: { width: image.naturalWidth, height: image.naturalHeight } })); };
+      image.src = url;
+      return image;
+    });
+    return () => elements.forEach((image) => { image.onload = null; image.src = ""; });
+  }, [h3, imageUrls, imageSizes]);
+  const referenceImageSizes = imageUrls.map((url) => { const size = VELUNE_REFERENCES.find((r) => r.url === url) ?? imageSizes[url]; return size ? { width: size.width, height: size.height } : undefined; });
+  const referenceImagePixels = referenceImageSizes.reduce((total, size) => total + (size ? size.width * size.height : 2048 * 2048), 0);
+  const referenceVideoDurations = refs.filter((r) => r.media === "video").map((r) => r.url === VELUNE_MEDIA.animatic ? 15 : clipSeconds[r.url]);
   const inputVideoSeconds = refs
     .filter((r) => r.media === "video")
     .reduce(
-      (total, r) => total + (clipSeconds[r.url] ?? VIDEO_REF_LIMITS.idealSeconds),
+      (total, r) => total + (r.url === VELUNE_MEDIA.animatic ? 15 : clipSeconds[r.url] ?? VIDEO_REF_LIMITS.idealSeconds),
       0,
     );
-  const videoCost = estimateCost(modelId, {
-    seconds: duration,
-    resolution,
-    aspect,
-    hasVideoInputs: inputVideoSeconds > 0,
-    inputVideoSeconds,
-  });
   const recipeEdited = !isDefaultRecipe(preset, recipe);
 
   /** Every reference the model will receive, product photo included. */
@@ -741,7 +758,6 @@ function AdLabWorkspace({
   const scoringSeparately = audioMode === "layered" && musicStyleId !== NO_MUSIC_ID;
   const musicKey = JSON.stringify([musicStyleId, musicCustomPrompt.trim(), duration, musicAsTimingRef, musicComposition]);
   const musicReady = Boolean(musicUrl && musicSpec === musicKey);
-  const cost = videoCost + (scoringSeparately && !musicReady ? musicCost : 0);
   /** Clips and tracks leave the browser, so demo mode can't accept them. */
   const clipsUploadable = health?.live ?? true;
   /** The bed can only steer the render on a model that reads audio in. */
@@ -768,8 +784,14 @@ function AdLabWorkspace({
     });
     return () => elements.forEach((el) => { el.onloadedmetadata = null; el.removeAttribute("src"); el.load(); });
   }, [audioRefUrls, audioDurations]);
-  const audioRefProblem = cap.refAudio ? audioReferenceProblem(audioRefUrls.map((url) => audioDurations[url]), (productImage ? 1 : 0) + refs.filter((r) => r.media !== "audio").length) : null;
-  const soundBlock = soundDirection(audioMode, musicBrief, timingRefActive ? audioRefUrls.length : undefined, imported || refs.some((r) => r.media === "video")) + planVideoDirection(soundPlan);
+  const inputAudioSeconds = audioRefUrls.reduce((sum, url) => sum + (audioDurations[url] ?? 0), 0);
+  const videoCost = estimateCost(modelId, { seconds: duration, resolution, aspect, hasVideoInputs: inputVideoSeconds > 0, inputVideoSeconds, referenceImagePixels, inputAudioSeconds });
+  const cost = videoCost + (scoringSeparately && !musicReady ? musicCost : 0);
+  const h3InputProblem = h3 ? h3ReferenceProblem(imageUrls.length, referenceVideoDurations, audioRefUrls.map((url) => audioDurations[url]))
+    ?? (referenceImageSizes.some((size) => !size) ? "H3 Max image dimensions are not verified yet. Wait for the image to load, or reattach a readable file." : null)
+    ?? (!Number.isInteger(seconds ?? preset.durationSeconds) || (seconds ?? preset.durationSeconds) < 5 || (seconds ?? preset.durationSeconds) > 15 ? "H3 Max needs a 5–15 second edit. Set a supported length; longer plans must be split into shots." : null) : null;
+  const audioRefProblem = cap.refAudio ? audioReferenceProblem(audioRefUrls.map((url) => audioDurations[url]), (productImage ? 1 : 0) + refs.filter((r) => r.media !== "audio").length, modelId) : null;
+  const soundBlock = soundDirection(audioMode, musicBrief, timingRefActive ? audioRefUrls.length : undefined, imported || refs.some((r) => r.media === "video"), modelId) + planVideoDirection(soundPlan);
   /** Reference jobs, ordered to match the URLs above per media type. */
   const composeRefs = useMemo<ReferenceSpec[]>(
     () => [
@@ -1269,9 +1291,10 @@ function AdLabWorkspace({
       // decoder and fail with a message about an unreadable image.
       const media = referenceMediaOf(file.name, file.type);
       const isAudio = media === "audio";
+      if ((productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0) >= referenceCaps.total || refs.filter((r) => r.media === media).length + (media === "image" && productImage ? 1 : 0) >= referenceCaps[media]) { setRefError(`This model accepts at most ${referenceCaps.total} combined references. Remove a file before adding another.`); return; }
       try {
         if ((isAudio || /\.(m4a|aac)$/i.test(file.name)) && !/\.(mp3|wav)$/i.test(file.name)) {
-          setRefError("Seedance audio references must be MP3 or WAV. Convert this track before uploading.");
+          setRefError("Audio references must be MP3 or WAV in Ad Lab. Convert this track before uploading.");
           return;
         }
         if (media !== "image") {
@@ -1346,7 +1369,7 @@ function AdLabWorkspace({
     // `refs` is read to measure the budget already spent, so it belongs here —
     // without it the first upload's size would be used for every later one.
     // Reads inlineWireBytes to budget against everything already in the body.
-    [health, invalidatePrompt, inlineWireBytes],
+    [health, invalidatePrompt, inlineWireBytes, refs, productImage, referenceCaps, timingRefActive],
   );
 
   /** Adds an already-hosted reference. No upload, so no storage permission. */
@@ -1362,6 +1385,7 @@ function AdLabWorkspace({
       );
       return;
     }
+    if ((productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0) >= referenceCaps.total) { setRefError(`This model accepts at most ${referenceCaps.total} combined references. Remove a file first.`); return; }
     setRefs((prev) => [
       ...prev,
       {
@@ -1373,7 +1397,7 @@ function AdLabWorkspace({
     ]);
     setRefUrl("");
     invalidatePrompt();
-  }, [invalidatePrompt, refUrl]);
+  }, [invalidatePrompt, refUrl, productImage, refs, referenceCaps, timingRefActive]);
 
   const sfxCost = estimateCost(SFX_MODEL_ID, { seconds: clampSfxSeconds(sfxSeconds) });
 
@@ -1450,14 +1474,14 @@ function AdLabWorkspace({
   const selectedProjectReference = projectReferences.find((reference) => reference.id === projectReferenceId);
   function addProjectReference() {
     if (!selectedProjectReference) return;
-    const problem = adReferenceAdditionProblem(selectedProjectReference, boardReferences, { audio: timingRefActive ? 1 : 0 });
+    const problem = adReferenceAdditionProblem(selectedProjectReference, boardReferences, { audio: timingRefActive ? 1 : 0 }, modelId);
     if (problem) { setRefError(problem); return; }
     const selected = selectedProjectReference;
     setRefs((previous) => previous.some((ref) => ref.id === selected.id || ref.url === (selected.dataUrl ?? selected.url)) ? previous : [...previous, { id: selected.id, name: selected.name, media: selected.kind, role: referenceRole(selected.kind, projectReferenceRole), url: selected.dataUrl ?? selected.url! }]);
     setProjectReferenceId(""); setRefError(null); setRefCheck(null); invalidatePrompt();
   }
   const boardCards = useMemo<AdSceneCard[]>(() => sceneCards.length ? sceneCards : soundPlan ? timedCues(soundPlan).map((cue, i) => ({ id: cue.id, title: cue.title, start: cue.start, end: cue.end, action: recipe.scenes[i]?.description ?? "Describe the action", camera: "", sound: [cue.line, cue.music].filter(Boolean).join(" · "), referenceIds: productImage ? ["ad-product"] : [] })) : imported ? [{ id: "imported-direction", title: "Imported direction · confirm the shot breakdown", start: 0, end: duration, action: finalPrompt.slice(0, 6000), camera: "Follow the attached motion and composition references", sound: "Review the sound direction below", referenceIds: boardReferences.filter((ref) => ref.kind === "image").map((ref) => ref.id) }] : recipe.scenes.map((scene, i) => ({ id: `recipe-${i}`, title: scene.title, start: duration * i / recipe.scenes.length, end: duration * (i + 1) / recipe.scenes.length, action: scene.description, camera: "", sound: recipe.sfx[i] ?? "", referenceIds: productImage ? ["ad-product"] : [] })), [sceneCards, soundPlan, recipe, duration, productImage, imported, finalPrompt, boardReferences]);
-  const bindingProblems = [...referenceBindingProblems(boardReferences, referenceManifest), ...(["image", "video", "audio"] as const).flatMap((kind) => boardReferences.filter((ref) => ref.kind === kind).length > REF_CEILINGS[kind] ? [`Too many ${kind} references: this endpoint supports at most ${REF_CEILINGS[kind]}. Remove extra files before generating.`] : []), ...(!supportsRefs && Object.values(refSlots(finalPrompt)).some((count) => count > 0) ? ["This prompt uses reference tokens. Choose Seedance Reference to resolve them, or rewrite the prompt for a first-frame model."] : [])];
+  const bindingProblems = [...referenceBindingProblems(boardReferences, referenceManifest), ...(h3InputProblem ? [h3InputProblem] : []), ...(["image", "video", "audio"] as const).flatMap((kind) => boardReferences.filter((ref) => ref.kind === kind).length > referenceCaps[kind] ? [`Too many ${kind} references: this endpoint supports at most ${referenceCaps[kind]}. Remove extra files before generating.`] : []), ...(!supportsRefs && Object.values(refSlots(finalPrompt)).some((count) => count > 0) ? ["This prompt uses reference tokens. Choose H3 Max Reference or Seedance Reference to resolve them, or rewrite the prompt for a first-frame model."] : [])];
   const finishingDuration = completedTake ? videoMetadata?.durationSeconds ?? completedTake.context?.durationSeconds ?? duration : duration;
   const finishingScenes = completedTake ? completedTake.sceneCards ?? [] : boardCards;
   const availableMixTracks = useMemo<AdMixTrack[]>(() => {
@@ -1473,7 +1497,7 @@ function AdLabWorkspace({
 
   const generate = useCallback(async () => {
     if (generateLock.current || !hydrated || draftSaveBlocked) return;
-    if (bindingProblems.length) { setError({ at: "generate", text: "Review imported reference bindings before generating. Every declared slot needs its assigned file in the correct position." }); return; }
+    if (bindingProblems.length) { setError({ at: "generate", text: bindingProblems[0] }); return; }
     setError(null);
     if (audioJobs.busy || audioRefProblem || soundPlanIssue) { setAudioError(soundPlanIssue ?? audioRefProblem ?? "Wait for the audio request to finish before generating video."); return; }
     generateLock.current = true;
@@ -1487,13 +1511,13 @@ function AdLabWorkspace({
     // form while it renders must not rewrite the evidence for the finished take.
     const generationSnapshot: GenerationSnapshot = {
       submittedAt: new Date().toISOString(),
-      prompt: `${finalPrompt}\n\n${soundBlock}`,
+      prompt: videoPromptFor(modelId, `${finalPrompt}\n\n${soundBlock}`),
       negativePrompt,
       modelId,
       durationSeconds: duration,
       aspect,
       resolution,
-      audioMode,
+      audioMode: h3 && audioMode === "silent" ? "External soundtrack; H3 native audio may remain" : audioMode,
       references: [
         ...(productImage ? [{ name: "Product photo", media: "image", role: "product" }] : []),
         ...(endFrameActive && endImage ? [{ name: "End frame", media: "image", role: "composition" }] : []),
@@ -1515,7 +1539,7 @@ function AdLabWorkspace({
     setPosterDataUrl(null);
     try {
       const requestBody = JSON.stringify({
-          prompt: `${finalPrompt}\n\n${soundBlock}`,
+          prompt: videoPromptFor(modelId, `${finalPrompt}\n\n${soundBlock}`),
           negativePrompt,
           modelId,
           aspect,
@@ -1524,6 +1548,8 @@ function AdLabWorkspace({
           // Measured, not assumed — supplied footage is billed by its real
           // length and the server prices the spend from this.
           inputVideoSeconds,
+          referenceVideoDurations: h3 ? referenceVideoDurations : undefined,
+          referenceImageSizes: h3 ? referenceImageSizes : undefined,
           imageDataUrl: productImage ?? undefined,
           endImageDataUrl: endFrameActive ? (endImage ?? undefined) : undefined,
           referenceImageDataUrls: supportsRefs
@@ -1534,7 +1560,7 @@ function AdLabWorkspace({
             : undefined,
           referenceAudioUrls: supportsRefs ? audioRefUrls : undefined,
           referenceAudioDurations: cap.refAudio ? audioRefUrls.map((url) => audioDurations[url]) : undefined,
-          generateAudio: audioMode !== "silent",
+          generateAudio: cap.switchable ? audioMode !== "silent" : undefined,
           presetName: preset.name,
         });
       if (new TextEncoder().encode(requestBody).byteLength > 4_194_304) throw new Error("The combined references and prompt exceed the 4 MiB request limit. Use hosted media links or smaller image references before generating.");
@@ -1628,7 +1654,7 @@ function AdLabWorkspace({
     supportsRefs,
     timingRefActive,
     endFrameActive, endImage,
-    audioJobs.busy, audioRefProblem, soundPlanIssue, soundBlock, audioDurations, cap.refAudio, musicReady, musicAsTimingRef,
+    audioJobs.busy, audioRefProblem, soundPlanIssue, soundBlock, audioDurations, cap.refAudio, cap.switchable, musicReady, musicAsTimingRef, h3, referenceVideoDurations, referenceImageSizes,
   ]);
 
   /**
@@ -1722,9 +1748,9 @@ function AdLabWorkspace({
   }, [modelId]);
   useEffect(() => {
     if (!allowedResolutions.some((r) => r.id === resolution)) {
-      setResolution(allowedResolutions[allowedResolutions.length - 1].id);
+      setResolution(h3 ? "768p" : allowedResolutions[allowedResolutions.length - 1].id);
     }
-  }, [allowedResolutions, resolution]);
+  }, [allowedResolutions, resolution, h3]);
 
   /*
    * The provider validates references only at submit time, and reports a
@@ -1801,6 +1827,7 @@ function AdLabWorkspace({
   const nextUp: { label: string; href: string } = blenderLane
     ? !finalPrompt.trim()
       ? { label: "Paste or import the prompt", href: "#ad-prompt" }
+      : h3InputProblem ? { label: "Check H3 reference requirements", href: "#ad-refs" }
       : slotGaps.length > 0
         ? { label: "Attach the references the prompt names", href: "#ad-refs" }
         : soundNext ?? { label: "Ready to generate", href: "#ad-generate" }
@@ -1817,7 +1844,7 @@ function AdLabWorkspace({
       ? [
           {
             id: "native" as AudioMode,
-            title: `Native sound — start here`,
+            title: h3 ? "Native sound — keep the model’s audio" : "Native sound — start here",
             body: modelId.startsWith("seedance")
               ? "One video request, one MP4 with sound. Seedance generates effects, ambience and musical direction with no extra native-audio charge. Audition this first."
               : "Sound is generated with the picture in one file. Listen to the result before deciding whether it needs a separate score or effects.",
@@ -1835,8 +1862,8 @@ function AdLabWorkspace({
     },
     {
       id: "silent" as AudioMode,
-      title: "Silent — deliver picture only",
-      body: cap.switchable
+      title: h3 ? "External soundtrack — finish with ElevenLabs" : "Silent — deliver picture only",
+      body: h3 ? "Generate the picture first. The prompt requests no speech or music, but H3 can still return native audio. Mute or discard that track, then add your separate ElevenLabs voice, music and effects. This selection does not auto-generate music." : cap.switchable
         ? `Native audio is switched off at the API, not just asked off in the prompt. Use this for a soundtrack you will build entirely in the edit.`
         : "The prompt asks for a silent take. Use this for a soundtrack you will build entirely in the edit.",
     },
@@ -1856,7 +1883,7 @@ function AdLabWorkspace({
       <p role="status" className="mt-4 text-xs text-muted">{workspaceReady ? draftStatus : "Opening project storage…"}</p>
       {draftSaveBlocked && <button type="button" className="btn-secondary mt-2" onClick={() => { if (window.confirm("Replace the unsupported Ad draft with the current form? Export the project first if you need to preserve that draft.")) setDraftSaveBlocked(false); }}>Replace unsupported Ad draft</button>}
       {routeNote && <p role="status" className="mt-3 rounded-lg border border-accent/30 p-3 text-sm">{routeNote}</p>}
-      {project?.example === "velune" && <div className="mt-5 rounded-xl border border-border-soft p-4"><p className="text-sm font-semibold">VELUNE · camera plan + visual references</p><p className="mt-2 text-xs leading-relaxed text-muted">Eight supplied AI images now define the packaging, chocolate, cast and scenes. New example copies attach them in order beside the Blender motion guide. Existing drafts keep their chosen files. Exact report graphics and final-film review remain finishing work.</p><div className="mt-2 flex flex-wrap gap-4"><Link href="/velune#visual-references" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">See what each image directs ↗</Link><Link href="/ai-studio/projects" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">Add references to an older project ↗</Link></div>{unattachedSlots.length > 0 && <details className="mt-3" open><summary className="min-h-8 cursor-pointer text-xs font-semibold">Remaining reference checklist</summary><ul className="list-disc space-y-1 pl-4 text-xs text-muted">{unattachedSlots.map((slot) => <li key={slot}>{slot}</li>)}</ul></details>}<video controls preload="metadata" src={project.assets.find((a) => a.id === "velune-motion" && a.status === "ready")?.url} className="mt-3 max-h-72 w-full rounded-lg bg-black" /></div>}
+      {project?.example === "velune" && <div className="mt-5 rounded-xl border border-border-soft p-4"><p className="text-sm font-semibold">VELUNE · camera plan + visual references</p><p className="mt-2 text-xs leading-relaxed text-muted">Eight supplied AI images define the packaging, chocolate, cast and scenes. New copies use H3 Max Reference at 768p for the 15-second film. New example copies attach them in order beside the Blender motion guide. Existing drafts keep their chosen files. Exact report graphics and final-film review remain finishing work.</p><div className="mt-2 flex flex-wrap gap-4"><Link href="/velune#visual-references" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">See what each image directs ↗</Link><Link href="/ai-studio/projects" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">Add references to an older project ↗</Link></div>{unattachedSlots.length > 0 && <details className="mt-3" open><summary className="min-h-8 cursor-pointer text-xs font-semibold">Remaining reference checklist</summary><ul className="list-disc space-y-1 pl-4 text-xs text-muted">{unattachedSlots.map((slot) => <li key={slot}>{slot}</li>)}</ul></details>}<video controls preload="metadata" src={project.assets.find((a) => a.id === "velune-motion" && a.status === "ready")?.url} className="mt-3 max-h-72 w-full rounded-lg bg-black" /></div>}
       <div className={styles.utilities}>
         <div className={styles.sessionControls}>
           <LiveGate />
@@ -2100,7 +2127,7 @@ function AdLabWorkspace({
       {blenderLane && <p className="mt-3 text-xs text-muted">Need to write the brief first? <Link href="/ai-studio/blender" className="inline-flex min-h-6 items-center font-semibold text-accent underline underline-offset-4">Open the Blender prompt builder ↗</Link></p>}
       </div>
 
-      {referenceManifest.length > 0 && <details className="my-5 rounded-xl border border-border-soft p-4" open={bindingProblems.length > 0}><summary className="min-h-8 cursor-pointer text-sm font-semibold">Imported reference slots · {bindingProblems.length ? "review required before generation" : "all positions match"}</summary><p className="mt-2 text-xs text-muted">Each prompt token must still point to its intended file. Add missing files in References, assign them here, then apply the slot order.</p><div className="mt-3 grid gap-3 sm:grid-cols-2">{referenceManifest.map((row, i) => <label key={`${row.token}-${i}`}><span className="label">{row.token} · {row.job}</span><select className="input mt-1" value={row.assetId ?? ""} onChange={(e) => setReferenceManifest((previous) => previous.map((binding, j) => i === j ? { ...binding, assetId: e.target.value || null } : binding))}><option value="">Missing — attach and assign a file</option>{boardReferences.filter((r) => row.token.toLowerCase().startsWith(`[${r.kind}`)).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>)}</div><button type="button" className="btn-secondary mt-3" disabled={referenceManifest.some((row) => !row.assetId || !boardReferences.some((r) => r.id === row.assetId))} onClick={() => setRefs((previous) => [...previous].sort((a, b) => { const index = (id?: string) => Number(referenceManifest.find((row) => row.assetId === id)?.token.match(/\d+/)?.[0] ?? 100); return index(a.id) - index(b.id); }))}>Apply declared slot order</button>{bindingProblems.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-4 text-xs text-warning">{bindingProblems.map((problem, i) => <li key={i}>{problem}</li>)}</ul>}</details>}
+      {referenceManifest.length > 0 && <details className="my-5 rounded-xl border border-border-soft p-4" open={bindingProblems.length > 0}><summary className="min-h-8 cursor-pointer text-sm font-semibold">Imported reference slots · {bindingProblems.length ? "review required before generation" : "all positions match"}</summary><p className="mt-2 text-xs text-muted">Each prompt token must still point to its intended file. Add missing files in References, assign them here, then apply the slot order.</p><div className="mt-3 grid gap-3 sm:grid-cols-2">{referenceManifest.map((row, i) => <label key={`${row.token}-${i}`}><span className="label">{refLabel(row.token)} · {row.job}</span><select className="input mt-1" value={row.assetId ?? ""} onChange={(e) => setReferenceManifest((previous) => previous.map((binding, j) => i === j ? { ...binding, assetId: e.target.value || null } : binding))}><option value="">Missing — attach and assign a file</option>{boardReferences.filter((r) => row.token.toLowerCase().startsWith(`[${r.kind}`)).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>)}</div><button type="button" className="btn-secondary mt-3" disabled={referenceManifest.some((row) => !row.assetId || !boardReferences.some((r) => r.id === row.assetId))} onClick={() => setRefs((previous) => [...previous].sort((a, b) => { const index = (id?: string) => Number(referenceManifest.find((row) => row.assetId === id)?.token.match(/\d+/)?.[0] ?? 100); return index(a.id) - index(b.id); }))}>Apply declared slot order</button>{bindingProblems.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-4 text-xs text-warning">{bindingProblems.map((problem, i) => <li key={i}>{problem}</li>)}</ul>}</details>}
       <AdSceneBoard cards={boardCards} onChange={setSceneCards} references={boardReferences} duration={duration} onApply={(text) => { setSceneCards(boardCards); setFinalPrompt((previous) => `${previous.replace(/\n?\n?SCENE BOARD[\s\S]*?END SCENE BOARD/g, "").trim()}\n\nSCENE BOARD\n${text}\nEND SCENE BOARD`); setImported(true); if (!generateLock.current) setPhase("ready"); }} />
       <div className={styles.flow}>
         {/* ---------- the Blender lane opens on the prompt itself ---------- */}
@@ -2131,7 +2158,7 @@ function AdLabWorkspace({
               <textarea
                 className="input min-h-64 font-mono text-xs leading-relaxed"
                 placeholder={"MODE: Clay Renderer / Omni Reference\nMATERIALS: [Video1] clay blockout · [Image1] product package…"}
-                value={finalPrompt}
+                value={videoPromptFor(modelId, finalPrompt)}
                 onChange={(e) => {
                   setFinalPrompt(e.target.value);
                   setPhase(e.target.value ? "ready" : "idle");
@@ -2588,7 +2615,7 @@ function AdLabWorkspace({
               <div className="flex items-center gap-3">
                 <span className="label-sm">
                   {(productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0)} of{" "}
-                  {REF_CEILINGS.total}
+                  {referenceCaps.total}
                 </span>
                 {(productImage || refs.length > 0) && (
                   <button
@@ -2602,6 +2629,8 @@ function AdLabWorkspace({
               </div>
             }
           >
+            {h3 && <p className="mt-3 text-xs leading-relaxed text-muted">Up to 12 files combined. Video references: 2–15 seconds each, 15 seconds combined. Audio references: the same limits. Appearance images use Image 1, Image 2…; the motion guide is Video 1.</p>}
+            {h3InputProblem && <p role="status" className="mt-3 text-sm text-warning">{h3InputProblem}</p>}
             {refCheck && (
               <div
                 className={`mt-4 rounded-[6px] border p-4 ${
@@ -2674,7 +2703,7 @@ function AdLabWorkspace({
                 </p>
                 <ol className="mt-3 space-y-2">
                   <li className="flex gap-3 text-xs leading-relaxed">
-                    <span className="font-mono font-semibold text-accent">[Video1]</span>
+                    <span className="font-mono font-semibold text-accent">{refLabel("[Video1]")}</span>
                     <span className="min-w-0 text-muted">
                       <span className="font-semibold text-foreground">The clay control pass.</span>{" "}
                       Camera, blocking, timing, occlusion order and light
@@ -2684,13 +2713,13 @@ function AdLabWorkspace({
                   </li>
                   <li className="flex gap-3 text-xs leading-relaxed">
                     <span className="whitespace-nowrap font-mono font-semibold text-accent">
-                      [Image1…{Math.max(promptSlots.image, 1)}]
+                      {h3 ? `Image 1…${Math.max(promptSlots.image, 1)}` : `[Image1…${Math.max(promptSlots.image, 1)}]`}
                     </span>
                     <span className="min-w-0 text-muted">
                       <span className="font-semibold text-foreground">The look references</span>, one
                       per mapped ID colour, in the same order the prompt names
                       them. Stills and clips are numbered in separate series,
-                      so the clay pass does not consume [Image1].
+                      so the clay pass does not consume {refLabel("[Image1]")}.
                     </span>
                   </li>
                 </ol>
@@ -2838,14 +2867,14 @@ function AdLabWorkspace({
 
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <span className="chip">
-                  Stills · JPG, PNG, WebP · up to {REF_CEILINGS.image}
+                  Stills · JPG, PNG, WebP · up to {referenceCaps.image}
                 </span>
                 <span
                   className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
                 >
                   Clips · {VIDEO_REF_LIMITS.formats} · ≤
                   {health?.blob ? VIDEO_REF_LIMITS.maxMBDirect : VIDEO_REF_LIMITS.maxMB}MB ·{" "}
-                  ~{VIDEO_REF_LIMITS.idealSeconds}s
+                  {h3 ? "2–15s each · 15s combined" : `~${VIDEO_REF_LIMITS.idealSeconds}s`}
                 </span>
                 <span
                   className={`chip ${clipsUploadable ? "border-warning/40 !text-warning" : "opacity-55"}`}
@@ -2924,7 +2953,7 @@ function AdLabWorkspace({
                     className="h-10 w-10 rounded-[4px] border border-border-soft object-cover"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[11px] text-accent">[Image1]</p>
+                    <p className="font-mono text-[11px] text-accent">{refLabel("[Image1]")}</p>
                     <p className="text-xs text-muted">
                       Product identity — from your product photo
                     </p>
@@ -2977,7 +3006,7 @@ function AdLabWorkspace({
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-[11px] text-accent">
-                        {token}
+                        {refLabel(token)}
                         <span className="ml-1.5 text-muted">
                           {r.media === "video" ? "clip" : r.media === "audio" ? "track" : "still"}
                         </span>
@@ -2991,7 +3020,7 @@ function AdLabWorkspace({
                         beats leaving a control that looks load-bearing.
                       */}
                       <select
-                        aria-label={`Job for ${token}`}
+                        aria-label={`Job for ${refLabel(token)}`}
                         title={
                           blenderLane
                             ? "A label for you — your prompt's [Reference roles] block is what the model reads."
@@ -3035,7 +3064,7 @@ function AdLabWorkspace({
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-[11px] text-accent">
-                      [Audio{refs.filter((r) => r.media === "audio").length + 1}]
+                      {refLabel(`[Audio${refs.filter((r) => r.media === "audio").length + 1}]`)}
                       <span className="ml-1.5 text-muted">track</span>
                     </p>
                     <p className="text-xs text-muted">
@@ -3136,7 +3165,7 @@ function AdLabWorkspace({
           title="Format and cost"
           aside={
             <span className="chip border-accent/40 !text-accent">
-              {frame.width}×{frame.height} · {duration}s · ~${videoCost.toFixed(2)}
+              {outputSizeLabel} · {duration}s · ~${videoCost.toFixed(2)}
             </span>
           }
         >
@@ -3147,14 +3176,15 @@ function AdLabWorkspace({
               value={modelId}
               onChange={(e) => {
                 setModelId(e.target.value);
-                setSeconds(null);
+                setFinalPrompt((prompt) => videoPromptFor(e.target.value, prompt));
+                if (!imported) setSeconds(null);
                 invalidatePrompt();
               }}
             >
               {AD_VIDEO_MODELS.map((m) => (
                 <option key={m} value={m}>
                   {MODELS[m].label} —{" "}
-                  {usesTokenPricing(m)
+                  {m === H3_MODEL_ID ? "$0.08/s at 768p + reference inputs" : usesTokenPricing(m)
                     ? `~$${MODELS[m].unitCost}/s at 720p, by token`
                     : `$${MODELS[m].unitCost}/s`}
                 </option>
@@ -3165,7 +3195,7 @@ function AdLabWorkspace({
             <summary>How this model uses references</summary>
             <p className="pb-3 text-xs leading-relaxed text-muted">
               {supportsRefs
-                ? "Reference-to-video: every uploaded reference is addressed positionally in the prompt ([Image1], [Video1], [Audio1]…), which is what stops the product drifting as the camera moves."
+                ? `Reference-to-video: each file has a position in the prompt (${refLabel("[Image1]")}, ${refLabel("[Video1]")}, ${refLabel("[Audio1]")}…). References guide identity and motion; review the result for drift.`
                 : endFrameActive
                   ? "First frame and, optionally, last frame: give it both ends and it generates only the move between them, which is the tightest control available without a clay pass. No video input means no input duration on the bill, so it is markedly cheaper than the reference endpoint — the trade is that identity is held by one still rather than several."
                   : "Single grounding frame: the product photo conditions the first frame, then the model extrapolates. Cheaper, but the pack can drift as the camera moves."}
@@ -3222,8 +3252,8 @@ function AdLabWorkspace({
             </div>
             {allowedAspects.length < ASPECTS.length && (
               <p className="mt-2 text-xs text-muted">
-                {modelName} renders {allowedAspects.length} shapes. Seedance 2.5
-                adds square, portrait, 4:3 and cinematic — useful when one
+                {modelName} renders {allowedAspects.length} shapes. H3 Max and Seedance Reference
+                add square, portrait, 4:3 and cinematic — useful when one
                 concept has to ship as a vertical and a feed tile.
               </p>
             )}
@@ -3254,7 +3284,7 @@ function AdLabWorkspace({
             ) : (
               <input
                 type="range"
-                min={4}
+                min={minAdSeconds(modelId)}
                 max={secondsCap}
                 step={1}
                 value={duration}
@@ -3268,12 +3298,12 @@ function AdLabWorkspace({
                 : secondsCap >= 30
                   ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
                   : `This model caps at ${secondsCap}s.`}{" "}
-              The concept is designed for {preset.durationSeconds}s.
+              {!imported && <>The concept is designed for {preset.durationSeconds}s.</>}
             </span>
           </label>
 
           {/* Resolution + live cost */}
-          {tokenBilled ? (
+          {h3 ? <H3VideoSettings resolution={resolution} onChange={setResolution} seconds={duration} imagePixels={referenceImagePixels} videoSeconds={inputVideoSeconds} audioSeconds={inputAudioSeconds} pending={Boolean(h3InputProblem)} /> : tokenBilled ? (
             <div className="mt-5 border-t border-border-soft pt-4">
               <span className="label">Resolution — the real cost lever</span>
               <div className="mt-2 grid gap-2 md:grid-cols-3">
@@ -3396,8 +3426,8 @@ function AdLabWorkspace({
 
           {project?.example === "velune" && effectCues.some((cue) => cue.id.startsWith("velune-fx-")) && <div className="my-4 rounded-xl border border-border-soft bg-surface-2 p-4 sm:p-5">
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted">VELUNE · picture first, sound after</p>
-            <p className="mt-2 text-sm leading-relaxed">The voice lines, music brief and spot-effect cues are loaded. Audition the voice, then generate the picture with Silent selected. Once the edit is settled, enable “Compose music to these scene lengths” and generate the instrumental track. Keep “Use this track as an audio reference” off for this workflow.</p>
-            <p className="mt-2 text-xs leading-relaxed text-muted">Ready voice and effect takes carry their planned positions into Local finishing. Listen and trim silence before exporting the mixed WAV. Enabling composition switches to Layered sound; choose Silent again before any picture retry.</p>
+            <p className="mt-2 text-sm leading-relaxed">The voice lines, music brief and spot-effect cues are loaded. Audition the voice, then generate the picture with {h3 ? "External soundtrack" : "Silent"} selected. {h3 && "H3 may return native audio; mute or discard it in the final edit."} Once the edit is settled, enable “Compose music to these scene lengths” and generate the instrumental track. Keep “Use this track as an audio reference” off for this workflow.</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted">Ready voice and effect takes carry their planned positions into Local finishing. Listen and trim silence before exporting the mixed WAV. Enabling composition switches to Layered sound; choose {h3 ? "External soundtrack" : "Silent"} again before any picture retry.</p>
             <details className="mt-2"><summary className="min-h-11 cursor-pointer text-sm font-semibold text-accent">Preview the loaded music brief</summary><p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">{musicCustomPrompt}</p></details>
           </div>}
 
@@ -3551,7 +3581,7 @@ function AdLabWorkspace({
                       </span>
                       <span className="mt-1 block text-xs leading-relaxed text-muted">
                         The track is sent as{" "}
-                        <span className="font-mono text-accent">[Audio{refs.filter((r) => r.media === "audio").length + 1}]</span>.
+                        <span className="font-mono text-accent">{refLabel(`[Audio${refs.filter((r) => r.media === "audio").length + 1}]`)}</span>.
                         It can guide rhythm and mood. For Blender films, keep the camera plan and cut timing in charge; exact beat sync is not guaranteed.
                       </span>
                     </span>
@@ -3568,7 +3598,7 @@ function AdLabWorkspace({
                         What this does and doesn&apos;t do
                       </summary>
                       <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed text-muted">
-                        {TIMING_REF_NOTES.map((c) => (
+                        {(h3 ? ["H3 Max accepts 2–15 seconds per audio file and at most 15 seconds combined, alongside an image or video. All modalities share a 12-file limit.", "Audio can guide mood and rhythm; unchanged stems or exact beat alignment are not guaranteed.", ...TIMING_REF_NOTES.filter((note) => !note.startsWith("Seedance"))] : TIMING_REF_NOTES).map((c) => (
                           <li key={c}>{c}</li>
                         ))}
                       </ul>
@@ -3585,7 +3615,7 @@ function AdLabWorkspace({
                   line up on their own.{" "}
                   {cap.refAudio
                     ? "Tick the box above to hand the track back as a timing reference, or budget an alignment pass in the editor."
-                    : "Budget an alignment pass in the editor, switch to Seedance 2.5 Reference to feed the track back as a timing signal, or pick a pad-like style that hides drift."}
+                    : "Budget an alignment pass in the editor, choose a reference-video model to feed the track back as a timing signal, or pick a pad-like style that hides drift."}
                 </p>
               )}
 
@@ -3776,7 +3806,7 @@ function AdLabWorkspace({
                 <span className="mb-1 block label">Video prompt — edit before you spend</span>
                 <textarea
                   className="input min-h-40 font-mono text-xs leading-relaxed"
-                  value={finalPrompt}
+                  value={videoPromptFor(modelId, finalPrompt)}
                   onChange={(e) => setFinalPrompt(e.target.value)}
                 />
               </label>
@@ -3852,7 +3882,7 @@ function AdLabWorkspace({
           <div className={styles.renderSummary}>
             <div className={styles.renderMeta}>
               <p className="mb-2 text-sm font-semibold">{modelName}</p>
-              <p>{duration}s · {aspect} · {frame.width}×{frame.height}</p>
+              <p>{duration}s · {aspect} · {outputSizeLabel}</p>
               <div className="mt-2 flex flex-wrap items-baseline gap-2">
                 <span className={styles.renderCost}>~${cost.toFixed(2)}</span>
                 <span className="text-xs">estimated total</span>

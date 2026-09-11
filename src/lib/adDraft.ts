@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AD_VIDEO_MODELS, REFERENCE_ROLES, REF_CEILINGS } from "./adPresets";
+import { AD_VIDEO_MODELS, REFERENCE_ROLES, REF_CEILINGS, referenceCeilingsFor } from "./adPresets";
 import type { StudioAsset } from "./studioProjects";
 import { voiceSettingsSchema, effectCueSchema } from "./soundPlan";
 
@@ -25,7 +25,7 @@ export const adDraftSchema = z.object({
   references: z.array(adReferenceSchema).max(REF_CEILINGS.total), soundPlan: draftSoundPlanSchema.nullable().optional(), unattachedSlots: z.array(z.string().max(1000)).max(30).optional(),
   referenceManifest: z.array(referenceBindingSchema).max(REF_CEILINGS.total).optional(),
   presetId: z.string().optional(), params: stringMap.optional(), productImage: mediaSource.nullable().optional(), endImage: mediaSource.nullable().optional(),
-  negativePrompt: z.string().max(4_194_304).optional(), lane: z.enum(["recipe", "blender"]).optional(), imported: z.boolean().optional(), resolution: z.enum(["480p", "720p", "1080p"]).optional(),
+  negativePrompt: z.string().max(4_194_304).optional(), lane: z.enum(["recipe", "blender"]).optional(), imported: z.boolean().optional(), resolution: z.enum(["480p", "720p", "768p", "1080p"]).optional(),
   recipe: z.object({ aesthetics: z.array(z.string()), scenes: z.array(z.object({ title: z.string(), description: z.string() })), overlay: z.string(), sfx: z.array(z.string()) }).optional(),
   audioMode: z.enum(["native", "layered", "silent"]).optional(), scoreToPlan: z.boolean().optional(), voiceTakes: z.record(z.string(), voiceTakeSchema).optional(),
   musicStyleId: z.string().optional(), musicUrl: mediaSource.nullable().optional(), musicSpec: z.string().optional(), musicMock: z.boolean().optional(), musicCustomPrompt: z.string().max(10000).optional(), musicAsTimingRef: z.boolean().optional(), musicVolume: z.number().min(0).max(1).optional(), musicOn: z.boolean().optional(),
@@ -58,11 +58,12 @@ export function referenceBindingProblems(references: AdLabSeed["references"], ma
   return manifest.flatMap((row) => !row.assetId || !tokens.has(row.assetId) ? [`${row.token}: ${row.job} needs an attached file.`] : tokens.get(row.assetId) !== row.token ? [`${row.token}: its assigned file currently occupies ${tokens.get(row.assetId)}. Apply the declared slot order before generating.`] : []);
 }
 
-export function adReferenceAdditionProblem(reference: AdLabSeed["references"][number], current: AdLabSeed["references"], extra: Partial<Record<"image" | "video" | "audio", number>> = {}): string | null {
+export function adReferenceAdditionProblem(reference: AdLabSeed["references"][number], current: AdLabSeed["references"], extra: Partial<Record<"image" | "video" | "audio", number>> = {}, modelId = "seedance-2.5-ref"): string | null {
+  const ceilings = referenceCeilingsFor(modelId);
   const source = reference.dataUrl ?? reference.url;
   if (current.some((r) => r.id === reference.id || (r.dataUrl ?? r.url) === source)) return "This asset is already attached. Assign its existing slot in the imported reference review.";
   const count = current.filter((r) => r.kind === reference.kind).length + (extra[reference.kind] ?? 0);
-  if (count >= REF_CEILINGS[reference.kind]) return `This endpoint supports at most ${REF_CEILINGS[reference.kind]} ${reference.kind} references. Remove one before adding another.`;
-  if (current.length + Object.values(extra).reduce((total, value) => total + (value ?? 0), 0) >= REF_CEILINGS.total) return `This endpoint supports at most ${REF_CEILINGS.total} references in total.`;
+  if (count >= ceilings[reference.kind]) return `This endpoint supports at most ${ceilings[reference.kind]} ${reference.kind} references. Remove one before adding another.`;
+  if (current.length + Object.values(extra).reduce((total, value) => total + (value ?? 0), 0) >= ceilings.total) return `This endpoint supports at most ${ceilings.total} references in total.`;
   return null;
 }

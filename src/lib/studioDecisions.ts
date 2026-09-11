@@ -1,4 +1,5 @@
-import { audioCapability, DISCRETE_DURATIONS, maxAdSeconds, MULTI_REF_MODELS } from "./adPresets";
+import { H3_MODEL_ID } from "./h3Video";
+import { audioCapability, DISCRETE_DURATIONS, maxAdSeconds, minAdSeconds, referenceCeilingsFor, MULTI_REF_MODELS } from "./adPresets";
 import { estimateCost, MODELS, type ModelInfo } from "./models";
 import { aspectsFor, resolutionsFor, type VideoResolution } from "./videoCost";
 import { PACKSHOT_MODELS } from "./packshot";
@@ -14,15 +15,18 @@ export function scenarioForModel(model: ModelInfo, scenario: ModelScenario) {
   let basis = "";
   let sizePresetId: string | undefined;
   if (model.kind === "video") {
-    if (scenario.seconds < 4 || scenario.seconds > maxAdSeconds(model.id)) reasons.push(`This app offers 4–${maxAdSeconds(model.id)} seconds for this route.`);
+    if (scenario.seconds < minAdSeconds(model.id) || scenario.seconds > maxAdSeconds(model.id)) reasons.push(`This app offers ${minAdSeconds(model.id)}–${maxAdSeconds(model.id)} seconds for this route.`);
     if (DISCRETE_DURATIONS[model.id] && !DISCRETE_DURATIONS[model.id].includes(scenario.seconds)) reasons.push(`Choose ${DISCRETE_DURATIONS[model.id].join(" or ")} seconds.`);
     if (!aspectsFor(model.id).some((a) => a.id === scenario.aspect)) reasons.push("This aspect ratio is not offered for this route.");
-    if (model.id.startsWith("seedance") && !resolutionsFor(model.id).includes(scenario.resolution)) reasons.push("This resolution is not available on the reference route.");
+    if ((model.id.startsWith("seedance") || model.id === H3_MODEL_ID) && !resolutionsFor(model.id).includes(scenario.resolution)) reasons.push("This resolution is not available on the reference route.");
     if (scenario.inputVideoSeconds > 0 && !MULTI_REF_MODELS.includes(model.id)) reasons.push("Motion-guide input is not implemented for this route.");
+    if (model.id === H3_MODEL_ID && (scenario.inputVideoSeconds > 15 || (scenario.inputVideoSeconds > 0 && scenario.inputVideoSeconds < 2))) reasons.push("H3 Max motion references need 2–15 seconds combined; each clip also needs 2–15 seconds.");
+    if (model.id === H3_MODEL_ID && scenario.referenceImages + (scenario.inputVideoSeconds > 0 ? 1 : 0) > 12) reasons.push("H3 Max accepts 12 combined reference files.");
+    if (model.id === H3_MODEL_ID && scenario.referenceImages === 0 && scenario.inputVideoSeconds === 0) reasons.push("H3 Max Reference needs visual input.");
     if (scenario.inputVideoSeconds > 30) reasons.push("This app limits combined motion guides to 30 seconds.");
-    if (scenario.referenceImages > (MULTI_REF_MODELS.includes(model.id) ? 30 : 1)) reasons.push("This route does not take this many appearance references.");
+    if (scenario.referenceImages > (MULTI_REF_MODELS.includes(model.id) ? referenceCeilingsFor(model.id).image : 1)) reasons.push("This route does not take this many appearance references.");
     if (scenario.requireAudio && !audioCapability(model.id).native) reasons.push("Native audio is not implemented for this route.");
-    basis = model.id.startsWith("seedance") ? `${scenario.seconds}s · ${scenario.resolution} · ${scenario.aspect} · ${scenario.inputVideoSeconds}s video input` : `${scenario.seconds}s · configured per-second rate; resolution is endpoint-controlled here`;
+    basis = model.id === H3_MODEL_ID ? `${scenario.seconds}s · ${scenario.resolution} · output + reference inputs; assumes 1024×1024 per image; 1080p input rate estimated from 768p` : model.id.startsWith("seedance") ? `${scenario.seconds}s · ${scenario.resolution} · ${scenario.aspect} · ${scenario.inputVideoSeconds}s video input` : `${scenario.seconds}s · configured per-second rate; resolution is endpoint-controlled here`;
   } else if (model.kind === "image") {
     if (!PACKSHOT_MODELS.includes(model.id) && !DELIVERABLES.some((d) => d.kind === "still" && d.modelOptions.includes(model.id))) reasons.push("Listed for comparison only; this model has no generation route in the current studio.");
     if (scenario.referenceImages > (model.maxReferenceImages ?? 1)) reasons.push(`Configured reference limit: ${model.maxReferenceImages ?? 1}.`);

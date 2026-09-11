@@ -157,7 +157,7 @@ export default function VelunePage() {
         </section>
 
         <section className={`${styles.wrap} ${styles.credits}`}>
-          <div><p className={styles.eyebrow}>Direction & process</p><h2>Ajwad Rauf</h2><p>Creative direction and production review, with AI assistance for the brief and technical build. Eight supplied AI-generated images explore the appearance. Blender supplies the editable scene and camera guide; Seedance and ElevenLabs remain planned finishing tools.</p></div>
+          <div><p className={styles.eyebrow}>Direction & process</p><h2>Ajwad Rauf</h2><p>Creative direction and production review, with AI assistance for the brief and technical build. Eight supplied AI-generated images explore the appearance. Blender supplies the editable scene and camera guide; H3 Max and ElevenLabs are the planned picture and sound tools.</p></div>
           <div><p className={styles.eyebrow}>Study notes</p><p>VELUNE is an independent fictional concept, not a commissioned campaign. No client results or finished commercial are claimed. Original source footage, performer identities and soundtrack are not included on this page.</p><Link href="/#ar-work">Back to selected work <span aria-hidden>↗</span></Link></div>
         </section>
       </main>

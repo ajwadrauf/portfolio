@@ -1,3 +1,4 @@
+import { H3_MODEL_ID, h3Cost } from "./h3Video";
 import { seedanceCost, type VideoResolution } from "./videoCost";
 /**
  * Central model registry — the single place where model IDs, endpoints and
@@ -378,6 +379,12 @@ export const MODELS: Record<string, ModelInfo> = {
       "The strongest creative-control surface: motion brush, camera control, video-to-video. Built for iteration — generate, then refine.",
     bestFor: "VFX-leaning brand films and shot-heavy storytelling where you expect to iterate on the motion.",
   },
+  [H3_MODEL_ID]: {
+    id: H3_MODEL_ID, provider: "fal", endpoint: env("FAL_H3_MAX_REF_ENDPOINT", "minimax/h3-max/reference-to-video"),
+    label: "H3 Max Reference (MiniMax, via fal.ai)", kind: "video", unitCost: 0.08, unit: "second",
+    strengths: "5–15 second films with image, motion-video and audio references. Up to 12 combined files; native audio; 480p, 768p or 1080p refinement.",
+    bestFor: "Blender-guided product films with recurring subjects. Output and reference inputs are billed separately; exact edit timing still needs review.",
+  },
   "seedance-2.5": {
     id: "seedance-2.5",
     provider: "fal",
@@ -468,12 +475,15 @@ export function estimateCost(
     inputVideoSeconds?: number;
     /** Supplied reference images, for endpoints that bill them as input. */
     referenceImages?: number;
+    referenceImagePixels?: number;
+    inputAudioSeconds?: number;
     /** Chosen output size, which moves the price on some image models. */
     sizePresetId?: string;
     sizePx?: number;
   },
 ): number {
   const m = getModel(modelId);
+  if (modelId === H3_MODEL_ID) return h3Cost({ seconds: opts?.seconds ?? 8, resolution: opts?.resolution ?? "768p", imagePixels: opts?.referenceImagePixels ?? (opts?.referenceImages ?? 0) * 1024 * 1024, videoSeconds: opts?.inputVideoSeconds, audioSeconds: opts?.inputAudioSeconds }).total;
   if (m.unit === "character") return m.unitCost * (opts?.characters ?? 0);
   // Seedance bills per token, not per second, and the token count scales with
   // pixel area — a per-second rate would be wrong by a factor that changes

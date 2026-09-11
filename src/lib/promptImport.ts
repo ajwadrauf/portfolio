@@ -103,8 +103,8 @@ export function normalizeRefTokens(text: string): { text: string; changed: numbe
 /** The highest slot of each kind the prompt actually addresses. */
 export function refSlots(text: string) {
   const top = (kind: string) => {
-    const ns = [...text.matchAll(new RegExp(`\\[${kind}(\\d+)\\]`, "gi"))].map((m) =>
-      Number(m[1]),
+    const ns = [...text.matchAll(new RegExp(`(?:\\[${kind}(\\d+)\\]|\\b${kind}\\s+(\\d+)\\b)`, "gi"))].map((m) =>
+      Number(m[1] ?? m[2]),
     );
     return ns.length ? Math.max(...ns) : 0;
   };

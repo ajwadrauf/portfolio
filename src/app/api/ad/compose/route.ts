@@ -1,3 +1,4 @@
+import { H3_MODEL_ID, videoPromptFor } from "@/lib/h3Video";
 import { NextResponse } from "next/server";
 import { unlocked } from "@/lib/auth";
 import { z } from "zod";
@@ -106,10 +107,11 @@ export async function POST(req: Request) {
         ? ` Deliver this as a ${aspect} frame. The concept was staged for ${preset.aspect}, so recompose it for ${aspect} rather than cropping: restack the arrangement, keep the product and every line of text fully inside the frame with comfortable margins, and hold the same rhythm.`
         : "";
     const baseline = draft + reframe + referenceBlock(refs);
+    const formatPrompt = (prompt: string) => videoPromptFor(body.modelId ?? "", prompt);
 
     if (!hasGeminiKey() || isDryRun() || !unlocked(req)) {
       return NextResponse.json({
-        finalPrompt: baseline,
+        finalPrompt: formatPrompt(baseline),
         negativePrompt: AD_NEGATIVE_PROMPT,
         mock: true,
       });
@@ -118,7 +120,9 @@ export async function POST(req: Request) {
     const audioRule =
       audioMode === "layered"
         ? "in particular it MUST still forbid music/score/soundtrack, because the music bed is composed separately and layered in"
-        : audioMode === "silent"
+        : audioMode === "silent" && body.modelId === H3_MODEL_ID
+          ? "forbid dialogue, lip-sync, music and singing; any native ambience should be minimal because the soundtrack is replaced in post"
+          : audioMode === "silent"
           ? "in particular the take MUST stay completely silent — no effects, no ambience, no music"
           : "including its musical direction";
 
@@ -142,7 +146,7 @@ Return finalPrompt (the polished prompt) and negativePrompt (short artifact-avoi
       validate: (raw) => raw as { finalPrompt: string; negativePrompt: string },
     });
 
-    return NextResponse.json({ ...result, mock: false });
+    return NextResponse.json({ ...result, finalPrompt: formatPrompt(result.finalPrompt), mock: false });
   } catch (e) {
     console.error("ad compose failed", e);
     return NextResponse.json(

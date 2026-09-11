@@ -48,7 +48,7 @@ function loader(overrides = {}) {
   check(submissions[0].referenceImageDataUrls.length === 8 && submissions[0].referenceVideoUrls.length === 1, 'All nine references forwarded without discards');
   body.referenceImageDataUrls.forEach((url, i) => check(submissions[0].referenceImageDataUrls[i] === 'https://studio.example' + url, 'Image' + (i + 1) + ' stays in order and is provider-reachable'));
   check(submissions[0].referenceVideoUrls[0] === 'https://studio.example' + body.referenceVideoUrls[0], 'Blender video becomes provider-reachable');
-  check(submissions[0].generateAudio === false && submissions[0].durationSeconds === 15 && submissions[0].resolution === '720p', 'Silent 15s / 720p settings preserved');
+  check(submissions[0].generateAudio === undefined && submissions[0].inputFormat === 'h3-reference' && submissions[0].durationSeconds === 15 && submissions[0].resolution === '768p', 'H3 15s / 768p settings preserved without an unsupported audio switch');
 
   const rejected = async (input, message) => {
     const before = [consumes, submissions.length, uploads.length].join();
@@ -60,16 +60,16 @@ function loader(overrides = {}) {
   const invalid = await rejected({ ...body, referenceImageDataUrls: [body.referenceImageDataUrls[0], '/studio/velune/references/unlisted.jpeg'] }, '[Image2]');
   check(!invalid.includes('at most 30'), 'Unsupported file is not misreported as a count problem');
   await rejected({ ...body, referenceImageDataUrls: Array(31).fill(body.referenceImageDataUrls[0]) }, '31 attached');
-  await rejected({ ...body, imageDataUrl: body.referenceImageDataUrls[0], referenceImageDataUrls: Array(30).fill(body.referenceImageDataUrls[0]) }, 'at most 29');
+  await rejected({ ...body, imageDataUrl: body.referenceImageDataUrls[0], referenceImageDataUrls: Array(30).fill(body.referenceImageDataUrls[0]) }, 'at most 11');
   await rejected({ ...body, referenceImageDataUrls: 'not-an-array' }, 'file list');
   await rejected({ ...body, referenceImageDataUrls: [body.referenceVideoUrls[0]] }, '[Image1]');
   await rejected({ ...body, referenceVideoUrls: [body.referenceImageDataUrls[0]] }, '[Video1]');
   for (const url of ['/studio/velune/references/../private.jpeg', '/studio/velune/references/%2e%2e/private.jpeg', 'http://localhost/private.jpeg', 'https://127.0.0.1/private.jpeg']) await rejected({ ...body, referenceImageDataUrls: [url] }, '[Image1]');
 
-  const ordinary = { ...body, referenceImageDataUrls: ['data:image/jpeg;base64,YQ==', 'https://cdn.example/user.jpeg'], referenceVideoUrls: ['https://cdn.example/user.mp4'] };
+  const ordinary = { ...body, modelId: 'seedance-2.5-ref', resolution: '720p', referenceImageDataUrls: ['data:image/jpeg;base64,YQ==', 'https://cdn.example/user.jpeg'], referenceVideoUrls: ['https://cdn.example/user.mp4'] };
   check((await post(ordinary)).status === 200, 'Existing inline and hosted uploads remain accepted');
   check(submissions.at(-1).referenceImageDataUrls.join() === ordinary.referenceImageDataUrls.join(), 'Existing inline and hosted URLs remain unchanged');
-  const legacy = { ...body, referenceImageDataUrls: ['/studio/velune/packaging-concepts.jpg'] };
+  const legacy = { ...body, modelId: 'seedance-2.5-ref', resolution: '720p', referenceImageDataUrls: ['/studio/velune/packaging-concepts.jpg'] };
   check((await post(legacy)).status === 200, 'Older saved VELUNE drafts remain accepted');
 
   const localRoute = makeRoute(); // A fresh process has no public-origin URL cache.

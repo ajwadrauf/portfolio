@@ -454,7 +454,7 @@ export function StudioWizard() {
       <StatusBar health={health} sessionSpend={sessionSpend} />
       <StepTracker step={step} />
       <p role="status" className="mt-4 text-xs text-muted">{projectReady ? saveMessage : "Opening your project…"}</p>
-      {project?.example === "velune" && <div className="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-4 text-sm"><strong>VELUNE · fictional concept study.</strong> The supplied packaging reference is visual direction, not final approved pack artwork. New example copies use the three-carton image; existing briefs keep their chosen source. Review the brief and generate a hero only when ready. The final Seedance film is not yet available.</div>}
+      {project?.example === "velune" && <div className="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-4 text-sm"><strong>VELUNE · fictional concept study.</strong> The supplied packaging reference is visual direction, not final approved pack artwork. New example copies use the three-carton image; existing briefs keep their chosen source. Review the brief and generate a hero only when ready. The final AI film is not yet available.</div>}
       {!project && projectReady && <p role="alert" className="mt-4 text-sm text-warning">Open a project in the project tray to save your work before generating.</p>}
 
       {error && (

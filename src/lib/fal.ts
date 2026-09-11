@@ -1,3 +1,4 @@
+import { H3_MODEL_ID, videoPromptFor } from "./h3Video";
 import "server-only";
 import { fal } from "@fal-ai/client";
 import type { CompositionPlan } from "./soundPlan";
@@ -299,6 +300,7 @@ export async function falPollAudio(opts: { endpoint: string; requestId: string }
 /** Queue a fal video job. Returns the request id for polling. */
 export async function falStartVideo(opts: {
   endpoint: string;
+  inputFormat?: "h3-reference";
   prompt: string;
   durationSeconds: number;
   aspectRatio: string;
@@ -371,8 +373,19 @@ export async function falStartVideo(opts: {
   if (opts.endImageDataUrl) input.end_image_url = opts.endImageDataUrl;
   if (opts.negativePrompt) input.negative_prompt = opts.negativePrompt;
 
+  const submittedInput = opts.inputFormat === "h3-reference" ? {
+    prompt: videoPromptFor(H3_MODEL_ID, opts.prompt),
+    duration: opts.durationSeconds,
+    aspect_ratio: opts.aspectRatio,
+    resolution: (opts.resolution ?? "768p").toUpperCase(),
+    prompt_expansion_mode: "balanced",
+    enable_safety_checker: true,
+    reference_image_urls: refs,
+    reference_video_urls: videoRefs,
+    reference_audio_urls: audioRefs,
+  } : input;
   try {
-    const { request_id } = await f.queue.submit(opts.endpoint, { input });
+    const { request_id } = await f.queue.submit(opts.endpoint, { input: submittedInput });
     return { requestId: request_id };
   } catch (e) {
     // Without this the caller reports fal's bare status text — "Unprocessable

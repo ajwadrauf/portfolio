@@ -1,9 +1,10 @@
+import { H3_MODEL_ID, h3ReferenceProblem, videoPromptFor } from "@/lib/h3Video";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { isStarterClipPath } from "@/lib/referenceClips";
 import { falUpload } from "@/lib/fal";
-import { resolutionsFor, type VideoResolution } from "@/lib/videoCost";
+import { resolutionsFor, aspectsFor, type VideoResolution } from "@/lib/videoCost";
 import { consume, liveJson, unlocked } from "@/lib/auth";
 import {
   AD_VIDEO_MODELS,
@@ -12,7 +13,7 @@ import {
   snapAdSeconds,
   AUDIO_REF_MODELS,
   MULTI_REF_MODELS,
-  REF_CEILINGS,
+  referenceCeilingsFor,
   audioCapability,
   maxAdSeconds,
   supportsEndFrame,
@@ -111,6 +112,8 @@ export async function POST(req: Request) {
       /** Audio reference URLs, already uploaded — timing signals, not stems. */
       referenceAudioUrls?: string[];
       referenceAudioDurations?: number[];
+      referenceVideoDurations?: number[];
+      referenceImageSizes?: { width: number; height: number }[];
       /** False renders the take silent at the API level, where the model allows it. */
       generateAudio?: boolean;
       /** Pixel tier. On token-billed models this drives most of the cost. */
@@ -131,7 +134,8 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    for (const [media, references, limit] of [["image", body.referenceImageDataUrls, REF_CEILINGS.image - (body.imageDataUrl ? 1 : 0)], ["video", body.referenceVideoUrls, REF_CEILINGS.video], ["audio", body.referenceAudioUrls, REF_CEILINGS.audio]] as const) {
+    const ceilings = referenceCeilingsFor(body.modelId);
+    for (const [media, references, limit] of [["image", body.referenceImageDataUrls, ceilings.image - (body.imageDataUrl ? 1 : 0)], ["video", body.referenceVideoUrls, ceilings.video], ["audio", body.referenceAudioUrls, ceilings.audio]] as const) {
       if (references === undefined) continue;
       if (!Array.isArray(references)) return NextResponse.json({ error: `Invalid ${media} references: a file list is required. No references were discarded or submitted.` }, { status: 400 });
       if (references.length > limit) return NextResponse.json({ error: `Too many ${media} references: ${references.length} attached; attach at most ${limit}. No references were discarded or submitted.` }, { status: 400 });
@@ -146,7 +150,7 @@ export async function POST(req: Request) {
     if (body.referenceAudioDurations !== undefined && (!Array.isArray(body.referenceAudioDurations) || !body.referenceAudioDurations.every((seconds) => typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0))) return NextResponse.json({ error: "Audio durations must be positive finite numbers." }, { status: 400 });
 
     const model = getModel(body.modelId);
-    if (AUDIO_REF_MODELS.includes(body.modelId) && body.referenceAudioUrls?.length) {
+    if (body.modelId !== H3_MODEL_ID && AUDIO_REF_MODELS.includes(body.modelId) && body.referenceAudioUrls?.length) {
       const audioCount = body.referenceAudioUrls.length;
       const visualCount = (body.imageDataUrl ? 1 : 0) + (body.referenceImageDataUrls?.length ?? 0) + (body.referenceVideoUrls?.length ?? 0);
       if (audioCount > 10 || visualCount === 0) return NextResponse.json({ error: "Seedance audio needs at least one image or video and at most 10 audio files." }, { status: 400 });
@@ -154,6 +158,32 @@ export async function POST(req: Request) {
         const problem = body.referenceAudioDurations.length !== audioCount ? "Audio durations must match the audio references." : audioReferenceProblem(body.referenceAudioDurations, visualCount);
         if (problem) return NextResponse.json({ error: problem }, { status: 400 });
       }
+    }
+    let h3VideoSeconds = 0, h3AudioSeconds = 0, referenceImagePixels = 0;
+    if (body.modelId === H3_MODEL_ID) {
+      const reject = (error: string) => NextResponse.json({ error }, { status: 400 });
+      if (!Number.isInteger(body.durationSeconds) || body.durationSeconds < 5 || body.durationSeconds > 15) return reject("H3 Max renders 5–15 whole seconds. Change the duration before generating; the edit has not been truncated.");
+      if (!aspectsFor(body.modelId).some((a) => a.id === body.aspect)) return reject("Unsupported H3 Max aspect ratio.");
+      if (body.resolution !== undefined && !resolutionsFor(body.modelId).includes(body.resolution)) return reject("H3 Max accepts 480p, 768p or 1080p. Choose an H3 resolution.");
+      if (body.endImageDataUrl) return reject("H3 Max Reference does not take an end-frame field. Attach it as an appearance reference instead.");
+      const images = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter((url): url is string => Boolean(url));
+      const videos = body.referenceVideoUrls ?? [], audios = body.referenceAudioUrls ?? [];
+      if (body.referenceVideoDurations !== undefined && !Array.isArray(body.referenceVideoDurations)) return reject("Video durations must be a list matching the references.");
+      if (body.referenceVideoDurations && body.referenceVideoDurations.length !== videos.length) return reject("Video durations must match the video references.");
+      if ((body.referenceAudioDurations?.length ?? 0) !== audios.length) return reject("Audio durations must match the audio references.");
+      const videoDurations = videos.map((url, i) => url === VELUNE_MEDIA.animatic ? 15 : body.referenceVideoDurations?.[i]);
+      const audioDurations = audios.map((_, i) => body.referenceAudioDurations?.[i]);
+      const problem = h3ReferenceProblem(images.length, videoDurations, audioDurations);
+      if (problem) return reject(problem);
+      if (body.referenceImageSizes !== undefined && (!Array.isArray(body.referenceImageSizes) || body.referenceImageSizes.length !== images.length)) return reject("Image sizes must match all image references, including the product photo.");
+      for (let i = 0; i < images.length; i++) {
+        const known = VELUNE_REFERENCES.find((ref) => ref.url === images[i]);
+        const size = known ?? body.referenceImageSizes?.[i];
+        if (!size || !Number.isInteger(size.width) || !Number.isInteger(size.height) || size.width < 1 || size.height < 1 || size.width > 32768 || size.height > 32768) return reject(`Image ${i + 1} dimensions are not verified. Reattach a readable image before generating so reference cost can be estimated.`);
+        referenceImagePixels += size.width * size.height;
+      }
+      h3VideoSeconds = videoDurations.reduce<number>((sum, n) => sum + n!, 0);
+      h3AudioSeconds = audioDurations.reduce<number>((sum, n) => sum + n!, 0);
     }
     // Clamped to the model's ceiling, then snapped to a length it will
     // actually accept — Kling publishes duration as an enum, so an in-range
@@ -172,7 +202,7 @@ export async function POST(req: Request) {
     const allowed = resolutionsFor(body.modelId);
     const resolution: VideoResolution = allowed.includes(body.resolution!)
       ? body.resolution!
-      : allowed[allowed.length - 1];
+      : body.modelId === H3_MODEL_ID ? "768p" : allowed[allowed.length - 1];
     /*
      * Billed input duration. The client measures each clip from its own
      * metadata and sends the total; this was previously a flat five seconds
@@ -186,7 +216,7 @@ export async function POST(req: Request) {
      */
     const clipCount = body.referenceVideoUrls?.length ?? 0;
     const claimed = Number(body.inputVideoSeconds);
-    const inputVideoSeconds =
+    const inputVideoSeconds = body.modelId === H3_MODEL_ID ? h3VideoSeconds :
       Number.isFinite(claimed) && claimed >= 0
         ? Math.min(claimed, clipCount * MAX_CLIP_SECONDS)
         : clipCount * 5;
@@ -194,6 +224,7 @@ export async function POST(req: Request) {
       seconds,
       resolution,
       aspect: body.aspect,
+      referenceImagePixels, inputAudioSeconds: h3AudioSeconds,
       hasVideoInputs: inputVideoSeconds > 0,
       inputVideoSeconds,
     });
@@ -265,9 +296,10 @@ export async function POST(req: Request) {
     const cap = audioCapability(body.modelId);
     const { requestId } = await falStartVideo({
       endpoint: model.endpoint,
+      inputFormat: model.id === H3_MODEL_ID ? "h3-reference" : undefined,
       prompt: supportsNegativePromptField(model.id)
         ? body.prompt
-        : withExclusions(body.prompt, body.negativePrompt),
+        : videoPromptFor(model.id, withExclusions(body.prompt, body.negativePrompt)),
       durationSeconds: seconds,
       aspectRatio: body.aspect,
       referenceImageDataUrl: multiRef ? undefined : body.imageDataUrl,
@@ -278,7 +310,7 @@ export async function POST(req: Request) {
       referenceVideoUrls: videoRefs,
       referenceAudioUrls: audioRefs,
       generateAudio: cap.switchable ? (body.generateAudio ?? true) : undefined,
-      resolution: model.id.startsWith("seedance") ? resolution : undefined,
+      resolution: model.id.startsWith("seedance") || model.id === H3_MODEL_ID ? resolution : undefined,
       /*
        * Only where the endpoint publishes the field. Everywhere else the same
        * constraints ride the prompt (see the prompt argument above), because a

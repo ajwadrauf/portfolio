@@ -1,3 +1,4 @@
+import { H3_MODEL_ID, H3_REFERENCE_LIMIT } from "./h3Video";
 /**
  * Mini product ad presets — structured, deconstructed video prompt recipes.
  *
@@ -637,6 +638,7 @@ export const getAdPreset = (id: string): AdPreset => {
 };
 
 export const AD_VIDEO_MODELS = [
+  H3_MODEL_ID,
   "veo-3.1-fast",
   "veo-3.1",
   "seedance-2.5-ref",
@@ -647,7 +649,7 @@ export const AD_VIDEO_MODELS = [
 ];
 
 /** Models whose endpoint accepts multiple positional references ([Image1]...). */
-export const MULTI_REF_MODELS = ["seedance-2.5-ref"];
+export const MULTI_REF_MODELS = ["seedance-2.5-ref", H3_MODEL_ID];
 
 /**
  * Models that accept a frame to finish on as well as one to start from.
@@ -669,7 +671,7 @@ export const supportsEndFrame = (modelId: string) =>
  * latent space, which is what makes a supplied track usable as a timing
  * signal rather than decoration: the cuts key off its beats.
  */
-export const AUDIO_REF_MODELS = ["seedance-2.5-ref"];
+export const AUDIO_REF_MODELS = ["seedance-2.5-ref", H3_MODEL_ID];
 
 /**
  * Per-media reference ceilings on the reference-to-video endpoint. Images,
@@ -707,6 +709,7 @@ const SILENT_MODEL: AudioCapability = {
 };
 
 const AUDIO_CAPABILITIES: Record<string, AudioCapability> = {
+  [H3_MODEL_ID]: { native: true, switchable: false, refAudio: true, note: "Native audio is generated with the picture. H3 Max has no API mute switch: asking for quiet audio is prompt guidance only. For a separate ElevenLabs soundtrack, mute or discard the native track in the final edit." },
   "veo-3.1": {
     native: true,
     switchable: false,
@@ -941,7 +944,14 @@ export function referenceBlock(refs: ReferenceSpec[]): string {
 }
 
 /** Per-model duration ceiling (seconds). Seedance 2.5 does native 30s takes. */
+export function minAdSeconds(modelId: string): number { return modelId === H3_MODEL_ID ? 5 : 4; }
+
+export function referenceCeilingsFor(modelId: string) {
+  return modelId === H3_MODEL_ID ? { image: H3_REFERENCE_LIMIT, video: H3_REFERENCE_LIMIT, audio: H3_REFERENCE_LIMIT, total: H3_REFERENCE_LIMIT } : REF_CEILINGS;
+}
+
 export function maxAdSeconds(modelId: string): number {
+  if (modelId === H3_MODEL_ID) return 15;
   return modelId.startsWith("seedance-2.5") ? 30 : 10;
 }
 

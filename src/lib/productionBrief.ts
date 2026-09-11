@@ -58,7 +58,7 @@ export function veluneBlenderBrief(): BlenderBrief {
       { color: "cream #E8D6B9", proxy: "single report surface", becomes: "The Centre Report artifact, with its exact artwork composited after generation; do not invent an additional reference image", ref: "" },
     ],
     beats: VELUNE_SHOTS.map((shot) => ({ from: String(shot.start / 24), to: String(shot.end / 24), action: veluneShotAction(shot) })),
-    creative: "An independent fictional VELUNE chocolate concept. Recreate the existing 15-second camera study and its twelve shots. The eight user-supplied AI-generated images guide appearance, not new camera paths or edits. The final Seedance film and approved real-product photography are not yet produced. Keep the control pass as simple ID-coloured geometry; map the generated references to its subjects for the later video generation.",
+    creative: "An independent fictional VELUNE chocolate concept. Recreate the existing 15-second camera study and its twelve shots. The eight user-supplied AI-generated images guide appearance, not new camera paths or edits. The final AI film and approved real-product photography are not yet produced. Keep the control pass as simple ID-coloured geometry; map the generated references to its subjects for the later video generation.",
     composited: "Exact packaging type and The Centre Report artwork; preserve the three-second report interval (frames 242–313).",
     medium: "", physics: "resolve",
   };
