@@ -5,10 +5,14 @@ import {
   faceDimensions, normalizedBoxDimensions, pillowBagPoint,
   type BoxDimensions, type BoxFace, type BoxPanel, type BoxSettings, type PackageShape,
 } from "@/lib/packaging";
+import {
+  createPreviewGuidePlan, type GuidePoint, type PreviewGuideInfo, type PreviewGuideOptions,
+} from "@/lib/previewGuides";
 
 export type BoxRenderer = {
   update(settings: BoxSettings): Promise<void>;
   setAngle(angle: PackAngle): void;
+  setGuides(options: PreviewGuideOptions): void;
   orbit(horizontal: number, vertical: number): void;
   renderAngle(angle: PackAngle, size: number): Promise<string>;
   dispose(): void;
@@ -56,7 +60,7 @@ export function createPackageGeometry(dimensions: BoxDimensions, shape: PackageS
 }
 
 /** Loaded only by BoxPreview's browser effect. No browser work happens at module scope. */
-export function createBoxRenderer(container: HTMLElement, onError: (message: string) => void): BoxRenderer {
+export function createBoxRenderer(container: HTMLElement, onError: (message: string) => void, onGuideInfo?: (info: PreviewGuideInfo) => void): BoxRenderer {
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
@@ -72,6 +76,13 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
   renderer.domElement.style.height = "100%";
   renderer.domElement.setAttribute("aria-hidden", "true");
   container.appendChild(renderer.domElement);
+  // A separate canvas keeps rulers and grid completely outside the WebGL export path.
+  const guideCanvas = document.createElement("canvas");
+  guideCanvas.setAttribute("aria-hidden", "true");
+  guideCanvas.setAttribute("data-preview-guides", "true");
+  Object.assign(guideCanvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", pointerEvents: "none" });
+  container.appendChild(guideCanvas);
+  const guideContext = guideCanvas.getContext("2d");
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xffffff);
@@ -96,6 +107,9 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
   let pitch = Math.atan2(0.32, Math.hypot(0.52, 1));
   let viewWidth = 1;
   let viewHeight = 1;
+  let guides: PreviewGuideOptions = { measurements: false, grid: false, unit: "mm" };
+  let exporting = false;
+  let guideInfoKey = "";
   const pendingImages = new Set<() => void>();
 
   function assertAvailable() {
@@ -117,6 +131,107 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
     // Keep the studio in the same relation to each export camera. The artwork remains fixed.
     studio.quaternion.copy(camera.quaternion);
     renderer.render(scene, camera);
+    if (!exporting) drawGuides();
+  }
+
+  function reportGuideInfo(info: PreviewGuideInfo) {
+    const key = `${info.gridLabel}\n${info.scaleLabel}`;
+    if (key !== guideInfoKey) { guideInfoKey = key; onGuideInfo?.(info); }
+  }
+
+  function drawGuides() {
+    if (!guideContext || disposed || exporting) return;
+    const context = guideContext;
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    const pixelWidth = Math.max(1, Math.round(viewWidth * ratio)), pixelHeight = Math.max(1, Math.round(viewHeight * ratio));
+    if (guideCanvas.width !== pixelWidth || guideCanvas.height !== pixelHeight) { guideCanvas.width = pixelWidth; guideCanvas.height = pixelHeight; }
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, viewWidth, viewHeight);
+    if ((!guides.measurements && !guides.grid) || !mesh || !currentSettings || contextLost) { reportGuideInfo({ gridLabel: "", scaleLabel: "" }); return; }
+    camera.updateMatrixWorld();
+    if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+    const bounds = mesh.geometry.boundingBox!;
+    context.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+    const plan = createPreviewGuidePlan({
+      dimensions: currentSettings.dimensions, unit: guides.unit, width: viewWidth, height: viewHeight,
+      worldWidth: camera.right - camera.left, worldHeight: camera.top - camera.bottom,
+      cameraDirection: camera.position.toArray() as [number, number, number],
+      bounds: { min: bounds.min.toArray() as [number, number, number], max: bounds.max.toArray() as [number, number, number] },
+      measureText: (label) => context.measureText(label).width,
+      project: (point) => {
+        const projected = new THREE.Vector3(...point).project(camera);
+        return { x: (projected.x + 1) * viewWidth / 2, y: (1 - projected.y) * viewHeight / 2 };
+      },
+    });
+    if (!plan) { reportGuideInfo({ gridLabel: "", scaleLabel: "" }); return; }
+    reportGuideInfo(plan);
+    const line = (a: GuidePoint, b: GuidePoint) => { context.moveTo(a.x, a.y); context.lineTo(b.x, b.y); };
+    if (guides.grid) {
+      context.save();
+      // Clip to the area outside the package's projected bounding hull. The grid cannot tint artwork.
+      context.beginPath();
+      context.rect(0, 0, viewWidth, viewHeight);
+      context.moveTo(plan.hull[0].x, plan.hull[0].y);
+      plan.hull.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+      context.closePath();
+      context.clip("evenodd");
+      context.lineWidth = 1;
+      context.strokeStyle = "rgba(116, 98, 111, .13)";
+      context.beginPath();
+      const xStart = plan.origin.x - Math.ceil(plan.origin.x / plan.grid.pixelsX) * plan.grid.pixelsX;
+      const yStart = plan.origin.y - Math.ceil(plan.origin.y / plan.grid.pixelsY) * plan.grid.pixelsY;
+      for (let x = xStart; x <= viewWidth; x += plan.grid.pixelsX) line({ x, y: 0 }, { x, y: viewHeight });
+      for (let y = yStart; y <= viewHeight; y += plan.grid.pixelsY) line({ x: 0, y }, { x: viewWidth, y });
+      context.stroke();
+      context.strokeStyle = "rgba(116, 98, 111, .22)";
+      context.setLineDash([3, 4]);
+      context.beginPath();
+      line({ x: plan.origin.x, y: 0 }, { x: plan.origin.x, y: viewHeight });
+      line({ x: 0, y: plan.origin.y }, { x: viewWidth, y: plan.origin.y });
+      context.stroke();
+      context.restore();
+    }
+    if (guides.measurements) for (const guide of plan.dimensions) {
+      context.save();
+      context.lineWidth = 1;
+      context.strokeStyle = "rgba(119, 78, 101, .65)";
+      context.setLineDash([2, 3]);
+      context.beginPath();
+      guide.source.forEach((point, index) => line({ x: point.x + guide.normal.x * 3, y: point.y + guide.normal.y * 3 }, {
+        x: guide.line[index].x + guide.normal.x * 4, y: guide.line[index].y + guide.normal.y * 4,
+      }));
+      context.stroke();
+      context.setLineDash([]);
+      context.strokeStyle = "#825069";
+      context.beginPath();
+      line(guide.line[0], guide.line[1]);
+      guide.line.forEach((point) => line({ x: point.x - guide.normal.x * 3.5, y: point.y - guide.normal.y * 3.5 }, { x: point.x + guide.normal.x * 3.5, y: point.y + guide.normal.y * 3.5 }));
+      context.stroke();
+      context.translate(guide.labelCenter.x, guide.labelCenter.y);
+      context.rotate(guide.labelAngle);
+      const textWidth = context.measureText(guide.label).width;
+      context.fillStyle = "rgba(255, 255, 255, .95)";
+      context.fillRect(-textWidth / 2 - 4, -9, textWidth + 8, 18);
+      context.fillStyle = "#704059";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(guide.label, 0, 0);
+      context.restore();
+    }
+    // The scale is calibrated to camera-plane millimetres, not a claim of life-size screen display.
+    const scale = plan.scale;
+    context.fillStyle = "rgba(255, 255, 255, .94)";
+    context.fillRect(scale.rect.x, scale.rect.y, scale.rect.width, scale.rect.height);
+    context.fillStyle = "#75616e";
+    context.textAlign = "left";
+    context.textBaseline = "top";
+    context.fillText(scale.label, scale.x, scale.rect.y + 3);
+    context.strokeStyle = "#825069";
+    context.lineWidth = 1.3;
+    context.beginPath();
+    line({ x: scale.x, y: scale.y }, { x: scale.x + scale.pixels, y: scale.y });
+    for (const x of [scale.x, scale.x + scale.pixels / 2, scale.x + scale.pixels]) line({ x, y: scale.y - 3 }, { x, y: scale.y + 3 });
+    context.stroke();
   }
 
   function setAngle(angle: PackAngle) {
@@ -223,6 +338,7 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
   const lost = (event: Event) => {
     event.preventDefault();
     contextLost = true;
+    drawGuides();
     onError("The browser lost its graphics context. Retry the 3D preview to continue.");
   };
   renderer.domElement.addEventListener("webglcontextlost", lost);
@@ -234,6 +350,11 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
   return {
     update,
     setAngle,
+    setGuides(options) {
+      if (disposed) return;
+      guides = { measurements: Boolean(options.measurements), grid: Boolean(options.grid), unit: options.unit === "in" ? "in" : "mm" };
+      drawGuides();
+    },
     orbit(horizontal, vertical) {
       if (disposed || contextLost) return;
       yaw += horizontal;
@@ -258,6 +379,7 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
       const oldPitch = pitch;
       const pixelRatio = renderer.getPixelRatio();
       try {
+        exporting = true;
         renderer.setPixelRatio(1);
         renderer.setSize(size, size, false);
         frame(size, size);
@@ -272,6 +394,7 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
         yaw = oldYaw;
         pitch = oldPitch;
         renderer.setPixelRatio(pixelRatio);
+        exporting = false;
         resize();
       }
     },
@@ -289,6 +412,9 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
       renderer.dispose();
       renderer.forceContextLoss();
       renderer.domElement.remove();
+      guideCanvas.remove();
+      guideCanvas.width = 1;
+      guideCanvas.height = 1;
     },
   };
 }

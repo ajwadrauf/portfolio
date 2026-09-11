@@ -12,16 +12,28 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync(source, "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, { module: mod, exports: mod.exports });
 const p = mod.exports;
+let previewGuides;
+function rendererDependency(name) {
+  if (name === "three") return THREE;
+  if (name === "@/lib/packaging" || name === "./packaging") return p;
+  if (name === "@/lib/previewGuides") {
+    if (!previewGuides) {
+      const guideModule = { exports: {} };
+      vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.resolve(__dirname, "../src/lib/previewGuides.ts"), "utf8"), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+      }).outputText, { module: guideModule, exports: guideModule.exports, require: rendererDependency });
+      previewGuides = guideModule.exports;
+    }
+    return previewGuides;
+  }
+  throw new Error(`Unexpected renderer dependency: ${name}`);
+}
 const rendererModule = { exports: {} };
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.resolve(__dirname, "../src/components/packshots/box-renderer.ts"), "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, {
   module: rendererModule, exports: rendererModule.exports,
-  require: (name) => {
-    if (name === "three") return THREE;
-    if (name === "@/lib/packaging") return p;
-    throw new Error(`Unexpected renderer dependency: ${name}`);
-  },
+  require: rendererDependency,
 });
 const { createPackageGeometry } = rendererModule.exports;
 const near = (a, b, why) => assert(Math.abs(a - b) < 1e-6, `${why}: ${a} vs ${b}`);

@@ -579,7 +579,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
           </fieldset>
           <div className={styles.previewPanel}>
             <div className={styles.sectionLabel}><h3>Live package preview</h3><span className={styles.eyebrow}>{shape === "pillow-bag" ? "Illustrative bag" : "Measured geometry"}</span></div>
-            <BoxPreview ref={previewRef} dimensions={dimensions} panels={panels} finish={finish} baseColor={baseColor} shape={shape} />
+            <BoxPreview ref={previewRef} dimensions={dimensions} panels={panels} finish={finish} baseColor={baseColor} shape={shape} displayUnit={unit} />
             <p className={styles.previewNote}>{assigned.length === 6 ? "All six faces have assigned artwork. Inspect every face for crop, orientation, and fit." : `${6 - assigned.length} ${6 - assigned.length === 1 ? "face is" : "faces are"} unassigned and will stay plain: ${BOX_FACES.filter((face) => !panels[face]).map((face) => BOX_FACE_LABELS[face].toLowerCase()).join(", ")}.`}</p>
             <p className={styles.hint}>{shape === "pillow-bag" ? "An illustrative pillow bag with a curved body and sealed ends. It does not predict the exact filled shape, wrinkles, or seam construction of a real bag." : "A simple rectangular carton. This preview does not fold arbitrary dielines or reproduce metallic inks."} Check artwork and label accuracy before publication.</p>
           </div>

@@ -3,12 +3,13 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import type { PackAngle } from "@/lib/packshot";
-import type { BoxSettings } from "@/lib/packaging";
+import { validBoxDimensions, type BoxSettings } from "@/lib/packaging";
+import { formatGuideMeasurement, type PreviewGuideInfo } from "@/lib/previewGuides";
 import type { BoxRenderer } from "./box-renderer";
 import styles from "./BoxPreview.module.css";
 
 export type BoxPreviewHandle = { renderAngle(angle: PackAngle, size: number): Promise<string> };
-export type BoxPreviewProps = BoxSettings;
+export type BoxPreviewProps = BoxSettings & { displayUnit?: "mm" | "in" };
 
 const views: { angle: PackAngle; label: string }[] = [
   { angle: "hero34", label: "3/4" }, { angle: "front", label: "Front" },
@@ -16,7 +17,7 @@ const views: { angle: PackAngle; label: string }[] = [
   { angle: "right", label: "Right" }, { angle: "top", label: "Top" }, { angle: "bottom", label: "Bottom" },
 ];
 
-export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function BoxPreview(settings, ref) {
+export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function BoxPreview({ displayUnit = "mm", ...settings }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<BoxRenderer | null>(null);
   const bootRef = useRef<Promise<BoxRenderer | null> | null>(null);
@@ -27,6 +28,13 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [view, setView] = useState<PackAngle | "custom">("hero34");
+  const [measurements, setMeasurements] = useState(false);
+  const [grid, setGrid] = useState(false);
+  const [guideInfo, setGuideInfo] = useState<PreviewGuideInfo | null>(null);
+  const dimensionsValid = validBoxDimensions(settings.dimensions);
+  const guidesRef = useRef({ measurements: false, grid: false, unit: displayUnit });
+  guidesRef.current = { measurements: measurements && dimensionsValid, grid: grid && dimensionsValid, unit: displayUnit };
+  const aidsActive = dimensionsValid && (measurements || grid);
 
   useImperativeHandle(ref, () => ({
     async renderAngle(angle, size) {
@@ -48,9 +56,12 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
       if (cancelled) return null;
       const engine = createBoxRenderer(container, (message) => {
         if (!cancelled) { setError(message); setStatus("error"); }
+      }, (info) => {
+        if (!cancelled) setGuideInfo((previous) => previous?.gridLabel === info.gridLabel && previous?.scaleLabel === info.scaleLabel ? previous : info);
       });
       localEngine = engine;
       engineRef.current = engine;
+      engine.setGuides(guidesRef.current);
       const updateRevision = ++revision.current;
       await engine.update(settingsRef.current);
       if (!cancelled && updateRevision === revision.current) setStatus("ready");
@@ -86,6 +97,10 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
     });
   }, [settings.dimensions, settings.panels, settings.finish, settings.baseColor, settings.shape]);
 
+  useEffect(() => {
+    engineRef.current?.setGuides(guidesRef.current);
+  }, [measurements, grid, displayUnit, dimensionsValid]);
+
   function orbit(horizontal: number, vertical: number) {
     if (status !== "ready") return;
     engineRef.current?.orbit(horizontal, vertical);
@@ -112,6 +127,19 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
 
   return (
     <div className={styles.preview}>
+      <div className={styles.inspectionBar}>
+        <span className={styles.inspectionLabel}>Inspect</span>
+        <div className={styles.aidToggles} role="group" aria-label="Preview aids">
+          <button type="button" aria-pressed={measurements} disabled={status !== "ready" || !dimensionsValid} onClick={() => setMeasurements((value) => !value)}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14v8H3zM6 6v4m4-4v3m4-3v4" /></svg>
+            Measurements
+          </button>
+          <button type="button" aria-pressed={grid} disabled={status !== "ready" || !dimensionsValid} onClick={() => setGrid((value) => !value)}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 3h14v14H3zM3 8h14M3 12h14M8 3v14m4-14v14" /></svg>
+            Grid
+          </button>
+        </div>
+      </div>
       <div className={styles.viewport}>
         <div
           ref={containerRef}
@@ -133,8 +161,17 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
         {status !== "ready" && <div className={styles.overlay} role={status === "error" ? "alert" : "status"}>
           {status === "loading" ? "Preparing artwork preview…" : <><p>{error}</p><button type="button" onClick={() => setRetry((value) => value + 1)}>Retry 3D preview</button></>}
         </div>}
-        <span className={styles.badge}>{settings.shape === "pillow-bag" ? "Pillow bag · illustrative form" : "Measured carton · artwork mapped directly"}</span>
+        {!aidsActive && <span className={styles.badge}>{settings.shape === "pillow-bag" ? "Pillow bag · illustrative form" : "Measured carton · artwork mapped directly"}</span>}
       </div>
+      {aidsActive && <div className={styles.guideReadout}>
+        {measurements && <dl className={styles.dimensionReadout} aria-label="Entered external package dimensions">
+          <div><dt>W</dt><dd>{formatGuideMeasurement(settings.dimensions.width, displayUnit)}</dd></div>
+          <div><dt>H</dt><dd>{formatGuideMeasurement(settings.dimensions.height, displayUnit)}</dd></div>
+          <div><dt>D</dt><dd>{formatGuideMeasurement(settings.dimensions.depth, displayUnit)}</dd></div>
+        </dl>}
+        {grid && guideInfo && <p>View-plane grid <span aria-hidden="true">·</span> {guideInfo.gridLabel} <span aria-hidden="true">·</span> {guideInfo.scaleLabel}</p>}
+        <p className={styles.guideNote}>{settings.shape === "pillow-bag" ? "External bounds of the illustrative bag. " : "Entered dimensions. "}Preview aids stay out of exports. View scale is not screen life-size.</p>
+      </div>}
       <div className={styles.views} aria-label="Preview angle">
         {views.map(({ angle, label }) => <button key={angle} type="button" aria-pressed={view === angle} disabled={status !== "ready"} onClick={() => selectView(angle)}>{label}</button>)}
       </div>
