@@ -23,6 +23,7 @@ import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib
 import { mockImageDataUrl } from "@/lib/mock";
 import { audioReferenceProblem } from "@/lib/adAudio";
 import { VELUNE_MEDIA } from "@/components/velune/veluneStudy";
+import { VELUNE_REFERENCES } from "@/lib/veluneReferences";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,12 @@ const PRIVATE_HOST =
 
 /** One upload per starter clip per process, not one per generation. */
 const starterClipUrls = new Map<string, string>();
-const VELUNE_SOURCES = new Set<string>(Object.values(VELUNE_MEDIA));
+// Keep the explicit allowlist aligned with the files the example actually loads.
+// No arbitrary site-relative paths may reach the local file upload branch.
+const VELUNE_SOURCES = new Set<string>([
+  ...Object.values(VELUNE_MEDIA),
+  ...VELUNE_REFERENCES.map((reference) => reference.url),
+]);
 const MAX_BODY_BYTES = 4_194_304;
 
 function validReference(value: unknown, media: "image" | "video" | "audio"): value is string {
@@ -130,7 +136,15 @@ export async function POST(req: Request) {
       );
     }
     for (const [media, references, limit] of [["image", body.referenceImageDataUrls, REF_CEILINGS.image - (body.imageDataUrl ? 1 : 0)], ["video", body.referenceVideoUrls, REF_CEILINGS.video], ["audio", body.referenceAudioUrls, REF_CEILINGS.audio]] as const) {
-      if (references !== undefined && (!Array.isArray(references) || references.length > limit || !references.every((reference) => validReference(reference, media)))) return NextResponse.json({ error: `Invalid ${media} references: attach at most ${limit} supported files. No references were discarded or submitted.` }, { status: 400 });
+      if (references === undefined) continue;
+      if (!Array.isArray(references)) return NextResponse.json({ error: `Invalid ${media} references: a file list is required. No references were discarded or submitted.` }, { status: 400 });
+      if (references.length > limit) return NextResponse.json({ error: `Too many ${media} references: ${references.length} attached; attach at most ${limit}. No references were discarded or submitted.` }, { status: 400 });
+      const invalidIndex = references.findIndex((reference) => !validReference(reference, media));
+      if (invalidIndex !== -1) {
+        const position = invalidIndex + 1 + (media === "image" && body.imageDataUrl ? 1 : 0);
+        const token = `[${media[0].toUpperCase()}${media.slice(1)}${position}]`;
+        return NextResponse.json({ error: `Unsupported ${media} reference ${token}. Reattach that file or use a public HTTPS media URL. No references were discarded or submitted.` }, { status: 400 });
+      }
     }
     if ((body.imageDataUrl !== undefined && !validReference(body.imageDataUrl, "image")) || (body.endImageDataUrl !== undefined && !validReference(body.endImageDataUrl, "image"))) return NextResponse.json({ error: "Invalid first or end image reference." }, { status: 400 });
     if (body.referenceAudioDurations !== undefined && (!Array.isArray(body.referenceAudioDurations) || !body.referenceAudioDurations.every((seconds) => typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0))) return NextResponse.json({ error: "Audio durations must be positive finite numbers." }, { status: 400 });
