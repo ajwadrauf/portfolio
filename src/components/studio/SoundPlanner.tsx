@@ -1,23 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { estimateCost } from "@/lib/models";
 import { buildComposition, cueSheet, estimatedReadSeconds, planSeconds, soundTemplate, timedCues, VOICES, VOICE_MODEL_ID, wordCount, type SoundPlan } from "@/lib/soundPlan";
+import type { VoiceTake } from "@/lib/adDraft";
 
-type Take = { url: string; spec: string; mock: boolean };
 type Props = {
   plan: SoundPlan | null; onChange: (plan: SoundPlan | null) => void;
   duration: number; problem: string | null; onMatchDuration: (seconds: number) => void;
   canMatchDuration: boolean; busy: boolean; live: boolean;
   scoreToPlan: boolean; onScoreToPlan: (value: boolean) => void;
   onVoice: (body: { text: string; voice: string; stability: number }, label: string) => Promise<{ audioUrl: string; mock: boolean }>;
+  takes: Record<string, VoiceTake>; onTakesChange: Dispatch<SetStateAction<Record<string, VoiceTake>>>;
+  recoveredVoices: { requestId: string; label: string; audioUrl: string }[];
 };
 
-export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuration, canMatchDuration, busy, live, scoreToPlan, onScoreToPlan, onVoice }: Props) {
+export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuration, canMatchDuration, busy, live, scoreToPlan, onScoreToPlan, onVoice, takes, onTakesChange, recoveredVoices }: Props) {
   const [selected, setSelected] = useState(0);
   const [voice, setVoice] = useState<string>("Rachel");
   const [stability, setStability] = useState(0.5);
-  const [takes, setTakes] = useState<Record<string, Take>>({});
   const [actual, setActual] = useState<Record<string, number>>({});
   const [message, setMessage] = useState("");
   const [voiceError, setVoiceError] = useState("");
@@ -52,7 +53,7 @@ export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuratio
     setGenerating(true); setVoiceError("");
     try {
       const result = await onVoice({ text: cue.line.trim(), voice, stability }, `${cue.title} · ${voice} · voiceover`);
-      setTakes((previous) => ({ ...previous, [cue.id]: { url: result.audioUrl, spec: settings, mock: result.mock } }));
+      onTakesChange((previous) => ({ ...previous, [cue.id]: { url: result.audioUrl, spec: settings, mock: result.mock, label: `${cue.title} · ${voice}` } }));
     } catch (e) { setVoiceError(e instanceof Error ? e.message : "Could not generate voiceover"); }
     finally { setGenerating(false); }
   }
@@ -107,11 +108,13 @@ export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuratio
               {/<[^>]*>/.test(scene.line) && <p role="alert" className="text-xs text-warning">Remove markup from the spoken script. Add exact pauses between clips in your editor.</p>}
               {voiceError && <p role="alert" className="text-sm text-warning">{voiceError}</p>}
               {take && <div className="space-y-2 border-t border-border-soft pt-3">
-                <p className="text-xs text-muted">{take.mock ? "Demo tone — no speech was generated" : fresh ? "Voice take ready" : "Earlier take — the script or voice settings have changed"}</p>
+                <p className="text-xs text-muted">{take.mock ? "Demo tone — no speech was generated" : take.recovered ? "Recovered voice assigned — listen to verify the words and delivery against this scene" : fresh ? "Voice take ready" : "Earlier take — the script or voice settings have changed"}</p>
                 <audio controls preload="metadata" src={take.url} className="w-full max-w-sm" onLoadedMetadata={(e) => { const seconds = e.currentTarget.duration; if (Number.isFinite(seconds)) setActual((previous) => ({ ...previous, [take.url]: seconds })); }} />
                 {actual[take.url] !== undefined && !take.mock && <p className={`text-xs ${actual[take.url] > scene.seconds ? 'text-warning' : 'text-muted'}`}>Actual take: {actual[take.url].toFixed(1)}s / {scene.seconds}s window. {actual[take.url] > scene.seconds ? "Too long: shorten the script or adjust the plan before locking picture." : "Audition pronunciation and leave room for the transition."}</p>}
                 <a className="inline-flex min-h-11 items-center text-xs font-semibold text-accent underline" href={take.url} target="_blank" rel="noreferrer" download>Download voice · place at {cues[index].start.toFixed(1)}s in editor</a>
+                <button type="button" className="ml-3 min-h-11 text-xs text-muted underline" onClick={() => { const next = { ...takes }; delete next[scene.id]; onTakesChange(next); }}>Unassign voice</button>
               </div>}
+              {recoveredVoices.length > 0 && <details className="rounded-lg border border-border-soft p-3"><summary className="min-h-8 cursor-pointer text-sm font-semibold">Use a recovered voice take</summary><p className="mt-1 text-xs text-muted">Assignment costs nothing. A recovered recording is not verified against the current script.</p><ul className="mt-2 space-y-3">{recoveredVoices.map((job) => <li key={job.requestId}><p className="text-xs">{job.label}</p><audio controls preload="none" src={job.audioUrl} className="mt-1 w-full max-w-sm" /><button type="button" className="mt-1 min-h-11 text-xs font-semibold text-accent underline" onClick={() => onTakesChange({ ...takes, [scene.id]: { url: job.audioUrl, spec: "", mock: false, recovered: true, label: job.label } })}>Use for scene {index + 1}</button></li>)}</ul></details>}
             </>}
           </>}
           <label className="block"><span className="label">Music direction for this scene</span><textarea aria-label="Scene music direction" className="input mt-1 min-h-20" maxLength={400} value={scene.music} onChange={(e) => changeCue({ music: e.target.value })} /></label>
@@ -126,7 +129,7 @@ export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuratio
             <li>Generate the score against the confirmed scene lengths. Use a clear musical change at the reveal and a resolved tail at the end; every cut does not need a beat.</li>
             <li>Keep voice, music and effects separate for mixing. Lower the music beneath speech, soften distracting frequencies and place spot effects against picture. Check the export on headphones and a phone.</li>
             <li>If Seedance needs to hear the timing, upload one aligned MP3/WAV guide in References and select its voice or rhythm role. Scene voice clips start at zero; they are not a ready-made full-film reference. Voice and music references share a 30.2-second total allowance.</li>
-            <li>Keep the original voice for your final export. Reference guidance does not promise an unchanged recording or exact lip-sync. This page does not assemble the final audio mix.</li>
+            <li>Keep the original voice for your final export. Reference guidance does not promise an unchanged recording or exact lip-sync. Use the finishing workspace below to balance separate takes and export a mixed WAV; combine it with picture in your editor.</li>
           </ol>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1"><a className="inline-flex min-h-6 items-center underline" href="https://fal.ai/models/fal-ai/elevenlabs/tts/eleven-v3/api" target="_blank" rel="noreferrer">Voice API</a><a className="inline-flex min-h-6 items-center underline" href="https://fal.ai/models/fal-ai/elevenlabs/music/api" target="_blank" rel="noreferrer">Music sections</a><a className="inline-flex min-h-6 items-center underline" href="https://elevenlabs.io/docs/overview/capabilities/text-to-speech/best-practices" target="_blank" rel="noreferrer">Voice prompting</a></div>
           <button type="button" className="mt-2 min-h-11 font-semibold text-accent underline" onClick={() => void copy(JSON.stringify(buildComposition(plan, "Instrumental commercial score"), null, 2))}>Copy composition-plan example</button>

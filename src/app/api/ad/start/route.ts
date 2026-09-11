@@ -22,6 +22,7 @@ import { dataUrlToInline, startVeo } from "@/lib/gemini";
 import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib/models";
 import { mockImageDataUrl } from "@/lib/mock";
 import { audioReferenceProblem } from "@/lib/adAudio";
+import { VELUNE_MEDIA } from "@/components/velune/veluneStudy";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,16 @@ const PRIVATE_HOST =
 
 /** One upload per starter clip per process, not one per generation. */
 const starterClipUrls = new Map<string, string>();
+const VELUNE_SOURCES = new Set<string>(Object.values(VELUNE_MEDIA));
+const MAX_BODY_BYTES = 4_194_304;
+
+function validReference(value: unknown, media: "image" | "video" | "audio"): value is string {
+  if (typeof value !== "string" || !value || value.length > MAX_BODY_BYTES) return false;
+  if (value.startsWith("data:")) return new RegExp(`^data:${media}/[a-z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$`, "i").test(value);
+  if (VELUNE_SOURCES.has(value)) return media === (value.endsWith(".mp4") ? "video" : "image");
+  if (media === "video" && /^\/references\/[a-zA-Z0-9_/-]+\.(mp4|webm|mov)$/.test(value) && !value.includes("..")) return true;
+  try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password && !PRIVATE_HOST.test(url.hostname); } catch { return false; }
+}
 
 /**
  * Turns a starter clip's site-relative path into something fal can fetch.
@@ -66,7 +77,7 @@ async function resolveClipUrl(pathname: string, origin: string): Promise<string>
   const file = path.join(process.cwd(), "public", pathname.replace(/^\//, ""));
   const bytes = await fs.readFile(file);
   const { url } = await falUpload(
-    new Blob([new Uint8Array(bytes)], { type: "video/mp4" }),
+    new Blob([new Uint8Array(bytes)], { type: pathname.endsWith(".mp4") ? "video/mp4" : "image/jpeg" }),
   );
   starterClipUrls.set(pathname, url);
   return url;
@@ -79,7 +90,12 @@ export async function POST(req: Request) {
   // can possibly mean.
   let allImageRefs: string[] = [];
   try {
-    const body = (await req.json()) as {
+    const raw = await req.text();
+    if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return NextResponse.json({ error: "The combined prompt and references exceed the 4 MiB request limit. Use smaller images or hosted media links." }, { status: 413 });
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); } catch { return NextResponse.json({ error: "Malformed JSON request." }, { status: 400 }); }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return NextResponse.json({ error: "An ad request object is required." }, { status: 400 });
+    const body = parsed as {
       prompt: string;
       negativePrompt?: string;
       modelId: string;
@@ -104,7 +120,7 @@ export async function POST(req: Request) {
       presetName?: string;
     };
 
-    if (!body.prompt?.trim()) {
+    if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 30_000) {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
     }
     if (!AD_VIDEO_MODELS.includes(body.modelId)) {
@@ -113,6 +129,11 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+    for (const [media, references, limit] of [["image", body.referenceImageDataUrls, REF_CEILINGS.image - (body.imageDataUrl ? 1 : 0)], ["video", body.referenceVideoUrls, REF_CEILINGS.video], ["audio", body.referenceAudioUrls, REF_CEILINGS.audio]] as const) {
+      if (references !== undefined && (!Array.isArray(references) || references.length > limit || !references.every((reference) => validReference(reference, media)))) return NextResponse.json({ error: `Invalid ${media} references: attach at most ${limit} supported files. No references were discarded or submitted.` }, { status: 400 });
+    }
+    if ((body.imageDataUrl !== undefined && !validReference(body.imageDataUrl, "image")) || (body.endImageDataUrl !== undefined && !validReference(body.endImageDataUrl, "image"))) return NextResponse.json({ error: "Invalid first or end image reference." }, { status: 400 });
+    if (body.referenceAudioDurations !== undefined && (!Array.isArray(body.referenceAudioDurations) || !body.referenceAudioDurations.every((seconds) => typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0))) return NextResponse.json({ error: "Audio durations must be positive finite numbers." }, { status: 400 });
 
     const model = getModel(body.modelId);
     if (AUDIO_REF_MODELS.includes(body.modelId) && body.referenceAudioUrls?.length) {
@@ -201,15 +222,17 @@ export async function POST(req: Request) {
     allImageRefs = [body.imageDataUrl, ...(body.referenceImageDataUrls ?? [])].filter(
       (u): u is string => Boolean(u),
     );
-    const allRefs = allImageRefs;
+    const origin = new URL(req.url).origin;
+    // Only bundled, explicitly named concept media may be read from this extra directory.
+    // Preparation occurs only after the existing live gate; demo requests never upload anything.
+    const allRefs = await Promise.all(allImageRefs.map((url) => VELUNE_SOURCES.has(url) ? resolveClipUrl(url, origin) : url));
     const rawVideoRefs = multiRef ? (body.referenceVideoUrls ?? []) : [];
     // Starter clips arrive as site-relative paths and have to be made
     // fetchable before they are any use to the model.
-    const origin = new URL(req.url).origin;
     const videoRefs: string[] = [];
     for (const u of rawVideoRefs) {
       try {
-        videoRefs.push(isStarterClipPath(u) ? await resolveClipUrl(u, origin) : u);
+        videoRefs.push(isStarterClipPath(u) || VELUNE_SOURCES.has(u) ? await resolveClipUrl(u, origin) : u);
       } catch (e) {
         return NextResponse.json(
           {
@@ -241,9 +264,9 @@ export async function POST(req: Request) {
       // Only the single-image endpoints define an end frame; sending it to a
       // reference endpoint that has no such field is a 422.
       endImageDataUrl: supportsEndFrame(body.modelId) ? body.endImageDataUrl : undefined,
-      referenceImageDataUrls: multiRef ? allRefs.slice(0, REF_CEILINGS.image) : undefined,
-      referenceVideoUrls: videoRefs.slice(0, REF_CEILINGS.video),
-      referenceAudioUrls: audioRefs.slice(0, REF_CEILINGS.audio),
+      referenceImageDataUrls: multiRef ? allRefs : undefined,
+      referenceVideoUrls: videoRefs,
+      referenceAudioUrls: audioRefs,
       generateAudio: cap.switchable ? (body.generateAudio ?? true) : undefined,
       resolution: model.id.startsWith("seedance") ? resolution : undefined,
       /*

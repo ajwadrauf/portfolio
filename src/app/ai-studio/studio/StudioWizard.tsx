@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useStudioProject } from "@/components/studio/StudioProjectProvider";
+import { CampaignResults } from "@/components/studio/CampaignResults";
+import { parseAdDraft } from "@/lib/adDraft";
+import { campaignDownloadSource, campaignMedia, emptyCampaignDraft, isRealHero, readCampaignDraft, renderCampaignTextTile, veluneCampaignDraft, type CampaignDraft, type CampaignJob as Job, type CampaignSnapshot, type CampaignReceipt } from "@/lib/campaignWorkspace";
 import { LiveGate } from "@/components/LiveGate";
 import { SpendChip } from "@/components/SpendChip";
 import { useHealth, type Health } from "@/lib/useHealth";
@@ -20,20 +24,6 @@ import type {
 
 type Step = "upload" | "clarify" | "brief" | "deliverables" | "generating";
 
-type Job = {
-  deliverableId: DeliverableId;
-  modelId: string;
-  status: "queued" | "running" | "polling" | "done" | "failed" | "mock";
-  imageDataUrl?: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  posterDataUrl?: string;
-  prompt?: string;
-  error?: string;
-  cost: number;
-  startedAt?: number;
-  finishedAt?: number;
-};
 
 const SPEND_KEY = "studio-session-spend";
 const POLL_INTERVAL_MS = 12_000;
@@ -64,6 +54,22 @@ function removeHandoffFromUrl() {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function StudioWizard() {
+  const { project, ready: projectReady, saveDraft, saveAsset } = useStudioProject();
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [selectedProjectAsset, setSelectedProjectAsset] = useState("");
+  const routed = useRef<number | null>(null);
+  const [workflow, setWorkflow] = useState<"batch" | "hero">("batch");
+  const [approvedHeroId, setApprovedHeroId] = useState<string | null>(null);
+  const [exactText, setExactText] = useState(false);
+  const [snapshots, setSnapshots] = useState<Record<string, CampaignSnapshot>>({});
+  const [renderBusy, setRenderBusy] = useState(false);
+  const generationLock = useRef(false);
+  const projectIdRef = useRef(project?.id);
+  projectIdRef.current = project?.id;
+  const currentDraft = useRef<CampaignDraft>(emptyCampaignDraft());
+  type PendingDraftSave = { projectId: string; draft: CampaignDraft; persist: typeof saveDraft; promise?: Promise<void> };
+  const pendingDraftSave = useRef<PendingDraftSave | null>(null);
   const [step, setStep] = useState<Step>("upload");
   /** Shared with the gate control so unlocking takes effect without a reload. */
   const { health } = useHealth();
@@ -93,6 +99,47 @@ export function StudioWizard() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [sessionSpend, setSessionSpend] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
+  currentDraft.current = { schema: "campaign-draft-v1", step, imageDataUrl, productContext, questions, answers, brief, selected, modelChoice, jobs, snapshots, workflow, approvedHeroId, exactText };
+
+  function flushDraft(record = pendingDraftSave.current): Promise<void> {
+    if (!record) return Promise.resolve();
+    if (record.promise) return record.promise;
+    record.promise = record.persist("campaign", record.draft).then(() => {
+      if (pendingDraftSave.current === record) pendingDraftSave.current = null;
+    }).catch((error) => { record.promise = undefined; throw error; });
+    return record.promise;
+  }
+
+  useEffect(() => {
+    if (!projectReady || !project || hydratedId === project.id) return;
+    const saved = readCampaignDraft(project.drafts.campaign) ?? (project.example === "velune" ? veluneCampaignDraft() : emptyCampaignDraft());
+    currentDraft.current = saved;
+    setStep(saved.step); setImageDataUrl(saved.imageDataUrl); setProductContext(saved.productContext); setQuestions(saved.questions); setAnswers(saved.answers); setBrief(saved.brief); setSelected(saved.selected); setModelChoice(saved.modelChoice); setJobs(saved.jobs); setSnapshots(saved.snapshots); setWorkflow(saved.workflow); setApprovedHeroId(saved.approvedHeroId); setExactText(saved.exactText);
+    setError(null); setSaveMessage(saved.jobs.some((job) => ["recoverable", "uncertain"].includes(job.status)) ? "Saved work restored. Check any unfinished request; nothing has been resubmitted." : "Project loaded. No generation has started.");
+    setHydratedId(project.id);
+  }, [projectReady, project, hydratedId]);
+
+  // Flush the last committed edit when this tool unmounts or changes projects.
+  // The record owns its original id-bound writer; never substitute the new project.
+  useEffect(() => {
+    const id = project?.id;
+    return () => {
+      const record = pendingDraftSave.current;
+      if (record?.projectId === id) void flushDraft(record).catch(() => { /* Provider exposes storage errors. */ });
+    };
+  }, [project?.id]);
+
+  useEffect(() => {
+    if (!project || hydratedId !== project.id || renderBusy) return;
+    const record: PendingDraftSave = { projectId: project.id, draft: currentDraft.current, persist: saveDraft };
+    pendingDraftSave.current = record;
+    const timer = setTimeout(() => {
+      if (pendingDraftSave.current !== record) return;
+      void flushDraft(record).then(() => { if (projectIdRef.current === record.projectId) setSaveMessage("Saved on this device."); }).catch(() => { if (projectIdRef.current === record.projectId) setSaveMessage("Draft could not save. Resolve project storage before generating."); });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [project?.id, hydratedId, step, imageDataUrl, productContext, questions, answers, brief, selected, modelChoice, jobs, snapshots, workflow, approvedHeroId, exactText, renderBusy, saveDraft]);
+
 
   useEffect(() => {
     try {
@@ -158,14 +205,21 @@ export function StudioWizard() {
     });
   }, []);
 
-  const updateJob = useCallback((id: DeliverableId, patch: Partial<Job>) => {
-    setJobs((prev) => prev.map((j) => (j.deliverableId === id ? { ...j, ...patch } : j)));
-  }, []);
+  useEffect(() => {
+    const route = project?.drafts.routing as { kind?: string; modelId?: string; selectedAt?: number; handledAt?: number } | undefined;
+    if (!project || hydratedId !== project.id || route?.kind !== "image" || !route.modelId || MODELS[route.modelId]?.kind !== "image" || typeof route.selectedAt !== "number" || route.selectedAt === route.handledAt || route.selectedAt === routed.current) return;
+    routed.current = route.selectedAt;
+    const chosen = route.modelId;
+    setModelChoice((previous) => ({ ...previous, ...Object.fromEntries(DELIVERABLES.filter((d) => d.kind === "still" && d.modelOptions.includes(chosen)).map((d) => [d.id, chosen])) }));
+    setSaveMessage(`Model Explorer selected ${MODELS[chosen].label} for compatible campaign deliverables. Review the selected formats before generating.`);
+    void saveDraft("routing", { ...route, handledAt: route.selectedAt }).catch((e) => setError(e.message));
+  }, [project?.drafts.routing, project?.id, hydratedId, saveDraft]);
 
   // ---------- Step 1 → 2: analyze ----------
   const handleImage = useCallback(async (src: string | Blob, fromPackshots = false) => {
     if (analyzeLock.current) return;
     analyzeLock.current = true;
+    const originProject = projectIdRef.current;
     intakeSequence.current += 1;
     setHandoffLoading(false);
     if (!fromPackshots) clearHandoff();
@@ -173,6 +227,7 @@ export function StudioWizard() {
     setBusy(true);
     try {
       const dataUrl = await prepareCampaignReference(src);
+      if (projectIdRef.current !== originProject) return;
       setImageDataUrl(dataUrl);
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -182,6 +237,7 @@ export function StudioWizard() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Analysis failed");
       const data = json as AnalyzeResponse;
+      if (projectIdRef.current !== originProject) return;
       setProductContext(data.productContext);
       setQuestions(data.questions);
       setAnswers(Object.fromEntries(data.questions.map((q) => [q.id, q.defaultAnswer])));
@@ -201,6 +257,7 @@ export function StudioWizard() {
     async (img: string, ctx: ProductContext, answerList: Answer[]) => {
       if (briefLock.current) return;
       briefLock.current = true;
+      const originProject = projectIdRef.current;
       setError(null);
       setBusy(true);
       try {
@@ -211,6 +268,7 @@ export function StudioWizard() {
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error ?? "Brief generation failed");
+        if (projectIdRef.current !== originProject) return;
         setBrief(json.brief as CampaignBrief);
         setStep("brief");
       } catch (e) {
@@ -238,151 +296,145 @@ export function StudioWizard() {
     () => DELIVERABLES.filter((d) => selected[d.id]),
     [selected],
   );
-  const totalEstimate = useMemo(
-    () =>
-      selectedSpecs.reduce(
-        (sum, d) =>
-          sum + estimateCost(modelChoice[d.id], { seconds: d.durationSeconds }),
-        0,
-      ),
-    [selectedSpecs, modelChoice],
-  );
+  const approvedHero = jobs.find((job) => job.id === approvedHeroId && isRealHero(job)) ?? null;
+  const plannedSpecs = workflow === "hero" && !approvedHero ? DELIVERABLES.filter((item) => item.id === "hero_still") : selectedSpecs.filter((item) => !(workflow === "hero" && approvedHero && item.id === "hero_still"));
+  const totalEstimate = plannedSpecs.reduce((sum, item) => sum + (workflow === "hero" && approvedHero && exactText && item.id.startsWith("promo_tile_") ? 0 : estimateCost(modelChoice[item.id], { seconds: item.durationSeconds })), 0);
 
-  // ---------- Step 4: generate ----------
-  const pollVideo = useCallback(
-    async (spec: DeliverableSpec, body: Record<string, unknown>) => {
-      const deadline = Date.now() + POLL_DEADLINE_MS;
-      while (Date.now() < deadline) {
-        await sleep(POLL_INTERVAL_MS);
-        try {
-          const res = await fetch("/api/generate/video/status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          const json = await res.json();
-          if (json.status === "done") {
-            updateJob(spec.id, { status: "done", videoUrl: json.videoUrl, finishedAt: Date.now() });
-            return;
-          }
-          if (json.status === "failed") {
-            updateJob(spec.id, { status: "failed", error: json.error, finishedAt: Date.now() });
-            return;
-          }
-        } catch {
-          // transient network error — keep polling
-        }
-      }
-      updateJob(spec.id, {
-        status: "failed",
-        error: "Timed out after 10 minutes — the job may still finish on the provider side.",
-      });
-    },
-    [updateJob],
-  );
-
-  const runGeneration = useCallback(async () => {
-    if (!brief) return;
-    const live = health?.live ?? false;
-    if (live) {
-      const ok = window.confirm(
-        `This will run ${selectedSpecs.length} live generation${selectedSpecs.length === 1 ? "" : "s"} at an estimated cost of $${totalEstimate.toFixed(2)} (list prices). Proceed?`,
-      );
-      if (!ok) return;
-    }
-
-    const initialJobs: Job[] = selectedSpecs.map((d) => ({
-      deliverableId: d.id,
-      modelId: modelChoice[d.id],
-      status: "queued",
-      cost: 0,
-    }));
-    setJobs(initialJobs);
-    setStep("generating");
-
-    const stills = selectedSpecs.filter((d) => d.kind === "still");
-    const videos = selectedSpecs.filter((d) => d.kind === "video");
-
-    // Start videos first — they take minutes; stills fill in around them.
-    const videoTasks = videos.map(async (spec) => {
-      updateJob(spec.id, { status: "running", startedAt: Date.now() });
+  // Every run captures its project and request snapshot before any paid submission.
+  type RunScope = { projectId: string; draft: CampaignDraft; persist: typeof saveDraft; asset: typeof saveAsset };
+  const reflectRun = (scope: RunScope) => {
+    if (projectIdRef.current !== scope.projectId) return;
+    currentDraft.current = scope.draft; setJobs(scope.draft.jobs); setSnapshots(scope.draft.snapshots); setStep("generating");
+  };
+  async function updateRun(scope: RunScope, id: string, patch: Partial<Job>) {
+    // This durable complete snapshot supersedes any older debounced draft.
+    if (pendingDraftSave.current?.projectId === scope.projectId) pendingDraftSave.current = null;
+    scope.draft = { ...scope.draft, jobs: scope.draft.jobs.map((job) => job.id === id ? { ...job, ...patch } : job) };
+    reflectRun(scope);
+    await scope.persist("campaign", scope.draft);
+  }
+  async function retainAsset(scope: RunScope, job: Job) {
+    const media = campaignMedia(job);
+    if (job.status !== "done" || !media) return;
+    await scope.asset({ id: `campaign-${job.id}`, name: `${DELIVERABLES.find((item) => item.id === job.deliverableId)?.label ?? "Campaign asset"}`, kind: job.videoUrl ? "video" : "image", ...(media.startsWith("data:") ? { dataUrl: media } : { url: media }), role: "campaign-output", source: "generated", status: "ready", metadata: { modelId: job.modelId, jobId: job.id, prompt: job.prompt, approvedHeroId: scope.draft.snapshots[job.snapshotId]?.approvedHeroId, needsHumanReview: true } });
+  }
+  async function checkJob(scope: RunScope, job: Job, repeat: boolean) {
+    if (!job.receipt) return;
+    const deadline = Date.now() + POLL_DEADLINE_MS;
+    do {
       try {
-        const res = await fetch("/api/generate/video", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            deliverableId: spec.id,
-            modelId: modelChoice[spec.id],
-            brief,
-            imageDataUrl,
-          }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? "Failed to start video");
-        if (json.mock) {
-          updateJob(spec.id, {
-            status: "mock",
-            posterDataUrl: json.posterDataUrl,
-            prompt: json.prompt,
-            finishedAt: Date.now(),
-          });
-          return;
+        const response = await fetch("/api/campaign/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(job.receipt) });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === "done" && result.videoUrl) {
+            const complete = { ...job, status: "done" as const, videoUrl: result.videoUrl, finishedAt: Date.now(), error: undefined };
+            await updateRun(scope, job.id, complete); await retainAsset(scope, complete); return;
+          }
+          if (result.status === "failed") { await updateRun(scope, job.id, { status: "failed", error: result.error ?? "The provider marked this request as failed.", finishedAt: Date.now() }); return; }
         }
-        addSpend(json.cost ?? 0);
-        updateJob(spec.id, { status: "polling", prompt: json.prompt, cost: json.cost ?? 0 });
-        await pollVideo(spec, {
-          provider: json.provider,
-          operationName: json.operationName,
-          falRequestId: json.falRequestId,
-          modelId: modelChoice[spec.id],
-        });
-      } catch (e) {
-        updateJob(spec.id, {
-          status: "failed",
-          error: e instanceof Error ? e.message : "Video generation failed",
-        });
+      } catch { /* A transport error never becomes permission to submit again. */ }
+      if (!repeat) break;
+      await sleep(POLL_INTERVAL_MS);
+    } while (Date.now() < deadline);
+    await updateRun(scope, job.id, { status: "recoverable", error: "The request is still pending or status is unavailable. Check this saved handle again; no new generation is needed." });
+  }
+  async function submitJob(scope: RunScope, job: Job) {
+    const snapshot = scope.draft.snapshots[job.snapshotId]; const spec = DELIVERABLES.find((item) => item.id === job.deliverableId)!;
+    let submitted = false;
+    try {
+      // Durable intent before the POST: a reload now produces a reviewable uncertain attempt.
+      await updateRun(scope, job.id, { status: "running", startedAt: Date.now() });
+      if (snapshot.exactText && snapshot.approvedHeroId && (spec.id === "promo_tile_en" || spec.id === "promo_tile_fr") && snapshot.imageDataUrl) {
+        const textOverlay = { text: spec.id === "promo_tile_en" ? snapshot.brief.headlineEN : snapshot.brief.headlineFR, position: "top" as const, color: "ink" as const };
+        const image = await renderCampaignTextTile(snapshot.imageDataUrl, textOverlay);
+        const complete = { ...job, imageDataUrl: image, textOverlay, status: "done" as const, cost: 0, finishedAt: Date.now(), prompt: "Local exact-copy layout from the approved hero. No model request." };
+        await updateRun(scope, job.id, complete); await retainAsset(scope, complete); return;
       }
-    });
-
-    // Stills with limited concurrency (2) to stay under provider rate limits.
-    const queue = [...stills];
-    const stillWorker = async () => {
-      for (;;) {
-        const spec = queue.shift();
-        if (!spec) return;
-        updateJob(spec.id, { status: "running", startedAt: Date.now() });
-        try {
-          const res = await fetch("/api/generate/image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              deliverableId: spec.id,
-              modelId: modelChoice[spec.id],
-              brief,
-              imageDataUrl,
-            }),
-          });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json.error ?? "Image generation failed");
-          if (!json.mock) addSpend(json.cost ?? 0);
-          updateJob(spec.id, {
-            status: json.mock ? "mock" : "done",
-            imageDataUrl: json.imageDataUrl,
-            imageUrl: json.imageUrl,
-            prompt: json.prompt,
-            cost: json.mock ? 0 : (json.cost ?? 0),
-            finishedAt: Date.now(),
-          });
-        } catch (e) {
-          updateJob(spec.id, {
-            status: "failed",
-            error: e instanceof Error ? e.message : "Image generation failed",
-          });
-        }
+      const reference = snapshot.imageDataUrl && !snapshot.imageDataUrl.startsWith("data:") ? await prepareCampaignReference(snapshot.imageDataUrl) : snapshot.imageDataUrl;
+      submitted = true;
+      const response = await fetch(spec.kind === "video" ? "/api/generate/video" : "/api/generate/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deliverableId: spec.id, modelId: job.modelId, brief: snapshot.brief, imageDataUrl: reference, approvedHero: Boolean(snapshot.approvedHeroId) }) });
+      const result = await response.json();
+      if (!response.ok) {
+        await updateRun(scope, job.id, { status: response.status >= 500 ? "uncertain" : "failed", error: result.error ?? "The generation request did not finish." }); return;
       }
-    };
-    await Promise.all([...videoTasks, stillWorker(), stillWorker()]);
-  }, [addSpend, brief, health, imageDataUrl, modelChoice, pollVideo, selectedSpecs, totalEstimate, updateJob]);
+      if (result.mock) { await updateRun(scope, job.id, { status: "mock", imageDataUrl: result.imageDataUrl, posterDataUrl: result.posterDataUrl, prompt: result.prompt, finishedAt: Date.now() }); return; }
+      if (spec.kind === "video") {
+        const receipt: CampaignReceipt = { provider: result.provider, modelId: job.modelId, operationName: result.operationName, falRequestId: result.falRequestId };
+        if (!["fal", "gemini"].includes(receipt.provider) || !(receipt.operationName || receipt.falRequestId)) throw new Error("No request handle was returned. Check the provider history before another attempt.");
+        const accepted = { ...job, status: "polling" as const, receipt, prompt: result.prompt, cost: result.cost ?? 0 };
+        await updateRun(scope, job.id, accepted); addSpend(accepted.cost);
+        await checkJob(scope, accepted, true);
+      } else {
+        if (!(result.imageDataUrl || result.imageUrl)) throw new Error("No image was returned. The provider may still have billed the attempt.");
+        const complete = { ...job, status: "done" as const, imageDataUrl: result.imageDataUrl, imageUrl: result.imageUrl, prompt: result.prompt, cost: result.cost ?? 0, finishedAt: Date.now() };
+        await updateRun(scope, job.id, complete); addSpend(complete.cost); await retainAsset(scope, complete);
+      }
+    } catch (error) {
+      // Never discard an accepted receipt or completed file when a later save/read fails.
+      const latest = scope.draft.jobs.find((item) => item.id === job.id)!;
+      if (latest.status === "done" || latest.status === "mock") { if (projectIdRef.current === scope.projectId) setError("The result is visible, but some project data could not save. Download the file before closing this page."); return; }
+      const patch = { status: latest.receipt ? "recoverable" as const : submitted ? "uncertain" as const : "failed" as const, error: error instanceof Error ? error.message : "This attempt did not finish." };
+      try { await updateRun(scope, job.id, patch); } catch { reflectRun(scope); if (projectIdRef.current === scope.projectId) setError("Project storage failed. Keep this page open and copy any request receipt before leaving."); }
+    }
+  }
+  async function runGeneration(retry?: Job) {
+    if (generationLock.current || !project || hydratedId !== project.id || !brief) return;
+    generationLock.current = true;
+    const origin = project.id;
+    try {
+      const snapshotId = crypto.randomUUID(); const approved = jobs.find((job) => job.id === approvedHeroId && isRealHero(job));
+      const specs = retry ? DELIVERABLES.filter((item) => item.id === retry.deliverableId) : workflow === "hero" && !approved ? DELIVERABLES.filter((item) => item.id === "hero_still") : selectedSpecs.filter((item) => !(workflow === "hero" && approved && item.id === "hero_still"));
+      if (!specs.length) { setError("Choose at least one adaptation."); return; }
+      const prior = retry ? snapshots[retry.snapshotId] : undefined;
+      const snapshot: CampaignSnapshot = prior ? { ...prior, id: snapshotId } : { id: snapshotId, brief: structuredClone(brief), imageDataUrl: approved && workflow === "hero" ? campaignMedia(approved)! : imageDataUrl, approvedHeroId: approved && workflow === "hero" ? approved.id : undefined, exactText };
+      const price = specs.reduce((sum, item) => sum + (snapshot.exactText && snapshot.approvedHeroId && item.id.startsWith("promo_tile_") ? 0 : estimateCost(retry?.modelId ?? modelChoice[item.id], { seconds: item.durationSeconds })), 0);
+      if (health?.live && !window.confirm(`${retry?.status === "uncertain" ? "The earlier attempt may already have been billed. Check provider history first. " : ""}${retry ? "Create one new attempt" : `Generate ${specs.length} selected assets`} for approximately $${price.toFixed(2)}? Existing files and requests are kept.`)) return;
+      if (snapshot.imageDataUrl && !snapshot.imageDataUrl.startsWith("data:")) {
+        const source = snapshot.imageDataUrl.startsWith("/studio/") ? snapshot.imageDataUrl : campaignDownloadSource(snapshot.imageDataUrl, "image");
+        const response = await fetch(source); if (!response.ok) throw new Error("The approved image is unavailable. Download or choose it again before generating.");
+        snapshot.imageDataUrl = await prepareCampaignReference(await response.blob());
+      }
+      setRenderBusy(true); setError(null);
+      await flushDraft();
+      const newJobs: Job[] = specs.map((item) => ({ id: crypto.randomUUID(), deliverableId: item.id, modelId: retry?.modelId ?? modelChoice[item.id], snapshotId, status: "queued", cost: 0 }));
+      const scope: RunScope = { projectId: origin, persist: saveDraft, asset: saveAsset, draft: { ...currentDraft.current, step: "generating", snapshots: { ...currentDraft.current.snapshots, [snapshotId]: snapshot }, jobs: [...currentDraft.current.jobs, ...newJobs] } };
+      await scope.persist("campaign", scope.draft); reflectRun(scope);
+      // Two workers cap total concurrency; queued siblings are never automatically resubmitted after reload.
+      const queue = [...newJobs];
+      async function worker() { for (;;) { const next = queue.shift(); if (!next) return; await submitJob(scope, next); } }
+      await Promise.all([worker(), worker()]);
+    } catch (error) { if (projectIdRef.current === origin) setError(error instanceof Error ? error.message : "Could not start this campaign."); }
+    finally { generationLock.current = false; setRenderBusy(false); }
+  }
+  async function recoverJob(job: Job) {
+    if (!job.receipt || generationLock.current || !project) return;
+    generationLock.current = true; setRenderBusy(true); setError(null);
+    const scope: RunScope = { projectId: project.id, draft: currentDraft.current, persist: saveDraft, asset: saveAsset };
+    try { await checkJob(scope, job, false); } catch (error) { setError(error instanceof Error ? error.message : "Could not check the result."); }
+    finally { generationLock.current = false; setRenderBusy(false); }
+  }
+  async function animateJob(job: Job) {
+    if (job.status !== "done" || job.videoUrl || !project) return;
+    const source = campaignMedia(job); if (!source) return;
+    const response = await fetch(campaignDownloadSource(source, "image")); if (!response.ok) throw new Error("Could not read the selected image.");
+    const reference = await prepareCampaignReference(await response.blob());
+    const snapshot = snapshots[job.snapshotId];
+    await flushDraft();
+    const previousAd = parseAdDraft(project.drafts.ad);
+    await saveDraft("ad", { ...previousAd, schema: "adlab-draft-v1", source: "campaign", lane: "blender", imported: true, negativePrompt: snapshot.brief.negativePrompt, unattachedSlots: [], prompt: `Use [Image1] as the product and visual direction reference. ${snapshot.brief.videoPrompt}`, modelId: "seedance-2.5-ref", duration: 8, aspect: "16:9", completedTake: null, sceneCards: [], productImage: null, endImage: null, references: [{ id: job.id, name: `${snapshot.brief.productName} · campaign image`, kind: "image", role: "product", token: "[Image1]", dataUrl: reference }], referenceManifest: [{ token: "[Image1]", assetId: job.id, job: "Approved campaign image · preserve product and visual direction" }] });
+    window.location.assign("/ai-studio/ads");
+  }
+  async function editText(job: Job, overlay: NonNullable<Job["textOverlay"]>) {
+    const snapshot = snapshots[job.snapshotId]; if (!project || !snapshot?.imageDataUrl) throw new Error("The original layout image is unavailable.");
+    const image = await renderCampaignTextTile(snapshot.imageDataUrl, overlay);
+    const scope: RunScope = { projectId: project.id, draft: currentDraft.current, persist: saveDraft, asset: saveAsset };
+    await updateRun(scope, job.id, { imageDataUrl: image, textOverlay: overlay });
+    await retainAsset(scope, { ...job, imageDataUrl: image, textOverlay: overlay });
+  }
+  function approveHero(job: Job) {
+    if (!isRealHero(job)) return;
+    setApprovedHeroId(job.id); setWorkflow("hero"); setExactText(true); setSelected((previous) => ({ ...previous, hero_still: false })); setStep("deliverables");
+  }
 
   const reset = useCallback(() => {
     clearHandoff();
@@ -392,18 +444,18 @@ export function StudioWizard() {
     setQuestions([]);
     setAnswers({});
     setBrief(null);
-    setJobs([]);
+    setJobs([]); setSnapshots({}); setApprovedHeroId(null);
     setError(null);
   }, [clearHandoff]);
-
-  const allSettled =
-    jobs.length > 0 && jobs.every((j) => ["done", "failed", "mock"].includes(j.status));
 
   // ================================================================ render
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
       <StatusBar health={health} sessionSpend={sessionSpend} />
       <StepTracker step={step} />
+      <p role="status" className="mt-4 text-xs text-muted">{projectReady ? saveMessage : "Opening your project…"}</p>
+      {project?.example === "velune" && <div className="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-4 text-sm"><strong>VELUNE · fictional concept study.</strong> The provided packaging board is direction, not final approved pack artwork. Review the brief and generate a hero only when ready. The final Seedance film is not yet available.</div>}
+      {!project && projectReady && <p role="alert" className="mt-4 text-sm text-warning">Open a project in the project tray to save your work before generating.</p>}
 
       {error && (
         <div role="alert" className="card mt-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">
@@ -431,6 +483,7 @@ export function StudioWizard() {
             </section>
           )}
           {importedPackshot && <ImportedPackshotCard packshot={importedPackshot} busy={busy} onAnalyze={() => void handleImage(importedPackshot.blob, true)} onDismiss={() => { clearHandoff(); setError(null); setImageDataUrl(null); }} />}
+          {project && project.assets.some((a) => a.kind === "image" && a.status === "ready") && <section className="card mt-8 p-6" aria-label="Use a project image"><h2 className="text-lg font-semibold">Continue with a project asset</h2><p className="mt-2 text-sm text-muted">Choose a completed packshot or reference already in this project. Selecting it costs nothing; analysis starts only when you press the button.</p><label className="mt-4 block text-sm">Image from this project<select className="input mt-2" value={selectedProjectAsset} disabled={busy} onChange={(e) => setSelectedProjectAsset(e.target.value)}><option value="">Choose an image</option>{project.assets.filter((a) => a.kind === "image" && a.status === "ready").map((a) => <option key={a.id} value={a.id}>{a.name} · {a.source}</option>)}</select></label>{(() => { const asset = project.assets.find((a) => a.id === selectedProjectAsset && a.kind === "image" && a.status === "ready"); return asset ? <div className="mt-4 flex flex-wrap items-center gap-4"><img className="h-32 w-32 object-contain" src={asset.dataUrl || asset.url} alt={asset.name} /><div><p className="mb-3 max-w-lg text-sm text-muted">{asset.role}</p><button type="button" className="btn-primary" disabled={busy} onClick={() => void handleImage(asset.dataUrl || asset.url!)}>Analyze selected asset →</button><p className="mt-2 text-xs text-muted">{health?.live ? "Live vision analysis uses your configured provider." : "Demo analysis · no provider charge"}</p></div></div> : null; })()}</section>}
           <UploadStep
             busy={busy}
             hasImportedPackshot={Boolean(importedPackshot)}
@@ -479,14 +532,17 @@ export function StudioWizard() {
           setModelChoice={setModelChoice}
           totalEstimate={totalEstimate}
           live={health?.live ?? false}
-          count={selectedSpecs.length}
+          count={plannedSpecs.length}
           onGenerate={() => void runGeneration()}
+          workflow={workflow} onWorkflow={setWorkflow} approvedHero={jobs.find((job) => job.id === approvedHeroId) ?? null}
+          exactText={exactText} onExactText={setExactText} canGenerate={Boolean(project && hydratedId === project.id) && !renderBusy}
+          heroEstimate={estimateCost(modelChoice.hero_still)}
           onBack={() => setStep("brief")}
         />
       )}
 
       {step === "generating" && (
-        <ResultsStep jobs={jobs} allSettled={allSettled} onReset={reset} live={health?.live ?? false} />
+        <CampaignResults jobs={jobs} snapshots={snapshots} busy={renderBusy} live={health?.live ?? false} approvedHeroId={approvedHeroId} workflow={workflow} onRecover={(job) => void recoverJob(job)} onRetry={(job) => void runGeneration(job)} onApprove={approveHero} onAnimate={animateJob} onText={editText} onBack={() => setStep("deliverables")} onReset={() => { if (window.confirm("Start another campaign in this project? Download or export the current campaign first. Its saved project assets remain available.")) reset(); }} />
       )}
     </div>
   );
@@ -883,7 +939,7 @@ function DeliverablesStep({
   live,
   count,
   onGenerate,
-  onBack,
+  onBack, workflow, onWorkflow, approvedHero, exactText, onExactText, canGenerate, heroEstimate,
 }: {
   selected: Record<string, boolean>;
   setSelected: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
@@ -894,7 +950,10 @@ function DeliverablesStep({
   count: number;
   onGenerate: () => void;
   onBack: () => void;
+  workflow: "batch" | "hero"; onWorkflow: (value: "batch" | "hero") => void; approvedHero: Job | null;
+  exactText: boolean; onExactText: (value: boolean) => void; canGenerate: boolean; heroEstimate: number;
 }) {
+  const heroFirst = workflow === "hero" && !approvedHero;
   return (
     <section className="mt-8">
       <h1 className="text-[1.75rem] tracking-[-0.03em]">The content pack</h1>
@@ -902,10 +961,17 @@ function DeliverablesStep({
         Each deliverable routes to the model best suited — and priced — for the
         job. Costs are shown before anything runs.
       </p>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2" role="group" aria-label="Campaign production workflow">
+        <button type="button" onClick={() => onWorkflow("batch")} aria-pressed={workflow === "batch"} className={`rounded-xl border p-5 text-left ${workflow === "batch" ? "border-accent bg-accent/5" : "border-border-soft"}`}><span className="block font-semibold">Fast batch</span><span className="mt-2 block text-sm leading-relaxed text-muted">Independent ideas from one product reference. Generate your selected formats together.</span></button>
+        <button type="button" onClick={() => onWorkflow("hero")} aria-pressed={workflow === "hero"} className={`rounded-xl border p-5 text-left ${workflow === "hero" ? "border-accent bg-accent/5" : "border-border-soft"}`}><span className="block font-semibold">Approve a hero, then adapt</span><span className="mt-2 block text-sm leading-relaxed text-muted">Review one image first. Its actual pixels guide every adaptation; exact EN/FR copy can be added locally.</span></button>
+      </div>
+      {heroFirst && <p className="mt-4 rounded-lg bg-surface-2 p-4 text-sm">First step: generate only the hero for {live ? `~$${heroEstimate.toFixed(2)}` : "$0 in demo"}. Review it before spending on the rest of the campaign.</p>}
+      {workflow === "hero" && approvedHero && <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg border border-accent/30 p-4"><img src={campaignMedia(approvedHero)} alt="Approved campaign hero" className="h-24 w-24 rounded object-contain" /><div className="flex-1"><p className="font-semibold">Approved hero is the reference.</p><p className="mt-1 text-sm text-muted">Generative adaptations still need a visual check. The bilingual local layouts reuse exactly the same approved image.</p><label className="mt-3 flex items-start gap-3 text-sm"><input type="checkbox" checked={exactText} onChange={(event) => onExactText(event.target.checked)} className="mt-1" /><span>Exact EN/FR headline layouts · local Canvas export · $0. Edit copy and placement after rendering.</span></label></div></div>}
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {DELIVERABLES.map((d) => {
-          const cost = estimateCost(modelChoice[d.id], { seconds: d.durationSeconds });
-          const on = selected[d.id];
+          const localText = workflow === "hero" && approvedHero && exactText && d.id.startsWith("promo_tile_");
+          const cost = localText ? 0 : estimateCost(modelChoice[d.id], { seconds: d.durationSeconds });
+          const on = heroFirst ? d.id === "hero_still" : workflow === "hero" && approvedHero && d.id === "hero_still" ? false : selected[d.id];
           return (
             <div
               key={d.id}
@@ -916,6 +982,7 @@ function DeliverablesStep({
                   <input
                     type="checkbox"
                     checked={on}
+                    disabled={heroFirst || Boolean(workflow === "hero" && approvedHero && d.id === "hero_still")}
                     onChange={(e) =>
                       setSelected((prev) => ({ ...prev, [d.id]: e.target.checked }))
                     }
@@ -936,7 +1003,8 @@ function DeliverablesStep({
                 <select
                   className="input"
                   value={modelChoice[d.id]}
-                  disabled={!on || d.modelOptions.length === 1}
+                  aria-label={`Model for ${d.label}`}
+                  disabled={!on || d.modelOptions.length === 1 || Boolean(localText)}
                   onChange={(e) =>
                     setModelChoice((prev) => ({ ...prev, [d.id]: e.target.value }))
                   }
@@ -968,138 +1036,12 @@ function DeliverablesStep({
           <button className="btn-secondary" onClick={onBack}>
             ← Edit brief
           </button>
-          <button className="btn-primary" onClick={onGenerate} disabled={count === 0}>
-            Generate the pack →
+          <button className="btn-primary" onClick={onGenerate} disabled={count === 0 || !canGenerate}>
+            {heroFirst ? "Generate hero for review" : workflow === "hero" ? "Create selected adaptations" : "Generate the pack"} →
           </button>
         </div>
       </div>
     </section>
-  );
-}
-
-function ResultsStep({
-  jobs,
-  allSettled,
-  onReset,
-  live,
-}: {
-  jobs: Job[];
-  allSettled: boolean;
-  onReset: () => void;
-  live: boolean;
-}) {
-  const spent = jobs.reduce((s, j) => s + j.cost, 0);
-  const done = jobs.filter((j) => ["done", "mock"].includes(j.status)).length;
-  return (
-    <section className="mt-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[1.75rem] tracking-[-0.03em]">
-            {allSettled ? "The content pack" : "Generating the pack…"}
-          </h1>
-          <p className="mt-2 text-muted">
-            {done}/{jobs.length} deliverables finished
-            {live && spent > 0 && <> · estimated spend ${spent.toFixed(2)}</>}
-            {!allSettled && " · videos take a few minutes — stills land first"}
-          </p>
-        </div>
-        {allSettled && (
-          <button className="btn-secondary" onClick={onReset}>
-            Start a new campaign
-          </button>
-        )}
-      </div>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {jobs.map((j) => (
-          <JobCard key={j.deliverableId} job={j} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function JobCard({ job }: { job: Job }) {
-  const spec = DELIVERABLES.find((d) => d.id === job.deliverableId)!;
-  const model = MODELS[job.modelId];
-  const [showPrompt, setShowPrompt] = useState(false);
-  const media = job.imageDataUrl ?? job.imageUrl ?? job.posterDataUrl;
-  const seconds =
-    job.startedAt && job.finishedAt
-      ? Math.round((job.finishedAt - job.startedAt) / 1000)
-      : null;
-
-  return (
-    <div className="card overflow-hidden">
-      <div className={`relative w-full bg-surface-2 ${ASPECT_CLASS[spec.aspect] ?? "aspect-square"}`}>
-        {job.videoUrl ? (
-          <video
-            src={job.videoUrl}
-            controls
-            playsInline
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : media ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={media} alt={spec.label} className="absolute inset-0 h-full w-full object-cover" />
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted">
-            {job.status === "failed" ? (
-              <p className="max-w-[80%] text-center text-danger">{job.error}</p>
-            ) : (
-              <>
-                <Spinner />
-                <p>
-                  {job.status === "queued" && "Queued"}
-                  {job.status === "running" && "Generating…"}
-                  {job.status === "polling" && "Rendering video…"}
-                </p>
-              </>
-            )}
-          </div>
-        )}
-        {job.status === "mock" && (
-          <span className="absolute left-2 top-2 rounded bg-warning px-2 py-0.5 text-xs font-bold text-white">
-            DEMO
-          </span>
-        )}
-      </div>
-      <div className="p-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-semibold">{spec.label}</p>
-          {job.cost > 0 && <span className="chip">${job.cost.toFixed(2)}</span>}
-        </div>
-        <p className="mt-1 text-xs text-muted">
-          {model.label}
-          {seconds !== null && ` · ${seconds}s`}
-        </p>
-        <div className="mt-3 flex gap-2">
-          {(job.imageDataUrl ?? job.imageUrl ?? job.videoUrl) && (
-            <a
-              href={job.videoUrl ?? job.imageDataUrl ?? job.imageUrl}
-              download={`${spec.id}.${job.videoUrl ? "mp4" : "jpg"}`}
-              target={job.imageUrl || job.videoUrl ? "_blank" : undefined}
-              rel="noreferrer"
-              className="text-xs font-semibold text-accent hover:underline"
-            >
-              Download
-            </a>
-          )}
-          {job.prompt && (
-            <button
-              className="text-xs font-semibold text-muted hover:text-foreground"
-              onClick={() => setShowPrompt((v) => !v)}
-            >
-              {showPrompt ? "Hide prompt" : "View prompt"}
-            </button>
-          )}
-        </div>
-        {showPrompt && job.prompt && (
-          <p className="mt-2 rounded-[6px] bg-surface-2 p-3 font-mono text-xs leading-relaxed text-muted">
-            {job.prompt}
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
 

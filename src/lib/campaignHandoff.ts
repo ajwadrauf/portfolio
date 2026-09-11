@@ -90,7 +90,7 @@ export async function validateCampaignImage(blob: Blob): Promise<Blob> {
 function abortError(): Error { return new Error("The handoff was cancelled. Send the current completed view again."); }
 function assertNotAborted(signal?: AbortSignal) { if (signal?.aborted) throw abortError(); }
 
-async function sourceImage(source: string, signal?: AbortSignal): Promise<Blob> {
+export async function sourceImage(source: string, signal?: AbortSignal): Promise<Blob> {
   assertNotAborted(signal);
   if (source.startsWith("data:")) {
     // The bound is checked before decoding, avoiding a large base64 allocation.

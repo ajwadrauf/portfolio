@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CreamCompare } from "@/components/studio/CreamCompare";
 import { VeluneCard } from "@/components/velune/VeluneCard";
+import { StudioStart } from "@/components/studio/StudioStart";
 
 export const metadata: Metadata = {
   title: "AI Content Studio — Ajwad Rauf",
@@ -38,8 +39,8 @@ const TOOLS = [
   {
     href: "/ai-studio/packshots",
     name: "Packshot Studio",
-    task: "Generate product views and review reconstructed angles",
-    body: "Upload the reference angles a SKU already has and generate the missing product-on-white views with GS1 filenames. Grounded angles are marked; reconstructed ones are flagged for label QA.",
+    task: "Turn product photos or packaging artwork into usable views",
+    body: "Start from photos, or map flat artwork onto a measured package. Inspect it in 3D, render clean views and send a completed packshot into the same campaign project. Reconstructed views remain flagged for label QA.",
     tags: ["Product on white", "A/B bake-offs", "Governance"],
     cta: "Open Packshot Studio",
   },
@@ -85,7 +86,7 @@ const PRACTICE = [
   },
   {
     h: "Govern it",
-    p: "Guidelines as decisions rather than clauses, enforced rather than promised: every asset exposes the prompt that made it, reconstructed angles are flagged for label QA, and prices are never invented.",
+    p: "Review with evidence: preserve prompts and source references, flag reconstructed angles for label QA, and record the human decisions that an AI observation cannot establish.",
   },
 ] as const;
 
@@ -97,15 +98,15 @@ const LEARNED = [
   },
   {
     h: "Text-in-image is a routing decision",
-    p: "Most image models still mangle type. That one constraint is why bilingual tiles route to the pro tier while format adaptations run four times cheaper on flash.",
+    p: "Bilingual tiles need legible, editable copy. Approve the image first, then set EN/FR typography in the layout; use model tiers for the visual job rather than asking generation to guarantee every letter.",
   },
   {
     h: "AI can't know what it never saw",
     p: "A generated packshot of a panel no camera captured is a plausible reconstruction, not a record. It gets labelled that way every time — a wrong ingredient list is a recall, not a retouch.",
   },
   {
-    h: "The leaderboard flips quarterly",
-    p: "Sora 2's API sunset stranded pipelines built on it. Model IDs and prices sit in one config file with environment overrides, so switching vendor is an edit, not a rebuild.",
+    h: "The models change. The production record stays.",
+    p: "New models earn their place against a real brief, a cost estimate and a review of the result. Shared projects keep the references and decisions portable; provider adapters keep each model's requirements explicit.",
   },
 ] as const;
 
@@ -140,6 +141,7 @@ export default function StudioOverview() {
         </div>
       </section>
 
+      <StudioStart />
       {/* ------------------------- The work, first ------------------------- */}
       <CreamCompare />
 

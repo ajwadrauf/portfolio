@@ -10,8 +10,15 @@ import { useAudioJobs } from "@/lib/useAudioJobs";
 import { soundDirection, audioReferenceProblem, ICE_CREAM_MUSIC_BRIEF } from "@/lib/adAudio";
 import { SoundPlanner } from "@/components/studio/SoundPlanner";
 import { AdPreflight } from "@/components/ad/AdPreflight";
+import { useStudioProject } from "@/components/studio/StudioProjectProvider";
+import { AdSceneBoard } from "@/components/ad/AdSceneBoard";
+import { AdFinishing } from "@/components/ad/AdFinishing";
+import { parseAdDraft, readyAdReferences, referenceRole, referenceBindingProblems, adReferenceAdditionProblem, adDocumentDataUrl, type AdLabSeed, type AdSceneCard, type AdMixTrack, type VoiceTake, type AdReferenceBinding } from "@/lib/adDraft";
+import { VELUNE_SHOTS } from "@/components/velune/veluneStudy";
+import { velunePromptDraft } from "@/lib/productionBrief";
+import { assemble } from "@/lib/promptBuilder";
 import type { CompletedPreflightTake, GenerationSnapshot } from "@/lib/adPreflight";
-import { buildComposition, planProblem, planSeconds, planVideoDirection, soundPlanSchema, type SoundPlan } from "@/lib/soundPlan";
+import { buildComposition, planProblem, planSeconds, planVideoDirection, soundPlanSchema, timedCues, type SoundPlan } from "@/lib/soundPlan";
 import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
@@ -123,11 +130,13 @@ type PendingJob = {
   aspect: string;
   /** Captured when submitted; never reconstructed from the edited form. */
   generationSnapshot?: GenerationSnapshot;
+  sceneCards?: AdSceneCard[];
 };
 
 type CompletedTake = CompletedPreflightTake & {
   /** Browser memory only; the source files are not written to local storage. */
   referenceImages?: { name: string; role: string; dataUrl: string }[];
+  sceneCards?: AdSceneCard[];
 };
 
 const TAKE_KEY = "adlab-completed-takes-v1";
@@ -362,6 +371,7 @@ function Step({
   aside,
   children,
   id,
+  completed = false,
 }: {
   n: number;
   title: string;
@@ -369,7 +379,10 @@ function Step({
   children: React.ReactNode;
   /** Anchor target, so something further up the page can jump to this step. */
   id?: string;
+  completed?: boolean;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => { const reveal = () => { if (window.location.hash === `#${id}`) setCollapsed(false); }; window.addEventListener("hashchange", reveal); return () => window.removeEventListener("hashchange", reveal); }, [id]);
   const chapter: Record<string, string> = {
     "ad-concept": "Find the idea", "ad-product": "Ground the picture", "ad-recipe": "Shape the story",
     "ad-prompt": "Set the direction", "ad-refs": "Guide the look & motion", "ad-format": "Choose the output",
@@ -384,25 +397,48 @@ function Step({
           <h2 id={`${id}-title`} className={styles.stepTitle}>{title}</h2>
         </div>
         {aside && <div className={styles.stepAside}>{aside}</div>}
+        {id !== "ad-generate" && <button type="button" className={styles.collapseStep} aria-expanded={!collapsed} aria-controls={`${id}-body`} onClick={() => setCollapsed((value) => !value)}>{collapsed ? "Expand" : completed ? "Done for now · collapse" : "Collapse"}</button>}
       </div>
-      <div className={styles.stepBody}>{children}</div>
+      <div id={`${id}-body`} className={styles.stepBody} hidden={collapsed}>{children}</div>
     </section>
   );
 }
 
-export function AdLab({
+export function AdLab(props: { availableClipIds?: string[]; clipSources?: Record<string, string> }) {
+  const { project, ready } = useStudioProject();
+  return <AdLabWorkspace key={project?.id ?? "loading"} {...props} workspaceReady={ready && !!project} />;
+}
+
+function AdLabWorkspace({
   availableClipIds = [],
   /** Resolved source per clip id — a hosted URL or a repo path. */
   clipSources = {},
+  workspaceReady,
 }: {
   availableClipIds?: string[];
   clipSources?: Record<string, string>;
+  workspaceReady: boolean;
 }) {
   /**
    * Shared with the gate control, so unlocking live mode updates this page
    * immediately instead of leaving it convinced it is still in demo mode.
    */
   const { health } = useHealth();
+  const { project, saveDraft, saveAsset } = useStudioProject();
+  const [hydrated, setHydrated] = useState(false);
+  const hydrationStarted = useRef(false);
+  const [draftStatus, setDraftStatus] = useState("");
+  const [draftSaveBlocked, setDraftSaveBlocked] = useState(false);
+  const [voiceTakes, setVoiceTakes] = useState<Record<string, VoiceTake>>({});
+  const [sceneCards, setSceneCards] = useState<AdSceneCard[]>([]);
+  const [mixTracks, setMixTracks] = useState<AdMixTrack[]>([]);
+  const [ducking, setDucking] = useState(0.7);
+  const [unattachedSlots, setUnattachedSlots] = useState<string[]>([]);
+  const [referenceManifest, setReferenceManifest] = useState<AdReferenceBinding[]>([]);
+  const [routeNote, setRouteNote] = useState("");
+  const handledRouting = useRef(0);
+  const [legacyPlan, setLegacyPlan] = useState<SoundPlan | null>(null);
+  const generateLock = useRef(false);
   const [presetId, setPresetId] = useState<string>(AD_PRESETS[0].id);
   const [params, setParams] = useState<Record<string, string>>({});
   const [productImage, setProductImage] = useState<string | null>(null);
@@ -480,9 +516,10 @@ export function AdLab({
 
   // Reference-to-video: extra references, each with a job.
   const [refs, setRefs] = useState<
-    { url: string; media: ReferenceMedia; role: ReferenceRole; name: string }[]
+    { id?: string; url: string; media: ReferenceMedia; role: ReferenceRole; name: string }[]
   >([]);
   const [uploading, setUploading] = useState(false);
+  useEffect(() => { if (refs.some((ref) => !ref.id)) setRefs((current) => current.map((ref) => ref.id ? ref : { ...ref, id: crypto.randomUUID() })); }, [refs]);
   /**
    * Reference failures are shown inside the References step, not in the
    * page-level banner. The banner sits thousands of pixels above the Add
@@ -495,6 +532,8 @@ export function AdLab({
    * permissions, and a hosted clip needs neither an upload nor live mode.
    */
   const [refUrl, setRefUrl] = useState("");
+  const [projectReferenceId, setProjectReferenceId] = useState("");
+  const [projectReferenceRole, setProjectReferenceRole] = useState<ReferenceRole>("product");
   const [seconds, setSeconds] = useState<number | null>(null);
   /**
    * Resolution was never sent, so the endpoint's default decided the bill —
@@ -583,19 +622,6 @@ export function AdLab({
   const [musicAsTimingRef, setMusicAsTimingRef] = useState(false);
   const [soundPlan, setSoundPlan] = useState<SoundPlan | null>(null);
   const [scoreToPlan, setScoreToPlan] = useState(false);
-  const [planLoaded, setPlanLoaded] = useState(false);
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("adlab-sound-plan-v1") ?? "null");
-      const parsed = soundPlanSchema.safeParse(saved?.plan);
-      if (parsed.success) { setSoundPlan(parsed.data); setScoreToPlan(saved.scoreToPlan === true); }
-    } catch { /* Planning still works without local storage. */ }
-    setPlanLoaded(true);
-  }, []);
-  useEffect(() => {
-    if (!planLoaded) return;
-    try { localStorage.setItem("adlab-sound-plan-v1", JSON.stringify({ plan: soundPlan, scoreToPlan })); } catch { /* Optional persistence. */ }
-  }, [soundPlan, scoreToPlan, planLoaded]);
   /**
    * Spot effects, keyed by the recipe's sound-design line they came from.
    * The recipe already names the effects this concept needs; generating them
@@ -755,68 +781,81 @@ export function AdLab({
     [productImage, refs, timingRefActive],
   );
 
-  /**
-   * A prompt handed over from the Prompts tab. Landing it straight in the
-   * composed-prompt box is the point: the library is a study set you can run,
-   * not a list you copy out of.
-   */
+  // A project change remounts this workspace. A completed old job keeps its original save callback.
   useEffect(() => {
-    try {
-      // The Blender page hands over a prompt and asks for its own lane, so the
-      // page it lands on is not the eight-step one it just made irrelevant.
-      const handedLane = sessionStorage.getItem("adlab-lane");
-      if (handedLane === "blender") {
-        sessionStorage.removeItem("adlab-lane");
-        setLane("blender");
-        setProductImage(null);
-        setModelId("seedance-2.5-ref");
-      }
+    if (!workspaceReady || !project || hydrationStarted.current) return;
+    hydrationStarted.current = true;
+    let draft = parseAdDraft(project.drafts.ad);
+    if (project.drafts.ad && !draft) {
+      setDraftSaveBlocked(true);
+      setDraftStatus("This saved Ad draft uses unsupported fields. It is preserved; export the project before replacing the draft.");
+    }
+    if (!draft && !project.drafts.ad && project.example === "velune") {
+      const seed = velunePromptDraft();
+      draft = { schema: "adlab-draft-v1", source: "velune", prompt: assemble(seed.values, seed.beats, seed.duration, seed.throughline), modelId: "seedance-2.5-ref", duration: 15, aspect: "16:9", lane: "blender", imported: true, audioMode: "silent", references: readyAdReferences(project.assets.filter((a) => ["velune-motion", "velune-packaging", "velune-report"].includes(a.id))),
+        unattachedSlots: ["Approved per-flavour packaging / product photography", "Host and chocolatier appearance references with usage approval", "Chocolate, filling and ingredient texture photography", "Approved final packaging and Centre Report graphics"],
+        sceneCards: VELUNE_SHOTS.map((shot) => ({ id: shot.id, title: shot.title, start: shot.start / 24, end: shot.end / 24, action: shot.note, camera: shot.id === "S07" ? "Camera pullback from the actual Blender study" : "Follow the supplied Blender composition and registered motion", sound: "Soundtrack not supplied — plan and audition separately", referenceIds: ["velune-motion", ...(shot.id === "S11" ? ["velune-report"] : ["S02", "S03", "S04"].includes(shot.id) ? ["velune-packaging"] : [])] })) };
+    }
+    if (draft) {
+      setPresetId(AD_PRESETS.some((p) => p.id === draft.presetId) ? draft.presetId! : AD_PRESETS[0].id);
+      setParams(draft.params ?? {}); setProductImage(draft.productImage ?? null); setEndImage(draft.endImage ?? null);
+      setModelId(draft.modelId); setFinalPrompt(draft.prompt); setNegativePrompt(draft.negativePrompt ?? AD_NEGATIVE_PROMPT);
+      setSeconds(draft.duration); setAspectOverride(draft.aspect ?? null); setResolution(draft.resolution ?? "480p");
+      setLane(draft.lane ?? (draft.source === "blender" || draft.source === "velune" || draft.source === "prompt" || draft.source === "campaign" ? "blender" : "recipe"));
+      setImported(draft.imported ?? draft.source !== "ad"); setPhase(draft.completedTake ? "done" : draft.prompt ? "ready" : "idle");
+      setRefs(draft.references.map((r) => ({ id: r.id, name: r.name, media: r.kind, role: referenceRole(r.kind, r.role), url: r.dataUrl ?? r.url! })));
+      if (draft.recipe) setRecipe(draft.recipe);
+      setAudioMode(draft.audioMode ?? "native"); setSoundPlan(draft.soundPlan ?? null); setScoreToPlan(draft.scoreToPlan ?? false); setVoiceTakes(draft.voiceTakes ?? {});
+      setMusicStyleId(draft.musicStyleId ?? AD_PRESETS[0].musicStyleId); setMusicUrl(draft.musicUrl ?? null); setMusicSpec(draft.musicSpec ?? ""); setMusicMock(draft.musicMock ?? false); setMusicCustomPrompt(draft.musicCustomPrompt ?? ""); setMusicAsTimingRef(draft.musicAsTimingRef ?? false); setMusicVolume(draft.musicVolume ?? 0.35); setMusicOn(draft.musicOn ?? true);
+      setSfxTracks(draft.sfxTracks ?? {}); setSfxMocks(draft.sfxMocks ?? {}); setExtraEffects(draft.extraEffects ?? []); setSfxSeconds(draft.sfxSeconds ?? SFX_LIMITS.defaultSeconds); setCustomEffect(draft.customEffect ?? "");
+      setSceneCards(draft.sceneCards ?? []); setMixTracks(draft.mixTracks ?? []); setDucking(draft.ducking ?? 0.7); setUnattachedSlots(draft.unattachedSlots ?? []);
+      setReferenceManifest(draft.referenceManifest ?? draft.references.filter((r) => r.token).map((r) => ({ token: r.token!, job: r.role, assetId: r.id })));
+      setCompletedTake(draft.completedTake ?? null); setVideoUrl(draft.completedTake?.videoUrl ?? null);
+      if (draft.source !== "ad") setImportSummary([`${draft.source === "velune" ? "VELUNE's actual 15-second camera study and concept brief" : `the ${draft.source} prompt`}`, `${draft.references.length} attached reference files`, `its ${draft.duration}-second length`]);
+    } else if (!project.drafts.ad) {
+      // Backward compatibility for old links. This one-time text transfer still carries no files.
+      try {
+        const handed = sessionStorage.getItem("adlab-imported-prompt");
+        if (handed) {
+          const result = importPrompt(handed); setFinalPrompt(result.prompt); setNegativePrompt(AD_NEGATIVE_PROMPT); setImported(true); setPhase("ready"); setLane("blender"); setModelId("seedance-2.5-ref"); setImportNotes(result.notes); setImportSummary(["legacy prompt text; no reference files"]);
+          if (result.aspect && ASPECTS.some((a) => a.id === result.aspect)) setAspectOverride(result.aspect);
+          const seconds = Number(sessionStorage.getItem("adlab-imported-duration")); if (Number.isFinite(seconds) && seconds >= 4 && seconds <= 30) setSeconds(seconds);
+          ["adlab-imported-prompt", "adlab-imported-duration", "adlab-lane"].forEach((key) => sessionStorage.removeItem(key));
+        }
+      } catch { /* Shared project state remains usable without sessionStorage. */ }
+      try { const saved = JSON.parse(localStorage.getItem("adlab-sound-plan-v1") ?? "null"); const parsed = soundPlanSchema.safeParse(saved?.plan); if (parsed.success) setLegacyPlan(parsed.data); } catch { /* Legacy plan remains untouched. */ }
+    }
+    setHydrated(true);
+  }, [workspaceReady, project]);
 
-      const handed = sessionStorage.getItem("adlab-imported-prompt");
-      if (handed) {
-        sessionStorage.removeItem("adlab-imported-prompt");
-        // Same conversion as a file import: a prompt written with playground
-        // sigils resolves to nothing through the API, and does it silently.
-        const result = importPrompt(handed);
-        setFinalPrompt(result.prompt);
-        setNegativePrompt(AD_NEGATIVE_PROMPT);
-        setPhase("ready");
-        setImported(true);
-        // A prompt addressing [Image1] or [Video1] only means anything on the
-        // endpoint that resolves them. Landing it on a first-frame model would
-        // read the tokens as literal text — the exact silent failure the
-        // builder warns about — so route it to the model it was written for.
-        if (/\[(?:Image|Video|Audio)\d+\]/.test(result.prompt)) {
-          setModelId("seedance-2.5-ref");
-        }
-        const notes = [...result.notes];
-        if (result.aspect && ASPECTS.some((a) => a.id === result.aspect)) {
-          setAspectOverride(result.aspect);
-          notes.push(`The prompt states ${result.aspect}, so the shape is set to match the blockout.`);
-        }
-        setImportNotes(notes);
+  const draft = useMemo<AdLabSeed>(() => ({ schema: "adlab-draft-v1", source: "ad", prompt: finalPrompt, modelId, duration, aspect, references: refs.map((r, i) => ({ id: r.id ?? `ad-ref-${i}`, name: r.name, kind: r.media, role: r.role, ...(r.url.startsWith("data:") ? { dataUrl: r.url } : { url: r.url }) })), presetId, params, productImage, endImage, negativePrompt, lane, imported, resolution, recipe, audioMode, soundPlan, scoreToPlan, voiceTakes, musicStyleId, musicUrl, musicSpec, musicMock, musicCustomPrompt, musicAsTimingRef, musicVolume, musicOn, sfxTracks, sfxMocks, extraEffects, sfxSeconds, customEffect, sceneCards, mixTracks, ducking, completedTake, unattachedSlots, referenceManifest }), [finalPrompt, modelId, duration, aspect, refs, presetId, params, productImage, endImage, negativePrompt, lane, imported, resolution, recipe, audioMode, soundPlan, scoreToPlan, voiceTakes, musicStyleId, musicUrl, musicSpec, musicMock, musicCustomPrompt, musicAsTimingRef, musicVolume, musicOn, sfxTracks, sfxMocks, extraEffects, sfxSeconds, customEffect, sceneCards, mixTracks, ducking, completedTake, unattachedSlots, referenceManifest]);
+  const latestDraft = useRef({ draft, saveable: hydrated && !draftSaveBlocked });
+  latestDraft.current = { draft, saveable: hydrated && !draftSaveBlocked };
+  useEffect(() => {
+    if (!hydrated || draftSaveBlocked) return;
+    let current = true; setDraftStatus("Saving draft…");
+    const timer = setTimeout(() => { void saveDraft("ad", draft).then(() => { if (current) setDraftStatus("Draft saved in this project"); }).catch((e) => { if (current) setDraftStatus(e instanceof Error ? e.message : "Draft could not be saved. Keep this tab open."); }); }, 300);
+    return () => { current = false; clearTimeout(timer); };
+  }, [draft, hydrated, draftSaveBlocked, saveDraft]);
+  useEffect(() => () => { if (latestDraft.current.saveable) void saveDraft("ad", latestDraft.current.draft).catch(() => { /* Provider surfaces persistence errors. */ }); }, [saveDraft]);
 
-        const arrived = ["the prompt text"];
-        if (result.aspect && ASPECTS.some((a) => a.id === result.aspect)) {
-          arrived.push(`its ${result.aspect} shape`);
-        }
-        if (/\[(?:Image|Video|Audio)\d+\]/.test(result.prompt)) {
-          arrived.push("a reference model to resolve its tokens");
-        }
-        setImportSummary(arrived);
-      }
-      // A timeline written for 14 seconds is wrong at 8, so the length comes
-      // across with it rather than being left at the preset's.
-      const handedDuration = Number(sessionStorage.getItem("adlab-imported-duration"));
-      if (Number.isFinite(handedDuration) && handedDuration >= 4) {
-        sessionStorage.removeItem("adlab-imported-duration");
-        setSeconds(handedDuration);
-        setImportSummary((prev) =>
-          prev.length ? [...prev, `its ${handedDuration}-second length`] : prev,
-        );
-      }
-    } catch {}
-  }, []);
+  useEffect(() => {
+    if (!hydrated || !project) return;
+    const route = project.drafts.routing as { kind?: string; modelId?: string; selectedAt?: number; handledAt?: number; scenario?: { seconds?: number; aspect?: string; resolution?: VideoResolution } } | undefined;
+    if (!route || typeof route.selectedAt !== "number" || route.handledAt === route.selectedAt || handledRouting.current === route.selectedAt) return;
+    handledRouting.current = route.selectedAt;
+    if (route.kind === "video" && route.modelId && AD_VIDEO_MODELS.includes(route.modelId)) {
+      setModelId(route.modelId);
+      if (typeof route.scenario?.seconds === "number" && Number.isFinite(route.scenario.seconds)) setSeconds(snapAdSeconds(route.modelId, Math.min(maxAdSeconds(route.modelId), Math.max(4, route.scenario.seconds))));
+      if (aspectsFor(route.modelId).some((a) => a.id === route.scenario?.aspect)) setAspectOverride(route.scenario!.aspect!);
+      if (resolutionsFor(route.modelId).includes(route.scenario?.resolution as VideoResolution)) setResolution(route.scenario!.resolution!);
+      setRouteNote(`Model Explorer selected ${MODELS[route.modelId].label}. Review the new output settings against your existing prompt and references.`);
+    } else if (["music", "voice", "sfx"].includes(route.kind ?? "")) {
+      setRouteNote(`Model Explorer selected ${route.kind}. Use the corresponding ElevenLabs control in Sound; no audio request has started.`);
+      window.location.hash = "ad-sound";
+    }
+    void saveDraft("routing", { ...route, handledAt: route.selectedAt }).catch((e) => setDraftStatus(e instanceof Error ? e.message : "Could not record the model selection."));
+  }, [hydrated, project, saveDraft]);
 
   useEffect(() => {
     try {
@@ -843,7 +882,7 @@ export function AdLab({
     } catch {}
   }, []);
 
-  const showCompletedTake = useCallback((url: string, requestId: string, generationSnapshot?: GenerationSnapshot | null, referenceImages?: CompletedTake["referenceImages"]) => {
+  const showCompletedTake = useCallback((url: string, requestId: string, generationSnapshot?: GenerationSnapshot | null, referenceImages?: CompletedTake["referenceImages"], sceneCards?: AdSceneCard[]) => {
     const history = previousTakes();
     const saved = history.find((take) => take.videoUrl === url && take.id === requestId);
     const take: CompletedTake = {
@@ -851,6 +890,7 @@ export function AdLab({
       id: requestId,
       context: generationSnapshot ?? saved?.context ?? null,
       referenceImages,
+      sceneCards: sceneCards ?? saved?.sceneCards,
     };
     setCompletedTake(take);
     setVideoUrl(url);
@@ -859,11 +899,12 @@ export function AdLab({
       ? { durationSeconds: displayed.duration, width: displayed.videoWidth, height: displayed.videoHeight }
       : null);
     setPhase("done");
+    void saveAsset({ id: `ad-video-${requestId}`.slice(0, 200), name: `Ad Lab · ${generationSnapshot?.durationSeconds ?? saved?.context?.durationSeconds ?? "completed"}s take`, kind: "video", url, role: "Completed model output · native audio; review required", source: "generated", status: "ready", metadata: { takeId: take.id, context: take.context, sceneCards: take.sceneCards ?? null } }).catch((e) => setDraftStatus(`Video is ready, but project save failed: ${e instanceof Error ? e.message : "storage unavailable"}`));
     try {
-      const retained = { id: take.id, videoUrl: take.videoUrl, context: take.context };
+      const retained = { id: take.id, videoUrl: take.videoUrl, context: take.context, sceneCards: take.sceneCards };
       localStorage.setItem(TAKE_KEY, JSON.stringify([retained, ...history.filter((item) => item.videoUrl !== url)].slice(0, 12)));
     } catch { /* The take stays usable if browser storage is full or disabled. */ }
-  }, []);
+  }, [saveAsset]);
 
   /**
    * One status check against an already-paid render. Free — it reads a result
@@ -890,7 +931,7 @@ export function AdLab({
         error?: string;
       };
       if (status.status === "done" && status.videoUrl) {
-        showCompletedTake(status.videoUrl, pendingJob.falRequestId ?? pendingJob.operationName ?? status.videoUrl, pendingJob.generationSnapshot);
+        showCompletedTake(status.videoUrl, pendingJob.falRequestId ?? pendingJob.operationName ?? status.videoUrl, pendingJob.generationSnapshot, undefined, pendingJob.sceneCards);
         rememberJob(null);
         return;
       }
@@ -974,6 +1015,9 @@ export function AdLab({
   }, []);
 
   const audioJobs = useAudioJobs(addSpend);
+  const keepAudio = useCallback((url: string, name: string, role: string) => {
+    void saveAsset({ id: `ad-audio-${crypto.randomUUID()}`, name: name.slice(0, 240), kind: "audio", url, role, source: "generated", status: "ready" }).catch((e) => setDraftStatus(`Audio is ready, but project save failed: ${e instanceof Error ? e.message : "storage unavailable"}`));
+  }, [saveAsset]);
 
   /**
    * Photo is the source of truth: every field the vision model can ground in
@@ -1019,6 +1063,7 @@ export function AdLab({
     (id: string) => {
       const next = getAdPreset(id);
       setPresetId(id);
+      setSceneCards([]); setReferenceManifest([]); setUnattachedSlots([]); setVoiceTakes({}); setMixTracks([]); setImported(false); setCompletedTake(null); setVideoMetadata(null);
       setRecipe(editableRecipeOf(next));
       // A blank recipe in read mode is a set of empty headings, which reads as
       // broken rather than as an invitation. The custom concept opens straight
@@ -1093,6 +1138,7 @@ export function AdLab({
       return;
     }
     setImportError(null);
+    setSceneCards([]); setReferenceManifest([]);
     setFinalPrompt(result.prompt);
     setNegativePrompt(AD_NEGATIVE_PROMPT);
     setImported(true);
@@ -1344,13 +1390,14 @@ export function AdLab({
         const json = await audioJobs.run("/api/ad/sfx", { text, durationSeconds: sfxSeconds }, text);
         setSfxTracks((prev) => ({ ...prev, [text]: json.audioUrl }));
         setSfxMocks((prev) => ({ ...prev, [text]: json.mock }));
+        if (!json.mock) keepAudio(json.audioUrl, text, "Sound effect · separate take");
       } catch (e) {
         setAudioError(e instanceof Error ? e.message : "Sound effect failed");
       } finally {
         setSfxBusy(null);
       }
     },
-    [audioJobs, sfxSeconds],
+    [audioJobs, sfxSeconds, keepAudio],
   );
 
   const generateMusic = useCallback(async () => {
@@ -1362,6 +1409,7 @@ export function AdLab({
       setMusicUrl(json.audioUrl);
       setMusicSpec(musicKey);
       setMusicMock(json.mock);
+      if (!json.mock) keepAudio(json.audioUrl, `${MUSIC_STYLES.find((s) => s.id === musicStyleId)?.label ?? "Music"} · ${duration}s cut`, "Music · separate take");
       setMusicOn(true);
       // A bed used as a timing signal changes the prompt, so it goes stale.
       if (musicAsTimingRef) invalidatePrompt();
@@ -1370,7 +1418,7 @@ export function AdLab({
     } finally {
       setMusicBusy(false);
     }
-  }, [audioJobs, duration, invalidatePrompt, musicAsTimingRef, musicStyleId, musicCustomPrompt, musicKey, musicComposition, soundPlanIssue]);
+  }, [audioJobs, duration, invalidatePrompt, musicAsTimingRef, musicStyleId, musicCustomPrompt, musicKey, musicComposition, soundPlanIssue, keepAudio]);
 
   /** Keep the separately generated music bed locked to the video's transport. */
   const syncAudio = useCallback(
@@ -1398,14 +1446,46 @@ export function AdLab({
   }, [musicVolume, musicReady, scoringSeparately]);
   useEffect(() => () => audioRef.current?.pause(), []);
 
+  const boardReferences = useMemo<AdLabSeed["references"]>(() => [
+    ...(productImage ? [{ id: "ad-product", name: "Product photo", kind: "image" as const, role: "product", dataUrl: productImage }] : []),
+    ...refs.map((r, i) => ({ id: r.id ?? `ad-ref-${i}`, name: r.name, kind: r.media, role: r.role, ...(r.url.startsWith("data:") ? { dataUrl: r.url } : { url: r.url }) })),
+  ], [productImage, refs]);
+  const projectReferences = useMemo(() => readyAdReferences(project?.assets ?? []), [project?.assets]);
+  const selectedProjectReference = projectReferences.find((reference) => reference.id === projectReferenceId);
+  function addProjectReference() {
+    if (!selectedProjectReference) return;
+    const problem = adReferenceAdditionProblem(selectedProjectReference, boardReferences, { audio: timingRefActive ? 1 : 0 });
+    if (problem) { setRefError(problem); return; }
+    const selected = selectedProjectReference;
+    setRefs((previous) => previous.some((ref) => ref.id === selected.id || ref.url === (selected.dataUrl ?? selected.url)) ? previous : [...previous, { id: selected.id, name: selected.name, media: selected.kind, role: referenceRole(selected.kind, projectReferenceRole), url: selected.dataUrl ?? selected.url! }]);
+    setProjectReferenceId(""); setRefError(null); setRefCheck(null); invalidatePrompt();
+  }
+  const boardCards = useMemo<AdSceneCard[]>(() => sceneCards.length ? sceneCards : soundPlan ? timedCues(soundPlan).map((cue, i) => ({ id: cue.id, title: cue.title, start: cue.start, end: cue.end, action: recipe.scenes[i]?.description ?? "Describe the action", camera: "", sound: [cue.line, cue.music].filter(Boolean).join(" · "), referenceIds: productImage ? ["ad-product"] : [] })) : imported ? [{ id: "imported-direction", title: "Imported direction · confirm the shot breakdown", start: 0, end: duration, action: finalPrompt.slice(0, 6000), camera: "Follow the attached motion and composition references", sound: "Review the sound direction below", referenceIds: boardReferences.filter((ref) => ref.kind === "image").map((ref) => ref.id) }] : recipe.scenes.map((scene, i) => ({ id: `recipe-${i}`, title: scene.title, start: duration * i / recipe.scenes.length, end: duration * (i + 1) / recipe.scenes.length, action: scene.description, camera: "", sound: recipe.sfx[i] ?? "", referenceIds: productImage ? ["ad-product"] : [] })), [sceneCards, soundPlan, recipe, duration, productImage, imported, finalPrompt, boardReferences]);
+  const bindingProblems = [...referenceBindingProblems(boardReferences, referenceManifest), ...(["image", "video", "audio"] as const).flatMap((kind) => boardReferences.filter((ref) => ref.kind === kind).length > REF_CEILINGS[kind] ? [`Too many ${kind} references: this endpoint supports at most ${REF_CEILINGS[kind]}. Remove extra files before generating.`] : []), ...(!supportsRefs && Object.values(refSlots(finalPrompt)).some((count) => count > 0) ? ["This prompt uses reference tokens. Choose Seedance Reference to resolve them, or rewrite the prompt for a first-frame model."] : [])];
+  const finishingDuration = completedTake ? videoMetadata?.durationSeconds ?? completedTake.context?.durationSeconds ?? duration : duration;
+  const finishingScenes = completedTake ? completedTake.sceneCards ?? [] : boardCards;
+  const availableMixTracks = useMemo<AdMixTrack[]>(() => {
+    const base = { trim: 0, fadeIn: 0.05, fadeOut: 0.1, enabled: true };
+    const cues = soundPlan ? timedCues(soundPlan) : [];
+    return [
+      ...(musicUrl && !musicMock ? [{ ...base, id: "music-bed", name: "Music bed", url: musicUrl, kind: "music" as const, start: 0, length: finishingDuration, gain: musicVolume, fadeIn: 0.25, fadeOut: 0.75 }] : []),
+      ...Object.entries(voiceTakes).filter(([id, take]) => !take.mock && cues.some((cue) => cue.id === id)).map(([id, take]) => { const cue = cues.find((c) => c.id === id); return { ...base, id: `voice-${id}`, name: take.label ?? cue?.title ?? "Scene voice", url: take.url, kind: "voice" as const, start: cue?.start ?? 0, length: cue?.seconds ?? finishingDuration, gain: 1 }; }),
+      ...refs.filter((ref) => ref.media === "audio" && ref.url !== musicUrl && !Object.values(voiceTakes).some((take) => take.url === ref.url) && !Object.values(sfxTracks).includes(ref.url)).map((ref, i) => ({ ...base, id: `reference-${ref.id ?? i}`, name: `Attached audio · ${ref.name}`.slice(0, 300), url: ref.url, kind: ref.role === "voice" ? "voice" as const : ref.role === "rhythm" ? "music" as const : "effect" as const, start: 0, length: Math.min(audioDurations[ref.url] ?? finishingDuration, finishingDuration), gain: 1 })),
+      ...Object.entries(sfxTracks).filter(([line]) => !sfxMocks[line]).map(([line, url], i) => ({ ...base, id: `effect-${i}`, name: line.slice(0, 300), url, kind: "effect" as const, start: 0, length: Math.min(audioDurations[url] ?? sfxSeconds, finishingDuration), gain: 0.8 })),
+    ];
+  }, [musicUrl, musicMock, musicVolume, finishingDuration, voiceTakes, soundPlan, sfxTracks, sfxMocks, audioDurations, sfxSeconds, refs]);
+
   const generate = useCallback(async () => {
+    if (generateLock.current || !hydrated || draftSaveBlocked) return;
+    if (bindingProblems.length) { setError({ at: "generate", text: "Review imported reference bindings before generating. Every declared slot needs its assigned file in the correct position." }); return; }
     setError(null);
     if (audioJobs.busy || audioRefProblem || soundPlanIssue) { setAudioError(soundPlanIssue ?? audioRefProblem ?? "Wait for the audio request to finish before generating video."); return; }
+    generateLock.current = true;
     if (health?.live) {
       const ok = window.confirm(
         `This will run one live ${duration}s video generation at an estimated cost of $${cost.toFixed(2)}. Proceed?`,
       );
-      if (!ok) return;
+      if (!ok) { generateLock.current = false; return; }
     }
     // Freeze the actual request, including the sound directions. Editing the
     // form while it renders must not rewrite the evidence for the finished take.
@@ -1425,6 +1505,7 @@ export function AdLab({
         ...(timingRefActive && musicUrl ? [{ name: "Generated music timing reference", media: "audio", role: "rhythm" }] : []),
       ],
     };
+    const takeSceneCards = boardCards.map((card) => ({ ...card, referenceIds: [...card.referenceIds] }));
     const takeReferenceImages = [
       ...(productImage?.startsWith("data:image/") ? [{ name: "Product photo", role: "product", dataUrl: productImage }] : []),
       ...(supportsRefs ? refs.filter((r) => r.media === "image" && r.role === "product" && r.url.startsWith("data:image/")).map((r) => ({ name: r.name, role: r.role, dataUrl: r.url })) : []),
@@ -1433,13 +1514,11 @@ export function AdLab({
     setRenderStartedAt(Date.now());
     setElapsedMs(0);
     setVideoUrl(null);
+    setVideoMetadata(null);
     setCompletedTake(null);
     setPosterDataUrl(null);
     try {
-      const res = await fetch("/api/ad/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const requestBody = JSON.stringify({
           prompt: `${finalPrompt}\n\n${soundBlock}`,
           negativePrompt,
           modelId,
@@ -1461,8 +1540,9 @@ export function AdLab({
           referenceAudioDurations: cap.refAudio ? audioRefUrls.map((url) => audioDurations[url]) : undefined,
           generateAudio: audioMode !== "silent",
           presetName: preset.name,
-        }),
-      });
+        });
+      if (new TextEncoder().encode(requestBody).byteLength > 4_194_304) throw new Error("The combined references and prompt exceed the 4 MiB request limit. Use hosted media links or smaller image references before generating.");
+      const res = await fetch("/api/ad/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: requestBody });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed to start");
       if (json.mock) {
@@ -1486,6 +1566,7 @@ export function AdLab({
         label: `${preset.name} · ${duration}s`,
         aspect,
         generationSnapshot,
+        sceneCards: takeSceneCards,
       });
       setPhase("polling");
       const deadline = Date.now() + POLL_DEADLINE_MS;
@@ -1509,7 +1590,7 @@ export function AdLab({
           continue;
         }
         if (status?.status === "done") {
-          showCompletedTake(status.videoUrl!, json.falRequestId ?? json.operationName ?? status.videoUrl, generationSnapshot, takeReferenceImages);
+          showCompletedTake(status.videoUrl!, json.falRequestId ?? json.operationName ?? status.videoUrl, generationSnapshot, takeReferenceImages, takeSceneCards);
           rememberJob(null);
           return;
         }
@@ -1526,8 +1607,9 @@ export function AdLab({
     } catch (e) {
       fail(e instanceof Error ? e.message : "Generation failed", "generate");
       setPhase("failed");
-    }
+    } finally { generateLock.current = false; }
   }, [
+    hydrated, draftSaveBlocked, bindingProblems, boardCards,
     addSpend,
     aspect,
     audioMode,
@@ -1691,6 +1773,7 @@ export function AdLab({
    * take that does not match the geometry it was built on.
    */
   const loadBlenderExample = useCallback(() => {
+    setSceneCards([]); setReferenceManifest([]); setUnattachedSlots([]);
     setLane("blender");
     setError(null);
     setImportError(null);
@@ -1824,6 +1907,10 @@ export function AdLab({
         <a href="#cream-making-of" className={styles.heroLink}>See how a film was made <span aria-hidden>↘</span></a>
       </div>
 
+      <p role="status" className="mt-4 text-xs text-muted">{workspaceReady ? draftStatus : "Opening project storage…"}</p>
+      {draftSaveBlocked && <button type="button" className="btn-secondary mt-2" onClick={() => { if (window.confirm("Replace the unsupported Ad draft with the current form? Export the project first if you need to preserve that draft.")) setDraftSaveBlocked(false); }}>Replace unsupported Ad draft</button>}
+      {routeNote && <p role="status" className="mt-3 rounded-lg border border-accent/30 p-3 text-sm">{routeNote}</p>}
+      {project?.example === "velune" && <div className="mt-5 rounded-xl border border-border-soft p-4"><p className="text-sm font-semibold">VELUNE · actual camera study, final film pending</p><p className="mt-2 text-xs leading-relaxed text-muted">The attached Blender animatic and packaging/report concepts are available. Appearance photography, approval and a final Seedance film have not been supplied.</p>{unattachedSlots.length > 0 && <details className="mt-3" open><summary className="min-h-8 cursor-pointer text-xs font-semibold">Remaining reference checklist</summary><ul className="list-disc space-y-1 pl-4 text-xs text-muted">{unattachedSlots.map((slot) => <li key={slot}>{slot}</li>)}</ul></details>}<video controls preload="metadata" src={project.assets.find((a) => a.id === "velune-motion" && a.status === "ready")?.url} className="mt-3 max-h-72 w-full rounded-lg bg-black" /></div>}
       <div className={styles.utilities}>
         <div className={styles.sessionControls}>
           <LiveGate />
@@ -2007,9 +2094,8 @@ export function AdLab({
             received {listOf(importSummary)}.
           </p>
           <p className="mt-2 text-muted">
-            References did not come across — only text and settings transfer.
-            Attach any clips or stills the prompt names in the References step
-            so its tokens resolve.
+            Review the attached files, reference positions and output settings below.
+            Missing or expired source files still need attention. Importing never starts a generation.
           </p>
           <a
             href="#ad-prompt"
@@ -2068,11 +2154,14 @@ export function AdLab({
       {blenderLane && <p className="mt-3 text-xs text-muted">Need to write the brief first? <Link href="/ai-studio/blender" className="inline-flex min-h-6 items-center font-semibold text-accent underline underline-offset-4">Open the Blender prompt builder ↗</Link></p>}
       </div>
 
+      {referenceManifest.length > 0 && <details className="my-5 rounded-xl border border-border-soft p-4" open={bindingProblems.length > 0}><summary className="min-h-8 cursor-pointer text-sm font-semibold">Imported reference slots · {bindingProblems.length ? "review required before generation" : "all positions match"}</summary><p className="mt-2 text-xs text-muted">Each prompt token must still point to its intended file. Add missing files in References, assign them here, then apply the slot order.</p><div className="mt-3 grid gap-3 sm:grid-cols-2">{referenceManifest.map((row, i) => <label key={`${row.token}-${i}`}><span className="label">{row.token} · {row.job}</span><select className="input mt-1" value={row.assetId ?? ""} onChange={(e) => setReferenceManifest((previous) => previous.map((binding, j) => i === j ? { ...binding, assetId: e.target.value || null } : binding))}><option value="">Missing — attach and assign a file</option>{boardReferences.filter((r) => row.token.toLowerCase().startsWith(`[${r.kind}`)).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>)}</div><button type="button" className="btn-secondary mt-3" disabled={referenceManifest.some((row) => !row.assetId || !boardReferences.some((r) => r.id === row.assetId))} onClick={() => setRefs((previous) => [...previous].sort((a, b) => { const index = (id?: string) => Number(referenceManifest.find((row) => row.assetId === id)?.token.match(/\d+/)?.[0] ?? 100); return index(a.id) - index(b.id); }))}>Apply declared slot order</button>{bindingProblems.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-4 text-xs text-warning">{bindingProblems.map((problem, i) => <li key={i}>{problem}</li>)}</ul>}</details>}
+      <AdSceneBoard cards={boardCards} onChange={setSceneCards} references={boardReferences} duration={duration} onApply={(text) => { setSceneCards(boardCards); setFinalPrompt((previous) => `${previous.replace(/\n?\n?SCENE BOARD[\s\S]*?END SCENE BOARD/g, "").trim()}\n\nSCENE BOARD\n${text}\nEND SCENE BOARD`); setImported(true); if (!generateLock.current) setPhase("ready"); }} />
       <div className={styles.flow}>
         {/* ---------- the Blender lane opens on the prompt itself ---------- */}
         {blenderLane && (
           <Step
             id="ad-prompt"
+          completed={Boolean(finalPrompt)}
             n={STEP.prompt}
             title="Your prompt"
             aside={
@@ -2166,7 +2255,7 @@ export function AdLab({
 
         {/* ---------- 1. concept ---------- */}
         {!blenderLane && (
-        <Step id="ad-concept" n={STEP.concept} title="Pick a concept">
+        <Step id="ad-concept" completed n={STEP.concept} title="Pick a concept">
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {AD_PRESETS.map((p) => (
               <button
@@ -2193,6 +2282,7 @@ export function AdLab({
         {!blenderLane && (
         <Step
           id="ad-product"
+          completed={Boolean(productImage)}
           n={STEP.product}
           title="Your product"
           aside={
@@ -2551,6 +2641,7 @@ export function AdLab({
         {supportsRefs && (
           <Step
             id="ad-refs"
+          completed={refs.length > 0}
             n={STEP.refs}
             title="References"
             aside={
@@ -2741,6 +2832,16 @@ export function AdLab({
                 <span className="text-[11px] text-muted">
                   Upload a file, or paste a direct link to one
                 </span>
+              </div>
+              <div className="my-4 rounded-lg border border-border-soft bg-background p-3">
+                <p className="text-sm font-semibold">Add from project assets</p>
+                <p className="mt-1 text-xs text-muted">Use a saved packshot, Blender clip or audio take. Pending outputs are excluded. Adding a file does not start generation or change imported prompt tokens.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_12rem_auto]">
+                  <label className="min-w-0"><span className="label">Ready asset</span><select aria-label="Ready project reference" className="input mt-1" value={projectReferenceId} onChange={(event) => { setProjectReferenceId(event.target.value); const reference = projectReferences.find((ref) => ref.id === event.target.value); if (reference) setProjectReferenceRole(referenceRole(reference.kind, reference.role)); }}><option value="">{projectReferences.length ? "Choose a project asset" : "No ready media in this project"}</option>{projectReferences.map((reference) => <option key={reference.id} value={reference.id} disabled={boardReferences.some((attached) => attached.id === reference.id || (attached.dataUrl ?? attached.url) === (reference.dataUrl ?? reference.url))}>{reference.name} · {reference.kind}{boardReferences.some((attached) => attached.id === reference.id) ? " · attached" : ""}</option>)}</select></label>
+                  <label><span className="label">Reference role</span><select aria-label="Project reference role" className="input mt-1" disabled={!selectedProjectReference} value={projectReferenceRole} onChange={(event) => setProjectReferenceRole(event.target.value as ReferenceRole)}>{REFERENCE_ROLES.filter((role) => !selectedProjectReference || (role.media as readonly string[]).includes(selectedProjectReference.kind)).map((role) => <option key={role.id} value={role.id}>{role.label}</option>)}</select></label>
+                  <button type="button" className="btn-secondary self-end" disabled={!selectedProjectReference || uploading} onClick={addProjectReference}>Add selected asset</button>
+                </div>
+                {selectedProjectReference?.kind === "image" && <img src={selectedProjectReference.dataUrl ?? selectedProjectReference.url} alt={selectedProjectReference.name} className="mt-3 h-24 max-w-full rounded object-contain" />}
               </div>
               <button
                 className="btn-primary"
@@ -3090,6 +3191,7 @@ export function AdLab({
         {/* ---------- 5. format — after references, which change the bill ---------- */}
         <Step
           id="ad-format"
+          completed
           n={STEP.format}
           title="Format and cost"
           aside={
@@ -3321,6 +3423,7 @@ export function AdLab({
         {/* ---------- 6. sound — the bed is cut to the duration set above ---------- */}
         <Step
           id="ad-sound"
+          completed={Boolean(soundPlan) && !soundPlanIssue}
           n={STEP.sound}
           title="Sound"
           aside={
@@ -3343,12 +3446,13 @@ export function AdLab({
           {health && !health.live && <p className="mt-3 text-xs leading-relaxed text-warning">Audio is in demo mode. Preview tones are mocks, not ElevenLabs output. {gateable && <button type="button" className="min-h-11 font-semibold underline" onClick={requestLiveUnlock}>Unlock live audio</button>}</p>}
           {health?.live && !health.fal && <p className="mt-3 text-xs text-warning">Connect fal to generate ElevenLabs voice, music and sound effects.</p>}
 
-          <SoundPlanner plan={soundPlan} onChange={(plan) => { setSoundPlan(plan); if (plan?.narration === "native" && soundPlan?.narration !== "native" && cap.native) setAudioMode("native"); }}
+          {legacyPlan && <div className="my-3 rounded-lg border border-border-soft p-3 text-xs"><p>A sound plan from the previous version is still saved on this device.</p><button type="button" className="min-h-11 font-semibold text-accent underline" onClick={() => { setSoundPlan(legacyPlan); setLegacyPlan(null); }}>Import previous local sound plan into this project</button></div>}
+          <SoundPlanner takes={voiceTakes} onTakesChange={setVoiceTakes} recoveredVoices={audioJobs.jobs.filter((job): job is typeof job & { audioUrl: string } => job.modelId === "eleven-voice" && Boolean(job.audioUrl))} plan={soundPlan} onChange={(plan) => { setSoundPlan(plan); if (plan?.narration === "native" && soundPlan?.narration !== "native" && cap.native) setAudioMode("native"); }}
             duration={duration} problem={soundPlanIssue} onMatchDuration={setSeconds}
             canMatchDuration={Boolean(soundPlan && planSeconds(soundPlan) <= secondsCap && snapAdSeconds(modelId, planSeconds(soundPlan)) === planSeconds(soundPlan))}
             busy={audioJobs.busy || phase === "starting"} live={health?.live ?? false}
             scoreToPlan={scoreToPlan} onScoreToPlan={(enabled) => { setScoreToPlan(enabled); if (enabled) { setAudioMode("layered"); if (musicStyleId === NO_MUSIC_ID) setMusicStyleId("premium-cinematic"); } }}
-            onVoice={(body, label) => audioJobs.run("/api/ad/voice", body, label)} />
+            onVoice={async (body, label) => { const result = await audioJobs.run("/api/ad/voice", body, label); if (!result.mock) keepAudio(result.audioUrl, label, "Voice · separate take"); return result; }} />
 
           <div className="mt-4 grid gap-2 md:grid-cols-3">
             {audioChoices.map((c) => (
@@ -3675,6 +3779,7 @@ export function AdLab({
         {!blenderLane && (
         <Step
           id="ad-prompt"
+          completed={Boolean(finalPrompt)}
           n={STEP.prompt}
           title="Compose the prompt"
           aside={importControl}
@@ -3711,8 +3816,7 @@ export function AdLab({
             <p className="mt-4 rounded-[6px] border border-accent/30 bg-accent/[0.05] p-3 text-xs leading-relaxed text-muted">
               <span className="font-bold text-accent">From the prompt library.</span>{" "}
               Loaded to run as-is, with the length it was written for. It has
-              no recipe behind it and no references attached yet — attach them
-              in the References step so its tokens resolve, and note that
+              no recipe behind it. Review its attached reference slots before spending;
               composing from the recipe above will replace it.
             </p>
           )}
@@ -3741,6 +3845,7 @@ export function AdLab({
 
         {/* ---------- 8. generate ---------- */}
         <Step id="ad-generate" n={STEP.generate} title="Generate">
+          {bindingProblems.length > 0 && <p role="alert" className="mb-3 text-sm text-warning">{bindingProblems.join(" ")}</p>}
           {blenderLane && slotGaps.length > 0 && (
             <div className="mt-4 rounded-[6px] border border-warning/50 bg-warning/10 p-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-warning">
@@ -3814,7 +3919,7 @@ export function AdLab({
             <button
               className={flagged ? "btn-secondary !border-warning !text-warning" : "btn-primary"}
               disabled={
-                !finalPrompt || blockedOnMusic || Boolean(audioRefProblem) || Boolean(soundPlanIssue) || audioJobs.busy || phase === "starting" || phase === "polling"
+                !hydrated || draftSaveBlocked || bindingProblems.length > 0 || !finalPrompt || blockedOnMusic || Boolean(audioRefProblem) || Boolean(soundPlanIssue) || audioJobs.busy || phase === "starting" || phase === "polling"
               }
               onClick={() => void generate()}
             >
@@ -3824,7 +3929,8 @@ export function AdLab({
           {nextUp.href !== "#ad-generate" && <p className="mt-4 text-sm leading-relaxed text-muted">Before you render: <a href={nextUp.href} className="inline-flex min-h-6 items-center font-semibold text-accent underline underline-offset-4">{nextUp.label} ↗</a></p>}
         </Step>
 
-        {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed") && (
+
+        {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed" || Boolean(completedTake)) && (
           <div className="card overflow-hidden">
             <div className="mx-auto w-full max-w-md">
               <div className={`relative w-full bg-surface-2 ${rendering ? "" : ASPECT_CLASS[completedTake?.context?.aspect ?? aspect] ?? "aspect-[16/9]"}`} style={videoUrl && videoMetadata ? { aspectRatio: `${videoMetadata.width} / ${videoMetadata.height}` } : undefined}>
@@ -4005,7 +4111,7 @@ export function AdLab({
                     rel="noreferrer"
                     className="text-xs font-semibold text-accent hover:underline"
                   >
-                    Download MP4
+                    Download original MP4 · native audio unchanged
                   </a>
                   {musicUrl && (
                     <a
@@ -4044,6 +4150,7 @@ export function AdLab({
             )}
           </div>
         )}
+        <AdFinishing key={project?.id ?? "loading"} tracks={mixTracks} onChange={setMixTracks} available={availableMixTracks} duration={finishingDuration} ducking={ducking} onDucking={setDucking} videoUrl={completedTake?.videoUrl ?? (project?.example === "velune" ? project.assets.find((asset) => asset.id === "velune-motion" && asset.status === "ready")?.url ?? null : null)} sceneCards={finishingScenes} onSaveMix={async (dataUrl, manifest) => { const id = `ad-mix-${crypto.randomUUID()}`; await saveAsset({ id, name: "Ad Lab · mixed soundtrack.wav", kind: "audio", dataUrl, role: "Mixed separate soundtrack · place at zero; original video audio unchanged", source: "generated", status: "ready", metadata: manifest }); await saveAsset({ id: `${id}-settings`, name: "Ad Lab · editor cue bundle settings", kind: "document", dataUrl: adDocumentDataUrl({ ...manifest, sceneCues: finishingScenes }), role: "Editor handoff · separate video and soundtrack", source: "generated", status: "ready" }); }} />
       </div>
     </div>
   );

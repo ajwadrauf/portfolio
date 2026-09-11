@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
+import { StudioProjectProvider } from "@/components/studio/StudioProjectProvider";
+import { ProjectDock } from "@/components/studio/ProjectDock";
 
 export default function StudioLayout({ children }: LayoutProps<"/ai-studio">) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <StudioProjectProvider><div className="flex min-h-screen flex-col">
+      <a href="#studio-main" className="sr-only z-50 rounded bg-surface p-3 text-accent focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to studio content</a>
       <Nav />
-      <main className="flex-1">{children}</main>
+      <ProjectDock />
+      <main id="studio-main" tabIndex={-1} className="flex-1 scroll-mt-28">{children}</main>
       <footer className="border-t border-border-soft bg-surface py-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="label-sm">
@@ -28,6 +32,6 @@ export default function StudioLayout({ children }: LayoutProps<"/ai-studio">) {
           </div>
         </div>
       </footer>
-    </div>
+    </div></StudioProjectProvider>
   );
 }

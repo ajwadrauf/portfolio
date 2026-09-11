@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MODELS } from "@/lib/models";
+import { ModelExplorer } from "@/components/studio/ModelExplorer";
 
 export const metadata: Metadata = {
   title: "Model Landscape — AI Content Studio",
@@ -10,15 +11,15 @@ export const metadata: Metadata = {
 const IMAGE_NOTES = [
   {
     name: "Nano Banana Pro (Gemini 3 Pro Image)",
-    take: "The reasoning-driven image model. Where it wins: text rendered inside images (packaging, promo badges, bilingual headlines), brand consistency across a series, and instruction-based editing. This makes it the backbone of retail versioning — EN/FR promo tiles are its signature use case here.",
+    take: "The studio's default for detailed product stills and text-sensitive work. Review generated lettering against approved copy. Campaign Studio also offers locally typeset EN/FR layouts when exact words should remain editable.",
   },
   {
     name: "Nano Banana 2 / Flash Image",
-    take: "The volume tier. Roughly a quarter of Pro's price, fast, and good enough for format adaptations and seasonal rethemes where the hero already set the look. High-volume pipelines live or die on knowing when 'good enough' is good enough.",
+    take: "The configured lower-cost image route for variations. Compare it against an approved hero and check the actual output; lower cost alone does not establish that it meets the brief.",
   },
   {
     name: "Flux 2 Pro (Black Forest Labs)",
-    take: "Best pure photorealism in market — food photography, texture, natural light. When the image itself is the product (hero shots, editorial), Flux earns its place. Weaker at in-image text, which is why routing matters instead of picking one 'best' model.",
+    take: "A configured route for photographic hero imagery. Use the same product reference when comparing its material detail and lighting with another route; evaluate the result on the actual campaign rather than a general ranking.",
   },
   {
     name: "Ideogram (not wired in, on the radar)",
@@ -29,23 +30,23 @@ const IMAGE_NOTES = [
 const VIDEO_NOTES = [
   {
     name: "Veo 3.1 (Google)",
-    take: "The quality ceiling: native 4K, native 48kHz synchronized audio, best lip-sync available. The Fast tier at ~$0.15/s changes the economics of drafting — iterate on Fast, finish on Standard. Deep Gemini API integration means one vendor surface for reasoning + stills + motion.",
+    take: "The direct Gemini video route used by this studio, including Fast and Standard choices. Native audio is supported; reference-audio input and a native-audio off switch are not implemented on this route here. Inspect picture and sound together before choosing a take.",
   },
   {
     name: "Kling 3.0 (Kuaishou)",
-    take: "The value play at ~$0.10/s — 4-7x cheaper than premium tiers — with uniquely strong subject consistency across shots. That consistency is exactly what product content needs: the same can, jar or bag recognizable in every cut.",
+    take: "Two configured fal routes for short product motion. This app offers fixed 5- or 10-second durations. Standard returns silent picture; Pro is treated as audio-on. Compare the exact scenario above rather than a blanket price multiple.",
   },
   {
     name: "Seedance 2.5 (ByteDance) — reference-to-video",
-    take: "The answer to product drift, and the most interesting endpoint in the roster. Instead of one grounding frame, it accepts up to 50 multimodal references addressed positionally in the prompt as [Image1], [Image2]… — so you assign one reference the product's identity, another the palette, another the camera move. The packaging stays itself while the camera moves, which first-frame conditioning cannot guarantee. References aren't limited to stills either — a short clip can carry the camera move or the cut rhythm, addressed as [Video1] in the same prompt. It also renders native 30-second takes in a single pass, and generates audio jointly with the picture rather than after it.",
+    take: "The configured multimodal route for the Blender-to-film workflow. Image, video and audio references each receive a role and positional token. The app supports up to 30-second output and limits reference output to 480p or 720p. A motion guide supplies direction; generated timing, product identity and text still need review. Video inputs affect the estimate as well as the output duration.",
   },
   {
     name: "Runway Gen-4",
-    take: "The creative-control surface: motion brush, camera control, video-to-video. Built around iteration rather than one-shot generation, which is why it stays the tool a studio team works in daily — also wired in here so the same brief can be pushed through it.",
+    take: "The configured image-to-video route can be tested against the same product brief. Motion brushes and a general video-to-video editor are not wired into this studio; controls in a vendor's own application should not be confused with this integration.",
   },
   {
-    name: "Sora 2 (OpenAI)",
-    take: "A cautionary tale, on purpose: OpenAI discontinued the app in April 2026 and sunsets the API in September 2026. Building on it would have stranded a pipeline. Vendor-risk assessment is a core studio discipline, not paranoia.",
+    name: "Models outside the configured roster",
+    take: "A model appearing in a vendor announcement does not make it an available route here. Adoption requires an endpoint adapter, input validation, a cost estimate and a test against a real production brief. Keep projects exportable so the work survives a vendor change.",
   },
 ];
 
@@ -55,8 +56,8 @@ export default function ModelsPage() {
   const audio = Object.values(MODELS).filter((m) => ["music", "sfx", "voice"].includes(m.kind));
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-14">
-      <p className="chip mb-4">Point of view · August 2026</p>
+    <div className="mx-auto max-w-6xl px-6 py-14">
+      <p className="chip mb-4">Configured routes · Reviewed 10 September 2026</p>
       <h1 className="text-[clamp(2rem,4vw,2.75rem)] tracking-[-0.035em]">
         The model landscape, and why routing beats picking
       </h1>
@@ -67,13 +68,15 @@ export default function ModelsPage() {
         the live routing table behind the Studio demo.
       </p>
 
-      <h2 className="mt-12 text-xl">Wired into this demo</h2>
+      <ModelExplorer />
+
+      <details className="mt-10 rounded-md border border-border-soft p-5"><summary className="cursor-pointer text-xl">Configured model inventory</summary>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-border-soft text-left text-muted">
               <th className="py-2 pr-4 font-semibold">Model</th>
-              <th className="py-2 pr-4 font-semibold">List price</th>
+              <th className="py-2 pr-4 font-semibold">Billing basis</th>
               <th className="py-2 font-semibold">Job it owns here</th>
             </tr>
           </thead>
@@ -82,7 +85,7 @@ export default function ModelsPage() {
               <tr key={m.id} className="border-b border-border-soft/50 align-top">
                 <td className="py-3 pr-4 font-semibold">{m.label}</td>
                 <td className="py-3 pr-4 whitespace-nowrap text-muted">
-                  {m.unit === "character" ? `$${(m.unitCost * 1000).toFixed(2)}/1,000 characters` : m.billingIncrementSeconds ? `$${(m.unitCost * m.billingIncrementSeconds).toFixed(2)}/started minute` : m.unit === "image" ? `$${m.unitCost}/image` : `$${m.unitCost}/second`}
+                  {m.id.startsWith("seedance") ? "Tokens · size + output + video input" : m.unit === "character" ? "Characters" : m.billingIncrementSeconds ? "Started minute" : m.unit === "image" ? "Output size + applicable references" : "Output seconds"}
                 </td>
                 <td className="py-3 text-muted">{m.bestFor}</td>
               </tr>
@@ -91,9 +94,9 @@ export default function ModelsPage() {
         </table>
       </div>
       <p className="mt-3 text-xs text-muted/70">
-        List prices as of August 2026; they inform the Studio&apos;s pre-flight cost
-        estimator and are kept in one config file so drift is a one-line fix.
+        Rates are configured estimates, not live quotes. Use the scenario controls above and verify the linked provider source before budgeting a production run.
       </p>
+      </details>
 
       <h2 className="mt-12 text-xl">Stills — the read</h2>
       <div className="mt-4 space-y-4">

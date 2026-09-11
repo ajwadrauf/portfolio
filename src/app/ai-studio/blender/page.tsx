@@ -101,7 +101,9 @@ export default function BlenderPage() {
           pixels are still the model&apos;s. The decisions are yours.
         </p>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <details className="mt-6 rounded-[6px] border border-border-soft p-5">
+          <summary className="cursor-pointer font-semibold">What planning changes about the cost</summary>
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <div className="card p-5">
             <p className="label-sm">Landing it by trial and error</p>
             <p className="mt-1.5 text-2xl font-semibold">
@@ -139,13 +141,14 @@ export default function BlenderPage() {
         <p className="mt-5 max-w-[68ch] text-sm leading-relaxed text-muted">
           The saving is the smaller half of the argument. The larger half is
           that the clay pass makes the shot{" "}
-          <span className="font-semibold text-foreground">repeatable</span> — the
-          same camera move, the same blocking, the same beat timing on every
+          <span className="font-semibold text-foreground">repeatable</span> — a
+          consistent camera, blocking and timing reference for each
           regeneration — which is what lets a concept survive review notes
           instead of being re-rolled.
         </p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        </details>
+        <div className="mt-6 flex flex-wrap gap-3">
           <a href="#builder" className="btn-primary">
             Write the brief that builds the clay →
           </a>
@@ -153,6 +156,27 @@ export default function BlenderPage() {
             Download the working guide (.md)
           </a>
         </div>
+      </section>
+
+      {/* ---------- 04 The builder ---------- */}
+      <section id="builder" className="scroll-mt-28 py-12">
+        <SectionHead
+          n="01"
+          title="Write the brief that builds the clay"
+          lede="This is the brief you hand to whatever is driving Blender — scene, camera, ID colours, the beat sheet as keyframes, and how to animate it. It also names what you are not simulating, because a placeholder the video prompt does not know about is what produces a flat object skating across a frozen surface."
+        />
+        <BlenderBriefBuilder mode="build" />
+
+        <p className="mt-8 max-w-3xl text-sm leading-relaxed text-muted">
+          <span className="font-semibold text-foreground">Then write the prompt.</span>{" "}
+          The clip this brief produces becomes{" "}
+          <code className="font-mono text-xs">[Video1]</code> in a Seedance
+          prompt — a separate document, built from the same shot so the two
+          cannot drift apart.{" "}
+          <Link href="/ai-studio/prompts#clay" className="font-semibold text-accent hover:underline">
+            Open the prompt builder →
+          </Link>
+        </p>
       </section>
 
       {/* ---------- Worked example ---------- */}
@@ -198,7 +222,7 @@ export default function BlenderPage() {
       {/* ---------- 01 What moves upstream ---------- */}
       <section className="py-12">
         <SectionHead
-          n="01"
+          n="02"
           title="What moves upstream"
           lede="Every row is a decision you are otherwise paying the model to make, differently, on every take."
         />
@@ -227,7 +251,7 @@ export default function BlenderPage() {
       {/* ---------- 02 Two lanes ---------- */}
       <section className="py-12">
         <SectionHead
-          n="02"
+          n="03"
           title="Two lanes, never mixed"
           lede="Confusing these is the single most common way the workflow fails. If you find yourself wanting the clay pass to be the right brand yellow, you have merged them."
         />
@@ -265,7 +289,7 @@ export default function BlenderPage() {
       {/* ---------- 03 The build ---------- */}
       <section className="py-12">
         <SectionHead
-          n="03"
+          n="04"
           title="How the build runs"
           lede="Six phases through the Blender MCP connection. Every call runs in a fresh Python namespace, so the scene lives in a script file rather than in a conversation — which matters because the clay pass gets re-rendered many times."
         />
@@ -378,34 +402,13 @@ export default function BlenderPage() {
         </div>
       </section>
 
-      {/* ---------- 04 The builder ---------- */}
-      <section id="builder" className="scroll-mt-28 py-12">
-        <SectionHead
-          n="04"
-          title="Write the brief that builds the clay"
-          lede="This is the brief you hand to whatever is driving Blender — scene, camera, ID colours, the beat sheet as keyframes, and how to animate it. It also names what you are not simulating, because a placeholder the video prompt does not know about is what produces a flat object skating across a frozen surface."
-        />
-        <BlenderBriefBuilder mode="build" />
-
-        <p className="mt-8 max-w-3xl text-sm leading-relaxed text-muted">
-          <span className="font-semibold text-foreground">Then write the prompt.</span>{" "}
-          The clip this brief produces becomes{" "}
-          <code className="font-mono text-xs">[Video1]</code> in a Seedance
-          prompt — a separate document, built from the same shot so the two
-          cannot drift apart.{" "}
-          <Link href="/ai-studio/prompts" className="font-semibold text-accent hover:underline">
-            Open the prompt builder →
-          </Link>
-        </p>
-      </section>
-
       {/* ---------- CTA ---------- */}
       <section className="border-t border-border-soft py-16 text-center">
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           The clay is half of it. The recipe is the other half.
         </h2>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/ai-studio/prompts" className="btn-primary">
+          <Link href="/ai-studio/prompts#clay" className="btn-primary">
             Prompt builder →
           </Link>
           <Link href="/ai-studio/ads" className="btn-secondary">

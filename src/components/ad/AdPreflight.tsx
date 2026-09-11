@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PREFLIGHT_VERSION, type CompletedPreflightTake, type PreflightFinding, type PreflightReport } from "@/lib/adPreflight";
 import { requestLiveUnlock, type Health } from "@/lib/useHealth";
+import { useStudioProject } from "@/components/studio/StudioProjectProvider";
+import { adDocumentDataUrl } from "@/lib/adDraft";
 
 type Declarations = {
   productKind: "unknown" | "real" | "fictional";
@@ -146,6 +148,7 @@ async function prepareReferences(images: ReferenceImage[]): Promise<ReferenceIma
 }
 
 export function AdPreflight({ take, metadata, referenceImages, health, onSpend, onSeek }: Props) {
+  const { project, saveAsset } = useStudioProject();
   const [report, setReport] = useState<PreflightReport | null>(null);
   const [declarations, setDeclarations] = useState<Declarations>(EMPTY_DECLARATIONS);
   const [reviewedDeclarations, setReviewedDeclarations] = useState<Declarations>(EMPTY_DECLARATIONS);
@@ -162,7 +165,8 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
 
   useEffect(() => {
     mounted.current = true;
-    const saved = readStorage<SavedReview>(REPORTS_KEY).find((item) => item.videoUrl === take.videoUrl && item.takeId === take.id);
+    const projectSaved = project?.assets.find((asset) => asset.id === `ad-review-${take.id}`.slice(0, 200))?.metadata?.review as SavedReview | undefined;
+    const saved = readStorage<SavedReview>(REPORTS_KEY).find((item) => item.videoUrl === take.videoUrl && item.takeId === take.id) ?? projectSaved;
     if (saved && validReport(saved.report, take.videoUrl)) {
       setReport(saved.report);
       setDeclarations(saved.declarations ?? EMPTY_DECLARATIONS);
@@ -177,9 +181,11 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
 
   useEffect(() => {
     if (!loaded || !report) return;
-    try { saveReview({ takeId: take.id, videoUrl: take.videoUrl, report, declarations: reviewedDeclarations, reviewer, notes }); }
+    const review: SavedReview = { takeId: take.id, videoUrl: take.videoUrl, report, declarations: reviewedDeclarations, reviewer, notes };
+    try { saveReview(review); }
     catch { setMessage("Browser storage is unavailable. Download the report to keep it."); }
-  }, [loaded, report, reviewedDeclarations, reviewer, notes, take.id, take.videoUrl]);
+    void saveAsset({ id: `ad-review-${take.id}`.slice(0, 200), name: "Ad Lab · AI-assisted video preflight", kind: "document", dataUrl: adDocumentDataUrl(review), role: "Video evidence review · embedded audio only; human approval remains separate", source: "generated", status: "ready", metadata: { review, takeId: take.id, videoUrl: take.videoUrl, reviewType: "ai_preflight", approval: false } }).catch((e) => setMessage(`Review is available here, but its project save failed: ${e instanceof Error ? e.message : "storage unavailable"}`));
+  }, [loaded, report, reviewedDeclarations, reviewer, notes, take.id, take.videoUrl, saveAsset]);
 
   const counts = useMemo(() => ({
     flag: report?.checks.filter((check) => check.status === "flag").length ?? 0,

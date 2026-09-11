@@ -171,3 +171,5 @@
 @media (prefers-reduced-motion: reduce) {
   .laneButton { transition: none; }
 }
+.collapseStep { justify-self: end; grid-column: 2 / -1; min-height: 36px; border: 0; background: none; color: var(--muted); font-size: 11px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.stepBody[hidden] { display: none; }

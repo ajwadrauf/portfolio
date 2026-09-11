@@ -37,10 +37,13 @@ function harness(file, exportName, props = {}, options = {}) {
     static createObjectURL(blob) { const url = `blob:test-${objectUrls.length + 1}`; objectUrls.push({ blob, url }); return url; }
     static revokeObjectURL(url) { revoked.push(url); }
   }
+  const workspace = { project: { id: "test-project", name: "Test", drafts: {}, assets: [] }, ready: true, saveDraft: async () => {}, saveAsset: async () => {} };
   const overrides = {
     react: hooks,
+    "@/components/studio/StudioProjectProvider": { useStudioProject: () => workspace },
     'next/dynamic': () => marker,
     '@/components/packshots/CampaignHandoffButton': { CampaignHandoffButton: marker },
+    '@/components/packshots/PackshotActions': { PackshotActions: marker },
     '@/lib/useHealth': { useHealth: () => ({ health: { live: true, gemini: true, fal: true } }) },
     ...options.overrides,
   };
@@ -66,7 +69,7 @@ function harness(file, exportName, props = {}, options = {}) {
     vm.runInNewContext(code, {
       require: req, module: mod, exports: mod.exports, process: { env: {} }, console,
       Blob, File, Buffer, Error, URL: TestURL, crypto: require('node:crypto').webcrypto,
-      Request, Response, Headers, AbortController, AbortSignal, setTimeout, clearTimeout,
+      Request, Response, Headers, AbortController, AbortSignal, setTimeout: options.setTimeout ?? setTimeout, clearTimeout, structuredClone,
       localStorage: { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) },
       window: { location, open: options.open ?? (() => null), confirm: () => true, history: { state: null, replaceState: (_state, _title, url) => { location.href = new URL(url, location.href).href; } } },
       fetch: options.fetch ?? (async () => { throw new Error('Unmocked network call forbidden'); }),
@@ -259,7 +262,8 @@ async function checkReferenceEncoder() {
   check('encoder refuses an over-budget payload after all supported tiers', () => { assert.match(budgetError.message, /could not fit/); assert.equal(neverFits.calls.length, 21); assert.deepEqual(neverFits.revoked, ['blob:encoder']); });
 }
 
-(async () => {
+module.exports = { harness, walk, textOf, deferred };
+if (require.main === module) (async () => {
   checkProducer();
   await checkReceiver();
   await checkHandoffButton();

@@ -33,10 +33,10 @@ const PIPELINE = [
 
 const ROUTING = [
   ["Format adaptations", "Flash-tier stills", "Hero already set the look"],
-  ["Text-in-image tiles", "Pro-tier stills", "Only tier that renders type reliably"],
+  ["Text-sensitive tiles", "Approved hero + local text", "Exact copy stays editable; generated type still needs QA"],
   ["Video drafts", "Veo Fast / Kling", "Iterate at a fraction of the cost"],
   ["Hero finish", "Veo Standard", "Only where the quality ceiling is the point"],
-  ["Volume cutdowns", "Kling / Seedance", "5–7× cheaper, consistency holds"],
+  ["Volume variations", "Compare supported routes", "Price the actual duration, resolution and reference inputs"],
 ];
 
 const GATES = [
@@ -44,7 +44,7 @@ const GATES = [
     n: "01",
     name: "Product fidelity",
     ask: "Is this the actual product — shape, colors, packaging — or a plausible look-alike?",
-    how: "Grounding every generation on the real photo makes this passable. The gate makes it guaranteed.",
+    how: "Compare the result with the approved source. AI can flag differences; the accountable reviewer decides whether it is faithful enough for the intended use.",
   },
   {
     n: "02",
@@ -150,10 +150,10 @@ const TESTS = [
 
 /** Policy is only real where a mechanism enforces it. */
 const ENFORCED_HERE = [
-  ["Prices are never invented", "Vision autofill returns an empty field rather than a guess when no price is legible on the pack, and the UI flags it as needing a human. A wrong price is a compliance failure, not a typo."],
+  ["Autofill needs a source check", "Vision autofill is instructed to leave missing prices empty. That instruction is not proof of accuracy; a human must compare any price with its approved source before publication."],
   ["Reconstructed angles are labelled", "Packshot views the model extrapolated rather than grounded in a supplied reference are marked for label QA, so nobody mistakes a plausible back-of-pack for a photographed one."],
-  ["The prompt ships with the asset", "Every generated output exposes the prompt that made it, which is the provenance record the guidelines ask for, produced as a by-product rather than as homework."],
-  ["Product identity is pinned, not hoped for", "Reference-to-video binds the pack to a supplied still and instructs against drift, because a product that morphs mid-shot fails the fidelity test even when nobody intended it to."],
+  ["The prompt contributes to the record", "Generated outputs retain their prompts and saved request details where available. The complete record also needs source assets, rights, applicable consent and a human decision."],
+  ["References guide product identity", "Reference-to-video assigns source images a role and instructs against drift. Inspect the generated packaging, shape and text; a reference is direction, not a fidelity guarantee."],
   ["The demo states its own limits", "Where the pipeline cannot guarantee something — music that is not frame-synced, a take that needs an alignment pass — it says so in the interface rather than in a footnote."],
 ];
 
@@ -194,9 +194,10 @@ export default function PlaybookPage() {
           <Link href="/ai-studio/studio" className="font-medium text-accent hover:underline">
             demo pipeline
           </Link>{" "}
-          implements, written to be handed over.
+          supports, with operating practices and human checks identified below.
         </p>
       </header>
+      <p className="mt-5 text-sm text-muted">Implementation review: 10 September 2026 · Next policy review: 10 October 2026. These are this studio’s operating guidelines; verify the applicable organizational and channel requirements for each production.</p>
 
       {/*
         The same contents, on a phone.
@@ -323,7 +324,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
                 "Real product attributes injected from vision analysis — never invented.",
                 "Video prompts carry an explicit Audio: cue; native-audio models reward sound design written into the prompt.",
                 "Negative prompts are maintained per style, with artifact patterns added as QA finds them.",
-                "No brand names or logos in generation prompts — lockups composite in post, where they're controlled.",
+                "Use authorised product references. Keep final brand lockups and critical type in controlled artwork or compositing, then inspect the result.",
                 "For product motion, references beat a first frame: reference-to-video models hold identity across the take, addressed positionally as [Image1], [Video1] with a stated job each.",
               ].map((t) => (
                 <li key={t} className="flex gap-3">

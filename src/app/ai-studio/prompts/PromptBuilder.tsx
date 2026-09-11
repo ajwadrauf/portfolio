@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import {
   BEAT_ROLES,
@@ -19,8 +19,10 @@ import {
   beatsTotal,
   exampleValues,
   mmss,
+  secondsLabel,
   timelineIssues,
   tokenFor,
+  remapReferenceTokens,
   type Beat,
   type BeatRole,
   type BlockId,
@@ -29,7 +31,11 @@ import {
   type SlotMedia,
 } from "@/lib/promptBuilder";
 
-const HANDOFF_KEY = "adlab-imported-prompt";
+import { useStudioProject } from "@/components/studio/StudioProjectProvider";
+import { useProductionDraft } from "@/components/studio/useProductionDraft";
+import { downloadProductionBundle, isPromptDraft, referenceAsset, velunePromptDraft, type PromptDraft } from "@/lib/productionBrief";
+
+const EMPTY_DRAFT: PromptDraft = { version: 1, values: {}, slots: [], duration: 14, beats: [], throughline: "" };
 const MEDIA: { id: SlotMedia; label: string }[] = [
   { id: "image", label: "Still" },
   { id: "video", label: "Clip" },
@@ -54,17 +60,41 @@ function Highlighted({ text }: { text: string }) {
   );
 }
 
+/** Readable when idle, editable while focused; focus/blur alone never rounds the source. */
+function BeatLengthInput({ seconds, label, onChange }: { seconds: number; label: string; onChange: (seconds: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+  return <input type="number" min={1 / 24} max={30} step="any" className="input !w-20 !py-1 text-xs" aria-label={label}
+    value={editing ? text : secondsLabel(seconds)}
+    onFocus={() => { setText(secondsLabel(seconds)); setEditing(true); }}
+    onChange={(event) => { setText(event.target.value); onChange(Number(event.target.value)); }}
+    onBlur={() => setEditing(false)} />;
+}
+
 export function PromptBuilder() {
   const router = useRouter();
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const { project, saveDraft } = useStudioProject();
+  const { value: draft, setValue: setDraft, loaded, error: saveError, flush } = useProductionDraft("prompt", EMPTY_DRAFT, isPromptDraft, () => {
+    const seed = velunePromptDraft();
+    seed.slots = seed.slots.map((slot) => ({ ...slot, assetId: slot.id }));
+    return seed;
+  });
+  const { values, slots, duration, beats, throughline } = draft;
+  const update = <K extends keyof PromptDraft>(key: K, next: SetStateAction<PromptDraft[K]>) => setDraft((prev) => ({ ...prev, [key]: typeof next === "function" ? (next as (old: PromptDraft[K]) => PromptDraft[K])(prev[key]) : next }));
+  const setValues = (next: SetStateAction<Record<string, string>>) => update("values", next);
+  const setSlots = (next: SetStateAction<Slot[]>) => update("slots", next);
+  const setDuration = (next: SetStateAction<number>) => update("duration", next);
+  const setBeats = (next: SetStateAction<Beat[]>) => update("beats", next);
+  const setThroughline = (next: SetStateAction<string>) => update("throughline", next);
+  const [actionError, setActionError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [bindingNote, setBindingNote] = useState("");
   const [copied, setCopied] = useState(false);
   /** Which reasoning panel is open — a block id, or the timeline. */
   const [openWhy, setOpenWhy] = useState<string | null>("register");
-  const [duration, setDuration] = useState(14);
-  const [beats, setBeats] = useState<Beat[]>([]);
+
   /** The sound that runs under the whole take, not tied to one beat. */
-  const [throughline, setThroughline] = useState("");
+
   /** The last textarea touched, so a token chip knows where to insert. */
   const focused = useRef<
     { kind: "block"; id: BlockId; el: HTMLTextAreaElement }
@@ -106,7 +136,7 @@ export function PromptBuilder() {
 
   const loadExample = () => {
     setValues(exampleValues());
-    setSlots(EXAMPLE_SLOTS.map((s) => ({ ...s })));
+    setSlots(EXAMPLE_SLOTS.map((s) => ({ ...s, id: crypto.randomUUID() })));
     setBeats(EXAMPLE_BEATS.map((b) => ({ ...b })));
     setDuration(EXAMPLE_DURATION);
     setThroughline(EXAMPLE_THROUGHLINE);
@@ -123,19 +153,40 @@ export function PromptBuilder() {
     } catch {}
   };
 
-  const sendToAdLab = () => {
-    try {
-      sessionStorage.setItem(HANDOFF_KEY, prompt);
-      // The timeline only means anything if the render is the length it was
-      // written for, so the duration travels with the prompt.
-      sessionStorage.setItem("adlab-imported-duration", String(duration));
-    } catch {}
-    router.push("/ai-studio/ads");
+  const changeSlots = (next: Slot[]) => {
+    const remap = (text: string) => remapReferenceTokens(text, slots, next);
+    setDraft((prev) => ({ ...prev, slots: next, values: Object.fromEntries(Object.entries(prev.values).map(([key, text]) => [key, remap(text)])), beats: prev.beats.map((beat) => ({ ...beat, action: remap(beat.action), audio: remap(beat.audio) })), throughline: remap(prev.throughline) }));
+    setBindingNote("Reference numbers were updated throughout. A removed reference is marked [Missing…] so it cannot point to a different subject.");
   };
+  const assets = project?.assets.filter((asset) => asset.status === "ready" && asset.kind !== "document") ?? [];
+  const manifest = slots.map((slot, index) => ({ token: tokenFor(slots, index), job: slot.job, asset: assets.find((asset) => asset.id === slot.assetId && asset.kind === slot.media) }));
+  const sendToAdLab = async () => {
+    if (busy || issues.some((issue) => issue.level === "error")) return;
+    setBusy(true); setActionError("");
+    try {
+      await flush();
+      const { parseAdDraft } = await import("@/lib/adDraft");
+      const previous = parseAdDraft(project?.drafts.ad);
+      const handoff = parseAdDraft({ ...previous, completedTake: null, productImage: null, endImage: null, imported: true, lane: "blender", schema: "adlab-draft-v1", source: "prompt", prompt, modelId: "seedance-2.5-ref", duration, references: manifest.filter((row) => row.asset).map((row) => ({ ...referenceAsset(row.asset!), role: row.job, token: row.token })), referenceManifest: manifest.map((row) => ({ token: row.token, job: row.job, assetId: row.asset?.id ?? null })), sceneCards: beats.map((beat, index) => ({ id: `prompt-scene-${index + 1}`, title: `Scene ${index + 1} · ${beat.role}`, start: times[index].start, end: times[index].end, action: beat.action, camera: values.arrangement ?? "", sound: beat.audio || throughline, referenceIds: manifest.filter((row) => beat.action.includes(row.token) && row.asset).map((row) => row.asset!.id) })) });
+      if (!handoff) throw new Error("Review the prompt length, reference count and scene times before sending. Ad Lab needs valid scenes and at most 20 attached references.");
+      await saveDraft("ad", handoff);
+      router.push("/ai-studio/ads");
+    } catch (error) { setActionError(error instanceof Error ? error.message : "The handoff could not be saved. Your prompt remains here; retry or download the production bundle."); }
+    finally { setBusy(false); }
+  };
+  const download = async () => {
+    setBusy(true); setActionError("");
+    try { await flush(); await downloadProductionBundle({ name: project?.name ?? "prompt", prompt, draft, cues: beats.map((beat, index) => ({ ...times[index], action: beat.action, sound: beat.audio })), references: manifest }); }
+    catch (error) { setActionError(error instanceof Error ? error.message : "The bundle could not be downloaded."); }
+    finally { setBusy(false); }
+  };
+  if (!loaded) return <p className="mx-auto max-w-5xl px-6 py-10 text-muted" role="status">Opening your project’s prompt draft…</p>;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <h1 className="text-[1.75rem] tracking-[-0.03em]">Prompt builder</h1>
+      <p className="mt-2 text-xs text-muted">Saved with {project?.name}. Planning and transferring do not generate or spend credits.</p>
+      {saveError && <p className="mt-3 text-sm text-danger" role="alert">{saveError}</p>}
       <p className="mt-2 max-w-3xl text-muted">
         A reference-to-video prompt is not a sentence you write, it is a
         structure you fill. Set the frame, say what each reference is for,
@@ -172,6 +223,11 @@ export function PromptBuilder() {
         <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={loadExample}>
           Load the worked example
         </button>
+        <label className="btn-secondary !px-3 !py-1.5 text-xs">Import source JSON<input type="file" accept=".json,application/json" className="sr-only" onChange={async (event) => {
+          const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
+          try { if (file.size > 1024 * 1024) throw new Error("Use a shot source JSON smaller than 1 MB."); const source: unknown = JSON.parse(await file.text()); if (!isPromptDraft(source)) throw new Error("This is not a general prompt source. Choose 03_shot_source.json from a Prompt builder production ZIP."); setDraft(source); setActionError(""); }
+          catch (error) { setActionError(error instanceof Error ? error.message : "This source could not be read."); }
+        }} /></label>
         {(written > 0 || beats.length > 0) && (
           <button
             className="text-xs font-semibold text-muted hover:text-foreground"
@@ -192,7 +248,7 @@ export function PromptBuilder() {
       </div>
 
       {/* Reference slots — declared first, because the tokens depend on them. */}
-      <section className="card mt-6 p-5">
+      <section id="prompt-references" className="card mt-6 scroll-mt-28 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-semibold">Your references</h2>
           <span className="label-sm">Numbered per media type</span>
@@ -205,6 +261,8 @@ export function PromptBuilder() {
           stills came before it.
         </p>
 
+        <p className="mt-2 text-xs text-muted">Choose completed assets from your project library. Unfilled slots can stay in the plan; Ad Lab will show what still needs attaching.</p>
+        {bindingNote && <p className="mt-3 text-xs text-accent" role="status">{bindingNote}</p>}
         <div className="mt-4 space-y-2">
           {slots.map((s, i) => (
             <div
@@ -218,13 +276,7 @@ export function PromptBuilder() {
                 className="input !w-auto !py-1 text-xs"
                 aria-label={`${tokenFor(slots, i)} media type`}
                 value={s.media}
-                onChange={(e) =>
-                  setSlots((p) =>
-                    p.map((x, j) =>
-                      j === i ? { ...x, media: e.target.value as SlotMedia } : x,
-                    ),
-                  )
-                }
+                onChange={(e) => changeSlots(slots.map((x, j) => j === i ? { ...x, media: e.target.value as SlotMedia, assetId: undefined } : x))}
               >
                 {MEDIA.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -247,10 +299,20 @@ export function PromptBuilder() {
                 type="button"
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] font-mono text-xs text-danger transition hover:bg-danger/10"
                 aria-label={`Remove ${tokenFor(slots, i)}`}
-                onClick={() => setSlots((p) => p.filter((_, j) => j !== i))}
+                onClick={() => changeSlots(slots.filter((_, j) => j !== i))}
               >
                 ✕
               </button>
+              <div className="flex w-full min-w-0 items-center gap-3 border-t border-border-soft pt-2">
+                {manifest[i]?.asset?.kind === "image" && <img src={manifest[i].asset!.dataUrl ?? manifest[i].asset!.url} alt={s.job || manifest[i].asset!.name} className="h-16 w-20 rounded object-contain bg-surface-2" />}
+                {manifest[i]?.asset?.kind === "video" && <video src={manifest[i].asset!.dataUrl ?? manifest[i].asset!.url} preload="metadata" muted className="h-16 w-20 rounded object-contain bg-surface-2" />}
+                <label className="min-w-0 flex-1 text-xs text-muted">Project asset
+                  <select className="input mt-1 text-xs" aria-label={`Asset for ${tokenFor(slots, i)}`} value={s.assetId ?? ""} onChange={(e) => setSlots((prev) => prev.map((slot, index) => index === i ? { ...slot, assetId: e.target.value || undefined } : slot))}>
+                    <option value="">Not attached yet</option>
+                    {assets.filter((asset) => asset.kind === s.media).map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+                  </select>
+                </label>
+              </div>
             </div>
           ))}
         </div>
@@ -260,7 +322,7 @@ export function PromptBuilder() {
             <button
               key={m.id}
               className="btn-secondary !px-3 !py-1.5 text-xs"
-              onClick={() => setSlots((p) => [...p, { media: m.id, job: "" }])}
+              onClick={() => setSlots((p) => [...p, { id: crypto.randomUUID(), media: m.id, job: "" }])}
             >
               + Add {m.label.toLowerCase()}
             </button>
@@ -335,7 +397,7 @@ export function PromptBuilder() {
       </div>
 
       {/* ---------------- 05 The timeline ---------------- */}
-      <section className="card mt-4 p-5">
+      <section id="prompt-timeline" className="card mt-4 scroll-mt-28 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="flex items-baseline gap-3 font-semibold">
             <span className="font-mono text-[11px] text-accent">05</span>
@@ -389,7 +451,7 @@ export function PromptBuilder() {
                   : ""
             }`}
           >
-            beats total {total}s
+            beats total {secondsLabel(total)}s
           </span>
         </div>
 
@@ -405,9 +467,9 @@ export function PromptBuilder() {
                     : "bg-surface-2 text-muted"
                 }`}
                 style={{ width: `${(b.seconds / Math.max(total, 1)) * 100}%` }}
-                title={`${b.role} · ${b.seconds}s`}
+                title={`${b.role} · ${secondsLabel(b.seconds)}s · ${Math.round(b.seconds * 24)} frames at 24 fps`}
               >
-                {b.seconds >= 2 ? `${b.seconds}s` : ""}
+                {b.seconds >= 2 ? `${secondsLabel(b.seconds)}s` : ""}
               </div>
             ))}
           </div>
@@ -415,7 +477,7 @@ export function PromptBuilder() {
 
         <div className="mt-4 space-y-3">
           {beats.map((b, i) => (
-            <div key={i} className="rounded-[6px] border border-border-soft bg-surface p-3">
+            <div id={`prompt-beat-${i}`} key={i} className="scroll-mt-28 rounded-[6px] border border-border-soft bg-surface p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="w-24 shrink-0 font-mono text-[11px] text-accent">
                   {mmss(times[i].start)}–{mmss(times[i].end)}
@@ -434,16 +496,7 @@ export function PromptBuilder() {
                   ))}
                 </select>
                 <label className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min={0.5}
-                    max={30}
-                    step={0.5}
-                    className="input !w-20 !py-1 text-xs"
-                    aria-label={`Beat ${i + 1} length in seconds`}
-                    value={b.seconds}
-                    onChange={(e) => setBeat(i, { seconds: Number(e.target.value) })}
-                  />
+                  <BeatLengthInput seconds={b.seconds} label={`Beat ${i + 1} length in seconds`} onChange={(seconds) => setBeat(i, { seconds })} />
                   <span className="label-sm">sec</span>
                 </label>
                 <button
@@ -455,6 +508,8 @@ export function PromptBuilder() {
                   ✕
                 </button>
               </div>
+
+              <p className="mt-2 font-mono text-[11px] text-muted">24 fps guide · f{Math.round(times[i].start * 24)} → f{Math.round(times[i].end * 24)} · {Math.round(times[i].end * 24) - Math.round(times[i].start * 24)} frames · end excluded</p>
 
               <textarea
                 className="input mt-2 min-h-16 text-sm leading-relaxed"
@@ -475,6 +530,12 @@ export function PromptBuilder() {
                 onChange={(e) => setBeat(i, { audio: e.target.value })}
               />
 
+              {manifest.some((row) => b.action.includes(row.token) && row.asset) && <div className="mt-3 flex flex-wrap gap-2" aria-label={`References shaping beat ${i + 1}`}>
+                {manifest.filter((row) => b.action.includes(row.token) && row.asset).map((row) => <div key={row.token} className="flex max-w-full items-center gap-2 rounded border border-border-soft bg-surface-2 p-2">
+                  {row.asset!.kind === "image" && <img src={row.asset!.dataUrl ?? row.asset!.url} alt="" className="h-12 w-12 object-contain" />}
+                  <span className="text-xs"><strong>{row.token}</strong> · {row.job || row.asset!.name}</span>
+                </div>)}
+              </div>}
               {slots.length > 0 && (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <span className="label-sm">Insert:</span>
@@ -590,6 +651,7 @@ export function PromptBuilder() {
                 }`}
               >
                 {iss.text}
+                {iss.field && <a className="ml-2 inline-flex min-h-6 items-center font-semibold underline" href={`#${iss.field}`} onClick={() => document.getElementById(iss.field!)?.querySelector<HTMLElement>("input,textarea,select")?.focus()}>Review field →</a>}
               </li>
             ))}
           </ul>
@@ -609,10 +671,13 @@ export function PromptBuilder() {
           <button className="btn-secondary !px-3 !py-1.5 text-xs" disabled={!prompt} onClick={() => void copy()}>
             {copied ? "Copied" : "Copy"}
           </button>
-          <button className="btn-primary !px-3 !py-1.5 text-xs" disabled={!prompt} onClick={sendToAdLab}>
+          <button className="btn-primary !px-3 !py-1.5 text-xs" disabled={!prompt || busy || issues.some((issue) => issue.level === "error")} onClick={() => void sendToAdLab()}>
             Send to Ad Lab →
           </button>
+          <button className="btn-secondary !px-3 !py-1.5 text-xs" disabled={!prompt || busy} onClick={() => void download()}>Download production ZIP</button>
         </div>
+        <p className="mt-3 text-xs text-muted">{manifest.filter((row) => row.asset).length} of {manifest.length} reference slots attached. Ad Lab opens for review; generation is a separate action.</p>
+        {actionError && <p className="mt-3 text-sm text-danger" role="alert">{actionError}</p>}
       </section>
 
       {/* The rules that are not obvious from the form */}

@@ -70,7 +70,7 @@ function loader(overrides = {}, globals = {}) {
       require: req, module: mod, exports: mod.exports,
       process: { env: {} }, console, Buffer, URL, Request, Response, Headers, Blob,
       crypto: require('node:crypto').webcrypto,
-      AbortController, AbortSignal, TextEncoder, ReadableStream,
+      AbortController, AbortSignal, TextEncoder, ReadableStream, btoa,
       setTimeout, clearTimeout,
       fetch: async () => { throw new Error('Unmocked network call forbidden by test'); },
       ...globals,
@@ -104,7 +104,9 @@ function mountReview(props, fetchMock, storage = new Map()) {
       if (!effects[i] || !same(effects[i].deps, deps)) effects[i] = { deps, fn, pending: true, cleanup: effects[i]?.cleanup };
     },
   };
-  const Component = loader({ react: hooks, 'next/link': 'a', '@/lib/useHealth': { requestLiveUnlock() {} } }, {
+  const projectAssets = new Map();
+  const saveProjectAsset = async (asset) => { projectAssets.set(asset.id, asset); };
+  const Component = loader({ react: hooks, 'next/link': 'a', '@/lib/useHealth': { requestLiveUnlock() {} }, '@/components/studio/StudioProjectProvider': { useStudioProject: () => ({ project: { assets: [] }, saveAsset: saveProjectAsset }) } }, {
     localStorage: { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) },
     window: { confirm: () => true }, fetch: fetchMock,
   })('src/components/ad/AdPreflight.tsx').AdPreflight;
@@ -124,7 +126,7 @@ function mountReview(props, fetchMock, storage = new Map()) {
   const textOf = (node) => Array.isArray(node) ? node.map(textOf).join(' ') : node && typeof node === 'object' ? textOf(node.props?.children) : typeof node === 'string' || typeof node === 'number' ? String(node) : '';
   render();
   return {
-    storage, settle, render, nodes,
+    storage, settle, render, nodes, projectAssets,
     text: () => textOf(tree),
     button: (label) => nodes().find((node) => node.type === 'button' && textOf(node).includes(label)),
     unmount: () => effects.forEach((effect) => effect?.cleanup?.()),
@@ -514,6 +516,12 @@ async function main() {
     button.props.onClick(); button.props.onClick();
     await component.settle();
     assert.equal(calls, 1);
+    assert.equal(component.projectAssets.size, 1);
+    const savedAsset = [...component.projectAssets.values()][0];
+    assert.equal(savedAsset.kind, 'document'); assert.equal(savedAsset.status, 'ready');
+    assert.equal(savedAsset.metadata.approval, false);
+    assert.equal(savedAsset.metadata.videoUrl, props.take.videoUrl);
+    assert(savedAsset.dataUrl.startsWith('data:application/json;base64,'));
     assert(component.text().includes('Human review required'));
     assert.equal(JSON.parse(component.storage.get('adlab-preflight-reports-v1'))[0].takeId, props.take.id);
     assert.equal(JSON.parse(component.storage.get('adlab-preflight-pending-v1')).length, 0);

@@ -221,7 +221,7 @@ export const CAMERA_MOVES: CameraMove[] = [
   {
     id: "orbit",
     label: "Orbit",
-    rig: "A Bezier circle as a path, a FOLLOW_PATH constraint on the camera, and offset_factor keyframed 0 to 1. Aim stays on the anchor throughout.",
+    rig: "Use a circular or Bezier path and a FOLLOW_PATH constraint. Animate the intended arc; a 90-degree orbit on a full circle uses one quarter of offset_factor, not a full revolution. Aim stays on the anchor throughout.",
     use: "Showing a product has three dimensions. A quarter turn reads better than a full one in a short take.",
     transport: "linear",
   },
@@ -286,6 +286,8 @@ export const CAMERA_MOVES: CameraMove[] = [
 export const getCameraMove = (id: string) => CAMERA_MOVES.find((m) => m.id === id);
 
 export type BlenderBrief = {
+  /** Optional for older saved drafts. VELUNE's existing study is an edited sequence. */
+  editMode?: "continuous" | "cuts";
   shotId: string;
   aspect: string;
   seconds: string;
@@ -323,6 +325,14 @@ export type BlenderBrief = {
    */
   physics: "inherit" | "resolve";
 };
+
+export const blenderEditMode = (brief: BlenderBrief): "continuous" | "cuts" => brief.editMode ?? (brief.shotId === "VELUNE-15s" ? "cuts" : "continuous");
+
+/** Display seconds compactly without modifying the stored boundary used for exact frame conversion. */
+export function compactBeatSeconds(raw: string): string {
+  const value = Number(raw);
+  return raw.trim() && Number.isFinite(value) ? String(Number(value.toFixed(3))) : raw;
+}
 
 export const EMPTY_BRIEF: BlenderBrief = {
   shotId: "1A",
@@ -586,7 +596,9 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
   if (has(b.startFraming)) out.push(`- Opens on: ${clean(b.startFraming)}.`);
   if (has(b.endFraming)) out.push(`- Ends on: ${clean(b.endFraming)}.`);
   out.push(
-    "- One continuous take. Any cut here becomes a cut in the generation.",
+    blenderEditMode(b) === "cuts"
+      ? "- Edited sequence. Each timeline row is one shot. Preserve the declared hard cuts at the exact frame boundaries; do not interpolate a camera move between shots."
+      : "- One continuous take. Any cut here becomes a cut in the generation.",
     "",
     "## Lighting",
     "",
@@ -655,7 +667,7 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
     "  must agree to the frame.",
     "- Interpolation is two separate questions, and the same answer is wrong for",
     "  both:",
-    `    · The CAMERA on this shot is ${move ? move.transport : "eased"}. ${
+    blenderEditMode(b) === "cuts" ? "    · Set CAMERA interpolation separately inside each shot: hold locked shots, preserve registered turns, and animate only the moves that the shot names. Camera changes at a hard cut are instantaneous, not a dolly between sets." : `    · The CAMERA on this shot is ${move ? move.transport : "eased"}. ${
       move?.transport === "linear"
         ? "Set its f-curves to LINEAR — a dolly, a track and an orbit are mechanically constant, and a uniform motion field is easier for the video model to hold coherent."
         : move?.transport === "static"
@@ -840,7 +852,7 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
       `Exactly ${mapped.length} mapped subject${mapped.length === 1 ? "" : "s"} throughout — no duplicates, nothing added.`,
     );
   }
-  globals.push(`Continuous lighting. No cuts other than those in @Video 1.`);
+  globals.push(blenderEditMode(b) === "cuts" ? "Keep lighting coherent within each shot. Preserve the edited shot order and hard-cut boundaries in @Video 1; do not add transitions or blend adjacent shots." : `Continuous lighting. No cuts other than those in @Video 1.`);
   out.push("", "[Global]", globals.join(" "));
 
   const inheritScope =
@@ -874,8 +886,8 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
 export function briefIssues(
   b: BlenderBrief,
   mode: "build" | "seedance" = "seedance",
-): { text: string; why: string }[] {
-  const issues: { text: string; why: string }[] = [];
+): { text: string; why: string; field?: string }[] {
+  const issues: { text: string; why: string; field?: string }[] = [];
   const beats = b.beats.filter((x) => has(x.action));
   const mapped = b.subjects.filter((s) => has(s.color) && has(s.becomes));
 
@@ -894,6 +906,7 @@ export function briefIssues(
     });
   }
   if (Number.isFinite(total)) {
+    if (!has(b.seconds) || total < 4) issues.push({ text: "Set a shot duration of at least four seconds.", why: "The duration is carried into the video request. Individual edited beats can be shorter.", field: "blender-duration" });
     if (total > 30) {
       issues.push({
         text: `${total}s is past the single-pass ceiling.`,
@@ -981,6 +994,14 @@ export function briefIssues(
   const timed = beats
     .map((x) => ({ ...x, f: Number(x.from), t: Number(x.to) }))
     .filter((x) => Number.isFinite(x.f) && Number.isFinite(x.t));
+  b.beats.forEach((beat, index) => {
+    if (!has(beat.action)) return;
+    if (!has(beat.from) || !has(beat.to) || !Number.isFinite(Number(beat.from)) || !Number.isFinite(Number(beat.to)) || Number(beat.from) < 0 || Number(beat.to) <= Number(beat.from)) {
+      issues.push({ text: `Beat ${index + 1} needs a valid start and a later end time.`, why: "Use non-negative seconds. Blank or invalid times cannot define a frame range.", field: `blender-beat-${index}` });
+    }
+  });
+  if (beats.length === 0) issues.push({ text: "Add the shot’s first action.", why: "The timeline is still empty.", field: "blender-timeline" });
+  if (timed.length && timed[0].f > 0) issues.push({ text: `The first ${timed[0].f}s have no planned action.`, why: "Add an opening beat or state that this is an intentional hold.", field: "blender-timeline" });
   for (const beat of timed) {
     if (beat.t < beat.f) {
       issues.push({
@@ -999,7 +1020,10 @@ export function briefIssues(
         why: "Two beats claiming the same seconds leaves the operator to pick one, while the video prompt states both — so the blockout and the prompt disagree about what happens when.",
       });
     }
+    if (cur.f > prev.t) issues.push({ text: `There is a gap from ${prev.t}s to ${cur.f}s.`, why: "Describe the hold or transition, or close the gap.", field: "blender-timeline" });
   }
+  if (ordered.length && Number.isFinite(total) && ordered[ordered.length - 1].t < total) issues.push({ text: `The timeline stops at ${ordered[ordered.length - 1].t}s, before the ${total}s finish.`, why: "Add a final hold or action so the end of the film is planned.", field: "blender-timeline" });
+  if (has(b.lens) && (!Number.isFinite(Number(b.lens)) || Number(b.lens) <= 0)) issues.push({ text: "Use a positive numeric focal length.", why: "Enter millimetres, for example 50.", field: "blender-lens" });
 
   for (const beat of beats) {
     const from = Number(beat.from);
@@ -1012,7 +1036,7 @@ export function briefIssues(
     }
   }
 
-  return issues;
+  return issues.map((issue) => ({ ...issue, field: issue.field ?? (/seconds|duration|single-pass/.test(issue.text) ? "blender-duration" : /colour|reference|subject/.test(issue.text) ? "blender-subjects" : /framing/.test(issue.text) ? "blender-framing" : /focal/.test(issue.text) ? "blender-lens" : /light/.test(issue.text) ? "blender-light" : "blender-timeline") }));
 }
 
 // ---------------------------------------------------------------------------

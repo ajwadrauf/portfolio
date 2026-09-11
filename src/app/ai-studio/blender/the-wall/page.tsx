@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WallPlayback, WallVideo, WallBeatCards } from "./WallPlayback";
 import {
   WALL,
-  WALL_BEATS,
   WALL_BLOCKING,
   WALL_BUILD,
   WALL_COST,
@@ -30,7 +30,7 @@ function SectionHead({ n, title, lede }: { n: string; title: string; lede?: stri
 
 export default function TheWallPage() {
   return (
-    <div className="mx-auto max-w-6xl px-6">
+    <WallPlayback><div className="mx-auto max-w-6xl px-6">
       {/* ---------- Hero ---------- */}
       <section className="py-14 sm:py-18">
         <Link
@@ -47,16 +47,7 @@ export default function TheWallPage() {
         <p className="mt-5 max-w-[68ch] text-lg leading-relaxed text-muted">{WALL.lede}</p>
 
         <div className="mt-8 overflow-hidden rounded-[6px] border border-border-soft bg-surface-2">
-          <video
-            src={WALL.clip}
-            poster={WALL.poster}
-            controls
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="block w-full"
-          />
+          <WallVideo />
         </div>
         <p className="mt-3 max-w-[68ch] text-xs leading-relaxed text-muted">
           The clay pass itself. Neutral bed, one flat ID colour per mapped
@@ -84,27 +75,7 @@ export default function TheWallPage() {
           title="One continuous move, four state changes"
           lede="Each beat ends on a visible state the prompt can name. Consecutive, non-overlapping, one primary change apiece — three actions in a single range produces omissions, not precision."
         />
-        <div className="mt-8 space-y-4">
-          {WALL_BEATS.map((b) => (
-            <div
-              key={b.range}
-              className="grid gap-5 rounded-[6px] border border-border-soft bg-surface p-4 sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)] sm:p-5"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={b.frame}
-                alt={b.title}
-                loading="lazy"
-                className="w-full rounded-[4px] border border-border-soft"
-              />
-              <div>
-                <p className="label-sm">{b.range}</p>
-                <h3 className="mt-2 text-lg tracking-[-0.02em]">{b.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{b.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <WallBeatCards />
       </section>
 
       {/* ---------- 02 The impossible frame ---------- */}
@@ -221,7 +192,7 @@ export default function TheWallPage() {
           {WALL.context}
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/ai-studio/blender#builder" className="btn-primary">
+          <Link href="/ai-studio/prompts#clay" className="btn-primary">
             Write a prompt against a clay pass →
           </Link>
           <Link href="/ai-studio/blender" className="btn-secondary">
@@ -229,6 +200,6 @@ export default function TheWallPage() {
           </Link>
         </div>
       </section>
-    </div>
+    </div></WallPlayback>
   );
 }

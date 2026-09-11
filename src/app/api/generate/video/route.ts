@@ -18,6 +18,7 @@ export async function POST(req: Request) {
       modelId: string;
       brief: CampaignBrief;
       imageDataUrl?: string;
+      approvedHero?: boolean;
     };
 
     const spec = getDeliverable(body.deliverableId);
@@ -34,7 +35,9 @@ export async function POST(req: Request) {
 
     const model = getModel(body.modelId);
     const seconds = spec.durationSeconds ?? 8;
-    const prompt = spec.buildPrompt(body.brief);
+    const prompt = (body.approvedHero === true
+      ? "Animate from the attached approved campaign hero. Preserve the product proportions, packaging design, colour palette and lighting character while carrying out the camera direction. "
+      : "") + spec.buildPrompt(body.brief);
     const cost = estimateCost(model.id, { seconds });
 
     const hasKey = model.provider === "gemini" ? hasGeminiKey() : hasFalKey();

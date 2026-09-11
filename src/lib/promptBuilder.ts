@@ -156,10 +156,15 @@ export const DURATION_BOUNDS = { min: 4, max: 30 } as const;
 /** Under this, a beat is too short to read as a beat. */
 export const MIN_BEAT_SECONDS = 1.5;
 
+/** Display only: stored durations retain their original frame-derived precision. */
+export const secondsLabel = (seconds: number): string => Number.isFinite(seconds) ? String(Number(seconds.toFixed(3))) : "—";
+
 export const mmss = (t: number) => {
-  const m = Math.floor(t / 60);
-  const sec = Math.round(t % 60);
-  return `${m}:${String(sec).padStart(2, "0")}`;
+  if (!Number.isFinite(t)) return "—";
+  const rounded = Math.round(t * 1000) / 1000;
+  const m = Math.floor(rounded / 60);
+  const sec = Number((rounded - m * 60).toFixed(3));
+  return `${m}:${sec < 10 ? "0" : ""}${sec}`;
 };
 
 /** Running start/end times for each beat. */
@@ -186,17 +191,23 @@ export function timelineIssues(
   duration: number,
   prompt: string,
   slots: Slot[],
-): { level: "error" | "warn"; text: string }[] {
-  const out: { level: "error" | "warn"; text: string }[] = [];
+): { level: "error" | "warn"; text: string; field?: string }[] {
+  const out: { level: "error" | "warn"; text: string; field?: string }[] = [];
+  beats.forEach((beat, index) => {
+    if (!Number.isFinite(beat.seconds) || beat.seconds <= 0) out.push({ level: "error", field: `prompt-beat-${index}`, text: `Beat ${index + 1} needs a positive length.` });
+    if (!beat.action.trim()) out.push({ level: "warn", field: `prompt-beat-${index}`, text: `Beat ${index + 1} has time allocated but no action yet.` });
+  });
+  if (/\[Missing(?:Image|Video|Audio)\d+\]/.test(prompt)) out.push({ level: "error", field: "prompt-references", text: "A removed reference was used in the prompt. Replace its [Missing…] token with the intended reference." });
   const total = beatsTotal(beats);
 
   if (beats.length && Math.abs(total - duration) > 0.01) {
     out.push({
       level: "error",
+      field: "prompt-timeline",
       text:
         total > duration
-          ? `The beats add up to ${total}s but the render is ${duration}s. The model will compress everything to fit, so the beat you cared about gets the same squeeze as the rest. Cut ${(total - duration).toFixed(1)}s, or raise the duration.`
-          : `The beats add up to ${total}s but the render is ${duration}s. The model pads the remainder, usually by holding the last frame. Add ${(duration - total).toFixed(1)}s of action, or lower the duration.`,
+          ? `The beats add up to ${secondsLabel(total)}s but the render is ${secondsLabel(duration)}s. The model will compress everything to fit, so the beat you cared about gets the same squeeze as the rest. Cut ${secondsLabel(total - duration)}s, or raise the duration.`
+          : `The beats add up to ${secondsLabel(total)}s but the render is ${secondsLabel(duration)}s. The model pads the remainder, usually by holding the last frame. Add ${secondsLabel(duration - total)}s of action, or lower the duration.`,
     });
   }
 
@@ -204,6 +215,7 @@ export function timelineIssues(
   if (short.length) {
     out.push({
       level: "warn",
+      field: "prompt-timeline",
       text: `${short.length} beat${short.length === 1 ? " is" : "s are"} under ${MIN_BEAT_SECONDS}s. At that length an action registers as a flicker rather than a beat — either give it room or fold it into its neighbour.`,
     });
   }
@@ -211,6 +223,7 @@ export function timelineIssues(
   if (beats.length && !beats.some((b) => b.role === "climax")) {
     out.push({
       level: "warn",
+      field: "prompt-timeline",
       text: "No beat is marked as the climax. Every ad has one moment it is actually selling; if the timeline does not say which, the model distributes emphasis evenly and none of it lands.",
     });
   }
@@ -220,6 +233,7 @@ export function timelineIssues(
   if (filename) {
     out.push({
       level: "error",
+      field: "prompt-references",
       text: `"${filename[0]}" is a filename. The model resolves references positionally as [Image1], [Video1] and so on — it has never seen what your file is called, so a filename is read as literal text and the reference is silently ignored. Bind by token instead.`,
     });
   }
@@ -230,6 +244,7 @@ export function timelineIssues(
   if (dangling.length) {
     out.push({
       level: "error",
+      field: "prompt-references",
       text: `${dangling.join(", ")} ${dangling.length === 1 ? "is" : "are"} referenced but not declared above. A token pointing at nothing fails quietly — you get a plausible take built on the wrong reference.`,
     });
   }
@@ -240,6 +255,9 @@ export function timelineIssues(
 export type SlotMedia = "image" | "video" | "audio";
 
 export type Slot = {
+  /** Stable identity; display tokens are derived from the current media order. */
+  id?: string;
+  assetId?: string;
   media: SlotMedia;
   /** What this reference is for, in the user's own words. */
   job: string;
@@ -247,7 +265,7 @@ export type Slot = {
 
 /** The worked example's reference set, matching the example copy above. */
 export const EXAMPLE_SLOTS: Slot[] = [
-  { media: "image", job: "the strawberry pack — product identity" },
+  { media: "image", job: "the yellow vanilla tub — product identity" },
   { media: "video", job: "the opening composition" },
   { media: "video", job: "cut rhythm and camera movement" },
 ];
@@ -258,6 +276,17 @@ export function tokenFor(slots: Slot[], index: number): string {
   const n = slots.slice(0, index + 1).filter((s) => s.media === media).length;
   const label = media === "image" ? "Image" : media === "video" ? "Video" : "Audio";
   return `[${label}${n}]`;
+}
+
+/** Rebind tokens atomically, so removing Image1 cannot silently turn Image2 into its subject. */
+export function remapReferenceTokens(text: string, before: Slot[], after: Slot[]): string {
+  const replacements = new Map<string, string>();
+  before.forEach((slot, index) => {
+    const next = after.findIndex((candidate) => slot.id ? candidate.id === slot.id : candidate === slot);
+    const oldToken = tokenFor(before, index);
+    replacements.set(oldToken, next < 0 ? oldToken.replace("[", "[Missing") : tokenFor(after, next));
+  });
+  return text.replace(/\[(?:Image|Video|Audio)\d+\]/g, (token) => replacements.get(token) ?? token);
 }
 
 /**

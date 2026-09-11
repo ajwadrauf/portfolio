@@ -57,6 +57,7 @@ export default function VelunePage() {
           <div className={styles.wrap}>
             <div className={styles.sectionHead}><div><p className={styles.eyebrow}>01 / Camera & choreography</p><h2 id="camera-heading">Direct the movement.<br /><em>Then build the finish.</em></h2></div><p id="velune-video-description">A silent Blender animatic, from the chocolate tunnel and three-flavour montage to a laboratory reveal, printed report and final return. Select any shot below to inspect the plan.</p></div>
             <VelunePlayer />
+            <Link className={styles.cta} href="/ai-studio#studio-start">Explore the editable VELUNE studio example <span aria-hidden>↗</span></Link>
             <p className={styles.mediaNote}>Working geometry and provisional character rigs make the choreography visible. This is the camera study, not the finished commercial.</p>
           </div>
         </section>

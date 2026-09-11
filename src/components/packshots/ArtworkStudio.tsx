@@ -17,7 +17,8 @@ import {
   readPackagePreset, serializePresetLibrary, type PackagePreset, type PresetProvenance,
 } from "@/lib/package-presets";
 import { BoxPreview, type BoxPreviewHandle } from "./BoxPreview";
-import { CampaignHandoffButton } from "./CampaignHandoffButton";
+import { PackshotActions as CampaignHandoffButton } from "./PackshotActions";
+import { useStudioProject } from "@/components/studio/StudioProjectProvider";
 import styles from "./ArtworkStudio.module.css";
 
 type PanelOrigin = { sourceName: string; page: number; crop: ArtworkCrop; pixels: { width: number; height: number } };
@@ -87,6 +88,7 @@ function readProject(text: string): BoxProject {
 }
 
 export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (references: RenderedView[]) => void }) {
+  const { project: studioProject, saveDraft } = useStudioProject();
   const [sources, setSources] = useState<ArtworkSource[]>([]);
   const sourcesRef = useRef<ArtworkSource[]>([]);
   const [sourceId, setSourceId] = useState("");
@@ -473,6 +475,35 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
     finally { if (alive.current) setImporting(false); }
   }
 
+  async function keepInStudio() {
+    try {
+      const data = readProject(JSON.stringify({ schema: "packshot-box-project", version: 1, name, settings: { dimensions, panels, finish, baseColor, shape }, origins, preset: selectedPreset, displayUnit: unit }));
+      await saveDraft("artwork", data); setNotice("Package settings and assigned artwork saved in this studio project.");
+    } catch (cause) { setError(messageFor(cause)); }
+  }
+  async function loadVelune() {
+    setImporting(true); setError(null);
+    try {
+      const response = await fetch("/studio/velune/box-pistachio-front.png");
+      if (!response.ok) throw new Error("The VELUNE artwork could not be opened.");
+      const file = new File([await response.blob()], "VELUNE-pistachio-concept.png", { type: "image/png" });
+      const source = await openArtwork(file);
+      try {
+        const raster = await source.rasterize(1, FULL_ARTWORK_CROP, 4096);
+        if (!alive.current) return;
+        setName("VELUNE · Pistachio concept"); setDimensions({ width: 120, height: 180, depth: 40 }); setDimensionInputs({ width: "120", height: "180", depth: "40" }); setUnit("mm"); setShape("carton"); setSelectedPreset(null); setBaseColor("#556c50");
+        setPanels({ front: { dataUrl: raster.dataUrl, name: file.name, rotation: 0, fit: "contain", background: "#556c50" } }); setOrigins({ front: { sourceName: file.name, page: 1, crop: { ...FULL_ARTWORK_CROP }, pixels: { width: raster.width, height: raster.height } } }); setBatch(null); changed();
+        setNotice("Loaded the Blender front-panel concept on its proposed 120 × 180 × 40 mm carton. Other faces are plain. These are creative dimensions, not approved manufacturing specifications.");
+      } finally { source.dispose(); }
+    } catch (cause) { if (alive.current) setError(messageFor(cause)); }
+    finally { if (alive.current) setImporting(false); }
+  }
+  useEffect(() => {
+    if (!studioProject?.drafts.artwork) return;
+    void loadProject(new File([JSON.stringify(studioProject.drafts.artwork)], "saved.box-project.json", { type: "application/json" }));
+    // The parent mounts a fresh session for each project. Save echoes must not reset the editor.
+  }, []);
+
   return (
     <div className={styles.studio}>
       <div className={styles.intro}>
@@ -480,9 +511,11 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
         <span className={styles.localBadge}>On this device · no AI charge</span>
       </div>
 
+      {studioProject?.example === "velune" && <div className="my-4 rounded border border-border-soft p-4"><p className="mb-3 text-sm">VELUNE front-panel concept · the artwork used in the Blender carton study. Loading replaces the current package setup.</p><button type="button" className={styles.secondary} disabled={editingBusy} onClick={() => void loadVelune()}>Load VELUNE carton artwork</button></div>}
       <div className={styles.projectBar}>
         <label className={styles.nameField}>Project name<input value={name} maxLength={100} onChange={(event) => setName(event.target.value)} disabled={editingBusy} /></label>
         <div className={styles.actions}>
+          <button type="button" className={styles.secondary} onClick={() => void keepInStudio()} disabled={editingBusy || !validDimensions || !studioProject}>Keep in studio project</button>
           <button type="button" className={styles.secondary} onClick={saveProject} disabled={editingBusy || !validDimensions}>Save box project</button>
           <button type="button" className={styles.secondary} onClick={() => projectInput.current?.click()} disabled={editingBusy}>Open box project</button>
           <input ref={projectInput} type="file" accept=".json,application/json" className={styles.hidden} aria-label="Open box project JSON" onChange={(event) => { void loadProject(event.target.files?.[0]); event.target.value = ""; }} />

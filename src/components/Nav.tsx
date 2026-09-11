@@ -87,7 +87,7 @@ export function Nav() {
   return (
     /* Same treatment as the portfolio header — no wash, no strip, one hairline. */
     <header className="sticky top-0 z-40 border-b border-border-soft bg-[color-mix(in_srgb,var(--surface)_82%,transparent)] backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 min-[1280px]:flex-row min-[1280px]:items-center min-[1280px]:justify-between lg:px-6">
         <div className="flex items-center justify-between gap-4 lg:justify-start">
           {/*
             The site wordmark at back-link scale — the same mark the homepage
@@ -113,7 +113,7 @@ export function Nav() {
           gave no clue where you were. A disclosure that names the current page
           says both things at once, and every destination is one tap away.
         */}
-        <div className="relative lg:hidden" ref={wrapRef}>
+        <div className="relative min-[1280px]:hidden" ref={wrapRef}>
           <button
             ref={buttonRef}
             type="button"
@@ -166,7 +166,7 @@ export function Nav() {
 
         <nav
           aria-label="Studio sections"
-          className="no-scrollbar hidden min-w-0 items-center gap-1 overflow-x-auto text-sm lg:flex xl:overflow-visible"
+          className="hidden min-w-0 items-center gap-1 text-sm min-[1280px]:flex"
         >
           {LINKS.map((l) => (
             <Link

@@ -18,6 +18,7 @@ export async function POST(req: Request) {
       modelId: string;
       brief: CampaignBrief;
       imageDataUrl?: string;
+      approvedHero?: boolean;
     };
 
     const spec = getDeliverable(body.deliverableId);
@@ -33,7 +34,9 @@ export async function POST(req: Request) {
     }
 
     const model = getModel(body.modelId);
-    const prompt = spec.buildPrompt(body.brief);
+    const prompt = (body.approvedHero === true
+      ? "The attached image is the approved campaign hero. Use its actual product, packaging design, lighting character and palette as visual grounding for this adaptation. Preserve product identity while recomposing for the requested format. "
+      : "") + spec.buildPrompt(body.brief);
     const cost = estimateCost(model.id);
 
     const hasKey = model.provider === "gemini" ? hasGeminiKey() : hasFalKey();

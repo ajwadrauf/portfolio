@@ -1,0 +1,107 @@
+// Offline contracts only: no credentials, providers, or paid calls.
+const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..'), ts = require(root + '/node_modules/typescript');
+let checks = 0;
+const check = (condition, message) => { assert(condition, message); checks++; };
+function loader(overrides = {}, globals = {}) {
+  const cache = {};
+  const load = (file) => {
+    file = path.resolve(root, file); if (!path.extname(file)) file += '.ts';
+    if (cache[file]) return cache[file].exports;
+    const mod = { exports: {} }; cache[file] = mod;
+    const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
+    const req = (name) => Object.hasOwn(overrides, name) ? overrides[name] : name === 'server-only' ? {} : name === 'next/server' ? { NextResponse: { json: (data, init) => Response.json(data, init) } } : name.startsWith('@/') ? load('src/' + name.slice(2)) : name.startsWith('.') ? load(path.resolve(path.dirname(file), name)) : require(require.resolve(name, { paths: [root] }));
+    vm.runInNewContext(source, { require: req, module: mod, exports: mod.exports, process: { env: {} }, console, URL, Buffer, Request, Response, Headers, Blob, TextEncoder, Float32Array, Uint8Array, ArrayBuffer, DataView, AbortController, AbortSignal, ReadableStream, btoa, setTimeout, clearTimeout, fetch: async () => { throw new Error('Unmocked network forbidden'); }, ...globals }, { filename: file });
+    return mod.exports;
+  };
+  return load;
+}
+(async () => {
+  const load = loader(); const d = load('src/lib/adDraft.ts'), m = load('src/lib/adMix.ts'), s = load('src/lib/soundPlan.ts');
+  const reference = (id, kind = 'image') => ({ id, kind, name: id, role: kind === 'video' ? 'motion' : 'product', url: 'https://v3.fal.media/' + id });
+  const seed = { schema: 'adlab-draft-v1', source: 'blender', modelId: 'seedance-2.5-ref', prompt: '[Video1] follows [Image1]', duration: 15, aspect: '16:9', references: [reference('video', 'video'), reference('pack')], referenceManifest: [{ token: '[Image1]', job: 'package', assetId: 'pack' }, { token: '[Video1]', job: 'camera', assetId: 'video' }] };
+  check(!!d.parseAdDraft(seed), 'Handoff seed accepted');
+  check(d.referenceBindingProblems(seed.references, seed.referenceManifest).length === 0, 'Mixed media counts independently');
+  check(d.referenceBindingProblems([reference('second')], [{ token: '[Image1]', job: 'first', assetId: null }, { token: '[Image2]', job: 'second', assetId: 'second' }]).length === 2, 'Sparse slots cannot silently collapse');
+  check(d.referenceBindingProblems([reference('a'), reference('b')], [{ token: '[Image1]', job: 'a', assetId: 'b' }, { token: '[Image2]', job: 'b', assetId: 'a' }]).length === 2, 'Changed positions require review');
+  check(d.referenceBindingProblems([reference('a')], [{ token: '[Video1]', job: 'video', assetId: 'a' }]).length === 1, 'Wrong media kind cannot satisfy slot');
+  for (const change of [{ duration: Infinity }, { modelId: 'unlisted' }, { references: [reference('a'), { ...reference('bad'), url: 'javascript:alert(1)' }] }, { soundPlan: { scenes: [] } }, { completedTake: { id: 'x', videoUrl: '/video.mp4', context: {} } }, { mixTracks: [{ gain: NaN }] }, { referenceManifest: [{ token: '[Image0]', job: 'bad', assetId: null }] }]) check(d.parseAdDraft({ ...seed, ...change }) === null, 'Malformed draft rejected');
+  const plan = s.soundTemplate('narrated');
+  const full = { ...seed, source: 'ad', soundPlan: plan, voiceTakes: { [plan.scenes[0].id]: { url: 'https://v3.fal.media/voice.mp3', spec: '', mock: false, recovered: true, label: 'Recovered line' } }, musicUrl: 'https://v3.fal.media/music.mp3', sfxTracks: { crack: 'https://v3.fal.media/crack.mp3' }, productImage: 'data:image/jpeg;base64,YQ==', sceneCards: [{ id: 'scene', title: 'Reveal', start: 0, end: 3, action: 'Turn carton', camera: 'Locked', sound: 'Crack', referenceIds: ['pack'] }] };
+  const roundtrip = d.parseAdDraft(JSON.parse(JSON.stringify(full)));
+  check(roundtrip.voiceTakes[plan.scenes[0].id].recovered === true, 'Recovered voice assignment restored');
+  check(roundtrip.productImage === full.productImage && roundtrip.references.length === 2, 'Inline and hosted refs retained');
+  check(!!d.parseAdDraft({ ...full, soundPlan: { ...plan, bpm: 0, scenes: plan.scenes.map((cue, i) => i === 0 ? { ...cue, seconds: 0 } : cue) }, sceneCards: [{ ...full.sceneCards[0], end: 0 }] }), 'Unfinished timing edits survive reload for correction');
+  check(roundtrip.sceneCards[0].camera === 'Locked' && roundtrip.sfxTracks.crack === full.sfxTracks.crack, 'Scene and sound decisions retained');
+  const assets = [{ ...reference('ready'), status: 'ready', source: 'uploaded' }, { ...reference('final', 'video'), status: 'pending', source: 'generated' }, { id: 'doc', name: 'doc', kind: 'document', status: 'ready', source: 'example', url: '/brief.json' }];
+  check(d.readyAdReferences(assets).length === 1, 'Pending final and documents are never usable refs');
+  check(d.adReferenceAdditionProblem(reference('new'), [reference('old')]) === null, 'A ready project reference can be added explicitly');
+  check(!!d.adReferenceAdditionProblem(reference('old'), [reference('old')]), 'Already attached asset is not duplicated');
+  check(!!d.adReferenceAdditionProblem({ ...reference('different-id'), url: reference('old').url }, [reference('old')]), 'Same media under another ID is not duplicated');
+  check(!!d.adReferenceAdditionProblem(reference('new'), Array.from({ length: 29 }, (_, i) => reference('image-' + i)), { image: 1 }), 'Product first-frame counts toward image ceiling');
+  check(!!d.adReferenceAdditionProblem(reference('new-audio', 'audio'), Array.from({ length: 9 }, (_, i) => reference('audio-' + i, 'audio')), { audio: 1 }), 'Music timing reference counts toward audio ceiling');
+  check(d.referenceRole('audio', 'product') === 'ambience' && d.referenceRole('video', 'Camera study') === 'motion', 'Role fallback respects media capability');
+  check(Buffer.from(d.adDocumentDataUrl({ note: 'Crème 🎬' }).split(',')[1], 'base64').toString().includes('Crème 🎬'), 'Review JSON preserves Unicode');
+  const track = (change = {}) => ({ id: 'a', name: 'take', url: 'https://v3.fal.media/a.mp3', kind: 'effect', start: 0, trim: 0, length: 2, gain: 1, fadeIn: 0, fadeOut: 0, enabled: true, ...change });
+  const source = (t, samples = new Float32Array(200).fill(.2), rate = 100) => ({ track: t, samples: [samples], sampleRate: rate });
+  let mix = m.mixSoundtrack([source(track({ start: 1, length: 1 }))], 3, 0, 100);
+  check(mix.channels[0][50] === 0 && Math.abs(mix.channels[0][100] - .2) < 1e-6 && mix.channels[0][200] === 0, 'Track uses exact timeline window');
+  check(mix.channels[0][120] === mix.channels[1][120], 'Mono duplicates to stereo');
+  mix = m.mixSoundtrack([source(track({ trim: 1, length: 1 }), Float32Array.from({ length: 200 }, (_, i) => i < 100 ? .1 : .4))], 2, 0, 100);
+  check(Math.abs(mix.channels[0][0] - .4) < 1e-6 && mix.channels[0][100] === 0, 'Trim starts at requested source offset');
+  mix = m.mixSoundtrack([source(track({ gain: .5, fadeIn: .5, fadeOut: .5 }))], 2, 0, 100);
+  check(mix.channels[0][0] === 0 && Math.abs(mix.channels[0][25] - .05) < 1e-6 && Math.abs(mix.channels[0][175] - .05) < 1e-6, 'Gain and fades multiply correctly');
+  mix = m.mixSoundtrack([source(track({ kind: 'music', length: 3 }), new Float32Array(300).fill(.4)), source(track({ id: 'voice', kind: 'voice', start: 1, length: .5 }), new Float32Array(50))], 3, .75, 100);
+  check(Math.abs(mix.channels[0][50] - .4) < 1e-6 && Math.abs(mix.channels[0][110] - .1) < 1e-6 && Math.abs(mix.channels[0][160] - .25) < 1e-6 && Math.abs(mix.channels[0][190] - .4) < 1e-6, 'Ducking has attack, voice window and release');
+  mix = m.mixSoundtrack([source(track({ kind: 'music' })), source(track({ kind: 'voice', enabled: false, start: 0 }))], 2, 1, 100);
+  check(Math.abs(mix.channels[0][50] - .2) < 1e-6, 'Disabled voice never ducks music');
+  mix = m.mixSoundtrack([source(track(), new Float32Array(200).fill(.8)), source(track(), new Float32Array(200).fill(.8))], 2, 0, 100);
+  check(mix.masterGain < 1 && Math.abs(mix.channels[0][50] - .98) < 1e-6, 'Master reduction prevents clipping');
+  mix = m.mixSoundtrack([source(track({ trim: 5 }))], 2, 0, 100);
+  check(mix.channels[0].every((v) => v === 0), 'Trim beyond source is silence, not a loop');
+  const wav = m.encodeWav(mix.channels, mix.sampleRate), view = new DataView(wav.buffer);
+  check(Buffer.from(wav.subarray(0, 4)).toString() === 'RIFF' && view.getUint16(22, true) === 2 && view.getUint16(34, true) === 16, 'Real PCM stereo WAV header');
+  check(view.getUint32(40, true) === 200 * 4 && wav.length === 44 + 200 * 4, 'WAV has duration-sized PCM data');
+  for (const duration of [NaN, Infinity, 0, -1, 61]) { assert.throws(() => m.mixSoundtrack([], duration, .5)); checks++; }
+  check(m.mixManifest([], 15, .7, '/original.mp4').video.included === false && m.mixManifest([], 15, .7, '/original.mp4').nativeVideoAudio.includes('original audio'), 'Bundle never claims to contain a remixed MP4');
+  const streamed = loader({}, { fetch: async () => new Response(new ReadableStream({ start(c) { c.enqueue(new Uint8Array(8)); c.enqueue(new Uint8Array(8)); c.close(); } })) })('src/lib/adMix.ts');
+  await assert.rejects(() => streamed.readMixMedia('https://test', 10), /limit/); checks++;
+  const streamedOk = await streamed.readMixMedia('https://test', 20); check(streamedOk.byteLength === 16, 'Streamed media works without Content-Length');
+  let submissions = [], uploads = 0, live = false;
+  const models = load('src/lib/models.ts');
+  const route = loader({ '@/lib/models': { ...models, hasFalKey: () => true, hasGeminiKey: () => false, isDryRun: () => false }, '@/lib/auth': { unlocked: () => live, consume: () => ({ ok: true }), liveJson: (_spend, body) => Response.json(body) }, '@/lib/fal': { falStartVideo: async (body) => { submissions.push(body); return { requestId: 'synthetic' }; }, falUpload: async () => { uploads++; throw new Error('Storage must not run in these public-origin checks'); } } })('src/app/api/ad/start/route.ts');
+  const body = { prompt: 'VELUNE [Video1] [Image1]', modelId: 'seedance-2.5-ref', aspect: '16:9', durationSeconds: 15, resolution: '480p', referenceVideoUrls: ['/studio/velune/animatic.mp4'], referenceImageDataUrls: ['/studio/velune/packaging-concepts.jpg'], inputVideoSeconds: 15 };
+  const post = () => route.POST(new Request('https://studio.example/api/ad/start', { method: 'POST', body: JSON.stringify(body) }));
+  const demo = await (await post()).json(); check(demo.mock === true && submissions.length === 0 && uploads === 0, 'Example preview never submits or uploads');
+  live = true;
+  for (const bad of [{ prompt: 42 }, { referenceImageDataUrls: 'wrong type' }, { referenceVideoUrls: ['/references/../../private.mp4'] }, { referenceImageDataUrls: Array.from({ length: 31 }, (_, i) => 'https://v3.fal.media/' + i) }, { referenceAudioDurations: [null] }]) {
+    const response = await route.POST(new Request('https://studio.example/api/ad/start', { method: 'POST', body: JSON.stringify({ ...body, ...bad }) }));
+    check(response.status === 400 && submissions.length === 0, 'Malformed/over-limit input rejected before paid provider submission');
+  }
+  const huge = await route.POST(new Request('https://studio.example/api/ad/start', { method: 'POST', body: JSON.stringify({ ...body, negativePrompt: 'é'.repeat(2_100_000) }) }));
+  check(huge.status === 413 && submissions.length === 0, 'Actual UTF-8 body bytes rejected before paid submit');
+  const malformed = await route.POST(new Request('https://studio.example/api/ad/start', { method: 'POST', body: '{broken' }));
+  check(malformed.status === 400 && submissions.length === 0, 'Malformed JSON is a client error without spending');
+  const result = await (await post()).json();
+  check(result.falRequestId === 'synthetic' && submissions.length === 1, 'One explicit live test submits exactly once to a mock');
+  check(submissions[0].referenceVideoUrls[0] === 'https://studio.example/studio/velune/animatic.mp4' && submissions[0].referenceImageDataUrls[0] === 'https://studio.example/studio/velune/packaging-concepts.jpg', 'Bundled VELUNE image and video refs become provider-reachable');
+  // Exercise actual hook code when a user changes project before a submission response arrives.
+  const storedJobs = new Map(); let mounted = true, cleanup, resolveSubmission, audioRequests = 0, charged = 0;
+  const hook = loader({ react: { useState: (value) => [typeof value === 'function' ? value() : value, () => { /* Deliberately discard unmounted React updates. */ }], useRef: (value) => ({ current: value }), useEffect: (effect) => { cleanup = effect(); } } }, { localStorage: { getItem: (key) => storedJobs.get(key) ?? null, setItem: (key, value) => storedJobs.set(key, value) }, fetch: async () => { audioRequests++; return new Promise((resolve) => { resolveSubmission = resolve; }); } })('src/lib/useAudioJobs.ts').useAudioJobs(() => charged++);
+  const pending = hook.run('/api/ad/voice', { text: 'Hello', voice: 'Rachel' }, 'Saved voice');
+  await assert.rejects(() => hook.run('/api/ad/voice', {}, 'Double click'), /Wait/); checks++;
+  mounted = false; cleanup();
+  resolveSubmission(Response.json({ requestId: 'accepted-before-project-change', modelId: 'eleven-voice', seconds: 2, cost: .001 }));
+  await assert.rejects(() => pending); checks++;
+  check(audioRequests === 1 && charged === 1, 'Project change and repeated click never resubmit');
+  check(JSON.parse(storedJobs.get('adlab-audio-jobs-v1'))[0].requestId === 'accepted-before-project-change', 'Paid audio handle survives discarded React state after unmount');
+  let assigned = {}; let voiceRequests = 0;
+  const planner = loader({ react: { useState: (value) => [value, () => {}], useEffect: () => {} } })('src/components/studio/SoundPlanner.tsx').SoundPlanner;
+  const tree = planner({ plan, onChange: () => {}, duration: 30, problem: null, onMatchDuration: () => {}, canMatchDuration: true, busy: false, live: false, scoreToPlan: false, onScoreToPlan: () => {}, onVoice: async () => { voiceRequests++; throw new Error('Forbidden'); }, takes: {}, onTakesChange: (value) => { assigned = typeof value === 'function' ? value(assigned) : value; }, recoveredVoices: [{ requestId: 'saved', label: 'A known line', audioUrl: 'https://v3.fal.media/saved.mp3' }] });
+  const walk = (n) => Array.isArray(n) ? n.flatMap(walk) : n && typeof n === 'object' ? [n, ...walk(n.props?.children)] : [];
+  const words = (n) => Array.isArray(n) ? n.map(words).join('') : n && typeof n === 'object' ? words(n.props?.children) : typeof n === 'string' || typeof n === 'number' ? String(n) : '';
+  const assignButton = walk(tree).find((node) => node.type === 'button' && words(node).includes('Use for scene'));
+  check(Boolean(assignButton), 'Recovered voice has a scene assignment action'); assignButton.props.onClick();
+  check(voiceRequests === 0 && assigned[plan.scenes[0].id].recovered === true && assigned[plan.scenes[0].id].spec === '', 'Recovered assignment is free and never claims current-script verification');
+  console.log(`PASS: ${checks} Ad draft, positional handoff, real PCM/WAV, ducking, bounded media, and mocked VELUNE submission checks. No paid calls.`);
+})().catch((error) => { console.error(error); process.exit(1); });

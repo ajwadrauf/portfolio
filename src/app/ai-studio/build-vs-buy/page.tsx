@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ProductionCalculator } from "@/components/studio/ProductionCalculator";
 
 export const metadata: Metadata = {
   title: "Build vs. Buy — AI Content Studio",
@@ -77,7 +78,7 @@ const MATRIX: Row[] = [
   { criterion: "Workflow integration", suites: "Varies by suite and plan", agg: "Full API", direct: "Full API", best: 1 },
   { criterion: "Rights & indemnity", suites: "Vendor terms, varies", agg: "Passed through from the model owner", direct: "First-party, negotiable", best: 2 },
   { criterion: "Cost at high volume", suites: "Breaks down", agg: "Linear and predictable", direct: "Linear, improves with commitment", best: 2 },
-  { criterion: "Switching cost", suites: "Low — cancel seats", agg: "Low — change one endpoint string", direct: "Medium — per-vendor integration", best: 1 },
+  { criterion: "Switching cost", suites: "Export work, review terms, cancel seats", agg: "Shared transport; endpoint schemas still differ", direct: "Per-vendor adapters and validation", best: 1 },
   { criterion: "Where it breaks", suites: "Volume scales", agg: "You need a first-party SLA", direct: "The leaderboard flips", best: 1 },
 ];
 
@@ -113,6 +114,8 @@ export default function BuildVsBuyPage() {
         </p>
       </header>
 
+      <ProductionCalculator />
+
       {/* ---------- The call, up front ---------- */}
       <section className="mt-12">
         <div className="flex items-baseline gap-3">
@@ -124,8 +127,8 @@ export default function BuildVsBuyPage() {
         <div className="mt-5 grid gap-px overflow-hidden rounded-[6px] border border-border-soft bg-border-soft sm:grid-cols-3">
           {[
             ["Buy", "Suites for exploration", "A few seats so creatives touch every new model the week it ships. R&D spend, not production infrastructure."],
-            ["Build", "APIs for production", "Gemini direct plus one aggregator. Every repeatable pipeline lives here. This demo runs exactly this stack."],
-            ["Neither, forever", "Re-evaluate monthly", "Model IDs and prices in one config file. When a leader changes, it's an edit — not a rebuild."],
+            ["Build", "APIs for production", "This studio uses Gemini and Recraft directly, plus fal for additional image, video and audio routes. Local browser tools handle package previews and project organization."],
+            ["Neither, forever", "Re-evaluate monthly", "Keep source assets and decisions portable. A new model still needs an adapter, capability validation and a test against the work."],
           ].map(([verdict, title, body]) => (
             <div key={title} className="bg-surface p-5">
               <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-accent">
@@ -317,9 +320,11 @@ export default function BuildVsBuyPage() {
         <h2 className="font-semibold">What this demo actually runs on</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           Gemini direct for reasoning, vision, Nano Banana stills and Veo video;
-          fal.ai for Flux, Kling, Seedance, Runway and ElevenLabs Music. Every
-          model ID and price lives in one config file with environment
-          overrides — the switching cost this page argues for, made real.
+          fal.ai for additional stills, Kling, Seedance, Runway and ElevenLabs
+          music, voice and effects; Recraft directly for its image and finishing
+          tools. Model configuration is centralized, while provider-specific
+          adapters validate different payloads. Three.js, Canvas and browser
+          storage support the local package, rehearsal and project workflows.
         </p>
         <Link href="/ai-studio/models" className="mt-4 inline-block text-sm font-semibold text-accent hover:underline">
           See the routing table →

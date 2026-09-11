@@ -20,11 +20,15 @@ export function useAudioJobs(onSpend: (cost: number) => void) {
     return () => controller.current?.abort();
   }, []);
 
-  const remember = (job: AudioJob) => setJobs((previous) => {
+  const remember = (job: AudioJob) => {
+    // Persist outside a React updater: after a project switch React may discard
+    // an unmounted component's updates, but the accepted paid handle must survive.
+    let previous: AudioJob[] = jobs;
+    try { const saved = JSON.parse(localStorage.getItem(STORAGE) ?? "null"); if (Array.isArray(saved)) previous = saved.filter((j) => typeof j?.requestId === "string"); } catch {}
     const next = [...previous.filter((j) => j.requestId !== job.requestId), job].slice(-20);
     try { localStorage.setItem(STORAGE, JSON.stringify(next)); } catch { /* Private browsing can refuse storage. */ }
-    return next;
-  });
+    setJobs(next);
+  };
 
   const collect = async (job: AudioJob, signal: AbortSignal): Promise<AudioResult> => {
     const deadline = Date.now() + 10 * 60_000;
@@ -51,7 +55,9 @@ export function useAudioJobs(onSpend: (cost: number) => void) {
     const abort = new AbortController(); controller.current = abort;
     try {
       // Never retry a submission automatically: an uncertain response may already be billed.
-      const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abort.signal });
+      // Finish reading an accepted submission even if the user changes projects.
+      // Unmount cancels subsequent polling, not retrieval of the paid request ID.
+      const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(120000) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Audio submission failed");
       if (result.mock && result.audioUrl) return { audioUrl: result.audioUrl, mock: true };

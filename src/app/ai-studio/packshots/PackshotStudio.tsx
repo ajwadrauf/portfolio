@@ -5,7 +5,8 @@ import dynamic from "next/dynamic";
 import { LiveGate } from "@/components/LiveGate";
 import { Why } from "@/components/Why";
 import { SpendChip } from "@/components/SpendChip";
-import { CampaignHandoffButton } from "@/components/packshots/CampaignHandoffButton";
+import { PackshotActions as CampaignHandoffButton } from "@/components/packshots/PackshotActions";
+import { useStudioProject } from "@/components/studio/StudioProjectProvider";
 import { FINISH_OPS, type FinishOp } from "@/lib/recraft.client";
 import { useHealth } from "@/lib/useHealth";
 import { MODELS, estimateCost } from "@/lib/models";
@@ -158,6 +159,13 @@ async function toProcessedDataUrl(file: File, wireBudget = Math.floor(MAX_REF_BY
 }
 
 export function PackshotStudio() {
+  const workspace = useStudioProject();
+  if (!workspace.ready) return <p className="p-8" role="status">Opening packshots…</p>;
+  return <PackshotSession key={workspace.project?.id ?? "session"} />;
+}
+function PackshotSession() {
+  const { project, saveDraft } = useStudioProject();
+  const routingHandled = useRef<number | null>(null);
   const [mode, setMode] = useState<"photos" | "artwork">("photos");
   const [artworkOpened, setArtworkOpened] = useState(false);
   const [running, setRunning] = useState(false);
@@ -198,6 +206,20 @@ export function PackshotStudio() {
       setSessionSpend(Number(localStorage.getItem(SPEND_KEY) ?? 0));
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("mode") === "artwork") { setArtworkOpened(true); setMode("artwork"); }
+  }, []);
+  useEffect(() => {
+    const routing = project?.drafts.routing as { kind?: string; modelId?: string; selectedAt?: number; handledAt?: number; scenario?: { imageTier?: number } } | undefined;
+    if (routing?.kind !== "image" || !routing.modelId || !PACKSHOT_MODELS.some((m) => m === routing.modelId) || typeof routing.selectedAt !== "number" || routing.handledAt === routing.selectedAt || routingHandled.current === routing.selectedAt) return;
+    routingHandled.current = routing.selectedAt;
+    setModelId(routing.modelId); setMode("photos");
+    const sizes = MODELS[routing.modelId].outputSizes?.presets;
+    const tier = Number.isInteger(routing.scenario?.imageTier) ? Math.max(0, routing.scenario!.imageTier!) : 0;
+    setSizePresetId(sizes?.[Math.min(tier, sizes.length - 1)]?.id ?? null);
+    void saveDraft("routing", { ...routing, handledAt: routing.selectedAt }).catch((e) => setError(e.message));
+  }, [project?.drafts.routing, saveDraft]);
 
   const addSpend = useCallback((amount: number) => {
     setSessionSpend((prev) => {
@@ -530,11 +552,12 @@ export function PackshotStudio() {
           <details className={styles.connections}>
             <summary>Connections</summary>
             <div>{[["Gemini", health?.gemini], ["fal.ai", health?.fal], ["Recraft", health?.recraft]].map(([name, connected]) =>
-              <span className="chip" key={String(name)}>{name} · {connected ? "connected" : "not configured"}</span>)}</div>
+              <span className="chip" key={String(name)}>{name} · {connected ? "key configured" : "not configured"}</span>)}</div>
           </details>
         </div>
         <SpendChip amount={sessionSpend} />
       </div>
+      {project?.example === "velune" && <div className="card my-5 p-5"><strong>VELUNE · packaging from the film study</strong><p className="my-2 text-sm text-muted">Open the artwork workspace to load the actual front-panel concept used in Blender. Dimensions follow the proposed Blender carton; the other faces remain plain until artwork is supplied.</p><button className="btn-secondary" onClick={() => { setArtworkOpened(true); setMode("artwork"); }}>Explore VELUNE artwork ↗</button></div>}
       <div className={styles.modeGrid} role="group" aria-label="Choose your starting point">
         <button type="button" className={mode === "photos" ? styles.selectedMode : styles.mode} aria-pressed={mode === "photos"} onClick={() => setMode("photos")}>
           <span className={styles.modeEyebrow}>The familiar workflow</span><strong>From product photos</strong>
