@@ -54,6 +54,19 @@
 .cropNumbers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .boxLayout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 32px; align-items: start; }
 .boxControls { border: 0; min-width: 0; padding: 0; margin: 0; }
+.presetBlock { display: grid; gap: 12px; margin-bottom: 24px; padding-bottom: 23px; border-bottom: 1px solid var(--border); }
+.presetDisclosure { border-left: 2px solid #c4aeb9; padding-left: 10px; font-size: 11px; line-height: 1.7; color: #6d5962; }
+.presetStatus { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; font-size: 10px; line-height: 1.6; }
+.presetStatus strong { color: var(--accent); font-weight: 500; }
+.presetStatus span { color: var(--muted); }
+.presetLibrary { padding: 0 13px; border: 1px solid #ddd5d9; border-radius: 3px; background: #f5eff2; }
+.presetLibrary summary { min-height: 44px; padding: 13px 0; cursor: pointer; font-size: 11px; color: var(--accent); }
+.presetLibrary summary span { margin-left: 8px; color: var(--muted); font-size: 10px; }
+.presetLibrary[open] { padding-bottom: 15px; }
+.presetSaveRow { display: grid; gap: 11px; margin: 3px 0 10px; }
+.presetSaveRow > button { justify-self: start; }
+.presetLibrary > .actions { margin-block: 13px 10px; }
+.presetLibrary > .actions button { font-size: 10px; padding-inline: 10px; }
 .sectionLabel { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .sectionLabel h3 { font-size: 13px; font-weight: 500; letter-spacing: -.01em; }
 .sectionLabel .hint { font-size: 10px; }

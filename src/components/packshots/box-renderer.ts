@@ -2,8 +2,8 @@ import * as THREE from "three";
 import type { PackAngle } from "@/lib/packshot";
 import {
   artworkPlacement, BOX_MATERIAL_FACES, boxCameraPose, boxFramingHalfExtent,
-  faceDimensions, normalizedBoxDimensions,
-  type BoxFace, type BoxPanel, type BoxSettings,
+  faceDimensions, normalizedBoxDimensions, pillowBagPoint,
+  type BoxDimensions, type BoxFace, type BoxPanel, type BoxSettings, type PackageShape,
 } from "@/lib/packaging";
 
 export type BoxRenderer = {
@@ -15,6 +15,45 @@ export type BoxRenderer = {
 };
 
 const noWebGL = "This browser could not start the 3D preview. Enable hardware acceleration or try another browser, then retry.";
+
+/** Also used by offline checks; creating geometry does not require a browser or WebGL. */
+export function createPackageGeometry(dimensions: BoxDimensions, shape: PackageShape = "carton"): THREE.BoxGeometry {
+  const d = normalizedBoxDimensions(dimensions);
+  // Keep the original carton topology, positions, UVs and normals exactly unchanged.
+  if (shape !== "pillow-bag") return new THREE.BoxGeometry(d.width, d.height, d.depth);
+
+  const geometry = new THREE.BoxGeometry(d.width, d.height, d.depth, 24, 64, 12);
+  const positions = geometry.getAttribute("position");
+  for (let index = 0; index < positions.count; index++) {
+    const point = pillowBagPoint([positions.getX(index), positions.getY(index), positions.getZ(index)], d);
+    positions.setXYZ(index, ...point);
+  }
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+
+  // BoxGeometry duplicates vertices at material boundaries. Smooth those shared body
+  // normals without merging vertices: each panel retains its independent, original UVs.
+  const normals = geometry.getAttribute("normal");
+  const seams = new Map<string, { sum: THREE.Vector3; indices: number[] }>();
+  for (let index = 0; index < positions.count; index++) {
+    const x = positions.getX(index), y = positions.getY(index), z = positions.getZ(index);
+    if (Math.abs(y) >= d.height * 0.499) continue; // Keep the sealing-band end caps crisp.
+    const key = `${x.toPrecision(9)},${y.toPrecision(9)},${z.toPrecision(9)}`;
+    const entry = seams.get(key) ?? { sum: new THREE.Vector3(), indices: [] };
+    entry.sum.add(new THREE.Vector3().fromBufferAttribute(normals, index));
+    entry.indices.push(index);
+    seams.set(key, entry);
+  }
+  for (const { sum, indices } of seams.values()) {
+    if (indices.length < 2) continue;
+    sum.normalize();
+    for (const index of indices) normals.setXYZ(index, sum.x, sum.y, sum.z);
+  }
+  normals.needsUpdate = true;
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
 
 /** Loaded only by BoxPreview's browser effect. No browser work happens at module scope. */
 export function createBoxRenderer(container: HTMLElement, onError: (message: string) => void): BoxRenderer {
@@ -168,8 +207,7 @@ export function createBoxRenderer(container: HTMLElement, onError: (message: str
         if (failure?.status === "rejected") throw failure.reason;
         return;
       }
-      const d = normalizedBoxDimensions(settings.dimensions);
-      const replacement = new THREE.Mesh(new THREE.BoxGeometry(d.width, d.height, d.depth), ready);
+      const replacement = new THREE.Mesh(createPackageGeometry(settings.dimensions, settings.shape), ready);
       if (mesh) scene.remove(mesh);
       disposeMesh(mesh);
       mesh = replacement;

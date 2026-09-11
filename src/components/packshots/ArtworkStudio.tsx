@@ -5,12 +5,17 @@ import { PACK_ANGLES, type PackAngle } from "@/lib/packshot";
 import {
   BOX_FACES, BOX_FACE_LABELS, artworkManifest, coverageForAngle, faceDimensions,
   mappedFaces, validBoxDimensions, type BoxFace, type BoxFinish, type BoxPanel,
-  type BoxDimensions, type BoxPanels, type BoxSettings,
+  type BoxDimensions, type BoxPanels, type BoxSettings, type PackageShape,
 } from "@/lib/packaging";
 import {
   FULL_ARTWORK_CROP, artworkFileName, downloadLocalFile, openArtwork, pngDataBytes,
   validArtworkCrop, type ArtworkCrop, type ArtworkRaster, type ArtworkSource,
 } from "@/lib/artwork";
+import {
+  COMPANY_PRESET_STORAGE_KEY, MAX_COMPANY_PRESETS, MAX_PRESET_LIBRARY_BYTES, STARTER_PACKAGE_PRESETS,
+  createCompanyPreset, mergePresetLibraries, parsePresetLibrary, presetMatches, presetProvenance,
+  readPackagePreset, serializePresetLibrary, type PackagePreset, type PresetProvenance,
+} from "@/lib/package-presets";
 import { BoxPreview, type BoxPreviewHandle } from "./BoxPreview";
 import styles from "./ArtworkStudio.module.css";
 
@@ -24,8 +29,9 @@ type RenderBatch = {
   settings: BoxSettings;
   origins: PanelOrigins;
   size: number;
+  preset: PresetProvenance | null;
 };
-type BoxProject = { schema: "packshot-box-project"; version: 1; name: string; settings: BoxSettings; origins: PanelOrigins };
+type BoxProject = { schema: "packshot-box-project"; version: 1; name: string; settings: BoxSettings; origins: PanelOrigins; preset?: PackagePreset | null; presetProvenance?: PresetProvenance | null; displayUnit?: "mm" | "in" };
 
 const INITIAL_DIMENSIONS = { width: "80", height: "120", depth: "45" };
 const MAX_SOURCES = 12;
@@ -41,7 +47,9 @@ function readProject(text: string): BoxProject {
   try { raw = JSON.parse(text) as BoxProject; } catch { throw new Error("This is not a valid box project JSON file."); }
   if (raw?.schema !== "packshot-box-project" || raw.version !== 1 || !raw.settings || !raw.settings.dimensions ||
     !validBoxDimensions(raw.settings.dimensions) || !isColor(raw.settings.baseColor) ||
-    !["matte", "satin"].includes(raw.settings.finish) || !raw.settings.panels || typeof raw.settings.panels !== "object") {
+    !["matte", "satin"].includes(raw.settings.finish) || !raw.settings.panels || typeof raw.settings.panels !== "object" ||
+    (raw.settings.shape !== undefined && !["carton", "pillow-bag"].includes(raw.settings.shape)) ||
+    (raw.displayUnit !== undefined && !["mm", "in"].includes(raw.displayUnit))) {
     throw new Error("This file is not a supported box project. Choose a project saved by this studio.");
   }
   const panels: BoxPanels = {};
@@ -70,8 +78,10 @@ function readProject(text: string): BoxProject {
   return {
     schema: "packshot-box-project", version: 1,
     name: typeof raw.name === "string" ? raw.name.slice(0, 100) : "My box",
-    settings: { dimensions: { width: raw.settings.dimensions.width, height: raw.settings.dimensions.height, depth: raw.settings.dimensions.depth }, panels, baseColor: raw.settings.baseColor, finish: raw.settings.finish },
+    settings: { dimensions: { width: raw.settings.dimensions.width, height: raw.settings.dimensions.height, depth: raw.settings.dimensions.depth }, panels, baseColor: raw.settings.baseColor, finish: raw.settings.finish, shape: raw.settings.shape ?? "carton" },
     origins,
+    preset: raw.preset ? readPackagePreset(raw.preset) : null,
+    displayUnit: raw.displayUnit ?? "mm",
   };
 }
 
@@ -91,7 +101,12 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
   const [unit, setUnit] = useState<"mm" | "in">("mm");
   // Keep physical measurements canonical: switching display units must not round the geometry.
   const [dimensions, setDimensions] = useState<BoxDimensions>({ width: 80, height: 120, depth: 45 });
+  const [shape, setShape] = useState<PackageShape>("carton");
   const [finish, setFinish] = useState<BoxFinish>("matte");
+  const [companyPresets, setCompanyPresets] = useState<PackagePreset[]>([]);
+  const [selectedPreset, setSelectedPreset] = useState<PackagePreset | null>(null);
+  const [presetName, setPresetName] = useState("");
+  const [libraryStorage, setLibraryStorage] = useState<"loading" | "ready" | "unavailable">("loading");
   const [baseColor, setBaseColor] = useState("#ffffff");
   const [name, setName] = useState("My box");
   const [size, setSize] = useState(2048);
@@ -106,6 +121,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
   const previewRef = useRef<BoxPreviewHandle>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const projectInput = useRef<HTMLInputElement>(null);
+  const libraryInput = useRef<HTMLInputElement>(null);
   const importAbort = useRef<AbortController | null>(null);
   const cropAbort = useRef<AbortController | null>(null);
   const alive = useRef(true);
@@ -118,6 +134,41 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
   const selectedPanel = panels[activeFace];
   const selectedFaceSize = faceDimensions(dimensions, activeFace);
   const stale = batch !== null && batch.revision !== revision;
+  const presetModified = selectedPreset !== null && !presetMatches(selectedPreset, { dimensions, shape, finish });
+  const availablePresets = [...STARTER_PACKAGE_PRESETS, ...companyPresets];
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(COMPANY_PRESET_STORAGE_KEY);
+      if (saved) setCompanyPresets(parsePresetLibrary(saved));
+      setLibraryStorage("ready");
+    } catch {
+      // Keep unreadable saved data untouched; session work can still be exported as JSON.
+      setLibraryStorage("unavailable");
+      setNotice("Saved presets could not be read in this browser. New presets will stay in this session; export the library to keep them.");
+    }
+    function syncLibrary(event: StorageEvent) {
+      if (event.key !== COMPANY_PRESET_STORAGE_KEY) return;
+      if (event.newValue === null) {
+        setLibraryStorage("unavailable");
+        setNotice("Preset storage was cleared in another tab. Export this session’s library to keep a copy.");
+        return;
+      }
+      try {
+        const incoming = parsePresetLibrary(event.newValue);
+        setCompanyPresets((previous) => {
+          try { return mergePresetLibraries(incoming, previous, () => `company:${crypto.randomUUID()}`).presets; }
+          catch { return previous; }
+        });
+        setLibraryStorage("ready");
+      } catch {
+        setLibraryStorage("unavailable");
+        setNotice("A preset library update from another tab could not be read. Your current presets are kept in this session.");
+      }
+    }
+    window.addEventListener("storage", syncLibrary);
+    return () => window.removeEventListener("storage", syncLibrary);
+  }, []);
 
   useEffect(() => {
     alive.current = true;
@@ -276,10 +327,75 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
     changed();
   }
 
+  function applyPreset(id: string) {
+    const preset = availablePresets.find((item) => item.id === id);
+    if (!preset) { setSelectedPreset(null); changed(); return; }
+    const factor = preset.unit === "in" ? 25.4 : 1;
+    setSelectedPreset(preset);
+    setDimensions({ ...preset.dimensions });
+    setDimensionInputs({ width: tidyNumber(preset.dimensions.width / factor), height: tidyNumber(preset.dimensions.height / factor), depth: tidyNumber(preset.dimensions.depth / factor) });
+    setShape(preset.shape); setFinish(preset.finish); setUnit(preset.unit);
+    changed();
+    setNotice(`${preset.name} applied. ${preset.source === "starter-example" ? "These are sample measurements; replace them with your package specifications. " : ""}Existing artwork is kept. Review its fit and crop on every face.`);
+  }
+
+  function keepCompanyLibrary(next: PackagePreset[]) {
+    let combined = next;
+    if (libraryStorage !== "ready") { setCompanyPresets(next); return { persisted: false, presets: next }; }
+    try {
+      // Another tab may have saved since this view mounted. Retain those presets too.
+      const latest = localStorage.getItem(COMPANY_PRESET_STORAGE_KEY);
+      if (latest) combined = mergePresetLibraries(parsePresetLibrary(latest), next, () => `company:${crypto.randomUUID()}`).presets;
+      localStorage.setItem(COMPANY_PRESET_STORAGE_KEY, serializePresetLibrary(combined));
+      setCompanyPresets(combined);
+      return { persisted: true, presets: combined };
+    } catch (cause) {
+      // Never replace a library that cannot be safely read or merged.
+      if (cause instanceof Error && /exceed 100|unique ID/.test(cause.message)) throw cause;
+      setCompanyPresets(combined); setLibraryStorage("unavailable");
+      return { persisted: false, presets: combined };
+    }
+  }
+
+  function saveCompanyPreset() {
+    setError(null);
+    try {
+      if (!validDimensions) throw new Error("Enter valid package dimensions before saving a preset.");
+      if (companyPresets.length >= MAX_COMPANY_PRESETS) throw new Error("This browser already holds 100 company presets. Export a library to keep your current collection.");
+      if (availablePresets.some((preset) => preset.name.toLocaleLowerCase() === presetName.trim().toLocaleLowerCase())) throw new Error("That preset name already exists. Choose a new name; existing presets will be kept.");
+      const preset = createCompanyPreset(presetName, { dimensions, shape, finish }, unit, selectedPreset, `company:${crypto.randomUUID()}`);
+      const { persisted, presets: saved } = keepCompanyLibrary([...companyPresets, preset]);
+      const storedPreset = saved.find((item) => item.id === preset.id) ?? saved.find((item) => item.name === preset.name) ?? preset;
+      setSelectedPreset(storedPreset); setPresetName(""); changed();
+      setNotice(`${storedPreset.name} saved ${persisted ? "in this browser" : "for this session only"}. Export the company preset library to share it or keep a separate copy.${persisted ? "" : " Browser storage is unavailable."}`);
+    } catch (cause) { setError(messageFor(cause)); }
+  }
+
+  function exportPresetLibrary() {
+    try {
+      downloadLocalFile(new Blob([serializePresetLibrary(companyPresets)], { type: "application/json" }), "company-package-presets.json");
+      setNotice("Company preset library exported. Share the JSON file with your team; this library does not sync through the cloud.");
+    } catch (cause) { setError(messageFor(cause)); }
+  }
+
+  async function importPresetLibrary(file: File | undefined) {
+    if (!file) return;
+    if (file.size > MAX_PRESET_LIBRARY_BYTES) { setError("Choose a preset library smaller than 1 MB."); return; }
+    setImporting(true); setError(null);
+    try {
+      const incoming = parsePresetLibrary(await file.text());
+      if (!alive.current) return;
+      const result = mergePresetLibraries(companyPresets, incoming, () => `company:${crypto.randomUUID()}`);
+      const { persisted } = keepCompanyLibrary(result.presets);
+      setNotice(`${result.added} company presets imported ${persisted ? "into this browser" : "for this session"}; ${result.skipped} duplicates skipped${result.renamed ? `; ${result.renamed} name conflicts kept as renamed copies` : ""}. Existing presets and the current package are kept.${persisted ? "" : " Export the library to retain it."}`);
+    } catch (cause) { if (alive.current) setError(messageFor(cause)); }
+    finally { if (alive.current) setImporting(false); }
+  }
+
   async function renderViews() {
     if (!validDimensions || !assigned.length || !previewRef.current) return;
     const token = ++renderToken.current;
-    const snapshot: RenderBatch = { views: [], revision, name, settings: { dimensions, panels, finish, baseColor }, origins, size };
+    const snapshot: RenderBatch = { views: [], revision, name, settings: { dimensions, panels, finish, baseColor, shape }, origins, size, preset: presetProvenance(selectedPreset, { dimensions, shape, finish }) };
     setError(null);
     setProgress(0);
     try {
@@ -308,7 +424,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
       const prefix = artworkFileName(batch.name);
       const files: Record<string, Uint8Array> = {};
       for (const view of batch.views) files[`${prefix}_${view.angle}.png`] = pngDataBytes(view.dataUrl);
-      const manifest = { ...artworkManifest(batch.settings, batch.views.map((view) => view.angle), batch.size), projectName: batch.name, crops: batch.origins, note: "User-assigned artwork on a measured rectangular box. Unassigned faces are plain. No generative image model was used. Review artwork, dimensions, color, and orientation before publication." };
+      const manifest = { ...artworkManifest(batch.settings, batch.views.map((view) => view.angle), batch.size), projectName: batch.name, preset: batch.preset, crops: batch.origins, note: "User-assigned artwork on a package model. Starter preset dimensions are examples, not approved company specifications. Pillow bags are illustrative models. Unassigned faces are plain. No generative image model was used. Review artwork, dimensions, color, and orientation before publication." };
       files[`${prefix}_manifest.json`] = strToU8(JSON.stringify(manifest, null, 2));
       const bytes = await new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => zip(files, { level: 0 }, (cause, data) => cause ? reject(cause) : resolve(new Uint8Array(data))));
       if (alive.current) downloadLocalFile(new Blob([bytes], { type: "application/zip" }), `${prefix}_packshots.zip`);
@@ -318,7 +434,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
 
   function saveProject() {
     if (!validDimensions) { setError("Enter valid box dimensions before saving the project."); return; }
-    const project: BoxProject = { schema: "packshot-box-project", version: 1, name, settings: { dimensions, panels, finish, baseColor }, origins };
+    const project: BoxProject = { schema: "packshot-box-project", version: 1, name, settings: { dimensions, panels, finish, baseColor, shape }, origins, preset: selectedPreset, presetProvenance: presetProvenance(selectedPreset, { dimensions, shape, finish }), displayUnit: unit };
     try {
       const json = JSON.stringify(project);
       const blob = new Blob([json], { type: "application/json" });
@@ -342,9 +458,12 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
       sourcesRef.current = [];
       setSources([]); setSourceId(""); setPage(1);
       setName(project.name);
-      setUnit("mm");
+      const nextUnit = project.displayUnit ?? "mm";
+      const factor = nextUnit === "in" ? 25.4 : 1;
+      setUnit(nextUnit);
       setDimensions(project.settings.dimensions);
-      setDimensionInputs({ width: tidyNumber(project.settings.dimensions.width), height: tidyNumber(project.settings.dimensions.height), depth: tidyNumber(project.settings.dimensions.depth) });
+      setDimensionInputs({ width: tidyNumber(project.settings.dimensions.width / factor), height: tidyNumber(project.settings.dimensions.height / factor), depth: tidyNumber(project.settings.dimensions.depth / factor) });
+      setShape(project.settings.shape ?? "carton"); setSelectedPreset(project.preset ?? null);
       setPanels(project.settings.panels); setOrigins(project.origins);
       setFinish(project.settings.finish); setBaseColor(project.settings.baseColor);
       setBatch(null); changed();
@@ -356,7 +475,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
   return (
     <div className={styles.studio}>
       <div className={styles.intro}>
-        <div><span className={styles.eyebrow}>Artwork → measured box</span><p>Build a rectangular box from your flat artwork, then render seven views. No product photo needed.</p></div>
+        <div><span className={styles.eyebrow}>Artwork → package model</span><p>Choose a package preset or enter measurements, apply your flat artwork, then render seven views. No product photo needed.</p></div>
         <span className={styles.localBadge}>On this device · no AI charge</span>
       </div>
 
@@ -413,13 +532,33 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
       </section>
 
       <section className={styles.stage} aria-labelledby="artwork-box-title">
-        <header className={styles.stageHeader}><span className={styles.step}>02</span><div><h2 id="artwork-box-title">Build the box</h2><p>Enter physical measurements and inspect the artwork on each face.</p></div><span className={styles.coverageBadge}>{assigned.length} / 6 faces assigned</span></header>
+        <header className={styles.stageHeader}><span className={styles.step}>02</span><div><h2 id="artwork-box-title">Build the package</h2><p>Choose a starting shape, enter physical measurements, and inspect each face.</p></div><span className={styles.coverageBadge}>{assigned.length} / 6 faces assigned</span></header>
         <div className={`${styles.stageBody} ${styles.boxLayout}`}>
           <fieldset disabled={editingBusy} className={styles.boxControls}>
             <legend className={styles.hidden}>Box dimensions and face artwork</legend>
+            <div className={styles.presetBlock}>
+              <label>Package preset<select value={selectedPreset?.id ?? ""} onChange={(event) => applyPreset(event.target.value)}>
+                <option value="">Custom measurements</option>
+                <optgroup label="Starter examples · verify dimensions">{STARTER_PACKAGE_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}{selectedPreset?.id === preset.id && presetModified ? " · modified" : ""}</option>)}</optgroup>
+                {companyPresets.length > 0 && <optgroup label={libraryStorage === "ready" ? "Company presets · this browser" : "Company presets · this session"}>{companyPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}{selectedPreset?.id === preset.id && presetModified ? " · modified" : ""}</option>)}</optgroup>}
+                {selectedPreset && !availablePresets.some((preset) => preset.id === selectedPreset.id) && <option value={selectedPreset.id}>{selectedPreset.name} · from project{presetModified ? " · modified" : ""}</option>}
+              </select></label>
+              <p className={styles.presetDisclosure}>Starter dimensions are illustrative examples, not approved company specifications. Weights in preset names are labels; they do not determine package size.</p>
+              {selectedPreset && <p className={styles.presetStatus}><strong>{presetModified ? "Modified preset" : selectedPreset.source === "starter-example" ? "Starter example" : "Company preset"}</strong><span>{presetModified ? "Your measurements, shape, or finish differ from the saved preset." : "Review measurements against your own specifications."}</span></p>}
+              <p className={styles.hint}>Changing presets keeps assigned artwork. Review its fit and crop on every face.</p>
+              <details className={styles.presetLibrary}>
+                <summary>Save &amp; share company presets <span>{companyPresets.length} saved</span></summary>
+                <div className={styles.presetSaveRow}><label>New company preset name<input value={presetName} maxLength={100} placeholder="e.g. ACME-CHIPS-300G" onChange={(event) => setPresetName(event.target.value)} /></label><button type="button" className={styles.secondary} disabled={!validDimensions || !presetName.trim() || libraryStorage === "loading"} onClick={saveCompanyPreset}>Save as company preset</button></div>
+                <p className={styles.hint}>Saves shape, dimensions, finish, and display unit. Artwork stays in the package project. Saved presets are user supplied and are not marked as approved specifications.</p>
+                <div className={styles.actions}><button type="button" className={styles.secondary} disabled={!companyPresets.length} onClick={exportPresetLibrary}>Export company library</button><button type="button" className={styles.secondary} disabled={libraryStorage === "loading"} onClick={() => libraryInput.current?.click()}>Import company library</button></div>
+                <input ref={libraryInput} type="file" accept=".json,application/json" className={styles.hidden} aria-label="Import company preset library JSON" onChange={(event) => { void importPresetLibrary(event.target.files?.[0]); event.target.value = ""; }} />
+                <p className={styles.hint}>{libraryStorage === "unavailable" ? "Browser storage is unavailable. Export your library before leaving this session." : "Saved in this browser. Share the exported JSON with your team; presets do not sync through the cloud."} Imports keep existing presets and rename conflicting copies.</p>
+              </details>
+              <label>Package shape<select value={shape} onChange={(event) => { setShape(event.target.value as PackageShape); changed(); setNotice("Package shape changed. Assigned artwork is kept; review its fit and orientation."); }}><option value="carton">Rectangular carton</option><option value="pillow-bag">Pillow bag · illustrative model</option></select></label>
+            </div>
             <div className={styles.sectionLabel}><h3>Measured dimensions</h3><label className={styles.unitField}><span className={styles.hidden}>Dimension unit</span><select aria-label="Dimension unit" value={unit} onChange={(event) => switchUnit(event.target.value as "mm" | "in")}><option value="mm">mm</option><option value="in">inches</option></select></label></div>
             <div className={styles.dimensions}>{(["width", "height", "depth"] as const).map((key) => <label key={key}>{key[0].toUpperCase() + key.slice(1)} ({unit})<input type="number" min="0.01" max={unit === "mm" ? 10000 : 393.7} step="any" value={dimensionInputs[key]} onChange={(event) => updateDimension(key, event.target.value)} /></label>)}</div>
-            <p className={styles.hint}>The starting measurements are an example. Enter your box’s width, height, and depth; artwork page size is separate.</p>
+            <p className={styles.hint}>Enter the package’s external width, height, and depth. Starter measurements are examples; artwork page size is separate.</p>
             {!validDimensions && <p className={styles.validation}>Each dimension must be greater than 0 and no more than 10,000 mm.</p>}
             <div className={styles.sectionLabel}><h3>Face artwork</h3><span className={styles.hint}>Select a face to adjust it</span></div>
             <div className={styles.faceGrid}>{BOX_FACES.map((face) => <button type="button" key={face} className={styles.face} aria-pressed={activeFace === face} onClick={() => setActiveFace(face)}>
@@ -435,13 +574,13 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
                 <p className={styles.hint}>{selectedPanel.fit === "cover" ? "Fill face trims artwork at the edges. Check that text and marks remain visible." : "Fit entire artwork keeps every edge visible; unused space uses the panel background."}</p>
               </> : <p className={styles.hint}>This face is plain. Select its artwork above and assign the crop to {BOX_FACE_LABELS[activeFace].toLowerCase()}.</p>}
             </div>
-            <div className={styles.materialRow}><label>Surface finish<select value={finish} onChange={(event) => { setFinish(event.target.value as BoxFinish); changed(); }}><option value="matte">Matte carton</option><option value="satin">Satin carton</option></select></label><label className={styles.colorField}>Plain faces<input type="color" value={baseColor} onChange={(event) => { setBaseColor(event.target.value); changed(); }} /><span>{baseColor}</span></label></div>
+            <div className={styles.materialRow}><label>Surface finish<select value={finish} onChange={(event) => { setFinish(event.target.value as BoxFinish); changed(); }}><option value="matte">Matte</option><option value="satin">Satin</option></select></label><label className={styles.colorField}>Plain faces<input type="color" value={baseColor} onChange={(event) => { setBaseColor(event.target.value); changed(); }} /><span>{baseColor}</span></label></div>
           </fieldset>
           <div className={styles.previewPanel}>
-            <div className={styles.sectionLabel}><h3>Live box preview</h3><span className={styles.eyebrow}>Measured geometry</span></div>
-            <BoxPreview ref={previewRef} dimensions={dimensions} panels={panels} finish={finish} baseColor={baseColor} />
+            <div className={styles.sectionLabel}><h3>Live package preview</h3><span className={styles.eyebrow}>{shape === "pillow-bag" ? "Illustrative bag" : "Measured geometry"}</span></div>
+            <BoxPreview ref={previewRef} dimensions={dimensions} panels={panels} finish={finish} baseColor={baseColor} shape={shape} />
             <p className={styles.previewNote}>{assigned.length === 6 ? "All six faces have assigned artwork. Inspect every face for crop, orientation, and fit." : `${6 - assigned.length} ${6 - assigned.length === 1 ? "face is" : "faces are"} unassigned and will stay plain: ${BOX_FACES.filter((face) => !panels[face]).map((face) => BOX_FACE_LABELS[face].toLowerCase()).join(", ")}.`}</p>
-            <p className={styles.hint}>A simple rectangular carton. This preview does not fold arbitrary dielines, reproduce metallic inks, or verify label accuracy.</p>
+            <p className={styles.hint}>{shape === "pillow-bag" ? "An illustrative pillow bag with a curved body and sealed ends. It does not predict the exact filled shape, wrinkles, or seam construction of a real bag." : "A simple rectangular carton. This preview does not fold arbitrary dielines or reproduce metallic inks."} Check artwork and label accuracy before publication.</p>
           </div>
         </div>
       </section>
@@ -454,19 +593,20 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
             <button type="button" className={styles.primary} onClick={() => void renderViews()} disabled={editingBusy || !validDimensions || !assigned.length}>{rendering ? `Rendering ${progress} of 7…` : "Render 7 views locally"}<span aria-hidden="true">↗</span></button>
             {rendering && <button type="button" className={styles.secondary} onClick={() => { renderToken.current++; setProgress(null); setNotice("Rendering cancelled. Your box settings and previous results are kept."); }}>Cancel</button>}
           </div>
-          <p className={styles.hint}>{!assigned.length ? "Assign artwork to at least one face to render." : "Artwork is mapped directly onto the box, with no generated lettering. Local rendering is free; the browser needs to stay open."}</p>
+          <p className={styles.hint}>{!assigned.length ? "Assign artwork to at least one face to render." : "Artwork is mapped directly onto the package, with no generated lettering. Local rendering is free; the browser needs to stay open."}</p>
           {rendering && <progress className={styles.progress} value={progress ?? 0} max={7} aria-label="Packshot render progress" />}
           {batch && <div className={styles.results}>
             <div className={styles.resultsHeader}><div><h3>Seven rendered views</h3><p>{batch.size} × {batch.size} PNG · {batch.name || "My box"}</p></div><button type="button" className={styles.primary} disabled={downloading || rendering} onClick={() => void downloadZip()}>{downloading ? "Preparing ZIP…" : "Download all + manifest"}</button></div>
-            {stale && <p className={styles.stale} role="status">The box has changed since these views were rendered. Render again to include your latest edits.</p>}
+            {stale && <p className={styles.stale} role="status">The package has changed since these views were rendered. Render again to include your latest edits.</p>}
             <div className={styles.resultGrid}>{batch.views.map((view) => {
-              const coverage = coverageForAngle(view.angle, batch.settings.panels);
+              const coverage = coverageForAngle(view.angle, batch.settings.panels, batch.settings.shape);
               const label = PACK_ANGLES.find((angle) => angle.id === view.angle)!.label;
               return <article className={styles.result} key={view.angle}>
                 <a href={view.dataUrl} download={`${artworkFileName(batch.name)}_${view.angle}.png`} aria-label={`Download ${label} PNG`}><img src={view.dataUrl} alt={`${label} view of ${batch.name || "the box"}`} /></a>
-                <div><strong>{label}</strong><span>{coverage.complete ? "Visible faces assigned" : `Plain: ${coverage.blank.join(", ")}`}</span><a className={styles.downloadLink} href={view.dataUrl} download={`${artworkFileName(batch.name)}_${view.angle}.png`}>Download PNG ↓</a></div>
+                <div><strong>{label}</strong><span>{coverage.complete ? (batch.settings.shape === "pillow-bag" ? "Visible regions assigned" : "Visible faces assigned") : `Plain: ${coverage.blank.join(", ")}`}</span><a className={styles.downloadLink} href={view.dataUrl} download={`${artworkFileName(batch.name)}_${view.angle}.png`}>Download PNG ↓</a></div>
               </article>;
             })}</div>
+            {batch.settings.shape === "pillow-bag" && <p className={styles.hint}>Bag coverage includes neighbouring regions that can appear along the curved flanks and shoulders.</p>}
             <p className={styles.hint}>The ZIP includes all seven images and a manifest of dimensions, source crops, face assignments, and settings. These renders are not a certification of packaging or print accuracy.</p>
             {onUseAsReferences && <div className={styles.optionalAI}><div><h3>Optional: continue in the photo workflow</h3><p>Use the six face renders as references for AI restyling. AI can alter text and details; keep these local PNGs as your originals.</p></div><button type="button" className={styles.secondary} disabled={rendering || stale} onClick={async () => { try { await onUseAsReferences(batch.views.filter((view) => view.angle !== "hero34")); } catch (cause) { if (alive.current) setError(messageFor(cause)); } }}>Use renders as photo references</button></div>}
           </div>}

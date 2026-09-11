@@ -541,7 +541,7 @@ export function PackshotStudio() {
         </button>
         <button type="button" className={mode === "artwork" ? styles.selectedMode : styles.mode} aria-pressed={mode === "artwork"} onClick={() => { setArtworkOpened(true); setMode("artwork"); }}>
           <span className={styles.modeEyebrow}>New · No generation cost</span><strong>From artwork / dielines</strong>
-          <span>Place your artwork on a measured box. Preview every face.</span><b aria-hidden="true">↗</b>
+          <span>Choose a package preset. Place your artwork and preview every face.</span><b aria-hidden="true">↗</b>
         </button>
       </div>
       {error && (

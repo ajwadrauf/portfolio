@@ -4,7 +4,7 @@ import { PackshotStudio } from "./PackshotStudio";
 export const metadata: Metadata = {
   title: "Packshot Studio — AI Content Studio",
   description:
-    "Create product-on-white packshots from reference photos, or map packaging artwork onto a measured box and export seven views locally.",
+    "Create packshots from reference photos, or choose a package preset, map your artwork onto a box or bag, and export seven views locally.",
 };
 
 export default function PackshotsPage() {

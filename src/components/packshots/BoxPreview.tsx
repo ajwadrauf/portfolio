@@ -84,7 +84,7 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
       setError(reason instanceof Error ? reason.message : "An artwork panel could not load.");
       setStatus("error");
     });
-  }, [settings.dimensions, settings.panels, settings.finish, settings.baseColor]);
+  }, [settings.dimensions, settings.panels, settings.finish, settings.baseColor, settings.shape]);
 
   function orbit(horizontal: number, vertical: number) {
     if (status !== "ready") return;
@@ -117,7 +117,7 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
           ref={containerRef}
           className={styles.canvas}
           role="group"
-          aria-label="Interactive measured carton preview. Use arrow keys to rotate."
+          aria-label={`Interactive ${settings.shape === "pillow-bag" ? "illustrative pillow bag" : "measured carton"} preview. Use arrow keys to rotate.`}
           tabIndex={status === "ready" ? 0 : -1}
           onPointerDown={pointerDown}
           onPointerMove={pointerMove}
@@ -133,7 +133,7 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
         {status !== "ready" && <div className={styles.overlay} role={status === "error" ? "alert" : "status"}>
           {status === "loading" ? "Preparing artwork preview…" : <><p>{error}</p><button type="button" onClick={() => setRetry((value) => value + 1)}>Retry 3D preview</button></>}
         </div>}
-        <span className={styles.badge}>Measured carton · artwork mapped directly</span>
+        <span className={styles.badge}>{settings.shape === "pillow-bag" ? "Pillow bag · illustrative form" : "Measured carton · artwork mapped directly"}</span>
       </div>
       <div className={styles.views} aria-label="Preview angle">
         {views.map(({ angle, label }) => <button key={angle} type="button" aria-pressed={view === angle} disabled={status !== "ready"} onClick={() => selectView(angle)}>{label}</button>)}
