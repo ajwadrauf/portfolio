@@ -21,6 +21,7 @@ type SavedReview = {
   notes: string;
 };
 type PendingReview = { videoUrl: string; requestId: string; startedAt: string };
+export type PreflightReviewState = "unreviewed" | "reviewing" | "reviewed" | "incomplete";
 type Props = {
   take: CompletedPreflightTake;
   metadata: { durationSeconds: number; width: number; height: number } | null;
@@ -28,6 +29,7 @@ type Props = {
   health: Health | null;
   onSpend: (cost: number) => void;
   onSeek: (seconds: number) => void;
+  onStateChange?: (takeId: string, state: PreflightReviewState) => void;
 };
 
 const REPORTS_KEY = "adlab-preflight-reports-v1";
@@ -125,6 +127,7 @@ function readableReport(saved: SavedReview, take: CompletedPreflightTake): strin
 async function prepareReferences(images: ReferenceImage[]): Promise<ReferenceImage[]> {
   return Promise.all(images.slice(0, 3).map(async (ref) => {
     const image = new Image();
+    image.crossOrigin = "anonymous";
     image.src = ref.dataUrl;
     await image.decode();
     const canvas = document.createElement("canvas");
@@ -147,7 +150,7 @@ async function prepareReferences(images: ReferenceImage[]): Promise<ReferenceIma
   }));
 }
 
-export function AdPreflight({ take, metadata, referenceImages, health, onSpend, onSeek }: Props) {
+export function AdPreflight({ take, metadata, referenceImages, health, onSpend, onSeek, onStateChange }: Props) {
   const { project, saveAsset } = useStudioProject();
   const [report, setReport] = useState<PreflightReport | null>(null);
   const [declarations, setDeclarations] = useState<Declarations>(EMPTY_DECLARATIONS);
@@ -158,6 +161,7 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
   const [pending, setPending] = useState<PendingReview | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [diagnostic, setDiagnostic] = useState("");
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState<"attention" | "all" | "pass">("attention");
   const requestLock = useRef(false);
@@ -199,6 +203,8 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
   }, [report, filter]);
   const canReview = Boolean(health?.live && health.gemini && metadata && Number.isFinite(metadata.durationSeconds) && metadata.durationSeconds > 0 && metadata.durationSeconds <= 60);
   const changedDeclarations = Boolean(report && JSON.stringify(declarations) !== JSON.stringify(reviewedDeclarations));
+  const reviewState: PreflightReviewState = busy ? "reviewing" : error || pending ? "incomplete" : report ? "reviewed" : "unreviewed";
+  useEffect(() => { if (loaded) onStateChange?.(take.id, reviewState); }, [loaded, onStateChange, take.id, reviewState]);
 
   async function runReview() {
     if (requestLock.current || !canReview || !metadata) return;
@@ -206,7 +212,7 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
       ? "The previous review did not return a saved result. A new review can incur another Gemini analysis charge. Start a new review?"
       : "Run a new AI review of this same take? This incurs another small Gemini analysis charge.")) return;
     requestLock.current = true;
-    setBusy(true); setError(""); setMessage("");
+    setBusy(true); setError(""); setDiagnostic(""); setMessage("");
     let sent = false;
     try {
       const prepared = await prepareReferences(referenceImages);
@@ -222,10 +228,16 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestId: receipt.requestId, videoUrl: take.videoUrl, context: take.context, metadata, declarations, referenceImages: prepared }),
-        signal: AbortSignal.timeout(150_000),
+        signal: AbortSignal.timeout(170_000),
       });
-      const result = await response.json() as { report?: PreflightReport; cost?: number; error?: string; code?: string; spendAttempted?: boolean };
+      let result: { report?: PreflightReport; cost?: number; error?: string; code?: string; requestId?: string; spendAttempted?: boolean };
+      try { result = await response.json(); if (!result || typeof result !== "object") throw new Error(); }
+      catch {
+        if (mounted.current) setDiagnostic(`http_${response.status} · ${receipt.requestId}`);
+        throw new Error(`The review service returned an incomplete response (HTTP ${response.status}). An analysis charge may apply; no automatic retry was made.`);
+      }
       if (!response.ok || !result.report) {
+        if (mounted.current) setDiagnostic(`${result.code ?? `http_${response.status}`} · ${receipt.requestId}`);
         // An explicit gate/config rejection made no provider request. An
         // ambiguous server/network failure retains its marker and never retries.
         if (result.spendAttempted === false) {
@@ -267,22 +279,21 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
     setMessage("Report downloaded. Keep it with the delivered asset and its source records.");
   }
 
-  return <section id="ad-preflight" aria-labelledby="ad-preflight-title" aria-busy={busy} className="mb-6 overflow-hidden rounded-xl border border-border-soft">
-    <div className="relative overflow-hidden bg-foreground px-5 py-6 text-background sm:px-6">
+  return <section id="ad-preflight" tabIndex={-1} aria-labelledby="ad-preflight-title" aria-busy={busy} className="scroll-mt-28 overflow-hidden border-t border-border-soft outline-none focus-visible:ring-2 focus-visible:ring-accent">
+    <div className="relative overflow-hidden bg-surface-2 px-5 py-5 text-foreground sm:px-6">
       <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full border border-current/10"><div className="absolute inset-5 rounded-full border border-current/10" /><div className="absolute inset-10 rounded-full border border-current/10" /></div>
       <div className="relative flex flex-wrap items-center justify-between gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] opacity-70">After the render · Before it ships</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent">02 · Review this take</p>
         <Link href="/ai-studio/playbook#preflight" className="inline-flex min-h-6 items-center gap-2 text-xs underline underline-offset-4">Read the guardrails <span aria-hidden>↗</span></Link>
       </div>
-      <h3 id="ad-preflight-title" className="relative mt-3 text-2xl leading-tight tracking-tight sm:text-3xl">Good-looking is only the first check.</h3>
-      <p className="relative mt-2 max-w-xl text-sm leading-relaxed opacity-80">Let AI inspect this take, fill the Playbook checklist and show what still needs a person. An unresolved check is useful evidence.</p>
-      <div className="relative mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-wider opacity-70"><span>01 · Inspect</span><span>02 · Show evidence</span><span>03 · Human decision</span></div>
+      <h3 id="ad-preflight-title" className="relative mt-2 text-2xl leading-tight tracking-tight">See what needs a closer look.</h3>
+      <p className="relative mt-2 max-w-xl text-sm leading-relaxed text-muted">Inspect the finished picture and sound, collect timecoded evidence, then make the human publishing decision.</p>
     </div>
 
     <div className="space-y-5 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><p className="text-sm font-semibold">AI-assisted preflight</p><p className="mt-1 text-xs leading-relaxed text-muted">The finished MP4 and its embedded sound. Separate music, voice and effects are outside this review.</p></div>
-        <span className="shrink-0 rounded-full border border-border-soft px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide">{report ? "Human sign-off still required" : "Not reviewed yet"}</span>
+        <span className="shrink-0 rounded-full border border-border-soft px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide">{busy ? "Reviewing" : error || pending ? "Review incomplete" : report ? "Human sign-off still required" : "Not reviewed yet"}</span>
       </div>
 
       {!take.context && <p className="rounded-lg border border-warning/30 bg-warning/[0.05] p-3 text-xs leading-relaxed text-warning">This recovered take has no saved original brief or settings. The review will say what it cannot verify; today&apos;s form will not be treated as this take&apos;s brief.</p>}
@@ -300,7 +311,7 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
       {!report && <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">{["Product fidelity", "People & voice", "Claims & disclosure", "Rights & approvals"].map((label) => <div key={label} className="rounded-md border border-border-soft px-3 py-3"><span className="mr-2 text-muted" aria-hidden>○</span>{label}</div>)}</div>}
 
       {busy && <div role="status" className="rounded-lg border border-accent/25 bg-accent/[0.04] p-4"><div className="flex items-center gap-3"><span aria-hidden className="relative flex h-9 w-9 items-center justify-center rounded-full border border-accent/30"><span className="h-3 w-3 rounded-full bg-accent motion-safe:animate-pulse" /></span><span className="text-sm font-semibold">Reading the picture. Listening to the take.</span></div><p className="mt-2 text-xs leading-relaxed text-muted">AI is comparing the available evidence with the checklist. Nothing is marked as passed until the review returns. This may take a minute.</p></div>}
-      {error && <p role="alert" className="rounded-lg border border-danger/25 bg-danger/[0.04] p-3 text-sm leading-relaxed text-danger">{error}</p>}
+      {error && <div role="alert" className="rounded-lg border border-danger/25 bg-danger/[0.04] p-4 text-sm leading-relaxed"><p className="font-semibold text-danger">The video is ready. Its review is incomplete.</p><p className="mt-1 text-danger">{error}</p>{diagnostic && <p className="mt-3 break-all font-mono text-[11px] text-muted">Diagnostic: {diagnostic}</p>}<Link href="/ai-studio/playbook#preflight" className="mt-2 inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Continue with the manual checklist ↗</Link></div>}
       {pending && !busy && !error && <p className="rounded-lg border border-warning/25 bg-warning/[0.05] p-3 text-xs leading-relaxed text-warning">A review started {new Date(pending.startedAt).toLocaleString()} but no saved result came back. It has not been retried. Starting another review may incur a second analysis charge.</p>}
 
       <div className="space-y-2">

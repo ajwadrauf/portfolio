@@ -1,10 +1,10 @@
 import { consume, unlocked, type SpendResult } from "@/lib/auth";
 import { hasGeminiKey, isDryRun } from "@/lib/models";
-import { PreflightInputError, parsePreflightRequest, preparePreflightMedia, readPreflightBody, runPreflight } from "@/lib/adPreflightServer";
+import { PreflightInputError, parsePreflightRequest, preparePreflightMedia, readPreflightBody, runPreflight, preflightFailure } from "@/lib/adPreflightServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 150;
 
 function result(body: unknown, status: number, spend?: SpendResult): Response {
   const headers = new Headers({ "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -18,8 +18,11 @@ export async function POST(req: Request): Promise<Response> {
   if (!unlocked(req)) return result({ error: "Unlock live access before running an AI review.", code: "review_locked", spendAttempted: false }, 403);
   let spend: SpendResult | undefined;
   let spendAttempted = false;
+  let requestId: string | undefined;
+  const startedAt = Date.now();
   try {
     const request = parsePreflightRequest(await readPreflightBody(req));
+    requestId = request.requestId;
     const media = await preparePreflightMedia(request);
     spend = consume(req);
     if (!spend.ok) return result({ error: "Your live review budget has been used. Unlock a new session to continue.", code: "review_budget", spendAttempted: false }, 403);
@@ -30,6 +33,9 @@ export async function POST(req: Request): Promise<Response> {
     if (!spendAttempted && error instanceof PreflightInputError) return result({ error: error.message, code: "review_input", spendAttempted: false }, error.status);
     // Once Google has been called, an error is NOT permission to silently submit again.
     // Refresh the spent session cookie on this path too; failure does not restore a paid slot.
-    return result({ error: spendAttempted ? "The AI review did not return a usable report. It may have been billed; no automatic retry was made. Your video is unchanged." : "The video could not be prepared for review. No AI review was submitted.", code: spendAttempted ? "review_outcome_unknown" : "review_input", spendAttempted }, spendAttempted ? 502 : 422, spend);
+    const failure = preflightFailure(error);
+    // Diagnostic metadata only: never log media URLs, prompts, images, keys or raw provider errors.
+    console.error("ad_preflight_failed", { requestId, code: failure.code, providerStatus: failure.providerStatus, spendAttempted, elapsedMs: Date.now() - startedAt });
+    return result({ error: spendAttempted ? `${failure.message} An analysis charge may apply; no automatic retry was made. Your video is unchanged.` : "The video could not be prepared for review. No AI review was submitted.", code: spendAttempted ? failure.code : "review_input", requestId, spendAttempted }, spendAttempted ? 502 : 422, spend);
   }
 }

@@ -138,7 +138,7 @@ async function checkServer(request, allPassing) {
   const googleUri = 'https://generativelanguage.googleapis.com/v1beta/files/generated_123:download?alt=media';
   const veoUrl = '/api/video-file?uri=' + encodeURIComponent(googleUri);
   function harness(options = {}) {
-    const state = { fetches: [], aiCalls: [], spends: 0 };
+    const state = { fetches: [], aiCalls: [], spends: 0, diagnostics: [] };
     const models = {
       GEMINI_REASONING_MODEL: 'gemini-2.5-flash',
       hasGeminiKey: () => options.key !== false,
@@ -154,6 +154,7 @@ async function checkServer(request, allPassing) {
       consume: () => { state.spends++; return { ok: options.budget !== false, remaining: 4, cookie: 'live_session=synthetic-refreshed; HttpOnly' }; },
     };
     const load = loader({ './gemini': ai, './models': models, '@/lib/models': models, '@/lib/auth': auth }, {
+      console: { ...console, error: (...args) => state.diagnostics.push(args) },
       process: { env: { GEMINI_API_KEY: 'synthetic-test-key' } },
       fetch: async (url, init) => {
         state.fetches.push({ url, init });
@@ -236,17 +237,37 @@ async function checkServer(request, allPassing) {
     assert(prompt.includes('Never pass rights, consent'));
     assert(prompt.includes('Do not perform face recognition'));
   });
-  await checkAsync('public media uses restricted HEAD, native video and no private key', async () => {
+  await checkAsync('small public MP4 is downloaded once and inspected as bytes with no private key', async () => {
     const test = harness();
     const part = await test.server.preparePreflightMedia(valid);
-    assert.equal(test.state.fetches.length, 1);
+    assert.equal(test.state.fetches.length, 2);
     const { init } = test.state.fetches[0];
     assert.equal(init.method, 'HEAD'); assert.equal(init.redirect, 'manual');
     assert(!init.headers);
-    assert.equal(part.fileData.fileUri, valid.videoUrl);
+    assert.equal(test.state.fetches[1].init.method, 'GET');
+    assert(test.state.fetches.every(({ init }) => init.redirect === 'manual' && !init.headers));
+    assert.equal(part.inlineData.mimeType, 'video/mp4');
+    assert.equal(part.inlineData.data, Buffer.from([0, 1, 2, 3]).toString('base64'));
+    assert(!part.fileData);
     assert.equal(part.videoMetadata.fps, 4);
     assert.equal(parseFloat(part.videoMetadata.endOffset), 15);
     assert(part.videoMetadata.endOffset.endsWith('s'));
+  });
+  await checkAsync('larger public MP4 retains native URL input without oversized inline payload', async () => {
+    const test = harness({ fetch: async () => new Response(null, { headers: { 'content-type': 'video/mp4', 'content-length': String(20 * 1024 * 1024) } }) });
+    const part = await test.server.preparePreflightMedia(valid);
+    assert.equal(part.fileData.fileUri, valid.videoUrl);
+    assert.equal(test.state.fetches.length, 1);
+    assert(!part.inlineData);
+  });
+  await checkAsync('GET failures, redirects and dishonest small lengths stop before analysis', async () => {
+    for (const failed of [() => new Response(null, { status: 403 }), () => new Response(null, { status: 302, headers: { location: 'https://evil.test/video.mp4' } }), () => new Response('html', { headers: { 'content-type': 'text/html' } }), () => new Response(new Uint8Array(12 * 1024 * 1024 + 1), { headers: { 'content-type': 'video/mp4' } })]) {
+      const test = harness({ fetch: async (_url, init) => init.method === 'HEAD' ? new Response(null, { headers: { 'content-type': 'video/mp4', 'content-length': '4' } }) : failed() });
+      const response = await test.post();
+      assert([413, 422].includes(response.status));
+      assert.equal((await response.json()).spendAttempted, false);
+      assert.equal(test.state.aiCalls.length, 0); assert.equal(test.state.spends, 0);
+    }
   });
   await checkAsync('private Veo input attaches its key only to validated Google media', async () => {
     const test = harness();
@@ -351,10 +372,10 @@ async function checkServer(request, allPassing) {
     assert.equal(report.usage.inputTokens, 3500); assert.equal(report.usage.thoughtTokens, 400);
     const input = test.state.aiCalls[0];
     assert.equal(input.config.httpOptions.retryOptions.attempts, 1);
-    assert.equal(input.config.httpOptions.timeout, 45_000);
+    assert.equal(input.config.httpOptions.timeout, 90_000);
     assert(input.config.systemInstruction.includes('untrusted'));
     assert(input.config.systemInstruction.includes('Do not invent observations or approvals'));
-    assert.equal(input.contents[0].parts[0].fileData.fileUri, valid.videoUrl);
+    assert.equal(input.contents[0].parts[0].inlineData.mimeType, 'video/mp4');
     assert.equal(input.config.responseSchema.properties.checks.items.properties.id.enum.length, 25);
   });
   for (const options of [
@@ -371,6 +392,33 @@ async function checkServer(request, allPassing) {
       assert.equal(test.state.aiCalls.length, 1); assert.equal(test.state.spends, 1);
     });
   }
+  await checkAsync('concise six-observation response still produces the complete 26-check report', async () => {
+    const test = harness({ aiResult: { text: '```json\n' + JSON.stringify({ videoReviewed: true, videoDescription: 'A chocolate film.', checks: allPassing.slice(0, 6) }) + '\n```' } });
+    const response = await test.post(); const body = await response.json();
+    assert.equal(response.status, 200); assert.equal(body.report.checks.length, 26);
+    assert.equal(body.report.checks.filter(row => row.basis === 'human_required' && row.status === 'unverified').length, 19);
+    assert.equal(test.state.aiCalls.length, 1);
+  });
+  for (const [options, code] of [
+    [{ aiError: Object.assign(new Error('API secret test must not escape'), { status: 400 }) }, 'review_provider_input'],
+    [{ aiError: Object.assign(new Error('API secret test must not escape'), { status: 429 }) }, 'review_rate_limit'],
+    [{ aiError: Object.assign(new Error('API secret test must not escape'), { status: 403 }) }, 'review_access'],
+    [{ aiError: Object.assign(new Error('API secret test must not escape'), { status: 404 }) }, 'review_model_unavailable'],
+    [{ aiError: Object.assign(new Error('API secret test must not escape'), { status: 503 }) }, 'review_provider_unavailable'],
+    [{ aiError: Object.assign(new Error('Deadline exceeded'), { name: 'TimeoutError' }) }, 'review_timeout'],
+    [{ aiResult: { text: '{"checks":', candidates: [{ finishReason: 'MAX_TOKENS' }] } }, 'review_truncated'],
+    [{ aiResult: { promptFeedback: { blockReason: 'SAFETY' } } }, 'review_blocked'],
+    [{ aiResult: { text: JSON.stringify({ videoReviewed: false, checks: [] }) } }, 'review_media_unreadable'],
+    [{ aiResult: { text: '{bad JSON}' } }, 'review_invalid_report'],
+  ]) await checkAsync('specific failure stays unreviewed, preserves receipt and exposes no raw provider data: ' + code, async () => {
+    const test = harness(options); const response = await test.post(); const body = await response.json();
+    assert.equal(body.code, code); assert.equal(body.requestId, valid.requestId);
+    assert.equal(body.spendAttempted, true); assert(!body.report);
+    assert.equal(test.state.aiCalls.length, 1);
+    assert.equal(test.state.diagnostics[0][1].code, code);
+    assert(!JSON.stringify([body, test.state.diagnostics]).includes('API secret'));
+    assert(!JSON.stringify(test.state.diagnostics).includes(valid.videoUrl));
+  });
 }
 
 async function main() {
@@ -506,6 +554,21 @@ async function main() {
     health: { live: true, gemini: true, gate: 'unlocked' },
     onSpend() {}, onSeek() {},
   };
+  await checkAsync('video-side status follows the review and diagnostics appear without another submission', async () => {
+    const states = []; let resolve, calls = 0;
+    const component = mountReview({ ...props, onStateChange: (takeId, state) => states.push([takeId, state]) }, () => { calls++; return new Promise(r => { resolve = r; }); });
+    await component.settle();
+    assert.equal(states.at(-1)[1], 'unreviewed'); assert.equal(calls, 0);
+    component.button('Run AI preflight').props.onClick(); await component.settle();
+    assert.equal(states.at(-1)[1], 'reviewing'); assert.equal(calls, 1);
+    resolve(Response.json({ error: 'Gemini reached its response limit.', code: 'review_truncated', spendAttempted: true }, { status: 502 }));
+    await component.settle();
+    assert.equal(states.at(-1)[1], 'incomplete');
+    assert.equal(states.at(-1)[0], props.take.id);
+    assert(component.text().includes('review_truncated'));
+    assert(component.text().includes('Continue with the manual checklist'));
+    assert.equal(calls, 1); component.unmount();
+  });
   await checkAsync('result arrival does not submit, one double-click submits once', async () => {
     let calls = 0;
     const component = mountReview(props, async (_url, init) => { calls++; return Response.json({ report: { ...fixtureReport, id: JSON.parse(init.body).requestId } }); });
@@ -579,6 +642,15 @@ async function main() {
     await component.settle();
     assert.equal(calls, 0);
     assert(component.text().includes('no AI review was started'));
+    component.unmount();
+  });
+  await checkAsync('a non-JSON gateway failure retains the attempt and presents an actionable diagnostic', async () => {
+    let calls = 0;
+    const component = mountReview(props, async () => { calls++; return new Response('<html>Gateway timeout</html>', { status: 504 }); });
+    component.button('Run AI preflight').props.onClick(); await component.settle();
+    assert.equal(calls, 1); assert(component.text().includes('http_504'));
+    assert(component.text().includes('incomplete response (HTTP 504)'));
+    assert.equal(JSON.parse(component.storage.get('adlab-preflight-pending-v1')).length, 1);
     component.unmount();
   });
   await checkAsync('uncertain provider failure retains receipt and never retries', async () => {

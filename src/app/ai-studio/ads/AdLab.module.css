@@ -173,3 +173,36 @@
 }
 .collapseStep { justify-self: end; grid-column: 2 / -1; min-height: 36px; border: 0; background: none; color: var(--muted); font-size: 11px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .stepBody[hidden] { display: none; }
+
+/* A single viewing surface connects the completed take to its review. */
+.resultCard { scroll-margin-top: 112px; outline: none; }
+.resultCard:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.resultHeading {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 16px; padding: 24px 28px; background: #151413; color: #f7f2e9;
+  border-bottom: 1px solid #32302e;
+}
+.resultKicker { font-family: var(--font-jetbrains-mono), monospace; font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: #d9bdca; }
+.resultSpec { font-family: var(--font-jetbrains-mono), monospace; font-size: 11px; color: #c3beb8; }
+.reviewStatus { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 12px; border: 1px solid #65515e; border-radius: 6px; color: #ead3df; font-size: 11px; cursor: pointer; }
+.reviewStatus:hover { border-color: #ead3df; }
+.cinemaStage { display: flex; justify-content: center; width: 100%; padding: 24px 36px; background: #000; }
+.resultBridge { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px 24px; padding: 22px 28px; background: #151413; color: #f7f2e9; border-top: 1px solid #32302e; }
+.resultActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
+.reviewTakeButton { display: inline-flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 48px; padding: 12px 18px; border: 1px solid #e7cddc; border-radius: 6px; background: #e7cddc; color: #34202c; font-size: 13px; font-weight: 600; cursor: pointer; }
+.reviewTakeButton:hover { background: #f4e3ed; }
+.resultDownload { display: inline-flex; align-items: center; min-height: 44px; font-size: 12px; color: #e2dad2; text-decoration: underline; text-underline-offset: 4px; }
+.resultFootnote { grid-column: 1 / -1; color: #b9b3ad; font-size: 11px; line-height: 1.6; }
+.resultNotice { position: fixed; right: 24px; bottom: 24px; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 24px; max-width: calc(100vw - 32px); padding: 16px 18px 10px; border: 1px solid #72646e; border-radius: 12px; background: #201b1f; color: #f7f2e9; box-shadow: 0 12px 45px #0004; }
+.reviewStatus:focus-visible, .reviewTakeButton:focus-visible, .resultDownload:focus-visible, .resultNotice button:focus-visible { outline: 2px solid #f4d6e7; outline-offset: 4px; }
+@media (max-width: 760px) {
+  .resultBridge { grid-template-columns: minmax(0, 1fr); }
+  .cinemaStage { padding: 20px; }
+}
+@media (max-width: 520px) {
+  .resultHeading, .resultBridge { padding: 20px 18px; }
+  .cinemaStage { padding: 16px 10px; }
+  .resultActions { align-items: stretch; }
+  .reviewTakeButton { flex: 1; }
+  .resultNotice { right: 16px; bottom: 16px; }
+}

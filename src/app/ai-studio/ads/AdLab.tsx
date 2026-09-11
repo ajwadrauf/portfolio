@@ -13,7 +13,7 @@ import { RenderWaiting } from "@/components/studio/RenderWaiting";
 import { useAudioJobs } from "@/lib/useAudioJobs";
 import { soundDirection, audioReferenceProblem, ICE_CREAM_MUSIC_BRIEF } from "@/lib/adAudio";
 import { SoundPlanner } from "@/components/studio/SoundPlanner";
-import { AdPreflight } from "@/components/ad/AdPreflight";
+import { AdPreflight, type PreflightReviewState } from "@/components/ad/AdPreflight";
 import { useStudioProject } from "@/components/studio/StudioProjectProvider";
 import { AdSceneBoard } from "@/components/ad/AdSceneBoard";
 import { AdFinishing } from "@/components/ad/AdFinishing";
@@ -78,7 +78,6 @@ import {
   aspectRatioValue,
   aspectsFor,
   frameSize,
-  videoToVideoRatio,
   type VideoResolution,
 } from "@/lib/videoCost";
 import {
@@ -458,6 +457,16 @@ function AdLabWorkspace({
   const [phase, setPhase] = useState<Phase>("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [completedTake, setCompletedTake] = useState<CompletedTake | null>(null);
+  const [resultNotice, setResultNotice] = useState(false);
+  const [reviewProgress, setReviewProgress] = useState<{ takeId: string; state: PreflightReviewState } | null>(null);
+  const updateReviewProgress = useCallback((takeId: string, state: PreflightReviewState) => setReviewProgress({ takeId, state }), []);
+  const takeReviewState = reviewProgress?.takeId === completedTake?.id ? reviewProgress?.state : "unreviewed";
+  function showResultSection(id: string) {
+    setResultNotice(false);
+    const section = document.getElementById(id);
+    section?.focus({ preventScroll: true });
+    section?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+  }
   const [videoMetadata, setVideoMetadata] = useState<{ durationSeconds: number; width: number; height: number } | null>(null);
   const [posterDataUrl, setPosterDataUrl] = useState<string | null>(null);
   /*
@@ -911,6 +920,7 @@ function AdLabWorkspace({
       sceneCards: sceneCards ?? saved?.sceneCards,
     };
     setCompletedTake(take);
+    setResultNotice(true);
     setVideoUrl(url);
     const displayed = videoRef.current;
     setVideoMetadata(displayed?.currentSrc === url && Number.isFinite(displayed.duration)
@@ -3911,9 +3921,10 @@ function AdLabWorkspace({
 
 
         {(phase === "starting" || phase === "polling" || phase === "done" || phase === "mock" || phase === "failed" || Boolean(completedTake)) && (
-          <div className="card overflow-hidden">
-            <div className="mx-auto w-full max-w-md">
-              <div className={`relative w-full bg-surface-2 ${rendering ? "" : ASPECT_CLASS[completedTake?.context?.aspect ?? aspect] ?? "aspect-[16/9]"}`} style={videoUrl && videoMetadata ? { aspectRatio: `${videoMetadata.width} / ${videoMetadata.height}` } : undefined}>
+          <div id="ad-result" tabIndex={-1} aria-label="Video render and review" className={`card overflow-hidden ${styles.resultCard}`}>
+            {videoUrl && <div className={styles.resultHeading}><div><p className={styles.resultKicker}>01 · Watch the take</p><h2 className="mt-2 text-2xl tracking-tight">Your film is ready.</h2></div><div className="flex flex-wrap items-center gap-4"><p className={styles.resultSpec}>{videoMetadata ? `${videoMetadata.durationSeconds.toFixed(1)}s · ${videoMetadata.width} × ${videoMetadata.height}` : "Loading video details"}</p>{completedTake && <button type="button" className={styles.reviewStatus} onClick={() => showResultSection("ad-preflight")}>Checklist · {takeReviewState === "reviewed" ? "findings ready" : takeReviewState === "reviewing" ? "reviewing" : takeReviewState === "incomplete" ? "needs attention" : "not reviewed"}<span aria-hidden>↘</span></button>}</div></div>}
+            <div className={videoUrl ? styles.cinemaStage : "mx-auto w-full max-w-md"}>
+              <div className={`relative w-full ${videoUrl ? "bg-black" : "bg-surface-2"} ${rendering ? "" : ASPECT_CLASS[completedTake?.context?.aspect ?? aspect] ?? "aspect-[16/9]"}`} style={videoUrl ? { ...(videoMetadata ? { aspectRatio: `${videoMetadata.width} / ${videoMetadata.height}` } : {}), maxWidth: videoMetadata ? `min(840px, calc(clamp(240px, 100svh - 440px, 560px) * ${videoMetadata.width / videoMetadata.height}))` : 840 } : undefined}>
                 {videoUrl ? (
                   <video
                     ref={videoRef}
@@ -3926,7 +3937,7 @@ function AdLabWorkspace({
                       const video = event.currentTarget;
                       setVideoMetadata({ durationSeconds: video.duration, width: video.videoWidth, height: video.videoHeight });
                     }}
-                    onPlay={() => syncAudio("play")}
+                    onPlay={() => { setResultNotice(false); syncAudio("play"); }}
                     onPause={() => syncAudio("pause")}
                     onSeeked={() => syncAudio("seek")}
                     onRateChange={() => syncAudio("seek")}
@@ -3988,6 +3999,34 @@ function AdLabWorkspace({
               </div>
             </div>
 
+            {videoUrl && completedTake && <div className={styles.resultBridge}>
+              <div className="min-w-0"><p className={styles.resultKicker}>Next · Inspect before you ship</p><p role="status" className="mt-2 text-sm leading-relaxed">{takeReviewState === "reviewing" ? "AI is inspecting this take. You can keep watching." : takeReviewState === "reviewed" ? "AI findings are ready. Human sign-off is still required." : takeReviewState === "incomplete" ? "The video is saved. Its AI review still needs attention." : "Picture complete. The checklist is your next step."}</p></div>
+              <div className={styles.resultActions}>
+                <button type="button" className={styles.reviewTakeButton} onClick={() => showResultSection("ad-preflight")}>{takeReviewState === "reviewed" ? "See review findings" : takeReviewState === "reviewing" ? "View review progress" : takeReviewState === "incomplete" ? "Review needs attention" : "Review this take"}<span aria-hidden>↓</span></button>
+                <a href={videoUrl} download={`${preset.id}-ad.mp4`} target="_blank" rel="noreferrer" className={styles.resultDownload}>Download MP4 ↗</a>
+              </div>
+              <p className={styles.resultFootnote}>Opening the checklist is free. AI inspection runs only when you choose it. The MP4 keeps its original audio.</p>
+            </div>}
+
+            {completedTake && videoUrl && <AdPreflight
+              key={`${completedTake.id}:${completedTake.videoUrl}`}
+              take={completedTake}
+              metadata={videoMetadata}
+              referenceImages={completedTake.referenceImages ?? []}
+              health={health}
+              onSpend={addSpend}
+              onStateChange={updateReviewProgress}
+              onSeek={(seconds) => {
+                const video = videoRef.current;
+                if (!video) return;
+                video.pause();
+                audioRef.current?.pause();
+                video.currentTime = Math.max(0, Math.min(seconds, video.duration || seconds));
+                video.focus({ preventScroll: true });
+                video.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
+              }}
+            />}
+
             {/*
               The moment someone learns this was a mock is the moment they want
               a real one, and until now the only route to that was a pill in
@@ -4025,7 +4064,8 @@ function AdLabWorkspace({
               </div>
             )}
             {videoUrl && (
-              <div className="p-4">
+              <div className="border-t border-border-soft p-4 sm:p-6">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold">Keep working with this take</p><a href="#ad-finish" className="inline-flex min-h-11 items-center text-sm font-semibold text-accent underline underline-offset-4">Finish the soundtrack ↓</a></div>
                 {musicReady && musicUrl && scoringSeparately && (
                   <>
                     {/* Hidden bed, transport-locked to the video above. */}
@@ -4052,24 +4092,19 @@ function AdLabWorkspace({
                     Want to change one thing? Read this before re-rendering
                   </summary>
                   <p className="mt-2 text-xs leading-relaxed text-muted">
-                    There is no cheap edit mode. These models re-render; they do
-                    not revise. Feeding this take back in as a video reference
-                    is <strong>more</strong> expensive, not less — the discount
-                    for video inputs is 0.6, but the input clip&apos;s duration
-                    is billed too, so a {duration}s take re-run against itself
-                    costs about{" "}
-                    {videoToVideoRatio(duration, duration).toFixed(1)}× a fresh
-                    render. In rough order of cost, the real options:
+                    Generating again buys a new take. A video reference can add
+                    input charges, and pricing depends on the selected model.
+                    For small changes, start with the saved MP4:
                   </p>
                   <ol className="mt-2 space-y-1.5 pl-4 text-xs leading-relaxed text-muted">
                     <li className="list-decimal">
-                      <strong>Grade it in an editor — $0.</strong> For a
+                      <strong>Grade it in your editor.</strong> For a
                       background colour shift, a hue qualifier in Resolve or
                       Premiere is free, instant, and does not risk the product
                       drifting.
                     </li>
                     <li className="list-decimal">
-                      <strong>Change the reference, not the video — ~$0.04.</strong>{" "}
+                      <strong>Update the reference for a new take.</strong>{" "}
                       Recolour the background on your product still with an
                       image model, swap it in as the reference, and re-run. On a
                       reference-to-video model the render follows the reference,
@@ -4077,14 +4112,14 @@ function AdLabWorkspace({
                       frame.
                     </li>
                     <li className="list-decimal">
-                      <strong>Re-render at 480p first.</strong> If the change is
-                      to the action rather than the colour, iterate at a fifth
-                      the cost and only go to 1080p once it is right.
+                      <strong>Use a draft resolution first.</strong> If the change is
+                      to the action, check the model&apos;s lower-resolution price
+                      before spending on a full-quality version.
                     </li>
                   </ol>
                 </details>
                 <div className="flex gap-3">
-                  <a
+                  {!completedTake && <a
                     href={videoUrl}
                     download={`${preset.id}-ad.mp4`}
                     target="_blank"
@@ -4092,7 +4127,7 @@ function AdLabWorkspace({
                     className="text-xs font-semibold text-accent hover:underline"
                   >
                     Download original MP4 · native audio unchanged
-                  </a>
+                  </a>}
                   {musicUrl && (
                     <a
                       href={musicUrl}
@@ -4105,31 +4140,11 @@ function AdLabWorkspace({
                     </a>
                   )}
                 </div>
-                {completedTake && (
-                  <div className="mt-6">
-                    <AdPreflight
-                      key={`${completedTake.id}:${completedTake.videoUrl}`}
-                      take={completedTake}
-                      metadata={videoMetadata}
-                      referenceImages={completedTake.referenceImages ?? []}
-                      health={health}
-                      onSpend={addSpend}
-                      onSeek={(seconds) => {
-                        const video = videoRef.current;
-                        if (!video) return;
-                        video.pause();
-                        audioRef.current?.pause();
-                        video.currentTime = Math.max(0, Math.min(seconds, video.duration || seconds));
-                        video.focus({ preventScroll: true });
-                        video.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
-                      }}
-                    />
-                  </div>
-                )}
               </div>
             )}
           </div>
         )}
+        {resultNotice && completedTake && videoUrl && <aside className={styles.resultNotice} aria-label="Completed render notification"><div><p role="status" className="text-sm font-semibold">Your take is ready.</p><button type="button" onClick={() => showResultSection("ad-result")} className="inline-flex min-h-11 items-center gap-3 text-sm font-semibold underline underline-offset-4">Watch & review <span aria-hidden>↗</span></button></div><button type="button" aria-label="Dismiss completed render notification" onClick={() => setResultNotice(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/25 text-lg">×</button></aside>}
         <AdFinishing key={project?.id ?? "loading"} tracks={mixTracks} onChange={setMixTracks} available={availableMixTracks} duration={finishingDuration} ducking={ducking} onDucking={setDucking} videoUrl={completedTake?.videoUrl ?? (project?.example === "velune" ? project.assets.find((asset) => asset.id === "velune-motion" && asset.status === "ready")?.url ?? null : null)} sceneCards={finishingScenes} onSaveMix={async (dataUrl, manifest) => { const id = `ad-mix-${crypto.randomUUID()}`; await saveAsset({ id, name: "Ad Lab · mixed soundtrack.wav", kind: "audio", dataUrl, role: "Mixed separate soundtrack · place at zero; original video audio unchanged", source: "generated", status: "ready", metadata: manifest }); await saveAsset({ id: `${id}-settings`, name: "Ad Lab · editor cue bundle settings", kind: "document", dataUrl: adDocumentDataUrl({ ...manifest, sceneCues: finishingScenes }), role: "Editor handoff · separate video and soundtrack", source: "generated", status: "ready" }); }} />
       </div>
     </div>
