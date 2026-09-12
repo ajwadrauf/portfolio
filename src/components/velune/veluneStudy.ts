@@ -15,6 +15,14 @@ export const VELUNE_SHOTS = [
 ] as const;
 
 export const VELUNE_MEDIA = {
+  finalFilm: "/studio/velune/delivery/velune-film-final.mp4",
+  finalPoster: "/studio/velune/delivery/film-poster.jpg",
+  campaignStill: "/studio/velune/delivery/velune-campaign-still.png",
+  bilingualStill: "/studio/velune/delivery/velune-bilingual-still.png",
+  verticalFilm: "/studio/velune/delivery/velune-social-vertical.mp4",
+  verticalPoster: "/studio/velune/delivery/vertical-poster.jpg",
+  finalMix: "/studio/velune/delivery/velune-final-mix.wav",
+  deliveryBundle: "/studio/velune/delivery/velune-campaign-delivery.zip",
   film: "/studio/velune/film/velune-h3.mp4",
   voiceover: "/studio/velune/film/velune-voiceover.wav",
   animatic: "/studio/velune/animatic.mp4",

@@ -1,0 +1,60 @@
+{
+  "project": "VELUNE · Wonder within.",
+  "status": "Independent fictional campaign concept",
+  "date": "2026-09-12",
+  "brief": {
+    "audience": "Adults drawn to distinctive chocolate and small moments of indulgence.",
+    "objective": "Introduce VELUNE and make its three filled centres memorable.",
+    "idea": "A small chocolate contains a world to discover."
+  },
+  "film": {
+    "dimensions": "1920 × 1080",
+    "fps": 24,
+    "frames": 360,
+    "durationSeconds": 15,
+    "sourceDimensions": "1344 × 768",
+    "sourceFrames": 362,
+    "note": "Upscaled and locally finished from the supplied H3 take. Six source pixels trimmed at top and bottom for 16:9."
+  },
+  "finishing": [
+    "Three carton inserts replaced with selected appearance references at frames 41–68.",
+    "Report replaced with the separately typeset master at frames 249–312.",
+    "Opening question and closing brand/tagline added locally.",
+    "H3 sound and ElevenLabs voice combined at 48 kHz stereo. Original starts at 50%, ducks under voice; peak limiter and a short final fade."
+  ],
+  "vertical": "1080 × 1920, 15 seconds. Designed social layout preserving the complete landscape picture; not a full-screen portrait reframe.",
+  "bilingual": {
+    "format": "1080 × 1350 PNG",
+    "english": "Wonder within.",
+    "french": "Un monde à découvrir.",
+    "note": "French adaptation of the discovery idea with equal visual weight. Concept copy; no commercial or regulatory approval claimed."
+  },
+  "assistance": "Creative direction and review by Ajwad Rauf. AI-generated reference imagery and H3 picture/native sound, ElevenLabs voiceover, AI-assisted code and finishing.",
+  "files": [
+    {
+      "name": "velune-film-final.mp4",
+      "bytes": 7188524,
+      "sha256": "92bda5ebea8e0924620f09506c3db632c80f2531178f54dceeca52afed9b46c5"
+    },
+    {
+      "name": "velune-social-vertical.mp4",
+      "bytes": 2576649,
+      "sha256": "80ec7189b7aac4b932ecbed35fc7ad0fc2bfc9590b2185e9a46400c774f32aa6"
+    },
+    {
+      "name": "velune-campaign-still.png",
+      "bytes": 3212439,
+      "sha256": "bd4fda3d6199efd6353c4fed99678891b898af9cbb39199763d7397ad7cb87c1"
+    },
+    {
+      "name": "velune-bilingual-still.png",
+      "bytes": 1083408,
+      "sha256": "630de430c62f1325792feb77c1283b31b8b886bca4db7c823a33c532f0a652d1"
+    },
+    {
+      "name": "velune-final-mix.wav",
+      "bytes": 4320102,
+      "sha256": "37633c3fdaa8bed1785928d784f6e17a4d79f79986c61ecad2288bc5001663b3"
+    }
+  ]
+}

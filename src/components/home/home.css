@@ -331,24 +331,33 @@ body:has(#ajwad-home) {
   display: none;
 }
 
-#ajwad-home .ar-practice {
-  display: flex;
-  align-items: center;
-  gap: 40px;
-  padding-block: 24px;
+#ajwad-home .ar-evidence-route {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+  padding-block: 25px;
   border-top: 1px solid var(--ar-line);
-  font-size: 12px;
+}
+#ajwad-home .ar-evidence-route > a {
+  display: grid;
+  gap: 4px;
+  min-height: 48px;
+  padding-block: 3px;
+}
+#ajwad-home .ar-evidence-route > a > span {
   color: var(--ar-muted);
+  font-size: 12px;
 }
-#ajwad-home .ar-practice p {
-  flex: 1;
+#ajwad-home .ar-evidence-route strong {
+  font-size: 15px;
+  font-weight: 500;
 }
-#ajwad-home .ar-practice p span {
-  margin-inline: 18px;
-  opacity: 0.5;
+#ajwad-home .ar-evidence-route strong span {
+  margin-left: 8px;
+  color: var(--ar-accent);
 }
-#ajwad-home .ar-practice > a {
-  font-size: 24px;
+#ajwad-home .ar-evidence-route > a:hover strong {
+  color: var(--ar-accent);
 }
 
 /* ---------------------------------- Film --------------------------------- */
@@ -529,6 +538,17 @@ body:has(#ajwad-home) {
 #ajwad-home .ar-project-copy > .ar-film-project-note {
   margin-top: 18px;
   color: var(--ar-ink);
+}
+#ajwad-home .ar-role-note {
+  margin-top: 18px;
+  color: var(--ar-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+#ajwad-home .ar-role-note strong {
+  color: var(--ar-ink);
+  font-weight: 500;
+  margin-right: 5px;
 }
 #ajwad-home .ar-film-references { margin-top: 16px; }
 #ajwad-home .ar-film-references summary {
@@ -978,12 +998,7 @@ body:has(#ajwad-home) {
   #ajwad-home .ar-sculpture-bottom {
     flex-wrap: wrap;
   }
-  #ajwad-home .ar-practice {
-    gap: 24px;
-  }
-  #ajwad-home .ar-practice p span {
-    margin-inline: 9px;
-  }
+  #ajwad-home .ar-evidence-route { gap: 20px; }
   #ajwad-home h2 {
     font-size: 43px;
   }
@@ -1116,19 +1131,22 @@ body:has(#ajwad-home) {
   #ajwad-home .ar-coordinate {
     display: block;
   }
-  #ajwad-home .ar-practice {
-    padding-block: 20px;
-    gap: 16px;
+  #ajwad-home .ar-evidence-route {
+    grid-template-columns: 1fr;
+    padding-block: 12px;
+    gap: 0;
   }
-  #ajwad-home .ar-practice > .ar-eyebrow {
-    display: none;
+  #ajwad-home .ar-evidence-route > a {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 15px;
+    padding-block: 12px;
   }
-  #ajwad-home .ar-practice p {
-    font-size: 11px;
+  #ajwad-home .ar-evidence-route > a + a {
+    border-top: 1px solid var(--ar-line);
   }
-  #ajwad-home .ar-practice p span {
-    margin-inline: 6px;
-  }
+  #ajwad-home .ar-evidence-route > a > span { font-size: 11px; }
+  #ajwad-home .ar-evidence-route strong { font-size: 13px; }
   #ajwad-home .ar-film {
     padding-top: 42px;
   }

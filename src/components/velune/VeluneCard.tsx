@@ -7,15 +7,15 @@ export function VeluneCard({ compact = false }: { compact?: boolean }) {
     <article className={`${styles.card} ${compact ? styles.compactCard : ""}`} aria-labelledby={compact ? "velune-studio-title" : "velune-home-title"}>
       <div className={styles.cardImage}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={compact ? VELUNE_MEDIA.packaging : VELUNE_MEDIA.poster} width={compact ? 1440 : 1920} height={compact ? 904 : 1080} alt={compact ? "VELUNE packaging concepts in pistachio green, raspberry and caramel" : "Actual Blender camera-study frame: twelve VELUNE chocolates form a question mark above a tasting fork"} loading="lazy" />
-        <span>{compact ? "Concept artwork" : "Blender camera study / The question"}</span>
+        <img src={VELUNE_MEDIA.campaignStill} width={1920} height={1080} alt="VELUNE campaign still: three filled chocolate centres in a warm chocolate passage, with Wonder within set beside them" loading="lazy" />
+        <span>Campaign still / Wonder within.</span>
       </div>
       <div className={styles.cardCopy}>
         <p className={styles.eyebrow}>VELUNE / Independent concept</p>
-        <span className={styles.status}>H3 film · Voiceover ready</span>
+        <span className={styles.status}>Film · Stills · Social adaptation</span>
         <h3 id={compact ? "velune-studio-title" : "velune-home-title"}>A little chocolate.<br />A world within.</h3>
-        <p>Twelve shots in fifteen seconds. A generated chocolate film with original video sound and a separate ElevenLabs voiceover, developed from a Blender camera study.</p>
-        <Link className={styles.cta} href="/velune">Explore the VELUNE study <span aria-hidden>↗</span></Link>
+        <p>A fifteen-second chocolate film, finished with sound and typography, alongside campaign stills and a vertical social layout. Follow the decisions from camera study to delivery.</p>
+        <Link className={styles.cta} href="/velune">Explore the VELUNE campaign <span aria-hidden>↗</span></Link>
       </div>
     </article>
   );

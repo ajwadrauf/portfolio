@@ -27,6 +27,21 @@
 .heroNote dl { font-size: 12px; }
 .heroNote dl > div { display: flex; justify-content: space-between; gap: 16px; padding-block: 10px; border-bottom: 1px solid var(--border); }
 .heroNote dt { color: var(--muted); }
+.campaignBrief { display: grid; grid-template-columns: 1fr 2fr; gap: 48px; padding-bottom: 64px; }
+.campaignBrief h2 { font: 30px/1.3 Georgia,serif; margin-top: 12px; }
+.campaignBrief dl { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+.campaignBrief dt { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.campaignBrief dd { font-size: 13px; line-height: 1.75; color: var(--muted); }
+.judgment { margin: 30px 0 48px; padding-top: 32px; border-top: 1px solid var(--border); scroll-margin-top: 28px; }
+.judgmentHeading { max-width: 760px; }
+.judgmentHeading h3 { margin: 10px 0 16px; font: 30px/1.3 Georgia,serif; }
+.judgmentHeading > p:last-child { font-size: 15px; line-height: 1.8; }
+.comparisonGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; margin-top: 26px; }
+.comparisonGrid img { aspect-ratio: 16/9; object-fit: contain; background: #211713; }
+.comparisonGrid figcaption { display: grid; gap: 6px; }
+.comparisonGrid strong { color: var(--foreground); font-size: 14px; }
+.comparisonGrid span { max-width: 58ch; }
+.judgment .judgmentNote { font-size: 12px; max-width: 84ch; margin-top: 14px; }
 .section { padding-block: 76px; }
 .sectionHead { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: end; margin-bottom: 32px; }
 .sectionHead h2 { margin-top: 10px; }
@@ -235,6 +250,24 @@
 
 .filmDownloads { display: flex; flex-wrap: wrap; gap: 12px 26px; margin-top: 20px; }
 .filmDownloads a { min-height: 44px; display: inline-flex; align-items: center; color: #f5ecd9; font-size: 13px; text-decoration: underline; text-underline-offset: 4px; }
+.finalVideo { width: 100%; display: block; aspect-ratio: 16/9; background: #090706; }
+.cinema .deliveryNote { font-size: 12px; margin-top: 12px; }
+.adaptations { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px; padding-top: 38px; margin-top: 38px; border-top: 1px solid #67534b; }
+.adaptations figure { min-width: 0; }
+.adaptationMedia { height: 360px; background: #160d10; display: flex; align-items: center; justify-content: center; }
+.adaptationMedia a { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; }
+.page .adaptationMedia img { width: 100%; height: 100%; object-fit: contain; }
+.adaptationMedia video { display: block; height: 100%; max-width: 100%; background: #000; }
+.adaptations figcaption { padding-top: 22px; }
+.adaptations h3 { color: #f5ecd9; font: 25px/1.3 Georgia,serif; margin: 10px 0; }
+.adaptations p { font-size: 13px; line-height: 1.75; }
+.adaptations a[download] { color: #f5ecd9; min-height: 44px; display: inline-flex; align-items: center; text-decoration: underline; text-underline-offset: 4px; margin-top: 10px; }
+.sourceCompare { border-block: 1px solid #67534b; margin-top: 40px; padding-block: 8px 16px; }
+.sourceCompare summary { cursor: pointer; padding-block: 16px; font-size: 15px; }
+.sourceCompare > p { font-size: 13px; max-width: 78ch; padding: 8px 0 22px; }
+.deliveryBack { display: inline-flex; padding-block: 24px 0; min-height: 44px; text-decoration: underline; text-underline-offset: 4px; font-size: 13px; }
+@media (max-width: 1000px) { .campaignBrief { grid-template-columns: 1fr; gap: 24px; } .adaptations { gap: 18px; } .adaptationMedia { height: 290px; } }
+@media (max-width: 760px) { .campaignBrief { padding-bottom: 42px; } .campaignBrief dl, .comparisonGrid, .adaptations { grid-template-columns: 1fr; } .campaignBrief dl { gap: 18px; } .campaignBrief dl > div { display: grid; grid-template-columns: 80px 1fr; gap: 16px; } .judgmentHeading h3 { font-size: 26px; } .adaptationMedia { height: auto; min-height: 180px; } .adaptationMedia a { height: auto; } .page .adaptationMedia img { max-height: 440px; } .adaptationMedia video { width: auto; max-height: 480px; } .adaptations { gap: 38px; } }
 .panelGallery { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; }
 .panelGallery figure { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .panelGallery img { width: 100%; height: 240px; object-fit: contain; background: white; }

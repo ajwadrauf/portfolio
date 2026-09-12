@@ -7,7 +7,7 @@ import { StudioStart } from "@/components/studio/StudioStart";
 export const metadata: Metadata = {
   title: "AI Content Studio · Ajwad Rauf",
   description:
-    "A working AI content studio: product imagery, bilingual campaigns, motion and sound. Watch a finished Seedance film beside its Blender motion guide and explore the tools behind it.",
+    "A working AI content studio for product imagery, bilingual campaigns, motion and sound. Follow VELUNE from references and a Blender camera plan into an H3 film and ElevenLabs sound, then explore the tools behind it.",
 };
 
 const SHELL = "mx-auto w-full max-w-6xl px-6";
@@ -40,7 +40,7 @@ const TOOLS = [
     href: "/ai-studio/packshots",
     name: "Packshot Studio",
     task: "Turn product photos or packaging artwork into usable views",
-    body: "Start from photos, or map flat artwork onto a measured package. Inspect it in 3D, render clean views and send a completed packshot into the same campaign project. Reconstructed views remain flagged for label QA.",
+    body: "Start from photos, or map flat artwork onto a measured package. Inspect it in 3D, render clean views and send the full set into Campaign Studio. Reconstructed views remain flagged for label QA.",
     tags: ["Product on white", "A/B bake-offs", "Governance"],
     cta: "Open Packshot Studio",
   },
@@ -74,7 +74,7 @@ const TOOLS = [
 const PRACTICE = [
   {
     h: "Produce the work",
-    p: "Everything here is a working tool rather than a case-study screenshot. A product photo goes in and finished stills, bilingual tiles, packshots and scored video come out, in the browser, in minutes.",
+    p: "Create packshots, campaign stills, bilingual layouts, video and sound. VELUNE shows how the tools connect, including the selection, refinement and finishing needed to prepare the work for delivery.",
   },
   {
     h: "Stand up the workflow",
@@ -90,11 +90,11 @@ const PRACTICE = [
   },
 ] as const;
 
-/** Judgment that cost something to acquire — the least substitutable part. */
+/** Production decisions grounded in the studies shown here. */
 const LEARNED = [
   {
-    h: "Video models don't compose music",
-    p: "They render effects, ambience and dialogue convincingly, then approximate a score. So the layers split: the video model does sound design, a music model composes, the mix stays a finishing step.",
+    h: "Sound needs its own decisions",
+    p: "VELUNE pairs the video model's original sound with a separate ElevenLabs voiceover. Voice, music and spot effects can be generated and reviewed individually, then balanced against the picture in finishing.",
   },
   {
     h: "Text-in-image is a routing decision",
@@ -128,26 +128,32 @@ export default function StudioOverview() {
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
           Product imagery, campaigns and motion, connected by clear briefs, model
-          choices and quality checks. Explore the tools, then see how I plan the
-          work in Blender and bring it to life with Seedance.
+          choices and quality checks. Follow the VELUNE case from its camera plan
+          and references into an H3 film, ElevenLabs sound and campaign adaptations.
         </p>
         <div className="mt-9 flex max-w-lg flex-col gap-3 sm:flex-row">
           <a href="#tools" className="btn-block">
             Explore the tools <span aria-hidden>↓</span>
           </a>
-          <a href="#motion-study" className="btn-block">
-            See Blender → Seedance <span aria-hidden>↓</span>
-          </a>
+          <Link href="/velune" className="btn-block">
+            See the VELUNE case <span aria-hidden>↗</span>
+          </Link>
         </div>
+        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-muted">
+          <strong className="font-medium text-foreground">My role</strong>{" "}
+          Concept, workflow design, model selection and testing, with AI-assisted
+          development and production. I direct the work, refine the references and
+          review the outputs.
+        </p>
       </section>
 
       <StudioStart />
       {/* ------------------------- The work, first ------------------------- */}
-      <CreamCompare />
-
-      <section className={`${SHELL} py-12`} aria-label="New film in production">
+      <section className={`${SHELL} py-12`} aria-label="VELUNE campaign case study">
         <VeluneCard compact />
       </section>
+
+      <CreamCompare />
 
       {/* ------------------------------ The tools -------------------------- */}
       {/* 28, not 4: the studio header is sticky and ~100px tall stacked on a
@@ -200,16 +206,14 @@ export default function StudioOverview() {
               Retail content is a versioning business.
             </h2>
             <p className="mt-4 leading-relaxed text-muted">
-              One campaign multiplies across formats, placements, seasons, banners
-              and, in Canada, two official languages. One idea becomes forty
-              assets before it reaches a shopper. Traditional production can make
-              the one beautifully; it cannot make the forty at that cadence.
+              One campaign can span formats, placements, seasons, banners and,
+              in Canada, two official languages. Each adaptation needs to preserve
+              the product and the idea while working in its own space.
             </p>
             <p className="mt-4 leading-relaxed text-muted">
-              That is the gap this closes, and it moves where craft lives. An
-              adaptation that took a studio day becomes a routed call costing
-              cents, so judgment moves upstream into the brief, the prompt
-              system and the quality gate.
+              I built this studio to explore where AI can help with that work.
+              A shared brief and reference set give each output a starting point;
+              selection, typography, sound and review determine what is ready to use.
             </p>
           </div>
 

@@ -25,7 +25,7 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Ajwad Rauf · applied AI, creative work and production systems",
   description:
-    "I turn emerging AI into creative work and production systems people can actually use. Explore AI Content Studio, Persopot and Project Forge. Applied AI and creative technology, from Toronto.",
+    "I turn emerging AI into creative work and production systems people can actually use. Explore the VELUNE campaign, the studio behind it and Project Forge. Applied AI and creative technology, from Toronto.",
 };
 
 /**
@@ -100,16 +100,11 @@ export default function Home() {
           <TokenSculpture />
         </section>
 
-        <div className="ar-practice ar-wrap">
-          <span className="ar-eyebrow">The practice</span>
-          <p>
-            Creative direction <span>/</span> AI production <span>/</span> Products &amp;
-            systems
-          </p>
-          <a href="#ar-approach" aria-label="Read my approach">
-            ↓
-          </a>
-        </div>
+        <nav className="ar-evidence-route ar-wrap" aria-label="Explore the portfolio">
+          <Link href="/velune"><span>The creative work</span><strong>VELUNE <span aria-hidden>↗</span></strong></Link>
+          <Link href="/ai-studio"><span>The tools behind it</span><strong>AI Content Studio <span aria-hidden>↗</span></strong></Link>
+          <Link href="/project-forge"><span>Helping teams deliver</span><strong>Project Forge <span aria-hidden>↗</span></strong></Link>
+        </nav>
 
         {/* ------------------------------- Film ------------------------------ */}
         <section className="ar-film" id="ar-film" aria-labelledby="ar-film-heading">
@@ -149,10 +144,12 @@ export default function Home() {
               </h2>
             </div>
             <p>
-              Creative tools, consumer products and the systems that keep production
-              moving.
+              Start with VELUNE, explore the studio behind it, then see how I help
+              teams move work from request to release.
             </p>
           </div>
+
+          <VeluneCard />
 
           <article className="ar-studio-project">
             <div className="ar-project-copy">
@@ -161,8 +158,8 @@ export default function Home() {
                 <span className="ar-status">Live studio</span>
               </div>
               <h3>
-                One product.
-                <br />A world of possibilities.
+                From the brief
+                <br />to the handoff.
               </h3>
               <p>
                 A working toolkit for product imagery, bilingual campaigns, motion and
@@ -170,9 +167,14 @@ export default function Home() {
                 reference, which quality gate, and at what cost.
               </p>
               <p className="ar-film-project-note">
-                See it in practice: an ice-cream film choreographed in Blender and
-                brought to life with Seedance. The camera plan, the references and
-                the result are all part of the work.
+                VELUNE connects packaging, visual references, an H3 film and
+                ElevenLabs sound. The earlier ice-cream study shown here explores
+                how a Blender camera plan translates through Seedance.
+              </p>
+              <p className="ar-role-note">
+                <strong>My role</strong> Concept, workflow design, model selection
+                and testing, with AI-assisted development and production. I direct
+                and review the work.
               </p>
               <div className="ar-tags">
                 <span>Retail &amp; CPG</span>
@@ -210,8 +212,6 @@ export default function Home() {
               </details>
             </div>
           </article>
-
-          <VeluneCard />
 
           <div className="ar-project-pair">
             <article>
@@ -268,6 +268,10 @@ export default function Home() {
                 An internal platform for promotional email badges: intake, bilingual
                 briefs, review, QA and sign-off. One connected workflow for marketers and
                 production teams.
+              </p>
+              <p className="ar-role-note">
+                <strong>My role</strong> Workflow design and application build,
+                connecting the steps teams need to brief, review and release work.
               </p>
               <Link className="ar-project-link" href="/project-forge">
                 View Forge case study <span aria-hidden>↗</span>

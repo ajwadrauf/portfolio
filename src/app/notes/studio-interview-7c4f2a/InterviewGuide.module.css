@@ -103,6 +103,7 @@
 .experiment h3 { font-size: 24px; }
 .storyBank { display: grid; gap: 23px; margin-top: 29px; }
 .storyCard { padding: 27px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
+.storyCard blockquote { margin: 20px 0; padding-left: 18px; border-left: 2px solid #b290a4; font-size: 16px; line-height: 1.8; color: #67445a; }
 .storyCard dl { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px 20px; margin: 24px 0; font-size: 14px; }
 .storyCard dt { color: var(--accent); font-size: 12px; font-weight: 500; }
 .storyCard dd { margin: 0; }

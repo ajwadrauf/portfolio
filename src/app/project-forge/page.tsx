@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 const META = [
-  { k: "Role", v: "Solo design & build" },
+  { k: "My role", v: "Workflow design & application build" },
   { k: "Timeline", v: "2025–2026" },
   { k: "Client", v: "Loblaw Companies (internal)" },
   { k: "Type", v: "Internal web app, in production" },
@@ -177,8 +177,13 @@ export default function ProjectForgePage() {
           An internal production platform for an enterprise retail CRM email
           program. It moves every promotional badge from first request to final
           deployment through one auditable workflow, with the reviews, bilingual
-          copy and compliance checks built in. I designed and built it end to
-          end.
+          copy and compliance checks built in.
+        </p>
+        <p className="mt-4 max-w-[58ch] text-sm leading-[1.7] text-muted">
+          <strong className="font-medium text-foreground">My role</strong>{" "}
+          I designed the workflow and built the application, using AI-assisted
+          development. I connected intake, bilingual production, review and
+          release; AI copy checks support the people responsible for approval.
         </p>
 
         <div className="mt-10 grid grid-cols-2 gap-6 sm:gap-8 lg:grid-cols-4">
