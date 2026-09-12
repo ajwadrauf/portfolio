@@ -155,6 +155,8 @@ function PackshotSession() {
   const routingHandled = useRef<number | null>(null);
   const [mode, setMode] = useState<"photos" | "artwork">("photos");
   const [artworkOpened, setArtworkOpened] = useState(false);
+  const [artworkExample, setArtworkExample] = useState(0);
+  const [artworkBusy, setArtworkBusy] = useState(false);
   const [running, setRunning] = useState(false);
   const runLock = useRef(false);
   const activeJobs = useRef(new Set<string>());
@@ -545,7 +547,21 @@ function PackshotSession() {
         </div>
         <SpendChip amount={sessionSpend} />
       </div>
-      {project?.example === "velune" && <div className="card my-5 p-5"><strong>VELUNE · packaging from the film study</strong><p className="my-2 text-sm text-muted">Load the newer pistachio cover with back, top, bottom, left and right panel references. The live carton uses all six faces. Dimensions remain the proposed concept size.</p><button className="btn-secondary" onClick={() => { setArtworkOpened(true); setMode("artwork"); }}>Explore VELUNE artwork ↗</button></div>}
+      <section className={styles.veluneExample} aria-labelledby="velune-example-title">
+        {/* The same local cover is used by the six-face example. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={VELUNE_PACKAGE_PANELS[0].url} alt="VELUNE Pistachio Praline carton with the filled-chocolate cover" width={1672} height={941} />
+        <div className={styles.veluneCopy}>
+          <span className={styles.veluneEyebrow}>Try the studio · Ready to explore</span>
+          <h2 id="velune-example-title">One carton. Every side.</h2>
+          <p>Open VELUNE with all six artwork faces in place. Pick a face to turn the box, inspect the measurements, and make it your own.</p>
+          <button type="button" className={styles.veluneLoad} disabled={artworkBusy || running} onClick={() => {
+            setArtworkBusy(true); setArtworkOpened(true); setMode("artwork"); setArtworkExample((value) => value + 1);
+          }}>Load VELUNE carton artwork <span aria-hidden="true">↗</span></button>
+          <span className={styles.veluneMeta}>On your device · No generation cost</span>
+          <small>Loads six faces and concept dimensions. Replaces the current artwork setup.</small>
+        </div>
+      </section>
       <div className={styles.modeGrid} role="group" aria-label="Choose your starting point">
         <button type="button" className={mode === "photos" ? styles.selectedMode : styles.mode} aria-pressed={mode === "photos"} onClick={() => setMode("photos")}>
           <span className={styles.modeEyebrow}>The familiar workflow</span><strong>From product photos</strong>
@@ -559,7 +575,7 @@ function PackshotSession() {
       {error && (
         <div role="alert" className="card mb-6 border-danger/50 bg-danger/10 p-4 text-sm text-danger">{error}</div>
       )}
-      {artworkOpened && <div hidden={mode !== "artwork"} className={styles.artwork}><ArtworkStudio onUseAsReferences={useBoxReferences} /></div>}
+      {artworkOpened && <div hidden={mode !== "artwork"} className={styles.artwork}><ArtworkStudio exampleRequest={artworkExample} onBusyChange={setArtworkBusy} onUseAsReferences={useBoxReferences} /></div>}
       <div hidden={mode !== "photos"}>
 
       {/*

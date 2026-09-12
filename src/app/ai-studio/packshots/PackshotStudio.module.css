@@ -8,6 +8,18 @@
 .connections { position: relative; font-size: 12px; color: var(--muted); }
 .connections summary { cursor: pointer; padding: 10px 0; }
 .connections > div { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 10px; }
+.veluneExample { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); overflow: hidden; margin: 16px 0 26px; border: 1px solid #53313e; border-radius: 12px; background: #321e28; color: #fbf6ec; }
+.veluneExample > img { width: 100%; height: 100%; min-height: 270px; object-fit: cover; }
+.veluneCopy { padding: 28px 32px; align-self: center; }
+.veluneEyebrow { font: 10px var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: #cedbaa; }
+.veluneCopy h2 { margin: 12px 0 10px; font-size: clamp(24px, 3vw, 32px); line-height: 1.15; letter-spacing: -.035em; font-weight: 500; }
+.veluneCopy p { max-width: 470px; font-size: 13px; line-height: 1.7; color: #e0d1d7; }
+.veluneLoad { display: flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 46px; margin-top: 20px; padding: 12px 18px; border: 1px solid #d6e0b5; border-radius: 4px; background: #d6e0b5; color: #292e20; font-size: 13px; font-weight: 600; cursor: pointer; }
+.veluneLoad:hover { background: #e4ebce; border-color: #e4ebce; }
+.veluneLoad:disabled { opacity: .55; cursor: wait; }
+.workspace .veluneLoad:focus-visible { outline-color: #e4ebce; }
+.veluneMeta { display: block; margin-top: 12px; color: #cedbaa; font-size: 11px; }
+.veluneCopy small { display: block; margin-top: 6px; color: #c9b8bf; font-size: 10px; line-height: 1.6; }
 .modeGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 10px 0 28px; }
 .mode, .selectedMode { position: relative; display: flex; flex-direction: column; gap: 9px; text-align: left; padding: 24px 48px 24px 24px; border: 1px solid var(--border); background: var(--surface); transition: border-color .15s, background .15s; }
 .mode:hover { border-color: var(--accent); }
@@ -49,6 +61,10 @@
 .zoomDialog img { display: block; object-fit: contain; width: 100%; max-height: calc(100dvh - 150px); background: #fff; }
 .workspace :is(button, summary, a, input, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 @media (max-width: 640px) {
+  .veluneExample { grid-template-columns: 1fr; }
+  .veluneExample > img { height: auto; min-height: 0; aspect-ratio: 16 / 9; }
+  .veluneCopy { padding: 24px; }
+  .veluneLoad { width: 100%; }
   .workspace { padding: 24px 16px 48px; }
   .modeGrid { grid-template-columns: 1fr; gap: 10px; }
   .mode, .selectedMode { padding: 18px 44px 18px 20px; }

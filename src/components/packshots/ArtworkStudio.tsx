@@ -88,7 +88,11 @@ function readProject(text: string): BoxProject {
   };
 }
 
-export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (references: RenderedView[]) => void }) {
+export function ArtworkStudio({ onUseAsReferences, exampleRequest = 0, onBusyChange }: {
+  onUseAsReferences?: (references: RenderedView[]) => void;
+  exampleRequest?: number;
+  onBusyChange?: (busy: boolean) => void;
+}) {
   const { project: studioProject, saveDraft } = useStudioProject();
   const [sources, setSources] = useState<ArtworkSource[]>([]);
   const sourcesRef = useRef<ArtworkSource[]>([]);
@@ -117,12 +121,16 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
   const [revision, setRevision] = useState(0);
   const [batch, setBatch] = useState<RenderBatch | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
-  const [importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState(exampleRequest > 0);
   const [assigning, setAssigning] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const previewRef = useRef<BoxPreviewHandle>(null);
+  const boxTitleRef = useRef<HTMLHeadingElement>(null);
+  const revealExample = useRef(false);
+  const initialLoad = useRef<Promise<void> | null>(null);
+  const handledExampleRequest = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const projectInput = useRef<HTMLInputElement>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
@@ -140,6 +148,8 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
   const stale = batch !== null && batch.revision !== revision;
   const presetModified = selectedPreset !== null && !presetMatches(selectedPreset, { dimensions, shape, finish });
   const availablePresets = [...STARTER_PACKAGE_PRESETS, ...companyPresets];
+
+  useEffect(() => { onBusyChange?.(editingBusy); }, [editingBusy, onBusyChange]);
 
   useEffect(() => {
     try {
@@ -201,7 +211,19 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
     return () => controller.abort();
   }, [source, page]);
 
+  useEffect(() => {
+    if (pageLoading || !revealExample.current) return;
+    revealExample.current = false;
+    boxTitleRef.current?.focus({ preventScroll: true });
+    boxTitleRef.current?.scrollIntoView({ block: "start" });
+  }, [pageLoading, pageImage]);
+
   function changed() { setRevision((value) => value + 1); }
+
+  function selectFace(face: BoxFace) {
+    setActiveFace(face);
+    previewRef.current?.selectView(face);
+  }
 
   async function importFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -503,17 +525,28 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
       for (const source of sourcesRef.current) source.dispose();
       sourcesRef.current = [...opened]; setSources([...opened]); setSourceId(opened[0].id); setPage(1); opened.length = 0;
       setName("VELUNE · Pistachio reference carton"); setDimensions({ width: 120, height: 180, depth: 40 }); setDimensionInputs({ width: "120", height: "180", depth: "40" }); setUnit("mm"); setShape("carton"); setFinish("matte"); setSelectedPreset(null); setBaseColor(VELUNE_PACKAGE_COLOR);
-      setPanels(nextPanels); setOrigins(nextOrigins); setActiveFace("front"); setBatch(null); changed();
+      setPanels(nextPanels); setOrigins(nextOrigins); selectFace("front"); setBatch(null); changed();
       setNotice("Loaded all six faces: the newer front cover plus back, top, bottom, left and right references. Photo crops approximate the panel artwork; dimensions remain the proposed 120 × 180 × 40 mm concept size.");
+      // Reveal after the source preview has settled so its height cannot shift the destination.
+      revealExample.current = true;
     } catch (cause) { if (alive.current) setError(messageFor(cause)); }
     finally { for (const source of opened) source.dispose(); if (alive.current) setImporting(false); }
   }
 
   useEffect(() => {
-    if (!studioProject?.drafts.artwork) return;
-    void loadProject(new File([JSON.stringify(studioProject.drafts.artwork)], "saved.box-project.json", { type: "application/json" }));
+    // Restore once; an explicit example click takes precedence on first opening.
+    // Later clicks wait for restoration and keep current artwork until all six faces load.
+    if (!initialLoad.current) {
+      initialLoad.current = !exampleRequest && studioProject?.drafts.artwork
+        ? loadProject(new File([JSON.stringify(studioProject.drafts.artwork)], "saved.box-project.json", { type: "application/json" }))
+        : Promise.resolve();
+    }
+    if (exampleRequest > handledExampleRequest.current) {
+      handledExampleRequest.current = exampleRequest;
+      void initialLoad.current.then(() => { if (alive.current) return loadVelune(); });
+    }
     // The parent mounts a fresh session for each project. Save echoes must not reset the editor.
-  }, []);
+  }, [exampleRequest]);
 
   return (
     <div className={styles.studio}>
@@ -522,7 +555,6 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
         <span className={styles.localBadge}>On this device · no AI charge</span>
       </div>
 
-      {studioProject?.example === "velune" && <div className="my-4 rounded border border-border-soft p-4"><p className="mb-3 text-sm">VELUNE · six faces, with the revised front cover and supplied back, top, bottom, left and right references. Loading replaces the current package setup.</p><button type="button" className={styles.secondary} disabled={editingBusy} onClick={() => void loadVelune()}>Load VELUNE carton artwork</button></div>}
       <div className={styles.projectBar}>
         <label className={styles.nameField}>Project name<input value={name} maxLength={100} onChange={(event) => setName(event.target.value)} disabled={editingBusy} /></label>
         <div className={styles.actions}>
@@ -565,7 +597,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
             </div>
             <fieldset disabled={editingBusy || !pageImage} className={styles.cropControls}>
               <legend>Crop &amp; assign</legend>
-              <label>Box face<select value={activeFace} onChange={(event) => setActiveFace(event.target.value as BoxFace)}>{BOX_FACES.map((face) => <option key={face} value={face}>{BOX_FACE_LABELS[face]}{panels[face] ? " · has artwork" : " · unassigned"}</option>)}</select></label>
+              <label>Box face<select value={activeFace} onChange={(event) => selectFace(event.target.value as BoxFace)}>{BOX_FACES.map((face) => <option key={face} value={face}>{BOX_FACE_LABELS[face]}{panels[face] ? " · has artwork" : " · unassigned"}</option>)}</select></label>
               <div className={styles.cropNumbers}>{(["x", "y", "width", "height"] as const).map((key) => <label key={key}>{key === "x" ? "Left" : key === "y" ? "Top" : key === "width" ? "Width" : "Height"} %<input type="number" min={key === "x" || key === "y" ? 0 : 0.1} max={100} step="0.1" value={Number((crop[key] * 100).toFixed(2))} onChange={(event) => setCropValue(key, event.target.valueAsNumber)} /></label>)}</div>
               <button type="button" className={styles.secondary} onClick={() => setCrop({ ...FULL_ARTWORK_CROP })}>Use full page / image</button>
               <p className={styles.hint}>Selected face: {BOX_FACE_LABELS[activeFace]}{validDimensions ? ` · ${tidyNumber(selectedFaceSize.width)} × ${tidyNumber(selectedFaceSize.height)} mm` : ""}. Set the box’s measured size below.</p>
@@ -577,7 +609,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
       </section>
 
       <section className={styles.stage} aria-labelledby="artwork-box-title">
-        <header className={styles.stageHeader}><span className={styles.step}>02</span><div><h2 id="artwork-box-title">Build the package</h2><p>Choose a starting shape, enter physical measurements, and inspect each face.</p></div><span className={styles.coverageBadge}>{assigned.length} / 6 faces assigned</span></header>
+        <header className={styles.stageHeader}><span className={styles.step}>02</span><div><h2 id="artwork-box-title" ref={boxTitleRef} tabIndex={-1}>Build the package</h2><p>Choose a starting shape, enter physical measurements, and inspect each face.</p></div><span className={styles.coverageBadge}>{assigned.length} / 6 faces assigned</span></header>
         <div className={`${styles.stageBody} ${styles.boxLayout}`}>
           <fieldset disabled={editingBusy} className={styles.boxControls}>
             <legend className={styles.hidden}>Box dimensions and face artwork</legend>
@@ -605,8 +637,8 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
             <div className={styles.dimensions}>{(["width", "height", "depth"] as const).map((key) => <label key={key}>{key[0].toUpperCase() + key.slice(1)} ({unit})<input type="number" min="0.01" max={unit === "mm" ? 10000 : 393.7} step="any" value={dimensionInputs[key]} onChange={(event) => updateDimension(key, event.target.value)} /></label>)}</div>
             <p className={styles.hint}>Enter the package’s external width, height, and depth. Starter measurements are examples; artwork page size is separate.</p>
             {!validDimensions && <p className={styles.validation}>Each dimension must be greater than 0 and no more than 10,000 mm.</p>}
-            <div className={styles.sectionLabel}><h3>Face artwork</h3><span className={styles.hint}>Select a face to adjust it</span></div>
-            <div className={styles.faceGrid}>{BOX_FACES.map((face) => <button type="button" key={face} className={styles.face} aria-pressed={activeFace === face} onClick={() => setActiveFace(face)}>
+            <div className={styles.sectionLabel}><h3>Face artwork</h3><span className={styles.hint}>Select a face to turn &amp; edit it</span></div>
+            <div className={styles.faceGrid}>{BOX_FACES.map((face) => <button type="button" key={face} className={styles.face} aria-pressed={activeFace === face} onClick={() => selectFace(face)}>
               <span className={styles.faceThumb} style={{ backgroundColor: panels[face]?.background ?? baseColor }}>{panels[face] ? <img src={panels[face]!.dataUrl} alt="" style={{ transform: `rotate(${panels[face]!.rotation}deg)` }} /> : <span aria-hidden="true">＋</span>}</span>
               <strong>{BOX_FACE_LABELS[face]}</strong><small>{panels[face] ? "Assigned" : "Unassigned"}</small>
             </button>)}</div>

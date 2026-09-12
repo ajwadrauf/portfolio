@@ -8,7 +8,10 @@ import { formatGuideMeasurement, type PreviewGuideInfo } from "@/lib/previewGuid
 import type { BoxRenderer } from "./box-renderer";
 import styles from "./BoxPreview.module.css";
 
-export type BoxPreviewHandle = { renderAngle(angle: PackAngle, size: number): Promise<string> };
+export type BoxPreviewHandle = {
+  renderAngle(angle: PackAngle, size: number): Promise<string>;
+  selectView(angle: PackAngle): void;
+};
 export type BoxPreviewProps = BoxSettings & { displayUnit?: "mm" | "in" };
 
 const views: { angle: PackAngle; label: string }[] = [
@@ -22,21 +25,23 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
   const engineRef = useRef<BoxRenderer | null>(null);
   const bootRef = useRef<Promise<BoxRenderer | null> | null>(null);
   const settingsRef = useRef(settings);
+  const selectedAngle = useRef<PackAngle>("hero34");
   const revision = useRef(0);
   const drag = useRef<{ id: number; x: number; y: number } | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [view, setView] = useState<PackAngle | "custom">("hero34");
-  const [measurements, setMeasurements] = useState(false);
-  const [grid, setGrid] = useState(false);
+  const [measurements, setMeasurements] = useState(true);
+  const [grid, setGrid] = useState(true);
   const [guideInfo, setGuideInfo] = useState<PreviewGuideInfo | null>(null);
   const dimensionsValid = validBoxDimensions(settings.dimensions);
-  const guidesRef = useRef({ measurements: false, grid: false, unit: displayUnit });
+  const guidesRef = useRef({ measurements: true, grid: true, unit: displayUnit });
   guidesRef.current = { measurements: measurements && dimensionsValid, grid: grid && dimensionsValid, unit: displayUnit };
   const aidsActive = dimensionsValid && (measurements || grid);
 
   useImperativeHandle(ref, () => ({
+    selectView,
     async renderAngle(angle, size) {
       const engine = engineRef.current ?? await bootRef.current;
       if (!engine) throw new Error("The 3D preview is unavailable. Retry the preview before exporting.");
@@ -51,7 +56,7 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
     if (!container) return;
     setStatus("loading");
     setError("");
-    setView("hero34");
+    setView(selectedAngle.current);
     bootRef.current = import("./box-renderer").then(async ({ createBoxRenderer }) => {
       if (cancelled) return null;
       const engine = createBoxRenderer(container, (message) => {
@@ -62,6 +67,7 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
       localEngine = engine;
       engineRef.current = engine;
       engine.setGuides(guidesRef.current);
+      engine.setAngle(selectedAngle.current);
       const updateRevision = ++revision.current;
       await engine.update(settingsRef.current);
       if (!cancelled && updateRevision === revision.current) setStatus("ready");
@@ -108,6 +114,8 @@ export const BoxPreview = forwardRef<BoxPreviewHandle, BoxPreviewProps>(function
   }
 
   function selectView(angle: PackAngle) {
+    // Remember selections made while the renderer is booting or awaiting a retry.
+    selectedAngle.current = angle;
     engineRef.current?.setAngle(angle);
     setView(angle);
   }

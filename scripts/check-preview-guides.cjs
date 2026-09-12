@@ -194,7 +194,7 @@ async function checkPreviewLifecycle() {
     useEffect(fn, deps) { const i = cursor++; if (!effects[i] || !same(effects[i].deps, deps)) effects[i] = { deps, fn, pending: true, cleanup: effects[i]?.cleanup }; },
     useImperativeHandle(ref, create) { ref.current = create(); },
   };
-  const engine = { update(settings) { operations.push({ method: 'update', settings }); return Promise.resolve(); }, setGuides(options) { operations.push({ method: 'setGuides', options: { ...options } }); }, dispose() { operations.push({ method: 'dispose' }); }, orbit() {}, setAngle() {}, renderAngle: async () => 'data:image/png;base64,clean' };
+  const engine = { update(settings) { operations.push({ method: 'update', settings }); return Promise.resolve(); }, setGuides(options) { operations.push({ method: 'setGuides', options: { ...options } }); }, dispose() { operations.push({ method: 'dispose' }); }, orbit() { operations.push({ method: 'orbit' }); }, setAngle(angle) { operations.push({ method: 'setAngle', angle }); }, renderAngle: async () => 'data:image/png;base64,clean' };
   const load = loadModules();
   const mod = { exports: {} }, file = path.join(root, 'src/components/packshots/BoxPreview.tsx');
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
@@ -222,9 +222,20 @@ async function checkPreviewLifecycle() {
   }
   async function settle() { for (let i = 0; i < 5; i++) { await new Promise(setImmediate); render(); } }
   const button = (name) => walk(tree).find((node) => node.type === 'button' && textOf(node).trim() === name);
-  render(); await settle();
-  check('preview boots with guides configured before its first artwork update', () => { assert.equal(operations[0].method, 'setGuides'); assert.equal(operations[1].method, 'update'); assert.equal(operations.filter((op) => op.method === 'update').length, 1); assert.equal(button('Measurements').props.disabled, false); });
+  render(); ref.current.selectView('back'); render(); await settle();
+  check('preview boots with both guides on before its first artwork update', () => { assert.equal(operations[0].method, 'setGuides'); assert.equal(operations[0].options.measurements, true); assert.equal(operations[0].options.grid, true); assert.equal(operations[2].method, 'update'); assert.equal(operations.filter((op) => op.method === 'update').length, 1); assert.equal(button('Measurements').props.disabled, false); assert.equal(button('Measurements').props['aria-pressed'], true); assert.equal(button('Grid').props['aria-pressed'], true); });
+  check('face selection before renderer startup is applied when ready', () => { assert.equal(operations[1].angle, 'back'); assert.equal(button('Back').props['aria-pressed'], true); });
+  for (const face of ['front', 'back', 'left', 'right', 'top', 'bottom']) {
+    ref.current.selectView(face); render();
+    check(`${face} artwork selection changes camera and angle indicator`, () => { assert.equal(operations.at(-1).angle, face); assert.equal(button(face[0].toUpperCase() + face.slice(1)).props['aria-pressed'], true); });
+  }
+  button('←').props.onClick(); render();
+  check('free rotation remains available after a face selection', () => { assert.equal(operations.at(-1).method, 'orbit'); assert.equal(button('Bottom').props['aria-pressed'], false); });
+  ref.current.selectView('bottom'); render();
+  check('reselecting the same artwork face restores its angle after orbiting', () => { assert.equal(operations.at(-1).angle, 'bottom'); assert.equal(button('Bottom').props['aria-pressed'], true); });
   const updatesBefore = operations.filter((op) => op.method === 'update').length;
+  button('Measurements').props.onClick(); render(); button('Grid').props.onClick(); render();
+  check('default guides can still be switched off', () => { assert.equal(operations.at(-1).options.measurements, false); assert.equal(operations.at(-1).options.grid, false); });
   button('Measurements').props.onClick(); render(); button('Grid').props.onClick(); render();
   props = { ...props, displayUnit: 'in' }; dirty = true; render(); await settle();
   check('measurement/grid/unit changes never re-run artwork update', () => { assert.equal(operations.filter((op) => op.method === 'update').length, updatesBefore); const options = operations.at(-1).options; assert.equal(options.measurements, true); assert.equal(options.grid, true); assert.equal(options.unit, 'in'); });
