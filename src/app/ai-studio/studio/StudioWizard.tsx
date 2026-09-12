@@ -11,6 +11,7 @@ import { requestUnlockForDemo, useHealth, type Health } from "@/lib/useHealth";
 import { DELIVERABLES, type DeliverableSpec } from "@/lib/deliverables";
 import { MODELS, estimateCost } from "@/lib/models";
 import { loadCampaignHandoff, validCampaignHandoffId, type CampaignHandoffRecord } from "@/lib/campaignHandoff";
+import { campaignImageInputs, CAMPAIGN_SET_PREPARE_BYTES, type CampaignReference } from "@/lib/campaignReferences";
 import { prepareCampaignReference } from "@/lib/campaignReferenceImage";
 import { getAngle } from "@/lib/packshot";
 import type {
@@ -42,7 +43,8 @@ const SAMPLES = [
   { label: "Coffee bag", file: "/samples/coffee.svg" },
 ];
 
-type ImportedPackshot = CampaignHandoffRecord & { previewUrl: string };
+type ImportedView = { blob: Blob; meta: CampaignHandoffRecord["meta"]; previewUrl: string };
+type ImportedPackshot = CampaignHandoffRecord & { previewUrl: string; views: ImportedView[] };
 
 function removeHandoffFromUrl() {
   const url = new URL(window.location.href);
@@ -76,6 +78,9 @@ export function StudioWizard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [importedPackshot, setImportedPackshot] = useState<ImportedPackshot | null>(null);
+  const [handoffApplied, setHandoffApplied] = useState(false);
+  const [leadView, setLeadView] = useState(0);
+  const [referenceImages, setReferenceImages] = useState<CampaignReference[]>([]);
   const [handoffId, setHandoffId] = useState<string | null>(null);
   const [handoffLoading, setHandoffLoading] = useState(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
@@ -99,7 +104,7 @@ export function StudioWizard() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [sessionSpend, setSessionSpend] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
-  currentDraft.current = { schema: "campaign-draft-v1", step, imageDataUrl, productContext, questions, answers, brief, selected, modelChoice, jobs, snapshots, workflow, approvedHeroId, exactText };
+  currentDraft.current = { schema: "campaign-draft-v1", step, imageDataUrl, referenceImages, productContext, questions, answers, brief, selected, modelChoice, jobs, snapshots, workflow, approvedHeroId, exactText };
 
   function flushDraft(record = pendingDraftSave.current): Promise<void> {
     if (!record) return Promise.resolve();
@@ -114,7 +119,7 @@ export function StudioWizard() {
     if (!projectReady || !project || hydratedId === project.id) return;
     const saved = readCampaignDraft(project.drafts.campaign) ?? (project.example === "velune" ? veluneCampaignDraft() : emptyCampaignDraft());
     currentDraft.current = saved;
-    setStep(saved.step); setImageDataUrl(saved.imageDataUrl); setProductContext(saved.productContext); setQuestions(saved.questions); setAnswers(saved.answers); setBrief(saved.brief); setSelected(saved.selected); setModelChoice(saved.modelChoice); setJobs(saved.jobs); setSnapshots(saved.snapshots); setWorkflow(saved.workflow); setApprovedHeroId(saved.approvedHeroId); setExactText(saved.exactText);
+    setStep(saved.step); setImageDataUrl(saved.imageDataUrl); setReferenceImages(saved.referenceImages ?? []); setProductContext(saved.productContext); setQuestions(saved.questions); setAnswers(saved.answers); setBrief(saved.brief); setSelected(saved.selected); setModelChoice(saved.modelChoice); setJobs(saved.jobs); setSnapshots(saved.snapshots); setWorkflow(saved.workflow); setApprovedHeroId(saved.approvedHeroId); setExactText(saved.exactText);
     setError(null); setSaveMessage(saved.jobs.some((job) => ["recoverable", "uncertain"].includes(job.status)) ? "Saved work restored. Check any unfinished request; nothing has been resubmitted." : "Project loaded. No generation has started.");
     setHydratedId(project.id);
   }, [projectReady, project, hydratedId]);
@@ -138,7 +143,7 @@ export function StudioWizard() {
       void flushDraft(record).then(() => { if (projectIdRef.current === record.projectId) setSaveMessage("Saved on this device."); }).catch(() => { if (projectIdRef.current === record.projectId) setSaveMessage("Draft could not save. Resolve project storage before generating."); });
     }, 500);
     return () => clearTimeout(timer);
-  }, [project?.id, hydratedId, step, imageDataUrl, productContext, questions, answers, brief, selected, modelChoice, jobs, snapshots, workflow, approvedHeroId, exactText, renderBusy, saveDraft]);
+  }, [project?.id, hydratedId, step, imageDataUrl, referenceImages, productContext, questions, answers, brief, selected, modelChoice, jobs, snapshots, workflow, approvedHeroId, exactText, renderBusy, saveDraft]);
 
 
   useEffect(() => {
@@ -162,7 +167,9 @@ export function StudioWizard() {
       // A manual image choice, dismissal or newer intake always wins over a slow read.
       if (!intakeMounted.current || sequence !== intakeSequence.current) return;
       if (!record) throw new Error("This packshot is no longer available in this browser. Transfers last 24 hours and stay in the browser where you sent them. Send the view again from Packshots, or upload its downloaded PNG.");
-      setImportedPackshot({ ...record, previewUrl: URL.createObjectURL(record.blob) });
+      const views = [{ blob: record.blob, meta: record.meta }, ...(record.additionalViews ?? [])].map((view) => ({ ...view, previewUrl: URL.createObjectURL(view.blob) }));
+      setImportedPackshot({ ...record, previewUrl: views[0].previewUrl, views });
+      setLeadView(0); setHandoffApplied(false);
     } catch (e) {
       if (!intakeMounted.current || sequence !== intakeSequence.current) return;
       setHandoffError(e instanceof Error ? e.message : "This browser could not open the packshot. Try again, or upload the downloaded image below.");
@@ -183,12 +190,13 @@ export function StudioWizard() {
 
   useEffect(() => {
     if (!importedPackshot) return;
-    return () => URL.revokeObjectURL(importedPackshot.previewUrl);
+    return () => importedPackshot.views.forEach((view) => URL.revokeObjectURL(view.previewUrl));
   }, [importedPackshot]);
 
   const clearHandoff = useCallback(() => {
     intakeSequence.current += 1;
     setImportedPackshot(null);
+    setHandoffApplied(false);
     setHandoffId(null);
     setHandoffError(null);
     setHandoffLoading(false);
@@ -216,7 +224,7 @@ export function StudioWizard() {
   }, [project?.drafts.routing, project?.id, hydratedId, saveDraft]);
 
   // ---------- Step 1 → 2: analyze ----------
-  const handleImage = useCallback(async (src: string | Blob, fromPackshots = false) => {
+  const handleImage = useCallback(async (src: string | Blob, fromPackshots = false, views: ImportedView[] = []) => {
     if (analyzeLock.current) return;
     analyzeLock.current = true;
     const originProject = projectIdRef.current;
@@ -226,23 +234,34 @@ export function StudioWizard() {
     setError(null);
     setBusy(true);
     try {
-      const dataUrl = await prepareCampaignReference(src);
+      const prepared: CampaignReference[] = [];
+      if (views.length > 1) {
+        for (const view of views) prepared.push({ name: view.meta.name, dataUrl: await prepareCampaignReference(view.blob, Math.floor(Math.min(CAMPAIGN_SET_PREPARE_BYTES / views.length, 3_400_000 / (views.length + 1)))) });
+      }
+      const dataUrl = prepared[0]?.dataUrl ?? await prepareCampaignReference(src);
       if (projectIdRef.current !== originProject) return;
-      setImageDataUrl(dataUrl);
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataUrl: dataUrl }),
+        body: JSON.stringify({ imageDataUrl: dataUrl, referenceImages: prepared }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Analysis failed");
       const data = json as AnalyzeResponse;
       if (projectIdRef.current !== originProject) return;
+      setImageDataUrl(dataUrl);
+      setReferenceImages(prepared);
+      setApprovedHeroId(null);
+      // Keep every view; choose a compatible model instead of truncating the set.
+      if (prepared.length > 1) setModelChoice((previous) => ({ ...previous, ...Object.fromEntries(DELIVERABLES.filter((item) => item.kind === "still").map((item) => [item.id, (MODELS[previous[item.id]]?.maxReferenceImages ?? 1) >= prepared.length ? previous[item.id] : item.modelOptions.find((id) => (MODELS[id].maxReferenceImages ?? 1) >= prepared.length) ?? previous[item.id]])) }));
+      setBrief(null);
+      setHandoffApplied(fromPackshots);
+      if (fromPackshots) removeHandoffFromUrl();
       setProductContext(data.productContext);
       setQuestions(data.questions);
       setAnswers(Object.fromEntries(data.questions.map((q) => [q.id, q.defaultAnswer])));
       setStep(data.questions.length > 0 ? "clarify" : "brief");
-      if (data.questions.length === 0) await generateBrief(dataUrl, data.productContext, []);
+      if (data.questions.length === 0) await generateBrief(dataUrl, data.productContext, [], prepared);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -254,7 +273,7 @@ export function StudioWizard() {
 
   // ---------- Step 2 → 3: brief ----------
   const generateBrief = useCallback(
-    async (img: string, ctx: ProductContext, answerList: Answer[]) => {
+    async (img: string, ctx: ProductContext, answerList: Answer[], references: CampaignReference[] = []) => {
       if (briefLock.current) return;
       briefLock.current = true;
       const originProject = projectIdRef.current;
@@ -264,7 +283,7 @@ export function StudioWizard() {
         const res = await fetch("/api/brief", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageDataUrl: img, productContext: ctx, answers: answerList }),
+          body: JSON.stringify({ imageDataUrl: img, referenceImages: references, productContext: ctx, answers: answerList }),
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error ?? "Brief generation failed");
@@ -288,8 +307,8 @@ export function StudioWizard() {
       question: q.question,
       answer: answers[q.id] ?? q.defaultAnswer,
     }));
-    void generateBrief(imageDataUrl, productContext, answerList);
-  }, [answers, generateBrief, imageDataUrl, productContext, questions]);
+    void generateBrief(imageDataUrl, productContext, answerList, referenceImages);
+  }, [answers, generateBrief, imageDataUrl, productContext, questions, referenceImages]);
 
   // ---------- Cost preview ----------
   const selectedSpecs = useMemo(
@@ -298,7 +317,8 @@ export function StudioWizard() {
   );
   const approvedHero = jobs.find((job) => job.id === approvedHeroId && isRealHero(job)) ?? null;
   const plannedSpecs = workflow === "hero" && !approvedHero ? DELIVERABLES.filter((item) => item.id === "hero_still") : selectedSpecs.filter((item) => !(workflow === "hero" && approvedHero && item.id === "hero_still"));
-  const totalEstimate = plannedSpecs.reduce((sum, item) => sum + (workflow === "hero" && approvedHero && exactText && item.id.startsWith("promo_tile_") ? 0 : estimateCost(modelChoice[item.id], { seconds: item.durationSeconds })), 0);
+  const stillReferenceCount = referenceImages.length ? referenceImages.length + (workflow === "hero" && approvedHero ? 1 : 0) : imageDataUrl ? 1 : 0;
+  const totalEstimate = plannedSpecs.reduce((sum, item) => sum + (workflow === "hero" && approvedHero && exactText && item.id.startsWith("promo_tile_") ? 0 : estimateCost(modelChoice[item.id], { seconds: item.durationSeconds, referenceImages: item.kind === "still" ? stillReferenceCount : 1 })), 0);
 
   // Every run captures its project and request snapshot before any paid submission.
   type RunScope = { projectId: string; draft: CampaignDraft; persist: typeof saveDraft; asset: typeof saveAsset };
@@ -352,7 +372,7 @@ export function StudioWizard() {
       }
       const reference = snapshot.imageDataUrl && !snapshot.imageDataUrl.startsWith("data:") ? await prepareCampaignReference(snapshot.imageDataUrl) : snapshot.imageDataUrl;
       submitted = true;
-      const response = await fetch(spec.kind === "video" ? "/api/generate/video" : "/api/generate/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deliverableId: spec.id, modelId: job.modelId, brief: snapshot.brief, imageDataUrl: reference, approvedHero: Boolean(snapshot.approvedHeroId) }) });
+      const response = await fetch(spec.kind === "video" ? "/api/generate/video" : "/api/generate/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deliverableId: spec.id, modelId: job.modelId, brief: snapshot.brief, imageDataUrl: reference, ...(spec.kind === "still" ? { referenceImages: snapshot.referenceImages } : {}), approvedHero: Boolean(snapshot.approvedHeroId) }) });
       const result = await response.json();
       if (!response.ok) {
         await updateRun(scope, job.id, { status: response.status >= 500 ? "uncertain" : "failed", error: result.error ?? "The generation request did not finish." }); return;
@@ -380,6 +400,7 @@ export function StudioWizard() {
   async function runGeneration(retry?: Job) {
     if (generationLock.current || !project || hydratedId !== project.id || !brief) return;
     if (requestUnlockForDemo(health)) return;
+    if (busy) return;
     generationLock.current = true;
     const origin = project.id;
     try {
@@ -387,14 +408,25 @@ export function StudioWizard() {
       const specs = retry ? DELIVERABLES.filter((item) => item.id === retry.deliverableId) : workflow === "hero" && !approved ? DELIVERABLES.filter((item) => item.id === "hero_still") : selectedSpecs.filter((item) => !(workflow === "hero" && approved && item.id === "hero_still"));
       if (!specs.length) { setError("Choose at least one adaptation."); return; }
       const prior = retry ? snapshots[retry.snapshotId] : undefined;
-      const snapshot: CampaignSnapshot = prior ? { ...prior, id: snapshotId } : { id: snapshotId, brief: structuredClone(brief), imageDataUrl: approved && workflow === "hero" ? campaignMedia(approved)! : imageDataUrl, approvedHeroId: approved && workflow === "hero" ? approved.id : undefined, exactText };
-      const price = specs.reduce((sum, item) => sum + (snapshot.exactText && snapshot.approvedHeroId && item.id.startsWith("promo_tile_") ? 0 : estimateCost(retry?.modelId ?? modelChoice[item.id], { seconds: item.durationSeconds })), 0);
+      const snapshot: CampaignSnapshot = prior ? { ...prior, id: snapshotId } : { id: snapshotId, brief: structuredClone(brief), referenceImages: structuredClone(referenceImages), imageDataUrl: approved && workflow === "hero" ? campaignMedia(approved)! : imageDataUrl, approvedHeroId: approved && workflow === "hero" ? approved.id : undefined, exactText };
+      const referenceCount = snapshot.referenceImages?.length ? snapshot.referenceImages.length + (snapshot.approvedHeroId ? 1 : 0) : snapshot.imageDataUrl ? 1 : 0;
+      for (const item of specs) {
+        if (item.kind !== "still" || (snapshot.exactText && snapshot.approvedHeroId && item.id.startsWith("promo_tile_"))) continue;
+        const model = MODELS[retry?.modelId ?? modelChoice[item.id]];
+        if (referenceCount > (model.maxReferenceImages ?? 1)) throw new Error(`${model.label} cannot use all ${referenceCount} images. Choose Nano Banana Pro for ${item.label} to keep the whole set.`);
+      }
+      const price = specs.reduce((sum, item) => sum + (snapshot.exactText && snapshot.approvedHeroId && item.id.startsWith("promo_tile_") ? 0 : estimateCost(retry?.modelId ?? modelChoice[item.id], { seconds: item.durationSeconds, referenceImages: item.kind === "still" ? referenceCount : 1 })), 0);
       if (health?.live && !window.confirm(`${retry?.status === "uncertain" ? "The earlier attempt may already have been billed. Check provider history first. " : ""}${retry ? "Create one new attempt" : `Generate ${specs.length} selected assets`} for approximately $${price.toFixed(2)}? Existing files and requests are kept.`)) return;
       if (snapshot.imageDataUrl && !snapshot.imageDataUrl.startsWith("data:")) {
         const source = snapshot.imageDataUrl.startsWith("/studio/") ? snapshot.imageDataUrl : campaignDownloadSource(snapshot.imageDataUrl, "image");
         const response = await fetch(source); if (!response.ok) throw new Error("The approved image is unavailable. Download or choose it again before generating.");
-        snapshot.imageDataUrl = await prepareCampaignReference(await response.blob());
+        snapshot.imageDataUrl = await prepareCampaignReference(await response.blob(), snapshot.referenceImages?.length ? 600_000 : undefined);
       }
+      if (snapshot.imageDataUrl?.startsWith("data:") && (snapshot.imageDataUrl.length > 2_500_000 || (snapshot.referenceImages?.length && snapshot.approvedHeroId && snapshot.imageDataUrl.length > 600_000))) {
+        snapshot.imageDataUrl = await prepareCampaignReference(snapshot.imageDataUrl, snapshot.referenceImages?.length ? 600_000 : undefined);
+      }
+      // Validate the combined body before saving an intent or submitting any sibling job.
+      campaignImageInputs(snapshot.imageDataUrl, snapshot.referenceImages);
       setRenderBusy(true); setError(null);
       await flushDraft();
       const newJobs: Job[] = specs.map((item) => ({ id: crypto.randomUUID(), deliverableId: item.id, modelId: retry?.modelId ?? modelChoice[item.id], snapshotId, status: "queued", cost: 0 }));
@@ -441,6 +473,7 @@ export function StudioWizard() {
     clearHandoff();
     setStep("upload");
     setImageDataUrl(null);
+    setReferenceImages([]);
     setProductContext(null);
     setQuestions([]);
     setAnswers({});
@@ -464,8 +497,7 @@ export function StudioWizard() {
         </div>
       )}
 
-      {step === "upload" && (
-        <>
+      {!handoffApplied && <>
           {handoffLoading && (
             <div role="status" className="card mt-8 flex items-center gap-3 p-6 text-muted">
               <Spinner /> Opening your completed packshot…
@@ -483,7 +515,10 @@ export function StudioWizard() {
               <p className="mt-3 text-sm text-muted">Opening a transfer does not run analysis or generate anything.</p>
             </section>
           )}
-          {importedPackshot && <ImportedPackshotCard packshot={importedPackshot} busy={busy} onAnalyze={() => void handleImage(importedPackshot.blob, true)} onDismiss={() => { clearHandoff(); setError(null); setImageDataUrl(null); }} />}
+          {importedPackshot && <ImportedPackshotCard packshot={importedPackshot} busy={busy || renderBusy} leadView={leadView} onLeadView={setLeadView} onAnalyze={() => { const views = [importedPackshot.views[leadView], ...importedPackshot.views.filter((_, index) => index !== leadView)]; void handleImage(views[0].blob, true, views); }} onDismiss={() => { clearHandoff(); setError(null); }} />}
+      </>}
+      {step === "upload" && (
+        <>
           {project && project.assets.some((a) => a.kind === "image" && a.status === "ready") && <section className="card mt-8 p-6" aria-label="Use a project image"><h2 className="text-lg font-semibold">Continue with a project asset</h2><p className="mt-2 text-sm text-muted">Choose a completed packshot or reference already in this project. Selecting it costs nothing; analysis starts only when you press the button.</p><label className="mt-4 block text-sm">Image from this project<select className="input mt-2" value={selectedProjectAsset} disabled={busy} onChange={(e) => setSelectedProjectAsset(e.target.value)}><option value="">Choose an image</option>{project.assets.filter((a) => a.kind === "image" && a.status === "ready").map((a) => <option key={a.id} value={a.id}>{a.name} · {a.source}</option>)}</select></label>{(() => { const asset = project.assets.find((a) => a.id === selectedProjectAsset && a.kind === "image" && a.status === "ready"); return asset ? <div className="mt-4 flex flex-wrap items-center gap-4"><img className="h-32 w-32 object-contain" src={asset.dataUrl || asset.url} alt={asset.name} /><div><p className="mb-3 max-w-lg text-sm text-muted">{asset.role}</p><button type="button" className="btn-primary" disabled={busy} onClick={() => void handleImage(asset.dataUrl || asset.url!)}>Analyze selected asset →</button><p className="mt-2 text-xs text-muted">{health?.live ? "Live vision analysis uses your configured provider." : "Demo analysis · no provider charge"}</p></div></div> : null; })()}</section>}
           <UploadStep
             busy={busy}
@@ -497,10 +532,12 @@ export function StudioWizard() {
 
       {step !== "upload" && importedPackshot && (
         <div className="card mt-6 flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
-          <p className="min-w-0 break-words"><span className="font-semibold">From Packshots:</span> {importedPackshot.meta.name} · {getAngle(importedPackshot.meta.angle).label} · {importedPackshot.meta.variant}</p>
+          <p className="min-w-0 break-words"><span className="font-semibold">From Packshots:</span> {importedPackshot.views.length > 1 ? `${importedPackshot.views.length} rendered views` : importedPackshot.meta.name} · {importedPackshot.meta.variant}</p>
           <span className={importedPackshot.meta.review === "reviewed" ? "text-muted" : "text-warning"}>{importedPackshot.meta.review === "reviewed" ? "Review marked in Packshots" : "Human review still needed"}</span>
         </div>
       )}
+
+      {step !== "upload" && referenceImages.length > 1 && <section className="card mt-6 p-5" aria-label="Campaign reference set"><div className="flex flex-wrap justify-between gap-3"><h2 className="font-semibold">{referenceImages.length} product views in this campaign</h2><span className="text-xs text-accent">Saved with your brief</span></div><p className="mt-2 text-sm text-muted">Stills use all these views. {approvedHero && workflow === "hero" ? "The approved hero also guides adaptations and starts each video." : "Videos start from the lead view."} Models that cannot take the whole set are unavailable.</p><div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">{referenceImages.map((item, index) => <figure key={index}><img src={item.dataUrl} alt={item.name} className="aspect-square w-full rounded border border-border-soft bg-white object-contain" /><figcaption className="mt-2 break-words text-xs">{item.name}{item.dataUrl === imageDataUrl && " · Lead"}</figcaption></figure>)}</div></section>}
 
       {step === "clarify" && productContext && (
         <ClarifyStep
@@ -536,8 +573,9 @@ export function StudioWizard() {
           count={plannedSpecs.length}
           onGenerate={() => void runGeneration()}
           workflow={workflow} onWorkflow={setWorkflow} approvedHero={jobs.find((job) => job.id === approvedHeroId) ?? null}
-          exactText={exactText} onExactText={setExactText} canGenerate={Boolean(project && hydratedId === project.id) && !renderBusy}
-          heroEstimate={estimateCost(modelChoice.hero_still)}
+          exactText={exactText} onExactText={setExactText} canGenerate={Boolean(project && hydratedId === project.id) && !renderBusy && !busy}
+          heroEstimate={estimateCost(modelChoice.hero_still, { referenceImages: stillReferenceCount })}
+          referenceCount={stillReferenceCount}
           onBack={() => setStep("brief")}
         />
       )}
@@ -556,12 +594,19 @@ function ImportedPackshotCard({
   busy,
   onAnalyze,
   onDismiss,
+  leadView, onLeadView,
 }: {
   packshot: ImportedPackshot;
   busy: boolean;
   onAnalyze: () => void;
   onDismiss: () => void;
+  leadView: number; onLeadView: (index: number) => void;
 }) {
+  if (packshot.views.length > 1) return <section aria-labelledby="imported-packshot-heading" className="card mt-8 overflow-hidden border-accent/35">
+    <div className="bg-accent/5 p-6 md:p-8"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Packshots → Campaign Studio</p><h1 id="imported-packshot-heading" className="mt-3 text-[1.75rem] tracking-[-0.03em]">Your product, from every side.</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">All {packshot.views.length} selected views arrived together. Choose the lead view for the campaign. Every view will inform the brief and still images; videos start from the lead view or an approved hero.</p></div>
+    <div className="p-6 md:p-8"><fieldset disabled={busy}><legend className="mb-4 font-semibold">Choose a lead view</legend><div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">{packshot.views.map((view, index) => <label key={index} className={`cursor-pointer rounded-lg border p-2 ${leadView === index ? "border-accent bg-accent/5" : "border-border-soft"}`}><img src={view.previewUrl} alt={view.meta.name} className="aspect-square w-full bg-white object-contain" /><span className="mt-3 flex items-center gap-2 text-xs"><input type="radio" name="campaign-lead-view" checked={leadView === index} onChange={() => onLeadView(index)} className="accent-[var(--accent)]" />{getAngle(view.meta.angle).label}</span></label>)}</div></fieldset>
+    <p className="mt-4 text-xs text-muted">Review the artwork and proportions before generating. Your original PNGs stay intact.</p><div className="mt-5 flex flex-wrap gap-3"><button type="button" className="btn-primary" disabled={busy} onClick={onAnalyze}>{busy ? <><Spinner /> Preparing and analyzing your views…</> : `Analyze all ${packshot.views.length} views →`}</button><button type="button" className="btn-secondary" disabled={busy} onClick={onDismiss}>Keep my current campaign</button></div><p className="mt-3 text-xs text-muted">Opening this set is free. Analyze uses paid vision analysis only in live mode. Still-image models are selected to fit the whole set; review their prices before generating.</p></div>
+  </section>;
   const meta = packshot.meta;
   return (
     <section aria-labelledby="imported-packshot-heading" className="card mt-8 overflow-hidden border-accent/35">
@@ -940,7 +985,7 @@ function DeliverablesStep({
   live,
   count,
   onGenerate,
-  onBack, workflow, onWorkflow, approvedHero, exactText, onExactText, canGenerate, heroEstimate,
+  onBack, workflow, onWorkflow, approvedHero, exactText, onExactText, canGenerate, heroEstimate, referenceCount,
 }: {
   selected: Record<string, boolean>;
   setSelected: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
@@ -952,7 +997,7 @@ function DeliverablesStep({
   onGenerate: () => void;
   onBack: () => void;
   workflow: "batch" | "hero"; onWorkflow: (value: "batch" | "hero") => void; approvedHero: Job | null;
-  exactText: boolean; onExactText: (value: boolean) => void; canGenerate: boolean; heroEstimate: number;
+  exactText: boolean; onExactText: (value: boolean) => void; canGenerate: boolean; heroEstimate: number; referenceCount: number;
 }) {
   const heroFirst = workflow === "hero" && !approvedHero;
   return (
@@ -963,7 +1008,7 @@ function DeliverablesStep({
         job. Costs are shown before anything runs.
       </p>
       <div className="mt-6 grid gap-3 sm:grid-cols-2" role="group" aria-label="Campaign production workflow">
-        <button type="button" onClick={() => onWorkflow("batch")} aria-pressed={workflow === "batch"} className={`rounded-xl border p-5 text-left ${workflow === "batch" ? "border-accent bg-accent/5" : "border-border-soft"}`}><span className="block font-semibold">Fast batch</span><span className="mt-2 block text-sm leading-relaxed text-muted">Independent ideas from one product reference. Generate your selected formats together.</span></button>
+        <button type="button" onClick={() => onWorkflow("batch")} aria-pressed={workflow === "batch"} className={`rounded-xl border p-5 text-left ${workflow === "batch" ? "border-accent bg-accent/5" : "border-border-soft"}`}><span className="block font-semibold">Fast batch</span><span className="mt-2 block text-sm leading-relaxed text-muted">Independent ideas from your product references. Generate your selected formats together.</span></button>
         <button type="button" onClick={() => onWorkflow("hero")} aria-pressed={workflow === "hero"} className={`rounded-xl border p-5 text-left ${workflow === "hero" ? "border-accent bg-accent/5" : "border-border-soft"}`}><span className="block font-semibold">Approve a hero, then adapt</span><span className="mt-2 block text-sm leading-relaxed text-muted">Review one image first. Its actual pixels guide every adaptation; exact EN/FR copy can be added locally.</span></button>
       </div>
       {heroFirst && <p className="mt-4 rounded-lg bg-surface-2 p-4 text-sm">First step: generate only the hero for {live ? `~$${heroEstimate.toFixed(2)}` : "$0 in demo"}. Review it before spending on the rest of the campaign.</p>}
@@ -971,7 +1016,7 @@ function DeliverablesStep({
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {DELIVERABLES.map((d) => {
           const localText = workflow === "hero" && approvedHero && exactText && d.id.startsWith("promo_tile_");
-          const cost = localText ? 0 : estimateCost(modelChoice[d.id], { seconds: d.durationSeconds });
+          const cost = localText ? 0 : estimateCost(modelChoice[d.id], { seconds: d.durationSeconds, referenceImages: d.kind === "still" ? referenceCount : 1 });
           const on = heroFirst ? d.id === "hero_still" : workflow === "hero" && approvedHero && d.id === "hero_still" ? false : selected[d.id];
           return (
             <div
@@ -1011,8 +1056,8 @@ function DeliverablesStep({
                   }
                 >
                   {d.modelOptions.map((m) => (
-                    <option key={m} value={m}>
-                      {MODELS[m].label} — {MODELS[m].unit === "second" ? `$${MODELS[m].unitCost}/s` : `$${MODELS[m].unitCost}/img`}
+                    <option key={m} value={m} disabled={d.kind === "still" && referenceCount > (MODELS[m].maxReferenceImages ?? 1)}>
+                      {MODELS[m].label}{d.kind === "still" && referenceCount > (MODELS[m].maxReferenceImages ?? 1) ? ` (up to ${MODELS[m].maxReferenceImages ?? 1} references)` : ""} · {MODELS[m].unit === "second" ? `$${MODELS[m].unitCost}/s` : `$${MODELS[m].unitCost}/img`}
                     </option>
                   ))}
                 </select>

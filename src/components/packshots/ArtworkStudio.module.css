@@ -178,3 +178,16 @@
 @media (prefers-reduced-motion: reduce) {
   .primary, .secondary, .textButton { transition: none; }
 }
+
+.campaignTransfer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, .65fr); gap: 28px; align-items: center; background: #f0e7ed; border: 1px solid #cfb7c7; border-radius: 8px; padding: 25px; margin: 0 0 20px; }
+.transferEyebrow { color: var(--accent); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 9px; }
+.campaignTransfer h3 { font-size: 24px; line-height: 1.2; letter-spacing: -.03em; }
+.campaignTransfer h3 + p { max-width: 520px; font-size: 13px; line-height: 1.7; margin-top: 10px; }
+.selectionTools { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 15px; font-size: 12px; }
+.selectionTools span { font-weight: 600; }
+.selectionTools button { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.selectionTools button:disabled { opacity: .5; cursor: not-allowed; }
+.resultSelected { border-color: var(--accent); }
+.studio .viewSelection { display: flex; align-items: center; gap: 9px; min-height: 44px; font-size: 12px; cursor: pointer; }
+.studio .viewSelection input[type="checkbox"] { flex: 0 0 17px; width: 17px; height: 17px; min-height: 17px; padding: 0; accent-color: var(--accent); }
+@media (max-width: 700px) { .campaignTransfer { grid-template-columns: 1fr; gap: 18px; padding: 20px; } }

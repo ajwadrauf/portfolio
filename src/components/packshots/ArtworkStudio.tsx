@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { PACK_ANGLES, type PackAngle } from "@/lib/packshot";
 import {
   BOX_FACES, BOX_FACE_LABELS, artworkManifest, coverageForAngle, faceDimensions,
@@ -17,7 +17,8 @@ import {
   readPackagePreset, serializePresetLibrary, type PackagePreset, type PresetProvenance,
 } from "@/lib/package-presets";
 import { BoxPreview, type BoxPreviewHandle } from "./BoxPreview";
-import { PackshotActions as CampaignHandoffButton } from "./PackshotActions";
+import { CampaignHandoffButton } from "./CampaignHandoffButton";
+import type { CampaignHandoffSource } from "@/lib/campaignHandoff";
 import { useStudioProject } from "@/components/studio/StudioProjectProvider";
 import { VELUNE_PACKAGE_PANELS, VELUNE_PACKAGE_COLOR } from "@/lib/velunePackaging";
 import styles from "./ArtworkStudio.module.css";
@@ -120,6 +121,15 @@ export function ArtworkStudio({ onUseAsReferences, exampleRequest = 0, onBusyCha
   const [size, setSize] = useState(2048);
   const [revision, setRevision] = useState(0);
   const [batch, setBatch] = useState<RenderBatch | null>(null);
+  const [campaignAngles, setCampaignAngles] = useState<PackAngle[]>([]);
+  const campaignSources = useMemo<CampaignHandoffSource[]>(() => batch ? batch.views.filter((view) => campaignAngles.includes(view.angle)).map((view) => {
+    const coverage = coverageForAngle(view.angle, batch.settings.panels, batch.settings.shape);
+    return { source: view.dataUrl, meta: {
+      name: `${batch.name || "Package"} · ${PACK_ANGLES.find((angle) => angle.id === view.angle)!.label}`,
+      angle: view.angle, source: "artwork", variant: "Local artwork render", review: "needs-review",
+      note: `${batch.settings.shape === "pillow-bag" ? "Illustrative pillow bag." : "Measured carton."} ${coverage.complete ? "Visible artwork regions assigned; check crop, orientation and labels." : `Unassigned visible regions: ${coverage.blank.join(", ")}.`}`,
+    } };
+  }) : [], [batch, campaignAngles]);
   const [progress, setProgress] = useState<number | null>(null);
   const [importing, setImporting] = useState(exampleRequest > 0);
   const [assigning, setAssigning] = useState(false);
@@ -436,6 +446,7 @@ export function ArtworkStudio({ onUseAsReferences, exampleRequest = 0, onBusyCha
       }
       if (token !== renderToken.current || !alive.current) return;
       setBatch(snapshot);
+      setCampaignAngles(snapshot.views.map((view) => view.angle));
       setNotice("Seven PNG views are ready. Review the mapped and plain faces before downloading.");
     } catch (cause) { if (token === renderToken.current && alive.current) setError(messageFor(cause)); }
     finally { if (token === renderToken.current && alive.current) setProgress(null); }
@@ -673,22 +684,19 @@ export function ArtworkStudio({ onUseAsReferences, exampleRequest = 0, onBusyCha
           <p className={styles.hint}>{!assigned.length ? "Assign artwork to at least one face to render." : "Artwork is mapped directly onto the package, with no generated lettering. Local rendering is free; the browser needs to stay open."}</p>
           {rendering && <progress className={styles.progress} value={progress ?? 0} max={7} aria-label="Packshot render progress" />}
           {batch && <div className={styles.results}>
-            <div className={styles.resultsHeader}><div><h3>Seven rendered views</h3><p>{batch.size} × {batch.size} PNG · {batch.name || "My box"}</p></div><button type="button" className={styles.primary} disabled={downloading || rendering} onClick={() => void downloadZip()}>{downloading ? "Preparing ZIP…" : "Download all + manifest"}</button></div>
+            <div className={styles.resultsHeader}><div><h3>Seven rendered views</h3><p>{batch.size} × {batch.size} PNG · {batch.name || "My box"}</p></div><button type="button" className={styles.secondary} disabled={downloading || rendering} onClick={() => void downloadZip()}>{downloading ? "Preparing ZIP…" : "Download all + manifest"}</button></div>
             {stale && <p className={styles.stale} role="status">The package has changed since these views were rendered. Render again to include your latest edits.</p>}
+            <section className={styles.campaignTransfer} aria-labelledby="campaign-transfer-title">
+              <div><p className={styles.transferEyebrow}>Next · Campaign Studio</p><h3 id="campaign-transfer-title">One product. Every angle.</h3><p>Take these views into a campaign together. All seven are selected to start; untick any you don’t need.</p><div className={styles.selectionTools}><span role="status">{campaignAngles.length} of {batch.views.length} selected</span><button type="button" disabled={stale || rendering} onClick={() => setCampaignAngles(batch.views.map((view) => view.angle))}>Select all</button><button type="button" disabled={stale || rendering} onClick={() => setCampaignAngles([])}>Clear selection</button></div></div>
+              <CampaignHandoffButton sources={campaignSources} prominent disabled={stale || rendering || !campaignSources.length} label={`Take ${campaignSources.length || "selected"} view${campaignSources.length === 1 ? "" : "s"} to Campaign Studio`} />
+            </section>
             <div className={styles.resultGrid}>{batch.views.map((view) => {
               const coverage = coverageForAngle(view.angle, batch.settings.panels, batch.settings.shape);
               const label = PACK_ANGLES.find((angle) => angle.id === view.angle)!.label;
-              return <article className={styles.result} key={view.angle}>
+              return <article className={`${styles.result} ${campaignAngles.includes(view.angle) ? styles.resultSelected : ""}`} key={view.angle}>
                 <a href={view.dataUrl} download={`${artworkFileName(batch.name)}_${view.angle}.png`} aria-label={`Download ${label} PNG`}><img src={view.dataUrl} alt={`${label} view of ${batch.name || "the box"}`} /></a>
                 <div><strong>{label}</strong><span>{coverage.complete ? (batch.settings.shape === "pillow-bag" ? "Visible regions assigned" : "Visible faces assigned") : `Plain: ${coverage.blank.join(", ")}`}</span><a className={styles.downloadLink} href={view.dataUrl} download={`${artworkFileName(batch.name)}_${view.angle}.png`}>Download PNG ↓</a>
-                  {!stale && !rendering && !!view.dataUrl && coverage.mapped.length > 0 && <CampaignHandoffButton source={view.dataUrl} meta={{
-                    name: `${batch.name || "Package"} · ${label}`,
-                    angle: view.angle,
-                    source: "artwork",
-                    variant: "Local artwork render",
-                    review: "needs-review",
-                    note: `${batch.settings.shape === "pillow-bag" ? "Illustrative pillow bag. " : "Measured carton. "}${coverage.complete ? "Visible artwork regions are assigned; check crop, orientation and labels." : `Unassigned visible regions: ${coverage.blank.join(", ")}.`}`,
-                  }} />}
+                  <label className={styles.viewSelection}><input type="checkbox" checked={campaignAngles.includes(view.angle)} disabled={stale || rendering} onChange={(event) => setCampaignAngles((previous) => event.target.checked ? [...previous, view.angle] : previous.filter((angle) => angle !== view.angle))} />Include {label.toLowerCase()}</label>
                 </div>
               </article>;
             })}</div>

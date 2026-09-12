@@ -1,3 +1,4 @@
+import { campaignImageInputs, campaignReferencePrompt, type CampaignReference } from "@/lib/campaignReferences";
 import { NextResponse } from "next/server";
 import { unlocked } from "@/lib/auth";
 import { dataUrlToInline, reasonJson } from "@/lib/gemini";
@@ -13,6 +14,7 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
       imageDataUrl?: string;
+      referenceImages?: CampaignReference[];
       productContext?: ProductContext;
       answers?: Answer[];
     };
@@ -20,13 +22,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "productContext is required" }, { status: 400 });
     }
 
+    let inputs: CampaignReference[];
+    try { inputs = campaignImageInputs(body.imageDataUrl, body.referenceImages); }
+    catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid references" }, { status: 400 }); }
     if (!hasGeminiKey() || isDryRun() || !unlocked(req)) {
       return NextResponse.json({ brief: mockBrief(), mock: true });
     }
 
     const brief = await reasonJson({
-      prompt: buildBriefPrompt(body.productContext, body.answers ?? []),
-      image: body.imageDataUrl ? dataUrlToInline(body.imageDataUrl) : undefined,
+      prompt: campaignReferencePrompt(inputs) + buildBriefPrompt(body.productContext, body.answers ?? []),
+      images: inputs.map((item) => dataUrlToInline(item.dataUrl)),
       responseSchema: BRIEF_RESPONSE_SCHEMA,
       validate: (raw) => CampaignBriefSchema.parse(raw),
     });

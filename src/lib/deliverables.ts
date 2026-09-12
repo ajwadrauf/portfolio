@@ -53,7 +53,7 @@ export const DELIVERABLES: DeliverableSpec[] = [
     aspect: "16:9",
     description: "Wide e-commerce / homepage banner crop with copy space.",
     rationale: "Demonstrates modular composition: the same brief driving a horizontal layout.",
-    modelOptions: ["nano-banana-flash", "flux-2-pro"],
+    modelOptions: ["nano-banana-flash", "nano-banana-pro", "flux-2-pro"],
     defaultModel: "nano-banana-flash",
     usesProductImage: true,
     buildPrompt: (brief) =>

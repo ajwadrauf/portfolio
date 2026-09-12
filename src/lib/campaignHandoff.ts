@@ -18,7 +18,17 @@ export type CampaignHandoffRecord = {
   expiresAt: number;
   blob: Blob;
   meta: CampaignPackshotMeta;
+  /** Optional extension: the first view remains compatible with older single-view transfers. */
+  additionalViews?: CampaignHandoffView[];
 };
+export type CampaignHandoffView = { blob: Blob; meta: CampaignPackshotMeta };
+export type CampaignHandoffSource = { source: string; meta: CampaignPackshotMeta };
+export const CAMPAIGN_HANDOFF_MAX_VIEWS = 7;
+export const CAMPAIGN_HANDOFF_MAX_SET_BYTES = 96 * 1024 * 1024;
+
+export function campaignHandoffViews(record: CampaignHandoffRecord): CampaignHandoffView[] {
+  return [{ blob: record.blob, meta: record.meta }, ...(record.additionalViews ?? [])];
+}
 
 export const CAMPAIGN_HANDOFF_TTL = 24 * 60 * 60 * 1000;
 export const CAMPAIGN_HANDOFF_MAX_BYTES = 24 * 1024 * 1024;
@@ -191,12 +201,25 @@ async function putRecord(record: CampaignHandoffRecord): Promise<void> {
 
 /** Persist actual image bytes locally, so the destination never depends on an expiring provider URL. */
 export async function saveCampaignHandoff(source: string, meta: CampaignPackshotMeta, options: { signal?: AbortSignal } = {}): Promise<CampaignHandoffRecord> {
-  const safeMeta = readCampaignPackshotMeta(meta);
-  const blob = await sourceImage(source, options.signal);
+  return saveCampaignHandoffSet([{ source, meta }], options);
+}
+
+/** A set occupies one storage record and is committed only after every view is valid. */
+export async function saveCampaignHandoffSet(sources: CampaignHandoffSource[], options: { signal?: AbortSignal } = {}): Promise<CampaignHandoffRecord> {
+  if (!Array.isArray(sources) || !sources.length || sources.length > CAMPAIGN_HANDOFF_MAX_VIEWS) throw new Error("Choose between one and seven completed views.");
+  const views: CampaignHandoffView[] = [];
+  let bytes = 0;
+  for (const item of sources) {
+    const meta = readCampaignPackshotMeta(item.meta);
+    const blob = await sourceImage(item.source, options.signal);
+    bytes += blob.size;
+    if (bytes > CAMPAIGN_HANDOFF_MAX_SET_BYTES) throw new Error("This set exceeds 96 MB. Render at a smaller size and send the views again.");
+    views.push({ blob, meta });
+  }
   assertNotAborted(options.signal);
   if (!globalThis.crypto?.randomUUID) throw new Error("Use a secure browser connection to transfer this packshot.");
   const createdAt = Date.now();
-  const record: CampaignHandoffRecord = { version: 1, id: crypto.randomUUID(), createdAt, expiresAt: createdAt + CAMPAIGN_HANDOFF_TTL, blob, meta: safeMeta };
+  const record: CampaignHandoffRecord = { version: 1, id: crypto.randomUUID(), createdAt, expiresAt: createdAt + CAMPAIGN_HANDOFF_TTL, ...views[0], ...(views.length > 1 ? { additionalViews: views.slice(1) } : {}) };
   await putRecord(record);
   assertNotAborted(options.signal);
   return record;
@@ -228,7 +251,17 @@ export async function loadCampaignHandoff(id: string): Promise<CampaignHandoffRe
       value.createdAt > Date.now() + 60_000 || value.expiresAt - value.createdAt !== CAMPAIGN_HANDOFF_TTL) {
     throw new Error("The stored packshot handoff is invalid. Return to Packshots and send this view again.");
   }
-  return { ...value, meta: readCampaignPackshotMeta(value.meta), blob: await validateCampaignImage(value.blob) };
+  if (value.additionalViews !== undefined && (!Array.isArray(value.additionalViews) || value.additionalViews.length >= CAMPAIGN_HANDOFF_MAX_VIEWS)) throw new Error("The stored view set is invalid. Send it again from Packshots.");
+  const views: CampaignHandoffView[] = [];
+  let bytes = 0;
+  for (const item of campaignHandoffViews(value)) {
+    if (!item) throw new Error("A view is missing from this set. Send it again from Packshots.");
+    const blob = await validateCampaignImage(item.blob);
+    bytes += blob.size;
+    if (bytes > CAMPAIGN_HANDOFF_MAX_SET_BYTES) throw new Error("This stored view set exceeds 96 MB.");
+    views.push({ blob, meta: readCampaignPackshotMeta(item.meta) });
+  }
+  return { ...value, ...views[0], ...(value.additionalViews ? { additionalViews: views.slice(1) } : {}) };
 }
 
 /** Lossless conversion only; callers should separately bound and encode any paid analysis input. */

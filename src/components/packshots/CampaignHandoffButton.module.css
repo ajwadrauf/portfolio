@@ -5,3 +5,7 @@
 .action:disabled { cursor: not-allowed; opacity: .5; }
 .hint { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .error { margin: 0; color: #923e36; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+
+.prominent .action { background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; padding: 15px 18px; }
+.prominent .action:hover { background: #61314f; }
+.prominent .hint { font-size: 11px; }

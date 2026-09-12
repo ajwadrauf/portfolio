@@ -3,7 +3,7 @@ export const CAMPAIGN_REFERENCE_MAX_DATA_URL_BYTES = 2_500_000;
 export const CAMPAIGN_REFERENCE_MAX_SOURCE_BYTES = 24 * 1024 * 1024;
 
 /** Called only after an explicit upload/sample choice or Analyze action. */
-export async function prepareCampaignReference(src: string | Blob): Promise<string> {
+export async function prepareCampaignReference(src: string | Blob, maxBytes = CAMPAIGN_REFERENCE_MAX_DATA_URL_BYTES): Promise<string> {
   if (typeof src !== "string" && src.size > CAMPAIGN_REFERENCE_MAX_SOURCE_BYTES) {
     throw new Error("Choose a product image smaller than 24 MB.");
   }
@@ -30,7 +30,7 @@ export async function prepareCampaignReference(src: string | Blob): Promise<stri
       for (const quality of [0.92, 0.86, 0.8]) {
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
         // JPEG data URLs are ASCII, so their character count equals their byte size.
-        if (dataUrl.startsWith("data:image/jpeg;base64,") && dataUrl.length <= CAMPAIGN_REFERENCE_MAX_DATA_URL_BYTES) return dataUrl;
+        if (dataUrl.startsWith("data:image/jpeg;base64,") && dataUrl.length <= Math.min(maxBytes, CAMPAIGN_REFERENCE_MAX_DATA_URL_BYTES)) return dataUrl;
       }
     }
     throw new Error("This image could not fit the campaign request. Try a smaller PNG, JPEG or WebP.");

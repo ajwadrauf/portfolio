@@ -1,10 +1,11 @@
+import { readCampaignReferences, type CampaignReference } from "./campaignReferences";
 import { CampaignBriefSchema, ProductContextSchema, type CampaignBrief, type ClarifyingQuestion, type ProductContext } from "./types";
 import { DELIVERABLES } from "./deliverables";
 import { VELUNE_REFERENCES } from "./veluneReferences";
 
 export type CampaignStep = "upload" | "clarify" | "brief" | "deliverables" | "generating";
 export type CampaignReceipt = { provider: "gemini" | "fal"; modelId: string; operationName?: string; falRequestId?: string };
-export type CampaignSnapshot = { id: string; brief: CampaignBrief; imageDataUrl: string | null; approvedHeroId?: string; exactText: boolean };
+export type CampaignSnapshot = { id: string; brief: CampaignBrief; imageDataUrl: string | null; referenceImages?: CampaignReference[]; approvedHeroId?: string; exactText: boolean };
 export type CampaignJob = {
   id: string; deliverableId: string; modelId: string; snapshotId: string;
   status: "queued" | "running" | "polling" | "done" | "failed" | "mock" | "uncertain" | "recoverable";
@@ -13,7 +14,7 @@ export type CampaignJob = {
   prompt?: string; error?: string; textOverlay?: { text: string; position: "top" | "bottom"; color: "ink" | "ivory" };
 };
 export type CampaignDraft = {
-  schema: "campaign-draft-v1"; step: CampaignStep; imageDataUrl: string | null;
+  schema: "campaign-draft-v1"; step: CampaignStep; imageDataUrl: string | null; referenceImages?: CampaignReference[];
   productContext: ProductContext | null; questions: ClarifyingQuestion[]; answers: Record<string, string>;
   brief: CampaignBrief | null; selected: Record<string, boolean>; modelChoice: Record<string, string>;
   jobs: CampaignJob[]; snapshots: Record<string, CampaignSnapshot>; workflow: "batch" | "hero";
@@ -39,6 +40,7 @@ export function campaignRecoveryStatus(job: CampaignJob): CampaignJob["status"] 
 export function readCampaignDraft(value: unknown): CampaignDraft | null {
   if (!value || typeof value !== "object" || (value as CampaignDraft).schema !== "campaign-draft-v1") return null;
   const raw = value as Partial<CampaignDraft>; const out = emptyCampaignDraft();
+  try { out.referenceImages = readCampaignReferences(raw.referenceImages); } catch { return null; }
   const safeString = (v: unknown): v is string => typeof v === "string";
   if (safeString(raw.imageDataUrl) && /^(data:image\/(png|jpeg|webp);base64,|\/studio\/)/.test(raw.imageDataUrl)) out.imageDataUrl = raw.imageDataUrl;
   const context = ProductContextSchema.safeParse(raw.productContext); if (context.success) out.productContext = context.data;
@@ -49,10 +51,11 @@ export function readCampaignDraft(value: unknown): CampaignDraft | null {
     if (typeof raw.selected?.[spec.id] === "boolean") out.selected[spec.id] = raw.selected[spec.id];
     const choice = raw.modelChoice?.[spec.id]; if (choice && spec.modelOptions.includes(choice)) out.modelChoice[spec.id] = choice;
   }
-  if (raw.snapshots && typeof raw.snapshots === "object") for (const [id, snap] of Object.entries(raw.snapshots)) {
+  try { if (raw.snapshots && typeof raw.snapshots === "object") for (const [id, snap] of Object.entries(raw.snapshots)) {
     const parsed = CampaignBriefSchema.safeParse(snap?.brief);
-    if (parsed.success && snap.id === id && (snap.imageDataUrl === null || safeString(snap.imageDataUrl))) out.snapshots[id] = { id, brief: parsed.data, imageDataUrl: snap.imageDataUrl, approvedHeroId: safeString(snap.approvedHeroId) ? snap.approvedHeroId : undefined, exactText: Boolean(snap.exactText) };
+    if (parsed.success && snap.id === id && (snap.imageDataUrl === null || safeString(snap.imageDataUrl))) out.snapshots[id] = { id, brief: parsed.data, imageDataUrl: snap.imageDataUrl, referenceImages: readCampaignReferences(snap.referenceImages), approvedHeroId: safeString(snap.approvedHeroId) ? snap.approvedHeroId : undefined, exactText: Boolean(snap.exactText) };
   }
+  } catch { return null; }
   if (Array.isArray(raw.jobs)) out.jobs = raw.jobs.filter((j) => j && safeString(j.id) && safeString(j.snapshotId) && out.snapshots[j.snapshotId] && DELIVERABLES.some((d) => d.id === j.deliverableId && d.modelOptions.includes(j.modelId)) && ["queued", "running", "polling", "done", "failed", "mock", "uncertain", "recoverable", "interrupted"].includes(j.status)).map((job) => {
     const receipt = job.receipt && ["fal", "gemini"].includes(job.receipt.provider) && job.receipt.modelId === job.modelId && (safeString(job.receipt.falRequestId) || safeString(job.receipt.operationName)) ? job.receipt : undefined;
     const clean = { ...job, status: String(job.status) === "interrupted" ? "uncertain" as const : job.status, cost: Number.isFinite(job.cost) && job.cost >= 0 ? job.cost : 0, receipt };

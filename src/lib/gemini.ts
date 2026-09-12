@@ -26,11 +26,12 @@ export function dataUrlToInline(dataUrl: string): InlineImage {
 export async function reasonJson<T>(opts: {
   prompt: string;
   image?: InlineImage;
+  images?: InlineImage[];
   responseSchema: object;
   validate: (raw: unknown) => T;
 }): Promise<T> {
   const parts: object[] = [];
-  if (opts.image) parts.push({ inlineData: { mimeType: opts.image.mimeType, data: opts.image.data } });
+  for (const image of opts.images ?? (opts.image ? [opts.image] : [])) parts.push({ inlineData: { mimeType: image.mimeType, data: image.data } });
   parts.push({ text: opts.prompt });
 
   const res = await gemini().models.generateContent({

@@ -152,6 +152,31 @@ async function main() {
   responseFactory = () => new Response("failure", { status: 503 });
   await assert.rejects(h.saveCampaignHandoff("https://fal.media/error.png", meta), /503/);
 
+  const angles = ["front", "back", "left", "right", "top", "bottom", "hero34"];
+  const sources = angles.map((angle) => ({ source, meta: { ...meta, angle, name: `Carton · ${angle}` } }));
+  const set = await h.saveCampaignHandoffSet(sources);
+  const restored = await h.loadCampaignHandoff(set.id);
+  assert.equal(h.campaignHandoffViews(restored).length, 7);
+  assert.deepEqual(clean(h.campaignHandoffViews(restored).map((view) => view.meta.angle)), angles);
+  for (const view of h.campaignHandoffViews(restored)) assert.deepEqual(Buffer.from(await view.blob.arrayBuffer()), png);
+  assert(storage.records.has(set.id), "the whole set shares one atomic storage record");
+  const before = [...storage.records.keys()];
+  await assert.rejects(h.saveCampaignHandoffSet([]), /one and seven/);
+  await assert.rejects(h.saveCampaignHandoffSet([...sources, sources[0]]), /one and seven/);
+  await assert.rejects(h.saveCampaignHandoffSet([...sources.slice(0, 6), { ...sources[6], source: "data:image/png;base64,%%%%" }]), /invalid/);
+  assert.deepEqual([...storage.records.keys()], before, "invalid final view cannot save a partial set or evict older transfers");
+  storage.setQuota(true);
+  await assert.rejects(h.saveCampaignHandoffSet(sources), /no room/);
+  assert.deepEqual([...storage.records.keys()], before, "set write rolls back atomically on storage failure");
+  storage.setQuota(false);
+  storage.records.set(set.id, { ...set, additionalViews: [...set.additionalViews, set.additionalViews[0]] });
+  await assert.rejects(h.loadCampaignHandoff(set.id), /invalid/);
+  storage.records.set(set.id, { ...set, additionalViews: [null] });
+  await assert.rejects(h.loadCampaignHandoff(set.id), /missing/);
+  const big = Buffer.alloc(20 * 1024 * 1024); png.copy(big);
+  const bigSource = `data:image/png;base64,${big.toString("base64")}`;
+  await assert.rejects(h.saveCampaignHandoffSet(sources.slice(0, 5).map((item) => ({ ...item, source: bigSource }))), /96 MB/);
+
   console.log("Campaign transfer checks passed: metadata and raster validation, provider boundaries, exact bytes, same-browser restore, expiry, retention, quota rollback, malformed records, cancellation, and bounded proxy downloads. No generation calls.");
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });
