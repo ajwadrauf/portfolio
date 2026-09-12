@@ -37,3 +37,9 @@ References: [H3 schema](https://fal.ai/models/minimax/h3-max/reference-to-video/
 The first v2 request was rejected with `reference_image_urls max_length=9` (request `01a09361-ca68-7b42-ad06-80a9a95ea918`). The [full fal OpenAPI schema](https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=minimax/h3-max/reference-to-video) confirms separate maxima: 9 images, 3 videos, 3 audio clips, plus 12 files combined. Both client ceilings and server validation now enforce these before submission.
 
 The older whole bonbon and pistachio centre are omitted. All nine new stills remain. Image 7 supplies the whole bonbon shape; Image 6 supplies the solo left pistachio half and the three-flavour serving. References and filenames are consecutively renumbered. Loading a fresh example updates all bindings together; existing user drafts are not silently rewritten.
+
+## Carton continuity and closing light revision
+
+After review of the next H3 take, S02–S04 now require the finished photographic carton artwork for every frame of each turn. S04 explicitly excludes the guide’s shield/V artwork and tan proxy setting, and cuts directly to S05 at 2.875s. The guide supplies motion and timing only; it is never inserted footage.
+
+S12 retains the approved composition. It starts warm and bright at 13.083s, gently dims the distant glow and environmental fill by roughly one stop from 13.500–14.700s, then holds the darker look through 15s. A soft product key and plate rim remain, keeping the three centres readable. This is lighting direction, not a fade to black. Images, cut schedule, model and sound plan are unchanged. Prompt guidance still needs verification in the next generated take.
