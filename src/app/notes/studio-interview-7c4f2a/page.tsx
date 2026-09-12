@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { InterviewPractice, PrintGuideButton } from "@/components/interview/InterviewPractice";
-import { audienceQuestions, objections, phases, questions, roleMap, stories, strengths, walkthrough } from "./guideContent";
+import { audienceQuestions, objections, openingStory, phases, questions, roleMap, shortOpening, stories, storyPillars, strengths, walkthrough } from "./guideContent";
 import styles from "./InterviewGuide.module.css";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ const sections = [
   ["start", "The central story"],
   ["role", "What this role needs"],
   ["strengths", "Five things I noticed"],
-  ["story", "Your introduction"],
+  ["story", "Your opening story"],
   ["walkthrough", "The portfolio walkthrough"],
   ["evidence", "Four stories to prepare"],
   ["hard-questions", "The difficult questions"],
@@ -36,9 +36,9 @@ export default function InterviewNotebook() {
         <div className={styles.topline}><p className={styles.eyebrow}>Ajwad Rauf · personal interview notebook</p><span className={styles.date}>Prepared 12 September 2026</span></div>
         <div className={styles.heroGrid}>
           <div><p className={styles.roleLabel}>Internal opportunity · Director, AI Content Studio</p><h1>Make the work.<br />Make it repeatable.<br /><em>Help people do both.</em></h1><p className={styles.heroIntro}>A story you can stand behind, examples you can show, and space to find the words that sound like you.</p></div>
-          <aside className={styles.heroNote}><p className={styles.eyebrow}>Your strongest position</p><p>You already know how to turn a messy production process into a working capability. You are now bringing that experience closer to the creative itself.</p><p className={styles.heroNoteSmall}>The interview needs evidence of both: the work you can make and the team you can help build.</p><a href="#practice">Go straight to rehearsal <span aria-hidden="true">↗</span></a></aside>
+          <aside className={styles.heroNote}><p className={styles.eyebrow}>Your strongest position</p><p>You get close to a problem, make something you can learn from, and keep asking what would make it better. Connect that way of working to the studio this team is building.</p><p className={styles.heroNoteSmall}>The interview needs evidence of both: the work you can make and the team you can help build.</p><a href="#practice">Go straight to rehearsal <span aria-hidden="true">↗</span></a></aside>
         </div>
-        <div className={styles.heroActions}><PrintGuideButton /><a href="#walkthrough" className={styles.textLink}>Plan the portfolio walkthrough ↓</a></div>
+        <div className={styles.heroActions}><PrintGuideButton /><a href="#story" className={styles.textLink}>Read the opening story ↓</a></div>
         <p className={styles.visibilityNote}>Unlisted preparation page. It has no links from the public site and asks search engines not to index it. It is not password protected; anyone with this URL can open it.</p>
       </header>
 
@@ -46,12 +46,12 @@ export default function InterviewNotebook() {
         <aside className={styles.sidebar}><nav aria-label="Interview guide sections"><p className={styles.eyebrow}>Find your place</p><ol>{sections.map(([id, label], i) => <li key={id}><a href={`#${id}`}><span>{String(i + 1).padStart(2, "0")}</span>{label}</a></li>)}</ol><p className={styles.sidebarNote}>Read once for the story.<br />Return for the practice.</p></nav></aside>
         <main className={styles.main}>
           <section id="start" className={styles.section}>
-            <SectionHeading number="01" eyebrow="The thread to return to" title="You are moving closer to the work." />
-            <p className={styles.lead}>The transition makes sense when you connect your production and enablement experience to a growing practice of making visual work. Lead with that connection.</p>
-            <blockquote className={styles.pullQuote}>“I want to take more ownership of the creative work itself, while bringing the workflow discipline and team enablement that I already practise.”</blockquote>
-            <p>Your strongest case is the combination: internal context, hands-on building, attention to the output, and an interest in helping other people use the capability. Fast learning supports that case when you can show what changed between an early attempt and a stronger result.</p>
+            <SectionHeading number="01" eyebrow="The thread to return to" title="Build the way of working by doing the work." />
+            <p className={styles.lead}>The role calls for someone who can make content while helping establish how the studio works. Your opening can show what happens when you meet uncertainty: you get into the tools, review the result and take responsibility for the next decision.</p>
+            <blockquote className={styles.pullQuote}>“I want the responsibility of helping build the studio while making the work alongside the team.”</blockquote>
+            <p>Ownership, judgment and taste become convincing when the listener can see them in a decision. Your VELUNE experience gives you that scene. Your internal workflow and enablement experience explain why you also care about what happens to the work after you make it.</p>
             <p>Make the hands-on part of your case visible early. Show the output, explain one creative decision and connect it to how a team could repeat the work. Keep the discussion of your developing craft experience specific and proportionate.</p>
-            <div className={styles.quickCard}><p className={styles.eyebrow}>If you have ten minutes before the interview</p><ol className={styles.numberedList}><li><strong>Remember the thread.</strong> Production experience → hands-on creative making → a repeatable team capability.</li><li><strong>Choose two pieces of evidence.</strong> One VELUNE decision and one real Project Forge or leadership example.</li><li><strong>Check playback.</strong> Film, original sound and voiceover. Keep a local backup ready.</li><li><strong>Bring one honest gap sentence.</strong> Acknowledge it once, without making it your whole introduction.</li><li><strong>Choose two questions for them.</strong> Ask about the work they need and what success would look like.</li><li><strong>Slow the first sentence.</strong> Make your point, give the example, stop and let them respond.</li></ol></div>
+            <div className={styles.quickCard}><p className={styles.eyebrow}>If you have ten minutes before the interview</p><ol className={styles.numberedList}><li><strong>Remember the thread.</strong> A real moment → the decision you made → the responsibility you want to take on.</li><li><strong>Choose two pieces of evidence.</strong> One VELUNE decision and one real Project Forge or leadership example.</li><li><strong>Check playback.</strong> Film, original sound and voiceover. Keep a local backup ready.</li><li><strong>Bring one honest gap sentence.</strong> Acknowledge it once, without making it your whole introduction.</li><li><strong>Choose two questions for them.</strong> Ask about the work they need and what success would look like.</li><li><strong>Slow the first sentence.</strong> Make your point, give the example, stop and let them respond.</li></ol></div>
           </section>
 
           <section id="role" className={styles.section}>
@@ -70,10 +70,21 @@ export default function InterviewNotebook() {
           </section>
 
           <section id="story" className={styles.section}>
-            <SectionHeading number="04" eyebrow="Use the structure, keep your own voice" title="A genuine introduction." />
-            <p>These are drafts to adapt, not lines to memorize. Keep only the words and motivations that feel true to you.</p>
-            <article className={styles.script}><p className={styles.eyebrow}>The short version · about 30 seconds</p><blockquote>“My background is in making production workflows work for people. At Loblaw, that has meant connecting intake, build, review and delivery, while helping teams use AI. I’ve started bringing that experience closer to the creative itself by building a personal studio and making work with it. This role interests me because it brings those things together: making strong content, building a dependable way to produce it, and helping a team develop the capability.”</blockquote></article>
-            <article className={styles.script}><p className={styles.eyebrow}>The fuller story · about 90 seconds</p><blockquote><p>“The part of my work I’ve become most interested in is what happens between a good idea and getting it into production.</p><p>In my current role, I’ve worked on that through workflows, automation and AI enablement. With Project Forge, the part that mattered to me was giving people time back: less chasing, clearer readiness and a more dependable path from request to delivery.</p><p>AI has brought that interest closer to the creative itself. I wanted to understand the tools by making things, so I built a personal content studio on my own time and used it to develop product imagery and VELUNE. I learned a lot by reviewing what didn’t work, changing the references or direction, and following the result into sound and handoff.</p><p>That is why I want this move. I want to take more ownership of the work itself and help build a studio where other people can do it well too.</p><p>I’d bring the production experience I already have, stay personally involved in making the work, and learn from the craft already in the team. I want to help build a studio that can deliver strong content and give people a dependable way to keep improving it.”</p></blockquote></article>
+            <SectionHeading number="04" eyebrow="Ownership · judgment · taste" title="Start with a moment they can picture." />
+            <p className={styles.lead}>Use the VELUNE film as your opening scene. It shows how you respond when the technology works but the creative still needs attention.</p>
+            <p>The excerpt’s themes fit the JD’s call to build a studio whose methods will evolve. Frame this as a new capability within an established organization, working with the Head of Production and existing craft teams. The hiring anecdote belongs to the writer; the story below comes from your own build.</p>
+            <article className={styles.script} aria-labelledby="opening-story-heading">
+              <p className={styles.eyebrow}>Recommended opening · about two minutes with pauses</p>
+              <h3 id="opening-story-heading">The first impression was only the start.</h3>
+              <blockquote>{openingStory.map((paragraph, i) => <p key={paragraph}>{i === 0 ? "“" : ""}{paragraph}{i === openingStory.length - 1 ? "”" : ""}</p>)}</blockquote>
+            </article>
+            <p className={styles.sourceNote}>A spoken draft based on the build we worked through. Adjust any sentence about your motivation until it feels true in your own words.</p>
+            <div className={styles.pillars} aria-label="Evidence behind ownership, judgment and taste">
+              {storyPillars.map((pillar) => <article key={pillar.name}><p className={styles.eyebrow}>{pillar.name}</p><h3>{pillar.point}</h3><p>{pillar.evidence}</p></article>)}
+            </div>
+            <article className={styles.script}><p className={styles.eyebrow}>The short version · about 30 seconds</p><blockquote>“{shortOpening}”</blockquote></article>
+            <div className={styles.note}><h3>Let the last line carry the confidence.</h3><p>You do not need to end with “I’m the one.” Name the responsibility you are ready to take, then let the evidence support it.</p><blockquote>“I want to help build a studio that can keep learning without losing its standards.”</blockquote></div>
+            <div className={styles.note}><h3>Deliver it as a conversation.</h3><p>Say the first paragraph calmly. Pause after “the first impression,” then explain the decision. Give the final paragraph room and stop at the last sentence. Ownership, judgment and taste are the thread; you do not need to announce each one as a slogan.</p><p>Then bridge into the portfolio: “Let me show you the part of the film where that decision mattered.” If the panel has asked for a career summary, begin with your current role and scope, then use this story as the example.</p></div>
             <div className={styles.twoColumn}><article className={styles.note}><h3>Why an internal move?</h3><p>“I already care about this business and the people doing the work. I’ve seen some of the friction around production, and I’d like to take on a role where I can connect that understanding more directly to creative delivery. I would come in with context, and still take time to understand the studio’s needs rather than assuming my current view is the whole picture.”</p><p className={styles.proofNote}>An internal panel may know your current title without knowing the full scope of your work. Give them that context. Speak positively about your current team and explain how you would hand over your responsibilities if asked.</p></article><article className={styles.note}><h3>How to show learning speed</h3><p>Replace “I learn exceptionally fast” with a sequence: what you could not do, how you learned it, what you produced, and what you can now repeat or teach.</p><p>Use actual dates if you have them. Pick a visible change in your capability, then explain how you checked that the result was better.</p></article></div>
             <div className={styles.darkNote}><p className={styles.eyebrow}>A line worth keeping</p><p>“The portfolio shows the work I made, the decisions behind it, and the studio I built to carry those decisions into the next brief.”</p></div>
           </section>
@@ -154,7 +165,7 @@ export default function InterviewNotebook() {
             <div className={styles.nextPass}><h3>Before the next revision of this notebook</h3><p>Add one real teaching story, one example of resolving a disagreement, defensible workflow metrics if available, your exact AI-work timeline, and the interview length and panel roles when you know them. Those details will make the next version more personal and precise.</p></div>
           </section>
 
-          <footer className={styles.sources}><p className={styles.eyebrow}>Basis of this notebook</p><p>Prepared from your supplied AI Content Studio job description, AjwadRauf_Resume.pdf, your own letter to Nan, and the decisions observed during our portfolio build. The letter is your application narrative, not an external recommendation. Scripts and the 90-day plan are coaching drafts; suggested activities are not claims of past achievements.</p><p>General interview references: <a href="https://careerservices.fas.harvard.edu/resources/interviewing/">Harvard Mignone Center for Career Success</a> and <a href="https://www.opm.gov/policy-data-oversight/assessment-and-selection/structured-interviews/">US Office of Personnel Management</a>. The original attachments and their contact details are not published here.</p><a href="#start">Back to the central story ↑</a></footer>
+          <footer className={styles.sources}><p className={styles.eyebrow}>Basis of this notebook</p><p>Prepared from your supplied AI Content Studio job description, AjwadRauf_Resume.pdf, your own letter to Nan, and the decisions observed during our portfolio build. The letter is your application narrative, not an external recommendation. The opening also draws on the themes of ownership, judgment and taste in the excerpt you supplied. Its events come from your VELUNE build, not the writer’s hiring anecdote. Scripts and the 90-day plan are coaching drafts; suggested activities are not claims of past achievements.</p><p>General interview references: <a href="https://careerservices.fas.harvard.edu/resources/interviewing/">Harvard Mignone Center for Career Success</a> and <a href="https://www.opm.gov/policy-data-oversight/assessment-and-selection/structured-interviews/">US Office of Personnel Management</a>. The original attachments and their contact details are not published here.</p><a href="#start">Back to the central story ↑</a></footer>
         </main>
       </div>
     </div>

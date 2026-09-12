@@ -1,3 +1,19 @@
+export const shortOpening = "I built this studio to understand AI through making things. VELUNE taught me how much depends on the choices around the model: the references, the direction, what you keep and what you change. That connects to my workflow and enablement experience. I want to bring those strengths into a studio where I can make the work, help establish the standards, and make the process useful to the team.";
+
+export const openingStory = [
+  "The first film I made for VELUNE, the chocolate concept in my portfolio, had some beautiful moments. But when I watched it closely, the opening and ending felt too similar, and some of the packaging still looked artificial. I wanted it to hold up beyond the first impression.",
+  "I went back to the references, refined the direction and reviewed the next take. Then I followed it into sound and the handoff. I wanted to understand why a result improved, and make those decisions easier to carry into the next brief.",
+  "That is why I built the studio in my own time. With new models and connectors appearing, I want to get close enough to the tools to know what is useful, what still needs work, and what deserves another approach.",
+  "It connects to what I already care about in my current role: understanding the friction that costs people time and building a better way through it. The work becomes more valuable when someone else can use what you have learned.",
+  "This role brings those interests together. I want the responsibility of helping build the studio while making the work alongside the team. I would bring ownership of the problem, judgment about the approach, and care for what we put into the world. I want to help build a studio that can keep learning without losing its standards.",
+];
+
+export const storyPillars = [
+  { name: "Ownership", point: "Stay with the problem through the handoff.", evidence: "You followed VELUNE from the generated picture into sound, playback and export choices. You also asked for all seven packshot views to move into Campaign Studio together, carrying the work forward as a set." },
+  { name: "Judgment", point: "Choose the useful next step when the route is uncertain.", evidence: "You responded to provider failures, worked within H3's reference limit and deferred the Seedance toggle while improving the current film. You kept the camera guide and changed the appearance references where they were needed." },
+  { name: "Taste", point: "Recognize where the work loses its intended effect.", evidence: "You noticed repeated bookends, artificial cartons, static characters and ingredient textures. You asked for a distinct opening, a product reveal and a controlled change of light at the end." },
+];
+
 export const strengths = [
   {
     title: "You see the small detail that changes whether work feels believable.",
@@ -63,7 +79,7 @@ export const stories = [
 ];
 
 export const questions = [
-  { question: "Why do you want to move from CRM and AI enablement into this role?", listenFor: "Connect the work you already do to the creative work you want to own. Include the human motivation and one proof point. Avoid making the role sound like an escape from your current team." },
+  { question: "Why do you want to move from CRM and AI enablement into this role?", listenFor: "Use one concrete VELUNE moment to show your judgment, then connect it to your workflow and enablement experience. Close with the responsibility you want to take alongside the team. If asked for a career summary, give your current role and scope first." },
   { question: "This is a hands-on production role. What did you personally make?", listenFor: "Show one finished result. Separate your concept, direction, testing and refinement from AI-generated media, AI-assisted code and any outside work. Explain the tools and final delivery steps you actually used." },
   { question: "How would you address your limited traditional studio experience?", listenFor: "Name the gap once. Show existing operational and leadership evidence, explain your current craft work, then describe how you would develop the missing depth while staying accountable for quality." },
   { question: "Why should we choose you over an experienced studio director?", listenFor: "Speak about your combination of internal workflow knowledge, hands-on learning and team enablement. Respect other candidates' craft. Do not claim superiority you cannot substantiate." },

@@ -80,6 +80,11 @@
 .script { margin-top: 23px; padding: 28px 32px; background: #eee7e9; border-radius: 8px; }
 .script blockquote { font-size: 18px; line-height: 1.85; }
 .script blockquote p:last-child { margin-bottom: 0; }
+.script + .sourceNote { margin-top: 15px; }
+.pillars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 28px 0; }
+.pillars article { padding: 22px 0 0; border-top: 2px solid #bca4b1; }
+.pillars h3 { font-size: 19px; }
+.pillars article > p:last-child { margin-bottom: 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
 .twoColumn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .twoColumn .note { padding: 24px; }
 .darkNote { margin-top: 26px; padding: 30px; border-radius: 9px; background: #2b292a; color: #f5f0ea; }
@@ -140,6 +145,7 @@
   .heroNote { padding: 23px; }
   .heroNote > p:not(.eyebrow) { font-size: 17px; }
   .twoColumn { grid-template-columns: 1fr; gap: 0; }
+  .pillars { grid-template-columns: 1fr; gap: 22px; }
 }
 @media (max-width: 850px) {
   .layout { display: block; padding-top: 30px; }
