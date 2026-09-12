@@ -33,17 +33,26 @@
   font-size: 15px;
   line-height: 1.7;
 }
-.heroLink {
+.heroExample { margin-top: 22px; }
+.heroExample > p { max-width: 520px; margin-top: 11px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.exampleButton {
   display: inline-flex;
-  min-height: 44px;
+  min-height: 50px;
   align-items: center;
-  gap: 12px;
-  color: var(--accent);
-  font-size: 13px;
+  justify-content: center;
+  gap: 20px;
+  padding: 14px 22px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 5px;
+  cursor: pointer;
 }
+.exampleButton:hover { background: #61314f; border-color: #61314f; }
+.exampleButton:disabled { opacity: .55; cursor: not-allowed; }
 .utilities {
   display: flex;
   flex-wrap: wrap;
@@ -142,7 +151,7 @@
 .renderCost { color: var(--background); font-size: 25px; font-weight: 500; letter-spacing: -.03em; }
 .renderSummary :global(.text-warning) { color: #f2c396; }
 .renderSummary :global(.text-accent) { color: #edcfe0; }
-.heroLink:focus-visible, .laneButton:focus-visible, .connections > summary:focus-visible, .guide > summary:focus-visible {
+.exampleButton:focus-visible, .laneButton:focus-visible, .connections > summary:focus-visible, .guide > summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
 }

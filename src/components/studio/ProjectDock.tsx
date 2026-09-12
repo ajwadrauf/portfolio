@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { useStudioProject } from "./StudioProjectProvider";
 import { downloadStudioFile, portableProject, PROJECT_MAX_BYTES, validateStudioProject } from "@/lib/studioProjects";
@@ -12,12 +13,13 @@ export function VeluneExampleButton({ className = "btn-secondary" }: { className
   const [error, setError] = useState("");
   return <span><button type="button" className={className} disabled={!ready || busy} onClick={async () => {
     setBusy(true); setError("");
-    try { await createProject("VELUNE v2 · 9-image working copy", "velune"); } catch (e) { setError(e instanceof Error ? e.message : "Could not load the example."); }
+    try { await createProject("VELUNE · working copy", "velune"); } catch (e) { setError(e instanceof Error ? e.message : "Could not load the example."); }
     finally { setBusy(false); }
   }}>{busy ? "Loading example…" : "Load VELUNE example"}<span aria-hidden> ↗</span></button>{error && <span role="alert" className="mt-2 block text-sm text-danger">{error}</span>}</span>;
 }
 
 export function ProjectDock() {
+  const pathname = usePathname();
   const { project, projects, ready, error, selectProject, createProject, renameProject, importProject } = useStudioProject();
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
@@ -53,7 +55,7 @@ export function ProjectDock() {
             <p className="text-xs leading-relaxed text-muted sm:col-span-2">Drafts and selected assets stay in this browser. Export a copy before clearing site data. Imported projects never resume paid requests. Large provider-hosted media may need downloading separately before its link expires.</p>
           </div>
         </details>
-        <div className="flex flex-wrap items-center gap-3"><Link href="/ai-studio/projects" className="inline-flex min-h-9 items-center font-semibold text-accent underline underline-offset-4">Project & assets ↗</Link><VeluneExampleButton className="btn-secondary !px-3 !py-2 text-xs" /></div>
+        <div className="flex flex-wrap items-center gap-3"><Link href="/ai-studio/projects" className="inline-flex min-h-9 items-center font-semibold text-accent underline underline-offset-4">Project & assets ↗</Link>{pathname !== "/ai-studio/ads" && <VeluneExampleButton className="btn-secondary !px-3 !py-2 text-xs" />}</div>
       </div>
       {project?.example === "velune" && <p className="mt-2 text-xs text-muted">VELUNE ·  {VELUNE_REFERENCES.filter((ref) => project.assets.some((a) => a.id === ref.id && a.status === "ready")).length}/{VELUNE_REFERENCES.length} current visual references · Blender camera study · {project.assets.some((a) => a.id === "velune-final" && a.status === "ready") ? "Final film attached to this project" : "Published film available on the VELUNE page"}. Loading an example never generates or spends.</p>}
       {(error || message) && <p role="alert" className="mt-2 text-sm text-danger">{message || error}</p>}

@@ -15,6 +15,7 @@ import { soundDirection, audioReferenceProblem, ICE_CREAM_MUSIC_BRIEF } from "@/
 import { SoundPlanner } from "@/components/studio/SoundPlanner";
 import { AdPreflight, type PreflightReviewState } from "@/components/ad/AdPreflight";
 import { useStudioProject } from "@/components/studio/StudioProjectProvider";
+import { VeluneExampleButton } from "@/components/studio/ProjectDock";
 import { AdSceneBoard } from "@/components/ad/AdSceneBoard";
 import { AdFinishing } from "@/components/ad/AdFinishing";
 import { parseAdDraft, readyAdReferences, referenceRole, referenceBindingProblems, adReferenceAdditionProblem, adDocumentDataUrl, type AdLabSeed, type AdSceneCard, type AdMixTrack, type VoiceTake, type AdReferenceBinding } from "@/lib/adDraft";
@@ -1889,8 +1890,11 @@ function AdLabWorkspace({
           <p className={styles.eyebrow}>AI Content Studio · Video workspace</p>
           <h1 id="ad-lab-workspace" className={styles.heroTitle}>Ad Lab</h1>
           <p className={styles.lead}>Shape the picture. Plan the sound. Make the film.</p>
+          <div className={styles.heroExample}>
+            <VeluneExampleButton className={styles.exampleButton} />
+            <p>Start with the VELUNE prompt, visual references and sound plan. Loading is free.</p>
+          </div>
         </div>
-        <a href="/ai-studio/ads/cream-in-motion" className={styles.heroLink}>Explore the ice-cream case study <span aria-hidden>↘</span></a>
       </div>
 
       <p role="status" className="mt-4 text-xs text-muted">{workspaceReady ? draftStatus : "Opening project storage…"}</p>
