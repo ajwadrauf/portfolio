@@ -12,7 +12,7 @@ export function VeluneExampleButton({ className = "btn-secondary" }: { className
   const [error, setError] = useState("");
   return <span><button type="button" className={className} disabled={!ready || busy} onClick={async () => {
     setBusy(true); setError("");
-    try { await createProject("VELUNE v2 · working copy", "velune"); } catch (e) { setError(e instanceof Error ? e.message : "Could not load the example."); }
+    try { await createProject("VELUNE v2 · 9-image working copy", "velune"); } catch (e) { setError(e instanceof Error ? e.message : "Could not load the example."); }
     finally { setBusy(false); }
   }}>{busy ? "Loading example…" : "Load VELUNE example"}<span aria-hidden> ↗</span></button>{error && <span role="alert" className="mt-2 block text-sm text-danger">{error}</span>}</span>;
 }

@@ -4,6 +4,10 @@
  */
 export const H3_MODEL_ID = "h3-max-ref";
 export const H3_REFERENCE_LIMIT = 12;
+// Per-list caps from the OpenAPI schema; the combined cap alone is insufficient.
+export const H3_IMAGE_LIMIT = 9;
+export const H3_VIDEO_LIMIT = 3;
+export const H3_AUDIO_LIMIT = 3;
 export const H3_RESOLUTIONS = ["480p", "768p", "1080p"] as const;
 export type H3Resolution = typeof H3_RESOLUTIONS[number];
 
@@ -22,6 +26,9 @@ export function h3DurationProblem(kind: "video" | "audio", durations: readonly (
 }
 
 export function h3ReferenceProblem(imageCount: number, videos: readonly (number | undefined)[], audios: readonly (number | undefined)[]): string | null {
+  if (imageCount > H3_IMAGE_LIMIT) return "H3 Max accepts at most 9 image references. Remove extra images and update their prompt numbers before generating. No files will be discarded.";
+  if (videos.length > H3_VIDEO_LIMIT) return "H3 Max accepts at most 3 video references. No files will be discarded.";
+  if (audios.length > H3_AUDIO_LIMIT) return "H3 Max accepts at most 3 audio references. No files will be discarded.";
   if (imageCount + videos.length + audios.length > H3_REFERENCE_LIMIT) return "H3 Max accepts at most 12 references in total, including images, video and audio. No files will be discarded.";
   if (imageCount + videos.length === 0) return "H3 Max Reference needs at least one image or video reference.";
   return h3DurationProblem("video", videos) ?? h3DurationProblem("audio", audios);

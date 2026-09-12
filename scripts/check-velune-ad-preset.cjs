@@ -31,8 +31,8 @@ check(seed.duration === 15 && seed.aspect === '16:9' && seed.resolution === '768
 check(seed.modelId === 'h3-max-ref' && seed.lane === 'blender', 'Correct reference endpoint and lane');
 check(seed.audioMode === 'silent' && seed.scoreToPlan === false && seed.musicAsTimingRef === false, 'External soundtrack defaults do not submit a paid music request');
 check(seed.negativePrompt === '' && seed.prompt.includes('[Exclusions]'), 'Exclusions stay in the supplied prompt once');
-check(seed.productImage === null && seed.endImage === null && seed.references.length === 12, 'No stray first frame shifts eleven image slots');
-check(referenceBindingProblems(seed.references, seed.referenceManifest).length === 0, 'All twelve positional bindings resolved');
+check(seed.productImage === null && seed.endImage === null && seed.references.length === 10, 'No stray first frame shifts nine image slots');
+check(referenceBindingProblems(seed.references, seed.referenceManifest).length === 0, 'All ten positional bindings resolved');
 check(seed.sceneCards.length === 12 && seed.soundPlan.scenes.length === 5, 'Musical groups do not replace twelve picture shots');
 check(sound.planSeconds(seed.soundPlan) === 15 && !sound.planProblem(seed.soundPlan, 15, true, true), 'Sound and picture duration valid');
 check(seed.soundPlan.voice.name === 'Rachel' && seed.soundPlan.voice.stability === 0.5 && seed.soundPlan.bpm === 80, 'Voice audition and tempo loaded');
@@ -52,15 +52,17 @@ check(seed.effectCues.map(c=>c.seconds).join(',')==='0.5,1.2,1.3,0.5,0.8', 'Indi
 check(seed.recipe.sfx.length===0 && seed.extraEffects.length===0, 'No cookie or ice-cream recipe effects bleed into VELUNE');
 check(!seed.completedTake && !seed.musicUrl && !Object.keys(seed.voiceTakes).length && !seed.mixTracks.length && !Object.keys(seed.sfxTracks).length, 'Loading creates no pretend outputs or generation jobs');
 const visual = load('src/lib/veluneReferences.ts');
-const expectedNames = ['01_velune_pistachio_carton.jpeg','02_velune_raspberry_carton.jpeg','03_velune_caramel_carton.jpeg','04_velune_whole_bonbon.jpeg','05_velune_pistachio_centre.jpeg','06_velune_raspberry_ingredient.jpeg','07_velune_pistachio_ingredient.jpeg','08_velune_three_flavour_serving.jpeg','09_velune_working_studio.jpeg','10_velune_opening_chocolate.jpeg','11_velune_final_reveal.jpeg'];
+const expectedNames = ['01_velune_pistachio_carton.jpeg','02_velune_raspberry_carton.jpeg','03_velune_caramel_carton.jpeg','04_velune_raspberry_ingredient.jpeg','05_velune_pistachio_ingredient.jpeg','06_velune_three_flavour_serving.jpeg','07_velune_working_studio.jpeg','08_velune_opening_chocolate.jpeg','09_velune_final_reveal.jpeg'];
 check(visual.VELUNE_REFERENCES.map(r => r.fileName).join() === expectedNames.join(), 'Approved v2 upload order is explicit');
 check(seed.references.filter(r => r.kind === 'image').map(r => r.url).join() === visual.VELUNE_REFERENCES.map(r => r.url).join(), 'Actual example image order matches the named pack');
 check(seed.references.every(r => r.id !== 'velune-report-v2' && !/host|chocolatier|collage/.test(r.url)), 'Finishing graphic, old portraits and collage are not provider inputs');
-check(!seed.prompt.includes('Image 12') && seed.sceneCards[0].action.includes('Image 10') && seed.sceneCards[11].action.includes('Image 11'), 'Different opening and ending refs; no phantom twelfth image token');
+check(!seed.prompt.includes('Image 10') && seed.sceneCards[0].action.includes('Image 8') && seed.sceneCards[11].action.includes('Image 9'), 'Different opening and ending refs; no phantom tenth image token');
 check(seed.sceneCards[6].action.includes('already lifting') && seed.sceneCards[9].action.includes('EXACTLY THREE'), 'Working gestures and serving-count override reach the loaded scene cards');
+check(seed.sceneCards[4].action.includes('Image 7') && seed.sceneCards[5].action.includes('LEFT pistachio half from Image 6'), 'Whole and cut chocolate actions use the surviving references');
+check(!seed.references.some(r => /whole_bonbon|pistachio_centre/.test(r.url)), 'Two older studies omitted without dropping any new image');
 const { unzipSync, strFromU8 } = require('fflate');
 const pack = unzipSync(fs.readFileSync(root + '/public/studio/velune/velune_h3_v2_pack.zip'));
-check(Object.keys(pack).filter(n => n.startsWith('images/')).length === 11 && Object.keys(pack).filter(n => n.startsWith('video/')).length === 1, 'Download contains exactly the eleven images and one guide');
+check(Object.keys(pack).filter(n => n.startsWith('images/')).length === 9 && Object.keys(pack).filter(n => n.startsWith('video/')).length === 1, 'Download contains exactly the nine images and one guide');
 check(strFromU8(pack['01_h3_max_prompt.txt']).trim() === seed.prompt, 'Downloaded and loaded H3 prompts match');
 for (const r of visual.VELUNE_REFERENCES) {
   const bytes = fs.readFileSync(root + '/public' + r.url);

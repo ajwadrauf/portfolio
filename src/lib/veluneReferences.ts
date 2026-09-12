@@ -21,8 +21,8 @@ export const VELUNE_LEGACY_REFERENCES: readonly VeluneReference[] = [
 const v2 = (index: number, id: string, fileName: string, title: string, kind: VeluneReference["kind"], role: string, shotIds: readonly string[], width = 1672, height = 941): VeluneReference =>
   ({ ...reference(index, `v2-${id}`, fileName, title, kind, role, shotIds, width, height), url: `/studio/velune/references/v2/${fileName}` });
 
-/** Nine new stills plus two retained chocolate studies; one video fills H3's twelfth slot. */
-export const VELUNE_REFERENCES: readonly VeluneReference[] = [
+/** Archived initial v2 selection. Its eleven images exceed H3’s per-image-list cap. */
+export const VELUNE_V2_ARCHIVE: readonly VeluneReference[] = [
   v2(1, "pistachio-carton", "01_velune_pistachio_carton.jpeg", "Pistachio carton", "product", "Solo pistachio-green carton: folded paperboard, printed whole-and-cut chocolate, clear side depth. Keep front lettering readable; register its position with the other two carton shots without mirroring the artwork.", ["S02", "S11"]),
   v2(2, "raspberry-carton", "02_velune_raspberry_carton.jpeg", "Raspberry carton", "product", "Solo raspberry-plum carton with exposed berry centre printed on the front. Preserve its flavour colour, paper texture and family proportions; exact side-panel lettering needs finishing review.", ["S03", "S11"]),
   v2(3, "caramel-carton", "03_velune_caramel_carton.jpeg", "Caramel carton", "product", "Solo caramel-gold carton with amber centre printed on the front. The printed chocolate stays on the carton face; preserve the physical fold seams and soft contact shadows.", ["S04", "S11"]),
@@ -36,8 +36,17 @@ export const VELUNE_REFERENCES: readonly VeluneReference[] = [
   v2(11, "reveal", "11_velune_final_reveal.jpeg", "Wonder within · product reveal", "scene", "A wider chocolate passage with the three-centre dish grounded in the lower left and room for the tagline at right. Overrides the guide's returning host. Match the serving reference for precise food appearance.", ["S12"]),
 ];
 
+/** H3 permits nine images. Retain URLs/IDs for saved projects, but number the
+ * current upload names and tokens consecutively after removing the two older studies. */
+export const VELUNE_REFERENCES: readonly VeluneReference[] = VELUNE_V2_ARCHIVE
+  .filter((r) => r.index !== 4 && r.index !== 5)
+  .map((r, i) => ({ ...r, index: i + 1, fileName: r.fileName.replace(/^\d+/, String(i + 1).padStart(2, "0")),
+    ...(r.id === "velune-ref-v2-serving" ? { shotIds: ["S06", "S10", "S11", "S12"], role: "Three cut halves on an ivory dish: pistachio left, raspberry middle, caramel right. Use ONLY the left pistachio half for the solo fork reveal, without the dish or other flavours. Use all three halves for the serving and final reveal; fillings remain contained." } : {}),
+    ...(r.id === "velune-ref-v2-studio" ? { shotIds: ["S05", "S06", "S07"], role: "Two back-facing workers, heads outside the crop, ivory jackets and plum aprons. Small tasting-utensil and open-hand gestures during the pullback. Stacks of three bonbons left and two right define the whole V-groove chocolate form, also used for the question-mark assembly." } : {}),
+  }));
+
 /** Server allowlisting and cost measurement include the original files for saved projects. */
-export const VELUNE_ALL_REFERENCES = [...VELUNE_LEGACY_REFERENCES, ...VELUNE_REFERENCES];
+export const VELUNE_ALL_REFERENCES = [...VELUNE_LEGACY_REFERENCES, ...VELUNE_V2_ARCHIVE];
 
 export function veluneShotReferenceIds(shotId: string): string[] {
   return VELUNE_REFERENCES.filter((reference) => reference.shotIds.includes(shotId)).map((reference) => reference.id);

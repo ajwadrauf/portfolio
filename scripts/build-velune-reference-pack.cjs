@@ -13,7 +13,8 @@ function load(file) {
 const { VELUNE_REFERENCES } = load('src/lib/veluneReferences.ts');
 const { VELUNE_H3_PROMPT, VELUNE_MUSIC_BRIEF, VELUNE_SOUND_PLAN, VELUNE_EFFECT_CUES } = load('src/lib/veluneAdContent.ts');
 const files = {}, read = p => new Uint8Array(fs.readFileSync(path.join(root, p)));
-const named = JSON.parse(fs.readFileSync(path.join(root, 'docs/velune/REFERENCE_V2_FILES.json'), 'utf8'));
+const provenance = JSON.parse(fs.readFileSync(path.join(root, 'docs/velune/REFERENCE_V2_FILES.json'), 'utf8'));
+const named = { revision: '2-nine-images', newImages: VELUNE_REFERENCES.map(r => ({ ...provenance.newImages.find(p => r.url.endsWith('/' + p.file)), file: r.fileName })), excluded: [...provenance.excluded, ...provenance.reusedImages.map(r => ({ source: r.source, reason: 'Older chocolate study omitted to meet the nine-image H3 limit.' }))] };
 for (const r of VELUNE_REFERENCES) files['images/' + r.fileName] = read('public' + r.url);
 files['video/00_velune_blender_motion_15s.mp4'] = read('public/studio/velune/animatic.mp4');
 files['01_h3_max_prompt.txt'] = strToU8(VELUNE_H3_PROMPT + '\n');
@@ -22,12 +23,12 @@ files['03_sound_plan.json'] = strToU8(JSON.stringify({ soundPlan: VELUNE_SOUND_P
 files['reference_manifest.json'] = strToU8(JSON.stringify(VELUNE_REFERENCES.map(r => ({ image: r.index, file: 'images/' + r.fileName, role: r.role, shots: r.shotIds })), null, 2));
 files['source_filenames.json'] = strToU8(JSON.stringify(named, null, 2));
 files['finishing/velune_centre_report_v2.svg'] = read('public/studio/velune/finishing/velune_centre_report_v2.svg');
-files['README.txt'] = strToU8(`VELUNE v2 — H3 Max reference pack
+files['README.txt'] = strToU8(`VELUNE v2 — corrected nine-image H3 Max reference pack
 
-Upload the eleven JPEGs from images/ in numeric order. Add the unchanged video as Video 1.
+Upload the nine JPEGs from images/ in numeric order. Add the unchanged video as Video 1.
 Use 01_h3_max_prompt.txt with H3 Max Reference: 15 seconds, 16:9, 768p, External soundtrack.
-Eleven images + one video use H3's twelve-file limit. Do not attach the SVG report, collage, old portraits or audio as extra references.
-The JPEGs retain their original dimensions. Nine supplied PNGs were converted to high-quality JPEG; the two older chocolate JPEGs were copied unchanged.
+H3 accepts at most nine images, three videos and three audio clips, and twelve files combined. This pack uses nine images + one video. Do not attach the SVG report, collage, old portraits or audio as extra references.
+The JPEGs retain their original dimensions. Nine supplied PNGs were converted to high-quality JPEG; the two older chocolate studies remain archived on the website but are not in this upload pack.
 source_filenames.json identifies every original file and the excluded collage.
 
 The elevenlabs files are direction, not generated sound. Keep music-as-reference off. Generate/audition sound separately in Ad Lab and align it to the accepted picture.

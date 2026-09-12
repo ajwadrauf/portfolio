@@ -13,7 +13,7 @@ export type PromptDraft = {
   beats: Beat[]; throughline: string;
 };
 
-const VELUNE_COLOURS = ["green #A9BB82", "plum #6B2949", "gold #BB752A", "brown #673B27", "green #488144", "red #A53D54", "green #718044", "cream #E8D6B9", "cyan #258C98", "magenta #B44592", "amber #BB752A"];
+const VELUNE_COLOURS = ["green #A9BB82", "plum #6B2949", "gold #BB752A", "red #A53D54", "green #718044", "cream #E8D6B9", "cyan #258C98", "magenta #B44592", "amber #BB752A"];
 const VELUNE_SUBJECTS = Object.fromEntries(VELUNE_REFERENCES.map((r, i) => [r.id, { color: VELUNE_COLOURS[i], proxy: r.title, becomes: r.role }]));
 
 /** New example drafts use this exact upload order. Existing draft assignments are never replaced. */
@@ -32,16 +32,16 @@ export function veluneBlenderBrief(): BlenderBrief {
   return {
     ...EMPTY_BRIEF, editMode: "cuts", shotId: "VELUNE-15s", aspect: "16:9", seconds: "15", lens: "50", move: "",
     rig: "Twelve edited shots at 24 fps, following the existing 360-frame VELUNE camera study. Registered package turns; locked product inserts; a pullback in S07.",
-    startFraming: "Original guide retained; final picture uses Image 10 for a tight empty chocolate opening.",
-    endFraming: "Final picture uses Image 11 for a wider three-centre dish reveal, held through frame 359.",
+    startFraming: "Original guide retained; final picture uses Image 8 for a tight empty chocolate opening.",
+    endFraming: "Final picture uses Image 9 for a wider three-centre dish reveal, held through frame 359.",
     keyLight: "Soft studio key from camera left; keep contact and object shape visible.",
-    lightCharacter: "Rich chocolate, plum and cream palette. The eleven supplied AI-generated images guide appearance for this fictional concept; they are not approved real-product photographs.",
+    lightCharacter: "Rich chocolate, plum and cream palette. The nine supplied AI-generated images guide appearance for this fictional concept; they are not approved real-product photographs.",
     subjects: [
       ...VELUNE_REFERENCES.map((reference) => ({ ...VELUNE_SUBJECTS[reference.id], ref: `Image ${reference.index}` })),
       { color: "cream #E8D6B9", proxy: "single report surface", becomes: "The Centre Report artifact, with its exact artwork composited after generation; do not invent an additional reference image", ref: "" },
     ],
     beats: VELUNE_SHOTS.map((shot) => ({ from: String(shot.start / 24), to: String(shot.end / 24), action: veluneShotAction(shot) })),
-    creative: "An independent fictional VELUNE chocolate concept. Recreate the existing 15-second camera study and its twelve shots. Revision 2 uses eleven images for final appearance and explicit shot overrides. The existing Blender study stays unchanged; retain its cut schedule and main motion beats. Opening, ending, working gestures and serving count follow the revised directions. This is planning for the next take, not evidence of a finished film.",
+    creative: "An independent fictional VELUNE chocolate concept. Recreate the existing 15-second camera study and its twelve shots. Revision 2 uses nine images for final appearance and explicit shot overrides. The existing Blender study stays unchanged; retain its cut schedule and main motion beats. Opening, ending, working gestures and serving count follow the revised directions. This is planning for the next take, not evidence of a finished film.",
     composited: "Exact packaging type and The Centre Report artwork; preserve the three-second report interval (frames 242–313).",
     medium: "", physics: "resolve",
   };
@@ -59,15 +59,15 @@ export function velunePromptDraft(): PromptDraft {
     version: 1, duration: 15, throughline: "Proposed sound only: delicate chocolate movement and a restrained discovery motif. No existing soundtrack is supplied.",
     values: {
       register: "A premium chocolate concept film in a plum, cream and cocoa studio world.",
-      subject: "VELUNE chocolates in pistachio, raspberry and caramel. Use the whole bonbon's V-groove and shell consistently across the pistachio and contained-caramel halves. The eleven supplied AI-generated references belong to an independent fictional concept. Nine new images and two retained chocolate studies guide the revised take; they are not approved real-product photographs.",
+      subject: "VELUNE chocolates in pistachio, raspberry and caramel. Use the whole bonbon's V-groove and shell consistently across the pistachio and contained-caramel halves. The nine supplied AI-generated references belong to an independent fictional concept. Nine new images guide the revised take; they are not approved real-product photographs.",
       bindings: [
         "[Video1] is the actual 15-second, 360-frame Blender camera study at 24 fps. Keep its timing, twelve-shot edit and main motion beats; the explicit revised shot directions override proxy materials, cast, opening/ending framing and serving count.",
         ...VELUNE_REFERENCES.map((reference) => `[Image${reference.index}] is the supplied generated ${reference.title}: ${reference.role}.`),
-        "Image 10 controls the tight empty opening; Image 11 controls the wide final product reveal. Image 9 supplies TWO BACK-FACING workers in ivory jackets and plum aprons, heads outside the crop, making the specified small working gestures.",
-        "Images 6 and 7 control the raspberry and pistachio INGREDIENTS in S08 and S09. Image 8 controls the three filled chocolate halves on the serving dish, including raspberry ganache. Keep those roles distinct.",
+        "Image 8 controls the tight empty opening; Image 9 controls the wide final product reveal. Image 7 supplies TWO BACK-FACING workers in ivory jackets and plum aprons, heads outside the crop, making the specified small working gestures.",
+        "Images 4 and 5 control the raspberry and pistachio INGREDIENTS in S08 and S09. Image 6 controls the three filled chocolate halves on the serving dish, including raspberry ganache. Keep those roles distinct.",
       ].join(" "),
       arrangement: "Retain twelve chocolates in the question silhouette, two back-facing discovery-studio workers with stacks of three left and two right, and one printed report surface. Override the serving with three cut halves, and replace the opening and ending compositions as directed. Keep caramel contained.",
-      text: "Do not invent new claims or legal copy. Composite exact packaging type and The Centre Report artifact after generation. The report is held at S11 for frames 242–313 and is not an additional image upload or an invented twelfth image.",
+      text: "Do not invent new claims or legal copy. Composite exact packaging type and The Centre Report artifact after generation. The report is held at S11 for frames 242–313 and is not an additional image upload or any extra image.",
       music: "No music baked into this generation; plan and finish the soundtrack separately.",
     },
     slots: [

@@ -1,4 +1,4 @@
-import { H3_MODEL_ID, H3_REFERENCE_LIMIT } from "./h3Video";
+import { H3_MODEL_ID, H3_REFERENCE_LIMIT, H3_IMAGE_LIMIT, H3_VIDEO_LIMIT, H3_AUDIO_LIMIT } from "./h3Video";
 /**
  * Mini product ad presets — structured, deconstructed video prompt recipes.
  *
@@ -947,7 +947,7 @@ export function referenceBlock(refs: ReferenceSpec[]): string {
 export function minAdSeconds(modelId: string): number { return modelId === H3_MODEL_ID ? 5 : 4; }
 
 export function referenceCeilingsFor(modelId: string) {
-  return modelId === H3_MODEL_ID ? { image: H3_REFERENCE_LIMIT, video: H3_REFERENCE_LIMIT, audio: H3_REFERENCE_LIMIT, total: H3_REFERENCE_LIMIT } : REF_CEILINGS;
+  return modelId === H3_MODEL_ID ? { image: H3_IMAGE_LIMIT, video: H3_VIDEO_LIMIT, audio: H3_AUDIO_LIMIT, total: H3_REFERENCE_LIMIT } : REF_CEILINGS;
 }
 
 export function maxAdSeconds(modelId: string): number {

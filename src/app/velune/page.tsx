@@ -9,7 +9,7 @@ import styles from "@/components/velune/Velune.module.css";
 
 export const metadata: Metadata = {
   title: "VELUNE — a chocolate film in production · Ajwad Rauf",
-  description: "Inside a fifteen-second fictional chocolate concept: a Blender camera study, eleven AI-generated appearance references for the revised H3 take, original package artwork and a planned film finish.",
+  description: "Inside a fifteen-second fictional chocolate concept: a Blender camera study, nine AI-generated appearance references for the revised H3 take, original package artwork and a planned film finish.",
 };
 
 const DECISIONS = [
@@ -21,15 +21,15 @@ const DECISIONS = [
 const STAGES = [
   { n: "01", title: "Adapt the choreography", state: "Brief & artwork", body: "An existing shot structure becomes a new fictional chocolate world. Brand, product, report artwork and proposed sound are new creative; reference performers and branded footage are not reproduced here." },
   { n: "02", title: "Build the camera study", state: "Guide ready", body: "Geometry makes the timing, framing, object count and camera route reviewable. This preview is a working animatic; material quality and character performance remain provisional." },
-  { n: "03", title: "Develop the appearance", state: "Revision 2 ready", body: "The first H3 take informed nine new images and two retained chocolate studies. Individual cartons, ingredient detail, working gestures and distinct bookends now guide the next take. The original Blender video stays unchanged." },
+  { n: "03", title: "Develop the appearance", state: "Revision 2 ready", body: "The first H3 take informed nine new images. Individual cartons, ingredient detail, working gestures and distinct bookends now guide the next take. The original Blender video stays unchanged." },
   { n: "04", title: "Audition, mix, finish", state: "Planned", body: "Audition original narration, a structured instrumental score and selected effects through ElevenLabs. Place the separate stems in the edit and check the complete film before calling it finished." },
 ] as const;
 
 const REFERENCE_GROUPS = [
   { id: "cartons", title: "A carton for every flavour", note: "Individual references give each fast carton cut its own paper texture, depth and exposed centre. Register their camera angles without mirroring the lettering.", indices: [1, 2, 3], columns: 3 },
-  { id: "chocolate", title: "The shell. The centre. The serving.", note: "Two retained chocolate studies support the assembly and fork reveal. The new dish brings all three flavours together.", indices: [4, 5, 8], columns: 3 },
-  { id: "ingredients", title: "Real detail starts with a reference", note: "The raspberry and opened pistachio now have dedicated ingredient images, separate from the filled chocolates.", indices: [6, 7], columns: 2 },
-  { id: "world", title: "Give the world a little life", note: "A working gesture replaces the posed stillness. A tight, empty opening and a wider product reveal make the beginning and ending distinct.", indices: [9, 10, 11], columns: 2 },
+  { id: "chocolate", title: "Three centres. One serving.", note: "The dish brings all three flavours together. Its left pistachio half also guides the solo fork reveal; the studio reference supplies the whole bonbon shape.", indices: [6], columns: 2 },
+  { id: "ingredients", title: "Real detail starts with a reference", note: "The raspberry and opened pistachio now have dedicated ingredient images, separate from the filled chocolates.", indices: [4, 5], columns: 2 },
+  { id: "world", title: "Give the world a little life", note: "A working gesture replaces the posed stillness. A tight, empty opening and a wider product reveal make the beginning and ending distinct.", indices: [7, 8, 9], columns: 2 },
 ] as const;
 
 const VOICE = [
@@ -58,7 +58,7 @@ export default function VelunePage() {
           </div>
           <aside className={styles.heroNote}>
             <span className={styles.status}>Revision 2 · Ready for the next take</span>
-            <p>The first H3 take showed where the direction needed more clarity. Nine new stills and two retained chocolate studies now guide the next render; the final film and mix are still in production.</p>
+            <p>The first H3 take showed where the direction needed more clarity. Nine new stills now guide the next render; the final film and mix are still in production.</p>
             <dl><div><dt>Format</dt><dd>15 seconds / 16:9</dd></div><div><dt>Edit target</dt><dd>360 frames / 24 fps</dd></div><div><dt>Structure</dt><dd>12 shots / 11 hard cuts</dd></div><div><dt>Project</dt><dd>Independent concept</dd></div></dl>
           </aside>
         </section>
@@ -94,9 +94,9 @@ export default function VelunePage() {
           <div className={styles.wrap}>
             <div className={styles.sectionHead}>
               <div><p className={styles.eyebrow}>03 / Appearance direction</p><h2 id="references-heading">References shape<br /><em>the direction.</em></h2></div>
-              <div className={styles.referenceIntro}><span className={styles.referenceStatus}>11 reference images · Revision 2</span><p>Nine new stills and two retained chocolate studies. These are the exact images loaded by the revised H3 example, numbered to match their upload slots. The collage and old cast portraits are excluded from this take.</p></div>
+              <div className={styles.referenceIntro}><span className={styles.referenceStatus}>9 reference images · Revision 2</span><p>Nine new stills. These are the exact images loaded by the revised H3 example, numbered to match their upload slots. The collage, old cast portraits and two older chocolate studies are excluded from this take.</p></div>
             </div>
-            <div className={styles.referenceActions}><Link className={styles.cta} href="/ai-studio/ads">Try this direction in Ad Lab <span aria-hidden>↗</span></Link><a className={styles.referenceJump} href="/studio/velune/velune_h3_v2_pack.zip" download>Download the named images & H3 prompt <span aria-hidden>↓</span></a><p>In Ad Lab, choose “Load VELUNE example”. H3 Max · 15s · 16:9 · 768p · 11 images + 1 Blender guide.</p></div>
+            <div className={styles.referenceActions}><Link className={styles.cta} href="/ai-studio/ads">Try this direction in Ad Lab <span aria-hidden>↗</span></Link><a className={styles.referenceJump} href="/studio/velune/velune_h3_v2_pack.zip" download>Download the named images & H3 prompt <span aria-hidden>↓</span></a><p>In Ad Lab, choose “Load VELUNE example”. H3 Max · 15s · 16:9 · 768p · 9 images + 1 Blender guide.</p></div>
             <div className={styles.referenceProvenance}>
               <p><strong>Appearance</strong>Supplied AI reference images</p>
               <p><strong>Movement</strong>Original Blender camera layouts</p>
@@ -159,7 +159,7 @@ export default function VelunePage() {
         </section>
 
         <section className={`${styles.wrap} ${styles.credits}`}>
-          <div><p className={styles.eyebrow}>Direction & process</p><h2>Ajwad Rauf</h2><p>Creative direction and production review, with AI assistance for the brief and technical build. Eleven selected AI-generated images guide the revised appearance. Blender supplies the unchanged camera study; H3 Max produces the picture, with ElevenLabs voice, music and effects prepared for the final edit.</p></div>
+          <div><p className={styles.eyebrow}>Direction & process</p><h2>Ajwad Rauf</h2><p>Creative direction and production review, with AI assistance for the brief and technical build. Nine selected AI-generated images guide the revised appearance. Blender supplies the unchanged camera study; H3 Max produces the picture, with ElevenLabs voice, music and effects prepared for the final edit.</p></div>
           <div><p className={styles.eyebrow}>Study notes</p><p>VELUNE is an independent fictional concept, not a commissioned campaign. No client results or finished commercial are claimed. Original source footage, performer identities and soundtrack are not included on this page.</p><Link href="/#ar-work">Back to selected work <span aria-hidden>↗</span></Link></div>
         </section>
       </main>

@@ -19,7 +19,7 @@ function loader(overrides = {}) {
 (async () => {
   const queued = []; let consumes = 0, live = false, results = 0;
   const fal = { config() {}, storage: { upload: () => { throw new Error('Unexpected upload'); } }, queue: {
-    submit: async (endpoint, { input }) => { queued.push({ endpoint, input }); return { request_id: 'h3-test-request' }; },
+    submit: async (endpoint, { input }) => { if (endpoint === 'minimax/h3-max/reference-to-video') { assert(input.reference_image_urls?.length <= 9, 'Provider schema: reference_image_urls maxItems=9'); assert(input.reference_video_urls?.length <= 3, 'Provider schema: reference_video_urls maxItems=3'); assert(input.reference_audio_urls?.length <= 3, 'Provider schema: reference_audio_urls maxItems=3'); } queued.push({ endpoint, input }); return { request_id: 'h3-test-request' }; },
     status: async () => ({ status: 'COMPLETED' }), result: async () => { results++; return { data: { video: { url: 'https://media.example/output.mp4' } } }; },
   } };
   const base = loader(), models = base('src/lib/models.ts'), h3 = base('src/lib/h3Video.ts');
@@ -38,12 +38,12 @@ function loader(overrides = {}) {
   check(endpoint === 'minimax/h3-max/reference-to-video', 'H3 Reference endpoint, not image-to-video');
   check(input.duration === 15 && input.resolution === '768P' && input.aspect_ratio === '16:9', 'Integer duration, uppercase resolution, matching aspect');
   check(input.enable_safety_checker === true && input.prompt_expansion_mode === 'balanced', 'Safety stays enabled and explicit balanced expansion');
-  check(input.reference_image_urls.length === 11 && input.reference_video_urls.length === 1 && input.reference_audio_urls.length === 0, 'Eleven images and one guide in documented fields');
+  check(input.reference_image_urls.length === 9 && input.reference_video_urls.length === 1 && input.reference_audio_urls.length === 0, 'Nine images and one guide in documented fields');
   for (const key of ['image_urls', 'video_urls', 'audio_urls', 'image_url', 'end_image_url', 'generate_audio', 'negative_prompt']) check(!(key in input), 'H3 does not send unsupported field ' + key);
-  check(!/\[(Image|Video|Audio)\d+\]/.test(input.prompt) && input.prompt.includes('Image 11') && input.prompt.includes('Video 1'), 'Actual prompt uses H3 modality-and-order syntax');
+  check(!/\[(Image|Video|Audio)\d+\]/.test(input.prompt) && input.prompt.includes('Image 9') && input.prompt.includes('Video 1'), 'Actual prompt uses H3 modality-and-order syntax');
   check(!input.prompt.includes('Generate silent picture') && input.prompt.includes('native audio will be discarded'), 'H3 prompt does not promise an API-silent result');
   check(input.reference_image_urls.every((url, i) => url === 'https://studio.example' + body.referenceImageDataUrls[i]), 'Appearance order and hosted URLs preserved');
-  check(Math.abs(json.cost - 3.69383203125) < .001, 'VELUNE estimate includes all measured image pixels and 15s reference footage: $3.69');
+  check(Math.abs(json.cost - 3.632405625) < .001, 'VELUNE estimate includes all measured image pixels and 15s reference footage: $3.63');
   const reject = async (input, expected) => {
     const before = [queued.length, consumes].join();
     const response = await post(input), result = await response.json();
@@ -54,7 +54,10 @@ function loader(overrides = {}) {
   await reject({ ...body, resolution: '720p' }, 'Choose an H3 resolution');
   await reject({ ...body, aspect: '2:1' }, 'aspect ratio');
   await reject({ ...body, endImageDataUrl: body.referenceImageDataUrls[0] }, 'end-frame');
-  await reject({ ...body, referenceImageDataUrls: Array(12).fill(body.referenceImageDataUrls[0]) }, '12 references in total');
+  await reject({ ...body, referenceImageDataUrls: Array(10).fill(body.referenceImageDataUrls[0]) }, 'attach at most 9');
+  await reject({ ...body, referenceVideoUrls: Array(4).fill('https://media.example/guide.mp4'), referenceVideoDurations: [2,2,2,2] }, 'attach at most 3');
+  await reject({ ...body, referenceAudioUrls: Array(4).fill('https://media.example/track.mp3'), referenceAudioDurations: [2,2,2,2] }, 'attach at most 3');
+  await reject({ ...body, referenceVideoUrls: Array(2).fill('https://media.example/guide.mp4'), referenceVideoDurations: [2,2], referenceAudioUrls: Array(2).fill('https://media.example/track.mp3'), referenceAudioDurations: [2,2] }, '12 references in total');
   await reject({ ...body, referenceImageDataUrls: [], referenceVideoUrls: [], referenceVideoDurations: [] }, 'at least one image or video');
   await reject({ ...body, referenceVideoUrls: ['https://media.example/unknown.mp4'], referenceVideoDurations: undefined }, 'duration is not verified');
   for (const n of [1.9, 15.001, null, '15']) await reject({ ...body, referenceVideoUrls: ['https://media.example/custom.mp4'], referenceVideoDurations: [n] }, typeof n === 'number' ? '2–15 seconds' : 'not verified');
@@ -72,17 +75,19 @@ function loader(overrides = {}) {
   check(queued.at(-1).input.reference_audio_urls[0] === 'https://media.example/music.mp3', 'Actual custom audio forwarded once');
   check(audio.audioReferenceProblem([16], 1, h3.H3_MODEL_ID) !== null && audio.audioReferenceProblem([16], 1) === null, 'H3 and Seedance audio constraints remain distinct');
   check(h3.h3ReferenceProblem(8, [15], []) === null && h3.h3ReferenceProblem(12, [2], []), 'Combined reference validator counts all media');
+  check(h3.h3ReferenceProblem(9, [5,5,5], []) === null && h3.h3ReferenceProblem(9, [2,2], [2,2])?.includes('12 references'), 'Nine-image and twelve-file boundaries are independent');
+  check(h3.h3ReferenceProblem(10, [], [])?.includes('9 image') && h3.h3ReferenceProblem(11, [15], [])?.includes('9 image'), 'Reported eleven-image failure and ten-image requests are caught locally');
   check(presets.minAdSeconds(h3.H3_MODEL_ID) === 5 && presets.maxAdSeconds(h3.H3_MODEL_ID) === 15, 'Duration UI exposes 5–15s');
   check(presets.audioCapability(h3.H3_MODEL_ID).native && !presets.audioCapability(h3.H3_MODEL_ID).switchable, 'Native audio honestly has no API switch');
   check(sizes.resolutionsFor(h3.H3_MODEL_ID).join() === '480p,768p,1080p' && !sizes.resolutionsFor('seedance-2.5-ref').includes('768p'), 'Resolution menus remain model-specific');
-  check(base('src/lib/promptImport.ts').refSlots(seed.prompt).image === 11, 'Prompt completeness reads H3 references');
+  check(base('src/lib/promptImport.ts').refSlots(seed.prompt).image === 9, 'Prompt completeness reads H3 references');
   check(base('src/lib/adDraft.ts').parseAdDraft(seed).resolution === '768p', 'Example and resolution survive save/reload');
   const old = { ...seed, modelId: 'seedance-2.5-ref', resolution: '720p' };
   check(base('src/lib/adDraft.ts').parseAdDraft(old).modelId === old.modelId, 'Old saved drafts are never migrated implicitly');
   const seedance = { ...body, ...{ modelId: old.modelId, resolution: old.resolution }, prompt: 'Use Image 1 and Video 1.', durationSeconds: 18 };
   response = await post(seedance);
   check(response.status === 200 && queued.at(-1).input.duration === '18' && queued.at(-1).input.resolution === '720p', 'Existing Seedance route still uses its documented request format');
-  check(queued.at(-1).input.image_urls.length === 11 && queued.at(-1).input.generate_audio === false && !('reference_image_urls' in queued.at(-1).input), 'Seedance refs/audio switch retained without H3 aliases');
+  check(queued.at(-1).input.image_urls.length === 9 && queued.at(-1).input.generate_audio === false && !('reference_image_urls' in queued.at(-1).input), 'Seedance refs/audio switch retained without H3 aliases');
   check(queued.at(-1).input.prompt === 'Use [Image1] and [Video1].', 'Switching a H3 draft to Seedance converts its tokens back');
   const legacyRefs = base('src/lib/veluneReferences.ts').VELUNE_LEGACY_REFERENCES;
   response = await post({ ...body, referenceImageDataUrls: legacyRefs.map(r => r.url), prompt: 'Original take: use Image 1 and Video 1.' });
