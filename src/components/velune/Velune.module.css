@@ -221,3 +221,14 @@
   .referenceOpen { font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) { .cta, .referenceImage img { transition: none; } .referenceImage:hover img { transform: none; } }
+
+/* Revision 2: landscape stills stay readable, with direct file downloads. */
+.referenceActions { margin: 24px 0; display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
+.referenceActions .cta { margin-top: 0; }
+.referenceActions p { flex-basis: 100%; font-size: 12px; line-height: 1.7; }
+.productReferenceGrid .referenceImage { aspect-ratio: 16 / 9; background: #29141d; }
+.referenceDownload { display: inline-flex; align-items: center; min-height: 36px; margin-top: 8px; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.referenceGroup:last-of-type .referenceCard:first-child { grid-column: 1 / -1; }
+.referenceGroup:last-of-type .referenceCard:first-child .referenceImage { max-height: 520px; aspect-ratio: 16 / 9; background: #29141d; }
+
+@media (min-width: 1001px) { .productReferenceGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

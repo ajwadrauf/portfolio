@@ -1,3 +1,5 @@
+> **11 September 2026 — current revision:** The VELUNE H3 example now uses nine new images plus two retained studies. Read [AD_LAB_PRESET.md](./AD_LAB_PRESET.md) and [VISUAL_REFERENCES.md](./VISUAL_REFERENCES.md) for the current pack, prompt and report master. The Blender video is unchanged. The Seedance example toggle is deferred. Older production notes below describe the original camera study and may refer to the original eight images.
+
 # VELUNE — camera study and portfolio integration
 
 ## Review status

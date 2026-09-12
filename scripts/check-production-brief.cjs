@@ -43,18 +43,18 @@ async function main() {
   check(prompts.assemble({}, [{ seconds: 1.5, role: "open", action: "Open", audio: "snap" }, { seconds: 2.5, role: "climax", action: "Close", audio: "" }], 4, "").includes("0:00–0:01.5"), "export retains half-second boundary");
   const general = production.velunePromptDraft(), brief = production.veluneBlenderBrief();
   const visualRefs = load("src/lib/veluneReferences.ts");
-  const expectedImageIds = ["velune-ref-packaging", "velune-ref-bonbon", "velune-ref-pistachio", "velune-ref-caramel", "velune-ref-host", "velune-ref-chocolatier", "velune-ref-tunnel", "velune-ref-studio"];
-  check(general.slots.length === 9 && general.slots[0].id === "velune-motion" && general.slots[0].media === "video", "one actual motion clip precedes eight visual references");
-  check(JSON.stringify(general.slots.slice(1).map((slot) => slot.id)) === JSON.stringify(expectedImageIds), "all eight images use the supplied stable order");
-  check(JSON.stringify(general.slots.map((slot, index) => prompts.tokenFor(general.slots, index))) === JSON.stringify(["[Video1]", ...expectedImageIds.map((_, index) => `[Image${index + 1}]`)]), "reference tokens match upload indices without a ninth image");
+  const expectedImageIds = ['pistachio-carton','raspberry-carton','caramel-carton','bonbon','pistachio-centre','raspberry-ingredient','pistachio-ingredient','serving','studio','opening','reveal'].map(id => 'velune-ref-v2-' + id);
+  check(general.slots.length === 12 && general.slots[0].id === "velune-motion" && general.slots[0].media === "video", "one actual motion clip precedes eleven visual references");
+  check(JSON.stringify(general.slots.slice(1).map((slot) => slot.id)) === JSON.stringify(expectedImageIds), "all eleven images use the supplied stable order");
+  check(JSON.stringify(general.slots.map((slot, index) => prompts.tokenFor(general.slots, index))) === JSON.stringify(["[Video1]", ...expectedImageIds.map((_, index) => `[Image${index + 1}]`)]), "reference tokens match upload indices without a twelfth image");
   const assigned = production.veluneBlenderReferenceAssets();
-  check(Object.keys(assigned).length === 9 && assigned["@Video 1"] === "velune-motion", "Blender board has nine actual assignments");
+  check(Object.keys(assigned).length === 12 && assigned["@Video 1"] === "velune-motion", "Blender board has twelve actual assignments");
   for (const reference of visualRefs.VELUNE_REFERENCES) {
     check(assigned[`@Image ${reference.index}`] === reference.id, `Blender assignment matches Image${reference.index}`);
     check(general.slots[reference.index].assetId === reference.id, `new prompt slot attaches Image${reference.index}`);
     check(brief.subjects.some((subject) => subject.ref === `Image ${reference.index}`), `Blender subject maps Image${reference.index}`);
   }
-  check(blender.uploadPlan(brief).length === 9, "unreferenced report does not add a phantom image upload");
+  check(blender.uploadPlan(brief).length === 12, "unreferenced report does not add a phantom image upload");
   const sequence = load("src/components/velune/veluneStudy.ts").VELUNE_SHOTS;
   for (const [index, shot] of sequence.entries()) {
     const wanted = visualRefs.VELUNE_REFERENCES.filter((reference) => visualRefs.veluneShotReferenceIds(shot.id).includes(reference.id)).map((reference) => `[Image${reference.index}]`);
@@ -63,10 +63,10 @@ async function main() {
   }
   check(general.beats[7].action.includes("INGREDIENT") && !/\[Image[34]\]/.test(general.beats[7].action), "raspberry ingredient is not replaced by a chocolate cutaway");
   check(general.beats[8].action.includes("INGREDIENT") && !/\[Image[34]\]/.test(general.beats[8].action), "pistachio ingredient is not replaced by its filling reference");
-  check(general.beats[6].action.includes("both wear ivory jackets and plum aprons") && general.beats[6].action.includes("face away"), "studio workers retain scene-specific back-facing wardrobe");
-  check(general.values.bindings.includes("No clean raspberry-filling reference was supplied"), "missing raspberry filling is disclosed");
-  check(!Object.values(general.values).join(" ").includes("[Image9]") && general.beats[10].action.includes("exact compositing"), "report remains a post-production artifact, not Image9");
-  check(general.values.bindings.includes("authority for camera routes") && general.values.bindings.includes("does not override [Video1]"), "tunnel reference cannot replace the Blender motion authority");
+  check(general.beats[6].action.includes("ivory jackets and plum aprons") && general.beats[6].action.includes("Heads stay outside"), "studio workers retain scene-specific back-facing wardrobe");
+  check(general.values.bindings.includes("including raspberry ganache"), "new serving reference supplies raspberry ganache");
+  check(!Object.values(general.values).join(" ").includes("[Image12]") && general.beats[10].action.includes("composited afterward"), "report remains a post-production artifact, not Image12");
+  check(general.values.bindings.includes("main motion beats") && general.values.bindings.includes("revised shot directions override"), "explicit shot overrides coexist with the original motion guide");
   const authored = { version: 1, brief: { ...brief, subjects: [{ color: "my #112233", proxy: "custom edited proxy", becomes: "my subject", ref: "Image 1" }] }, referenceAssets: { "@Video 1": "my-motion", "@Image 1": "velune-packaging", "@Image 2": "velune-report" } };
   const preserved = production.normalizeBlenderDraft(authored);
   check(JSON.stringify(preserved.brief.subjects) === JSON.stringify(authored.brief.subjects) && JSON.stringify(preserved.referenceAssets) === JSON.stringify(authored.referenceAssets), "existing saved references and user mapping edits are not migrated to the new set");
@@ -75,7 +75,7 @@ async function main() {
   check(Math.abs(prompts.beatsTotal(general.beats) - 15) < 1e-9, "VELUNE beat durations total fifteen");
   check(Math.round(Number(brief.beats[11].to) * 24) === 360, "final exclusive frame is 360");
   check(Math.round(Number(brief.beats[10].from) * 24) === 242 && Math.round(Number(brief.beats[10].to) * 24) === 314, "report retains exact three-second interval");
-  check(brief.creative.includes("not yet produced"), "seed never fabricates completed Seedance result");
+  check(brief.creative.includes("not evidence of a finished film"), "seed never fabricates a completed film");
   const editedBuild = blender.composeBlenderBuildBrief(brief);
   check(editedBuild.includes("Edited sequence") && !editedBuild.includes("One continuous take"), "VELUNE build preserves its explicit edited structure");
   check(blender.composeBlenderPrompt(brief).includes("hard-cut boundaries"), "video prompt preserves the same cut structure");
@@ -121,7 +121,7 @@ async function main() {
   await production.downloadProductionBundle({ name: "VELUNE", prompt: prompts.assemble(general.values, general.beats, general.duration, general.throughline), buildBrief: editedBuild, draft: { version: 1, brief, referenceAssets: assigned }, cues: general.beats, references: freshReferences });
   const freshEntries = unzipSync(new Uint8Array(await download.arrayBuffer()));
   const freshManifest = JSON.parse(strFromU8(freshEntries["05_reference_manifest.json"]));
-  check(freshManifest.length === 9 && freshManifest.every((row) => row.status === "ready" && row.file), "new VELUNE ZIP contains all eight ready images and the real motion clip");
+  check(freshManifest.length === 12 && freshManifest.every((row) => row.status === "ready" && row.file), "new VELUNE ZIP contains all eleven ready images and the real motion clip");
   for (const [index, reference] of visualRefs.VELUNE_REFERENCES.entries()) check(Buffer.from(freshEntries[freshManifest[index + 1].file]).equals(fs.readFileSync(path.join(root, "public", reference.url))), `reference ${reference.index} JPEG bytes are preserved in the bundle`);
   download = undefined;
   await assert.rejects(() => production.downloadProductionBundle({ name: "missing", prompt: "x", draft: {}, cues: [], references: [{ token: "[Image1]", job: "bad", asset: { ...ready, url: "/missing.jpg" } }] })); checks++;

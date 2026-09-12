@@ -1,0 +1,57 @@
+{
+  "revision": 2,
+  "newImages": [
+    {
+      "source": "ChatGPT Image Sep 11, 2026, 07_44_02 PM.png",
+      "file": "01_velune_pistachio_carton.jpeg"
+    },
+    {
+      "source": "ChatGPT Image Sep 11, 2026, 07_44_37 PM.png",
+      "file": "02_velune_raspberry_carton.jpeg"
+    },
+    {
+      "source": "ChatGPT Image Sep 11, 2026, 07_44_48 PM.png",
+      "file": "03_velune_caramel_carton.jpeg"
+    },
+    {
+      "source": "ChatGPT Image Sep 11, 2026, 07_44_53 PM.png",
+      "file": "06_velune_raspberry_ingredient.jpeg"
+    },
+    {
+      "source": "ChatGPT Image Sep 11, 2026, 07_44_56 PM.png",
+      "file": "07_velune_pistachio_ingredient.jpeg"
+    },
+    {
+      "source": "Codex Image Sep 11, 2026, 06_49_18 PM.png",
+      "file": "08_velune_three_flavour_serving.jpeg"
+    },
+    {
+      "source": "ChatGPT Image Sep 11, 2026, 07_45_01 PM.png",
+      "file": "09_velune_working_studio.jpeg"
+    },
+    {
+      "source": "ChatGPT Image Sep 11, 2026, 07_45_05 PM.png",
+      "file": "10_velune_opening_chocolate.jpeg"
+    },
+    {
+      "source": "ChatGPT Image Sep 11, 2026, 07_45_09 PM.png",
+      "file": "11_velune_final_reveal.jpeg"
+    }
+  ],
+  "reusedImages": [
+    {
+      "source": "02_velune_whole_bonbon.jpeg",
+      "file": "04_velune_whole_bonbon.jpeg"
+    },
+    {
+      "source": "03_velune_pistachio_centre.jpeg",
+      "file": "05_velune_pistachio_centre.jpeg"
+    }
+  ],
+  "excluded": [
+    {
+      "source": "Codex Image Sep 11, 2026, 06_50_35 PM.png",
+      "reason": "Collage; individual references are supplied separately. Not an H3 input."
+    }
+  ]
+}

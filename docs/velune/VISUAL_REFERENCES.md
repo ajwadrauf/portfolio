@@ -1,29 +1,41 @@
-# VELUNE supplied visual references
+# VELUNE visual references — revision 2
 
-Integrated 11 September 2026. These are the eight AI-generated JPEGs supplied by Ajwad, preserved with their original names and bytes under `public/studio/velune/references/`.
+Updated 11 September 2026. The selected pack contains nine newly supplied images and two retained chocolate studies. The original eight files remain available so saved projects keep their original inputs. New example copies use only the eleven v2 JPEGs.
 
-The public walkthrough is `/velune#visual-references`. It distinguishes the appearance studies from the original Blender layouts and flat artwork. The finished Seedance film remains pending.
+## Names and upload order
 
-| Image token | Original filename | Purpose / shots |
-| --- | --- | --- |
-| Image1 | 01_velune_packaging.jpeg | Three flavour cartons; S02–04, artwork direction for S11 |
-| Image2 | 02_velune_whole_bonbon.jpeg | V-groove shell and whole product; S05, S07, S10 |
-| Image3 | 03_velune_pistachio_centre.jpeg | Cut shell and filling; S06 |
-| Image4 | 04_velune_caramel_centre.jpeg | Contained caramel half; S10 |
-| Image5 | 05_velune_host.jpeg | Synthetic host appearance; S01, S06, S12 |
-| Image6 | 06_velune_chocolatier.jpeg | Synthetic chocolatier appearance; S06, S07 |
-| Image7 | 07_velune_chocolate_tunnel.jpeg | Chocolate folds and central aperture; S01, S12 |
-| Image8 | 08_velune_discovery_studio.jpeg | Two back-facing workers and 3+2 bonbon stacks; S07 |
+| Upload file | Original supplied filename |
+| --- | --- |
+| `01_velune_pistachio_carton.jpeg` | `ChatGPT Image Sep 11, 2026, 07_44_02 PM.png` |
+| `02_velune_raspberry_carton.jpeg` | `ChatGPT Image Sep 11, 2026, 07_44_37 PM.png` |
+| `03_velune_caramel_carton.jpeg` | `ChatGPT Image Sep 11, 2026, 07_44_48 PM.png` |
+| `04_velune_whole_bonbon.jpeg` | `02_velune_whole_bonbon.jpeg` |
+| `05_velune_pistachio_centre.jpeg` | `03_velune_pistachio_centre.jpeg` |
+| `06_velune_raspberry_ingredient.jpeg` | `ChatGPT Image Sep 11, 2026, 07_44_53 PM.png` |
+| `07_velune_pistachio_ingredient.jpeg` | `ChatGPT Image Sep 11, 2026, 07_44_56 PM.png` |
+| `08_velune_three_flavour_serving.jpeg` | `Codex Image Sep 11, 2026, 06_49_18 PM.png` |
+| `09_velune_working_studio.jpeg` | `ChatGPT Image Sep 11, 2026, 07_45_01 PM.png` |
+| `10_velune_opening_chocolate.jpeg` | `ChatGPT Image Sep 11, 2026, 07_45_05 PM.png` |
+| `11_velune_final_reveal.jpeg` | `ChatGPT Image Sep 11, 2026, 07_45_09 PM.png` |
 
-`Video1` remains the actual Blender camera study. It defines the motion, composition, registered product movement and twelve-shot 15-second edit. Each image is attached once; multiple shots can refer to the same token. The separate report concept remains a compositing artifact, not an invented ninth image upload.
+New PNGs were converted to JPEG at their original 1672 × 941 dimensions, quality 96 with 4:4:4 chroma. The retained whole bonbon and pistachio-centre JPEGs are byte-for-byte copies at 1254 × 1254. Originals in Downloads were not renamed or edited.
 
-The shared manifest is `src/lib/veluneReferences.ts`. New VELUNE project copies include all eight images with provenance, named roles, file names and shot associations. General Prompt Builder, Blender and Ad Lab use the same ordering. Campaign Studio starts from the three-carton appearance reference. Packshots retains its original flat-artwork loader because a perspective product image is not a replacement for a printable panel.
+The extra `Codex Image Sep 11, 2026, 06_50_35 PM.png` is a collage. Its individual subjects already have dedicated images, so it is excluded from the site reference pack and provider request. See `REFERENCE_V2_FILES.json` for machine-readable provenance.
 
-Existing projects and drafts are preserved. **Project & assets → Add visual references** adds only missing reference assets; it does not replace edited prompts, paid results or reference assignments. **Load VELUNE example** makes a fresh copy with the updated defaults. Missing files in older projects are explicitly marked in Ad Lab's slot manifest and block unresolved bindings from silently shifting to another image.
+## Where these are used
 
-Two production details are explicit in the new direction:
+- `src/lib/veluneReferences.ts`: versioned manifest, roles, actual dimensions and scene associations. `VELUNE_REFERENCES` is current; `VELUNE_ALL_REFERENCES` allows old URLs to remain usable and measurable.
+- `public/studio/velune/references/v2/`: the eleven current JPEGs.
+- `/velune#visual-references`: grouped gallery, numbered upload slots and downloads.
+- Ad Lab's top **Load VELUNE example** button: fresh **VELUNE v2 · working copy**, H3 Max, eleven images plus the existing Blender video. Existing saved drafts are not migrated.
+- Prompt Builder and project assets use the same current manifest. Campaign Studio's single-image starter now correctly describes the solo pistachio carton. Packshots' flat-artwork loader remains unchanged.
 
-- Discovery-studio clothing comes from Image8: both workers face away and wear ivory jackets/plum aprons. The host's plum portrait outfit does not override that scene.
-- S08/S09 are raspberry and pistachio ingredient inserts. The uploaded cut-centre bonbons must not replace them. No raspberry-filling reference has been supplied.
+The two older chocolate studies control S05/S07 shell detail and S06 cutaway. The new serving controls the three-flavour plate; its more visible nut pieces do not redefine the older S06 reference. The new opening is tight and empty; the ending uses a wider product reveal. Carton camera angles differ, so the prompt requests registered turns without mirrored lettering.
 
-Verification: production build/TypeScript; 137 production-brief checks including the actual JPEG bytes inside a nine-input ZIP; connected-project and Ad binding checks; existing campaign and audio/draft suites. Browser checks verified all eight gallery images, mobile width, adding to an older project, and a fresh Ad example with eight images plus the Blender guide and matching positional bindings. All generation checks were offline/mocked; no paid request was made.
+## Downloads and finishing
+
+`public/studio/velune/velune_h3_v2_pack.zip` contains the eleven JPEGs, unchanged Blender guide, current H3 prompt, separate ElevenLabs direction, provenance and the revised report SVG. Build it from checked-in assets with `node scripts/build-velune-reference-pack.cjs`.
+
+`public/studio/velune/finishing/velune_centre_report_v2.svg` is a self-contained exact graphic built from the supplied carton/serving images and typeset headings. It is a finishing document in the project, not a twelfth image reference. It must be composited over the generated S11 interval in the final edit; the application does not claim it has already been inserted into an MP4.
+
+No new paid film or audio generation was run during integration. The updated final film is still pending. The Seedance example toggle is explicitly deferred.

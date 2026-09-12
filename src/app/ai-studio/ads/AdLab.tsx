@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { H3_MODEL_ID, h3ReferenceProblem, videoPromptFor } from "@/lib/h3Video";
-import { VELUNE_REFERENCES } from "@/lib/veluneReferences";
+import { VELUNE_ALL_REFERENCES } from "@/lib/veluneReferences";
 import { VELUNE_MEDIA } from "@/components/velune/veluneStudy";
 import { H3VideoSettings } from "@/components/ad/H3VideoSettings";
 import styles from "./AdLab.module.css";
@@ -723,7 +723,7 @@ function AdLabWorkspace({
   const imageUrls = useMemo(() => [...(productImage ? [productImage] : []), ...refs.filter((r) => r.media === "image").map((r) => r.url)], [productImage, refs]);
   useEffect(() => {
     if (!h3) return;
-    const elements = imageUrls.filter((url) => !imageSizes[url] && !VELUNE_REFERENCES.some((r) => r.url === url)).map((url) => {
+    const elements = imageUrls.filter((url) => !imageSizes[url] && !VELUNE_ALL_REFERENCES.some((r) => r.url === url)).map((url) => {
       const image = new Image();
       image.onload = () => { if (image.naturalWidth && image.naturalHeight) setImageSizes((previous) => ({ ...previous, [url]: { width: image.naturalWidth, height: image.naturalHeight } })); };
       image.src = url;
@@ -731,7 +731,7 @@ function AdLabWorkspace({
     });
     return () => elements.forEach((image) => { image.onload = null; image.src = ""; });
   }, [h3, imageUrls, imageSizes]);
-  const referenceImageSizes = imageUrls.map((url) => { const size = VELUNE_REFERENCES.find((r) => r.url === url) ?? imageSizes[url]; return size ? { width: size.width, height: size.height } : undefined; });
+  const referenceImageSizes = imageUrls.map((url) => { const size = VELUNE_ALL_REFERENCES.find((r) => r.url === url) ?? imageSizes[url]; return size ? { width: size.width, height: size.height } : undefined; });
   const referenceImagePixels = referenceImageSizes.reduce((total, size) => total + (size ? size.width * size.height : 2048 * 2048), 0);
   const referenceVideoDurations = refs.filter((r) => r.media === "video").map((r) => r.url === VELUNE_MEDIA.animatic ? 15 : clipSeconds[r.url]);
   const inputVideoSeconds = refs
@@ -1893,7 +1893,7 @@ function AdLabWorkspace({
       <p role="status" className="mt-4 text-xs text-muted">{workspaceReady ? draftStatus : "Opening project storage…"}</p>
       {draftSaveBlocked && <button type="button" className="btn-secondary mt-2" onClick={() => { if (window.confirm("Replace the unsupported Ad draft with the current form? Export the project first if you need to preserve that draft.")) setDraftSaveBlocked(false); }}>Replace unsupported Ad draft</button>}
       {routeNote && <p role="status" className="mt-3 rounded-lg border border-accent/30 p-3 text-sm">{routeNote}</p>}
-      {project?.example === "velune" && <div className="mt-5 rounded-xl border border-border-soft p-4"><p className="text-sm font-semibold">VELUNE · camera plan + visual references</p><p className="mt-2 text-xs leading-relaxed text-muted">Eight supplied AI images define the packaging, chocolate, cast and scenes. New copies use H3 Max Reference at 768p for the 15-second film. New example copies attach them in order beside the Blender motion guide. Existing drafts keep their chosen files. Exact report graphics and final-film review remain finishing work.</p><div className="mt-2 flex flex-wrap gap-4"><Link href="/velune#visual-references" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">See what each image directs ↗</Link><Link href="/ai-studio/projects" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">Add references to an older project ↗</Link></div>{unattachedSlots.length > 0 && <details className="mt-3" open><summary className="min-h-8 cursor-pointer text-xs font-semibold">Remaining reference checklist</summary><ul className="list-disc space-y-1 pl-4 text-xs text-muted">{unattachedSlots.map((slot) => <li key={slot}>{slot}</li>)}</ul></details>}<video controls preload="metadata" src={project.assets.find((a) => a.id === "velune-motion" && a.status === "ready")?.url} className="mt-3 max-h-72 w-full rounded-lg bg-black" /></div>}
+      {project?.example === "velune" && <div className="mt-5 rounded-xl border border-border-soft p-4"><p className="text-sm font-semibold">VELUNE · camera plan + visual references</p><p className="mt-2 text-xs leading-relaxed text-muted">Revision 2 loads eleven images: nine new references and two retained chocolate studies, plus the original Blender guide. H3 Max stays selected at 768p for 15 seconds. Solo cartons, real ingredient detail, working gestures and a new product reveal guide this take. All twelve reference slots are used; ElevenLabs sound is added in finishing. Existing drafts keep their chosen files. Exact report graphics and final-film review remain finishing work.</p><div className="mt-2 flex flex-wrap gap-4"><Link href="/velune#visual-references" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">See what each image directs ↗</Link><Link href="/ai-studio/projects" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent underline">Add references to an older project ↗</Link></div>{unattachedSlots.length > 0 && <details className="mt-3" open><summary className="min-h-8 cursor-pointer text-xs font-semibold">Remaining reference checklist</summary><ul className="list-disc space-y-1 pl-4 text-xs text-muted">{unattachedSlots.map((slot) => <li key={slot}>{slot}</li>)}</ul></details>}<video controls preload="metadata" src={project.assets.find((a) => a.id === "velune-motion" && a.status === "ready")?.url} className="mt-3 max-h-72 w-full rounded-lg bg-black" /></div>}
       <div className={styles.utilities}>
         <div className={styles.sessionControls}>
           <LiveGate />

@@ -1,7 +1,4 @@
-/** Supplied AI-generated appearance references, in the user's generation order.
- * These are fictional concept assets, not authenticated product photography.
- * Keep token order stable across Prompt Builder, Blender and Ad Lab.
- */
+/** Versioned fictional AI appearance references. Old URLs remain valid for saved drafts. */
 export type VeluneReference = {
   id: string; index: number; fileName: string; url: string; title: string;
   role: string; shotIds: readonly string[]; kind: "product" | "casting" | "scene";
@@ -10,7 +7,7 @@ export type VeluneReference = {
 const reference = (index: number, id: string, fileName: string, title: string, kind: VeluneReference["kind"], role: string, shotIds: readonly string[], width: number, height: number): VeluneReference =>
   ({ index, id: `velune-ref-${id}`, fileName, url: `/studio/velune/references/${fileName}`, title, kind, role, shotIds, width, height });
 
-export const VELUNE_REFERENCES: readonly VeluneReference[] = [
+export const VELUNE_LEGACY_REFERENCES: readonly VeluneReference[] = [
   reference(1, "packaging", "01_velune_packaging.jpeg", "Three-flavour packaging", "product", "Carton proportions, VELUNE branding and flavour colours: pistachio green, raspberry plum and caramel gold. Use each matching carton during the registered turns; this perspective image is not flat label artwork.", ["S02", "S03", "S04", "S11"], 1672, 941),
   reference(2, "bonbon", "02_velune_whole_bonbon.jpeg", "Whole bonbon", "product", "Rounded pillow shape, restrained V groove, shell finish and highlight behaviour. Preserve the Blender scene's product counts and arrangement.", ["S05", "S07", "S10"], 1254, 1254),
   reference(3, "pistachio", "03_velune_pistachio_centre.jpeg", "Pistachio centre", "product", "Cut shell and textured pistachio filling for the chocolate-half reveal. S09 is a separate ingredient insert, not another cutaway bonbon.", ["S06"], 1254, 1254),
@@ -20,6 +17,27 @@ export const VELUNE_REFERENCES: readonly VeluneReference[] = [
   reference(7, "tunnel", "07_velune_chocolate_tunnel.jpeg", "Chocolate tunnel", "scene", "Receding chocolate folds, thin caramel veins and the small central host. Use for scene appearance; the Blender video controls camera, timing and framing.", ["S01", "S12"], 1672, 941),
   reference(8, "studio", "08_velune_discovery_studio.jpeg", "Discovery studio", "scene", "Two back-facing workers in ivory jackets and plum aprons, with five bonbons stacked three left and two right. This scene-specific wardrobe and staging take priority over the host portrait.", ["S07"], 1672, 941),
 ];
+
+const v2 = (index: number, id: string, fileName: string, title: string, kind: VeluneReference["kind"], role: string, shotIds: readonly string[], width = 1672, height = 941): VeluneReference =>
+  ({ ...reference(index, `v2-${id}`, fileName, title, kind, role, shotIds, width, height), url: `/studio/velune/references/v2/${fileName}` });
+
+/** Nine new stills plus two retained chocolate studies; one video fills H3's twelfth slot. */
+export const VELUNE_REFERENCES: readonly VeluneReference[] = [
+  v2(1, "pistachio-carton", "01_velune_pistachio_carton.jpeg", "Pistachio carton", "product", "Solo pistachio-green carton: folded paperboard, printed whole-and-cut chocolate, clear side depth. Keep front lettering readable; register its position with the other two carton shots without mirroring the artwork.", ["S02", "S11"]),
+  v2(2, "raspberry-carton", "02_velune_raspberry_carton.jpeg", "Raspberry carton", "product", "Solo raspberry-plum carton with exposed berry centre printed on the front. Preserve its flavour colour, paper texture and family proportions; exact side-panel lettering needs finishing review.", ["S03", "S11"]),
+  v2(3, "caramel-carton", "03_velune_caramel_carton.jpeg", "Caramel carton", "product", "Solo caramel-gold carton with amber centre printed on the front. The printed chocolate stays on the carton face; preserve the physical fold seams and soft contact shadows.", ["S04", "S11"]),
+  v2(4, "bonbon", "04_velune_whole_bonbon.jpeg", "Whole bonbon · retained", "product", "Retained V-groove shell and rounded square bonbon. Use its fine chocolate surface for the question-mark assembly and studio display; avoid toy-like gloss.", ["S05", "S07"], 1254, 1254),
+  v2(5, "pistachio-centre", "05_velune_pistachio_centre.jpeg", "Pistachio centre · retained", "product", "Retained cut shell and finely textured pistachio praline for the fork reveal. This image controls S06; the newer serving image controls the three-flavour plate.", ["S06"], 1254, 1254),
+  v2(6, "raspberry-ingredient", "06_velune_raspberry_ingredient.jpeg", "Raspberry ingredient", "product", "A whole raspberry with individual drupelets, fine hairs and natural unevenness. Use for the ingredient insert, not the raspberry ganache or a chocolate cutaway.", ["S08"]),
+  v2(7, "pistachio-ingredient", "07_velune_pistachio_ingredient.jpeg", "Pistachio ingredient", "product", "An already-open nut with dry cream shell, green kernel and purple skin. Shell and kernel stay one stable assembly during the small turn.", ["S09"]),
+  v2(8, "serving", "08_velune_three_flavour_serving.jpeg", "Three-flavour serving", "product", "Exactly three cut halves on an ivory dish: pistachio left, raspberry middle, caramel right. Centres face camera. Replaces the Blender guide's two-piece serving; fillings remain contained.", ["S10", "S11", "S12"]),
+  v2(9, "studio", "09_velune_working_studio.jpeg", "A working discovery studio", "scene", "Two workers from behind, heads outside the crop, ivory jackets and plum aprons. Continue the tasting-utensil and open-hand gestures during the camera pullback. Keep the display stacks at three left and two right.", ["S06", "S07"]),
+  v2(10, "opening", "10_velune_opening_chocolate.jpeg", "Curiosity · tight opening", "scene", "Close asymmetric chocolate folds around a small empty aperture. No host or plate. This framing overrides the original guide's opening and is deliberately different from the final reveal.", ["S01"]),
+  v2(11, "reveal", "11_velune_final_reveal.jpeg", "Wonder within · product reveal", "scene", "A wider chocolate passage with the three-centre dish grounded in the lower left and room for the tagline at right. Overrides the guide's returning host. Match the serving reference for precise food appearance.", ["S12"]),
+];
+
+/** Server allowlisting and cost measurement include the original files for saved projects. */
+export const VELUNE_ALL_REFERENCES = [...VELUNE_LEGACY_REFERENCES, ...VELUNE_REFERENCES];
 
 export function veluneShotReferenceIds(shotId: string): string[] {
   return VELUNE_REFERENCES.filter((reference) => reference.shotIds.includes(shotId)).map((reference) => reference.id);

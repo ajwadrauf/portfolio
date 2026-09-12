@@ -9,26 +9,27 @@ import styles from "@/components/velune/Velune.module.css";
 
 export const metadata: Metadata = {
   title: "VELUNE — a chocolate film in production · Ajwad Rauf",
-  description: "Inside a fifteen-second fictional chocolate concept: a Blender camera study, eight supplied AI-generated appearance references, original package artwork and a planned film finish.",
+  description: "Inside a fifteen-second fictional chocolate concept: a Blender camera study, eleven AI-generated appearance references for the revised H3 take, original package artwork and a planned film finish.",
 };
 
 const DECISIONS = [
-  { n: "01", title: "Make curiosity visible.", body: "A chocolate tunnel leads to a face; twelve bonbons become a question mark. The idea lives in the silhouette and the order of events, before surface detail enters the picture.", detail: "Question silhouette → surface bridges → settled spread" },
-  { n: "02", title: "Move the right thing.", body: "The macro fork stays still while the observers move. In the discovery studio, the camera travels backward through real depth. Each reveal depends on a different relationship between subject and camera.", detail: "Registered product / moving observers / real parallax" },
+  { n: "01", title: "Make curiosity visible.", body: "A tight, empty chocolate opening asks the question. A wider passage reveals three filled centres at the end. The revised direction gives curiosity a visible payoff.", detail: "Tight opening → discovery → three-centre reveal" },
+  { n: "02", title: "Move the right thing.", body: "The macro fork stays still while soft background figures move. In the studio, a backward camera move reveals workers already tasting and gesturing. Small actions bring the setting to life.", detail: "Registered product / working gestures / real parallax" },
   { n: "03", title: "Give the eye time.", body: "Three quick carton cuts establish the flavour family. Later, The Centre Report holds for three seconds. The fastest and quietest moments have different jobs.", detail: "3 × 9-frame cartons / 72-frame reading interval" },
 ] as const;
 
 const STAGES = [
   { n: "01", title: "Adapt the choreography", state: "Brief & artwork", body: "An existing shot structure becomes a new fictional chocolate world. Brand, product, report artwork and proposed sound are new creative; reference performers and branded footage are not reproduced here." },
-  { n: "02", title: "Build the camera study", state: "Current stage", body: "Geometry makes the timing, framing, object count and camera route reviewable. This preview is a working animatic; material quality and character performance remain provisional." },
-  { n: "03", title: "Develop the appearance", state: "References supplied", body: "Eight AI-generated images establish the proposed food, casting and world. Review them against the camera study, then test the film finish. Package lettering and the printed report stay in Blender or compositing." },
+  { n: "02", title: "Build the camera study", state: "Guide ready", body: "Geometry makes the timing, framing, object count and camera route reviewable. This preview is a working animatic; material quality and character performance remain provisional." },
+  { n: "03", title: "Develop the appearance", state: "Revision 2 ready", body: "The first H3 take informed nine new images and two retained chocolate studies. Individual cartons, ingredient detail, working gestures and distinct bookends now guide the next take. The original Blender video stays unchanged." },
   { n: "04", title: "Audition, mix, finish", state: "Planned", body: "Audition original narration, a structured instrumental score and selected effects through ElevenLabs. Place the separate stems in the edit and check the complete film before calling it finished." },
 ] as const;
 
 const REFERENCE_GROUPS = [
-  { kind: "product", title: "Product & centres", note: "One package family, one V-groove shell and two filling studies establish the proposed food direction." },
-  { kind: "casting", title: "Fictional casting", note: "Two synthetic character references define the host and chocolatier. Their appearance can carry between shots; wardrobe follows the scene." },
-  { kind: "scene", title: "World & composition", note: "The tunnel sets the visual direction; Blender remains the guide for motion. The discovery studio keeps two workers facing away in ivory jackets." },
+  { id: "cartons", title: "A carton for every flavour", note: "Individual references give each fast carton cut its own paper texture, depth and exposed centre. Register their camera angles without mirroring the lettering.", indices: [1, 2, 3], columns: 3 },
+  { id: "chocolate", title: "The shell. The centre. The serving.", note: "Two retained chocolate studies support the assembly and fork reveal. The new dish brings all three flavours together.", indices: [4, 5, 8], columns: 3 },
+  { id: "ingredients", title: "Real detail starts with a reference", note: "The raspberry and opened pistachio now have dedicated ingredient images, separate from the filled chocolates.", indices: [6, 7], columns: 2 },
+  { id: "world", title: "Give the world a little life", note: "A working gesture replaces the posed stillness. A tight, empty opening and a wider product reveal make the beginning and ending distinct.", indices: [9, 10, 11], columns: 2 },
 ] as const;
 
 const VOICE = [
@@ -53,11 +54,11 @@ export default function VelunePage() {
             <h1>VELUNE<span>Wonder within.</span></h1>
             <p className={styles.lead}>A small chocolate contains a world of discovery. The challenge is making that world read in fifteen seconds.</p>
             <a className={styles.cta} href="#camera-study">Watch the camera study <span aria-hidden>↓</span></a>
-            <a className={styles.referenceJump} href="#visual-references">Explore the eight appearance references <span aria-hidden="true">↓</span></a>
+            <a className={styles.referenceJump} href="#visual-references">Explore the revised appearance references <span aria-hidden="true">↓</span></a>
           </div>
           <aside className={styles.heroNote}>
-            <span className={styles.status}>Camera study · In production</span>
-            <p>A working look at the direction, geometry and eight supplied appearance references. The film finish and soundtrack are still ahead.</p>
+            <span className={styles.status}>Revision 2 · Ready for the next take</span>
+            <p>The first H3 take showed where the direction needed more clarity. Nine new stills and two retained chocolate studies now guide the next render; the final film and mix are still in production.</p>
             <dl><div><dt>Format</dt><dd>15 seconds / 16:9</dd></div><div><dt>Edit target</dt><dd>360 frames / 24 fps</dd></div><div><dt>Structure</dt><dd>12 shots / 11 hard cuts</dd></div><div><dt>Project</dt><dd>Independent concept</dd></div></dl>
           </aside>
         </section>
@@ -67,7 +68,7 @@ export default function VelunePage() {
             <div className={styles.sectionHead}><div><p className={styles.eyebrow}>01 / Camera & choreography</p><h2 id="camera-heading">Direct the movement.<br /><em>Then build the finish.</em></h2></div><p id="velune-video-description">A silent Blender animatic, from the chocolate tunnel and three-flavour montage to a laboratory reveal, printed report and final return. Select any shot below to inspect the plan.</p></div>
             <VelunePlayer />
             <Link className={styles.cta} href="/ai-studio#studio-start">Explore the editable VELUNE studio example <span aria-hidden>↗</span></Link>
-            <p className={styles.mediaNote}>Working geometry and provisional character rigs make the choreography visible. This is the camera study, not the finished commercial.</p>
+            <p className={styles.mediaNote}>Original Blender guide, unchanged. The revised H3 prompt replaces the opening and ending, adds working gestures and changes the serving to three centres. Those updates are shown in the reference images below, not in this animatic.</p>
           </div>
         </section>
 
@@ -93,35 +94,36 @@ export default function VelunePage() {
           <div className={styles.wrap}>
             <div className={styles.sectionHead}>
               <div><p className={styles.eyebrow}>03 / Appearance direction</p><h2 id="references-heading">References shape<br /><em>the direction.</em></h2></div>
-              <div className={styles.referenceIntro}><span className={styles.referenceStatus}>08 supplied images · AI-generated</span><p>A proposed look for the chocolate, people and world. These supplied reference images guide the next production step; the final film is still to come.</p></div>
+              <div className={styles.referenceIntro}><span className={styles.referenceStatus}>11 reference images · Revision 2</span><p>Nine new stills and two retained chocolate studies. These are the exact images loaded by the revised H3 example, numbered to match their upload slots. The collage and old cast portraits are excluded from this take.</p></div>
             </div>
+            <div className={styles.referenceActions}><Link className={styles.cta} href="/ai-studio/ads">Try this direction in Ad Lab <span aria-hidden>↗</span></Link><a className={styles.referenceJump} href="/studio/velune/velune_h3_v2_pack.zip" download>Download the named images & H3 prompt <span aria-hidden>↓</span></a><p>In Ad Lab, choose “Load VELUNE example”. H3 Max · 15s · 16:9 · 768p · 11 images + 1 Blender guide.</p></div>
             <div className={styles.referenceProvenance}>
               <p><strong>Appearance</strong>Supplied AI reference images</p>
               <p><strong>Movement</strong>Original Blender camera layouts</p>
-              <p><strong>Lettering</strong>Original flat package & report artwork</p>
+              <p><strong>Lettering</strong>Separate report master & final type check</p>
             </div>
             {REFERENCE_GROUPS.map((group) => (
-              <div className={styles.referenceGroup} key={group.kind}>
+              <div className={styles.referenceGroup} key={group.id}>
                 <div className={styles.referenceGroupHead}><h3>{group.title}</h3><p>{group.note}</p></div>
-                <div className={`${styles.referenceGrid} ${group.kind === "product" ? styles.productReferenceGrid : ""} ${group.kind === "casting" ? styles.castingReferenceGrid : ""}`}>
-                  {VELUNE_REFERENCES.filter((reference) => reference.kind === group.kind).map((reference) => (
+                <div className={`${styles.referenceGrid} ${group.columns === 3 ? styles.productReferenceGrid : ""}`}>
+                  {VELUNE_REFERENCES.filter((reference) => (group.indices as readonly number[]).includes(reference.index)).map((reference) => (
                     <figure className={styles.referenceCard} key={reference.id}>
                       <a className={styles.referenceImage} href={reference.url} target="_blank" rel="noreferrer" aria-label={`Open ${reference.title} reference image in a new tab`}>
-                        <Image src={reference.url} width={reference.width} height={reference.height} alt={`Supplied AI-generated VELUNE reference: ${reference.title}`} sizes={group.kind === "product" ? "(max-width: 600px) calc(100vw - 44px), (max-width: 1000px) calc((100vw - 80px) / 2), 300px" : "(max-width: 600px) calc(100vw - 44px), (max-width: 1000px) calc((100vw - 80px) / 2), 620px"} />
+                        <Image src={reference.url} width={reference.width} height={reference.height} alt={`Supplied AI-generated VELUNE reference: ${reference.title}`} sizes={group.columns === 3 ? "(max-width: 600px) calc(100vw - 44px), (max-width: 1000px) calc((100vw - 80px) / 2), 300px" : "(max-width: 600px) calc(100vw - 44px), (max-width: 1000px) calc((100vw - 80px) / 2), 620px"} />
                         <span className={styles.referenceOpen} aria-hidden="true">View image ↗</span>
                       </a>
                       <figcaption>
                         <span className={styles.referenceIndex}>Reference {String(reference.index).padStart(2, "0")}</span>
                         <h4>{reference.title}</h4>
                         <p>{reference.role}</p>
-                        <span className={styles.referenceShots}>Shot direction · {reference.shotIds.join(" / ")}</span>
+                        <span className={styles.referenceShots}>Shot direction · {reference.shotIds.join(" / ")}</span><a className={styles.referenceDownload} href={reference.url} download={reference.fileName}>Download JPEG ↗</a>
                       </figcaption>
                     </figure>
                   ))}
                 </div>
               </div>
             ))}
-            <p className={styles.referenceFootnote}>Fictional product and synthetic casting studies. Reference images establish an intended appearance; they do not demonstrate the final generated motion.</p>
+            <p className={styles.referenceFootnote}>Fictional AI-generated appearance studies. They define the intended look, not proof of the resulting motion. Loading the example creates a new working copy; earlier drafts and completed takes remain available.</p>
           </div>
         </section>
 
@@ -136,28 +138,28 @@ export default function VelunePage() {
             <div className={styles.reportRow}>
               <figure>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={VELUNE_MEDIA.report} width={1440} height={810} alt="The Centre Report concept: VELUNE, three illustrated packages, a 03 Centres badge and Wonder within" loading="lazy" />
-                <figcaption>The Centre Report · Editable concept artwork</figcaption>
+                <img src="/studio/velune/finishing/velune_centre_report_v2.svg" width={1920} height={1080} alt="Revised Centre Report with individual VELUNE carton photographs above the three exposed chocolate centres" loading="lazy" />
+                <figcaption>The Centre Report · Revision 2 finishing artwork</figcaption>
               </figure>
-              <div><p className={styles.eyebrow}>The protected reading moment</p><h3>One printed surface.<br />Three full seconds.</h3><p>The report is designed as a single artwork plane. Its letters, cartons and badge stay together through the small settling motion. This shot can remain deterministic in the final edit.</p></div>
+              <div><p className={styles.eyebrow}>The protected reading moment</p><h3>One printed surface.<br />Three full seconds.</h3><p>The revised report pairs the three dimensional carton photographs with the exposed centres. Exact headings stay in this separate graphic, ready to composite over the three-second report shot after generation. It does not use an extra H3 reference slot.</p><a className={styles.referenceJump} href="/studio/velune/finishing/velune_centre_report_v2.svg" download>Download the report master ↓</a></div>
             </div>
           </div>
         </section>
 
         <section className={`${styles.wrap} ${styles.section}`} aria-labelledby="workflow-heading">
-          <div className={styles.sectionHead}><div><p className={styles.eyebrow}>05 / Production in the open</p><h2 id="workflow-heading">The route to the final film.</h2></div><p>The brief, original artwork, Blender camera study and eight supplied appearance references are ready to inspect. The generated film, audio auditions and final mix remain separate production steps.</p></div>
+          <div className={styles.sectionHead}><div><p className={styles.eyebrow}>05 / Production in the open</p><h2 id="workflow-heading">The route to the final film.</h2></div><p>The original guide and revised appearance pack are ready. The first H3 take prompted a clearer brief; the next take and final mix will be reviewed before becoming the published film.</p></div>
           <ol className={styles.stages}>{STAGES.map((stage) => <li key={stage.n}><span className={styles.stageNumber}>{stage.n}</span><div><span className={styles.stageState}>{stage.state}</span><h3>{stage.title}</h3><p>{stage.body}</p></div></li>)}</ol>
         </section>
 
         <section className={styles.soundSection} aria-labelledby="sound-heading">
           <div className={`${styles.wrap} ${styles.soundGrid}`}>
-            <div><p className={styles.eyebrow}>06 / Sound direction · Proposed</p><h2 id="sound-heading">A little curiosity.<br /><em>Room to listen.</em></h2><p>Four short voice lines leave space for the visual reveals. The proposed 80 BPM score moves from a sparse, warm motif to a gentle expansion, then thins for the report and final line.</p><p>Voice, score and effects have not been generated or auditioned. Exact accents and music ducking belong in the final edit.</p><Link className={styles.cta} href="/ai-studio/ads#ad-sound">Explore the sound workflow <span aria-hidden>↗</span></Link></div>
+            <div><p className={styles.eyebrow}>06 / Sound direction · Proposed</p><h2 id="sound-heading">A little curiosity.<br /><em>Room to listen.</em></h2><p>Four short voice lines leave space for the visual reveals. The proposed 80 BPM score moves from a sparse, warm motif to a gentle expansion, then thins for the report and final line.</p><p>The example loads the voice lines, music brief and effect cues separately. Check any existing audio takes against the accepted picture before placing accents and ducking the music in the final edit.</p><Link className={styles.cta} href="/ai-studio/ads#ad-sound">Explore the sound workflow <span aria-hidden>↗</span></Link></div>
             <div className={styles.voice}><p className={styles.eyebrow}>Proposed voice windows / seconds</p>{VOICE.map((line) => <div key={line.window}><span>{line.window}</span><blockquote>“{line.text}”</blockquote></div>)}<p className={styles.pronunciation}>VELUNE is pronounced veh-LOON. Each take will be auditioned against its available time.</p></div>
           </div>
         </section>
 
         <section className={`${styles.wrap} ${styles.credits}`}>
-          <div><p className={styles.eyebrow}>Direction & process</p><h2>Ajwad Rauf</h2><p>Creative direction and production review, with AI assistance for the brief and technical build. Eight supplied AI-generated images explore the appearance. Blender supplies the editable scene and camera guide; H3 Max and ElevenLabs are the planned picture and sound tools.</p></div>
+          <div><p className={styles.eyebrow}>Direction & process</p><h2>Ajwad Rauf</h2><p>Creative direction and production review, with AI assistance for the brief and technical build. Eleven selected AI-generated images guide the revised appearance. Blender supplies the unchanged camera study; H3 Max produces the picture, with ElevenLabs voice, music and effects prepared for the final edit.</p></div>
           <div><p className={styles.eyebrow}>Study notes</p><p>VELUNE is an independent fictional concept, not a commissioned campaign. No client results or finished commercial are claimed. Original source footage, performer identities and soundtrack are not included on this page.</p><Link href="/#ar-work">Back to selected work <span aria-hidden>↗</span></Link></div>
         </section>
       </main>

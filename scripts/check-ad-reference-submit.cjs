@@ -39,13 +39,13 @@ function loader(overrides = {}) {
   const post = (input = body, origin = 'https://studio.example', handler = route) => handler.POST(new Request(origin + '/api/ad/start', { method: 'POST', body: JSON.stringify(input) }));
 
   const demo = await post(), demoJson = await demo.json();
-  check(demo.status === 200 && demoJson.mock === true, 'The actual eight-image VELUNE example passes demo validation: ' + JSON.stringify(demoJson));
+  check(demo.status === 200 && demoJson.mock === true, 'The actual eleven-image VELUNE example passes demo validation: ' + JSON.stringify(demoJson));
   check(consumes === 0 && submissions.length === 0 && uploads.length === 0, 'Demo performs no budget, upload or generation operation');
   live = true;
   const accepted = await post();
   check(accepted.status === 200 && (await accepted.json()).falRequestId === 'mock-request', 'Actual VELUNE preset accepted by mocked live route');
   check(submissions.length === 1 && consumes === 1 && uploads.length === 0, 'One submission, no storage upload on public origin');
-  check(submissions[0].referenceImageDataUrls.length === 8 && submissions[0].referenceVideoUrls.length === 1, 'All nine references forwarded without discards');
+  check(submissions[0].referenceImageDataUrls.length === 11 && submissions[0].referenceVideoUrls.length === 1, 'All twelve references forwarded without discards');
   body.referenceImageDataUrls.forEach((url, i) => check(submissions[0].referenceImageDataUrls[i] === 'https://studio.example' + url, 'Image' + (i + 1) + ' stays in order and is provider-reachable'));
   check(submissions[0].referenceVideoUrls[0] === 'https://studio.example' + body.referenceVideoUrls[0], 'Blender video becomes provider-reachable');
   check(submissions[0].generateAudio === undefined && submissions[0].inputFormat === 'h3-reference' && submissions[0].durationSeconds === 15 && submissions[0].resolution === '768p', 'H3 15s / 768p settings preserved without an unsupported audio switch');
@@ -74,7 +74,7 @@ function loader(overrides = {}) {
 
   const localRoute = makeRoute(); // A fresh process has no public-origin URL cache.
   const local = await post(body, 'http://localhost:3035', localRoute);
-  check(local.status === 200 && uploads.length === 9, 'Local development uploads all nine named files through mocked storage');
+  check(local.status === 200 && uploads.length === 12, 'Local development uploads all twelve named files through mocked storage');
   const localSubmission = submissions.at(-1);
   const uploadedUrl = url => 'https://storage.example/' + (uploads.findIndex(upload => upload.bytes.equals(fs.readFileSync(path.join(root, 'public', url)))) + 1);
   check(localSubmission.referenceImageDataUrls.every((url, i) => url === uploadedUrl(body.referenceImageDataUrls[i])) && localSubmission.referenceVideoUrls[0] === uploadedUrl(body.referenceVideoUrls[0]), 'Locally uploaded references retain their positions despite parallel reads');

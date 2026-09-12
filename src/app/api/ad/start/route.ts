@@ -24,7 +24,7 @@ import { estimateCost, getModel, hasFalKey, hasGeminiKey, isDryRun } from "@/lib
 import { mockImageDataUrl } from "@/lib/mock";
 import { audioReferenceProblem } from "@/lib/adAudio";
 import { VELUNE_MEDIA } from "@/components/velune/veluneStudy";
-import { VELUNE_REFERENCES } from "@/lib/veluneReferences";
+import { VELUNE_ALL_REFERENCES } from "@/lib/veluneReferences";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,7 @@ const starterClipUrls = new Map<string, string>();
 // No arbitrary site-relative paths may reach the local file upload branch.
 const VELUNE_SOURCES = new Set<string>([
   ...Object.values(VELUNE_MEDIA),
-  ...VELUNE_REFERENCES.map((reference) => reference.url),
+  ...VELUNE_ALL_REFERENCES.map((reference) => reference.url),
 ]);
 const MAX_BODY_BYTES = 4_194_304;
 
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
       if (problem) return reject(problem);
       if (body.referenceImageSizes !== undefined && (!Array.isArray(body.referenceImageSizes) || body.referenceImageSizes.length !== images.length)) return reject("Image sizes must match all image references, including the product photo.");
       for (let i = 0; i < images.length; i++) {
-        const known = VELUNE_REFERENCES.find((ref) => ref.url === images[i]);
+        const known = VELUNE_ALL_REFERENCES.find((ref) => ref.url === images[i]);
         const size = known ?? body.referenceImageSizes?.[i];
         if (!size || !Number.isInteger(size.width) || !Number.isInteger(size.height) || size.width < 1 || size.height < 1 || size.width > 32768 || size.height > 32768) return reject(`Image ${i + 1} dimensions are not verified. Reattach a readable image before generating so reference cost can be estimated.`);
         referenceImagePixels += size.width * size.height;
