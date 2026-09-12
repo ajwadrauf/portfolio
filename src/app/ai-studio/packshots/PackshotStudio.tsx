@@ -545,7 +545,7 @@ function PackshotSession() {
         </div>
         <SpendChip amount={sessionSpend} />
       </div>
-      {project?.example === "velune" && <div className="card my-5 p-5"><strong>VELUNE · packaging from the film study</strong><p className="my-2 text-sm text-muted">Load the newer pistachio cover with top, bottom, left and right panel references. The live carton uses all five faces; the back stays plain. Dimensions remain the proposed concept size.</p><button className="btn-secondary" onClick={() => { setArtworkOpened(true); setMode("artwork"); }}>Explore VELUNE artwork ↗</button></div>}
+      {project?.example === "velune" && <div className="card my-5 p-5"><strong>VELUNE · packaging from the film study</strong><p className="my-2 text-sm text-muted">Load the newer pistachio cover with back, top, bottom, left and right panel references. The live carton uses all six faces. Dimensions remain the proposed concept size.</p><button className="btn-secondary" onClick={() => { setArtworkOpened(true); setMode("artwork"); }}>Explore VELUNE artwork ↗</button></div>}
       <div className={styles.modeGrid} role="group" aria-label="Choose your starting point">
         <button type="button" className={mode === "photos" ? styles.selectedMode : styles.mode} aria-pressed={mode === "photos"} onClick={() => setMode("photos")}>
           <span className={styles.modeEyebrow}>The familiar workflow</span><strong>From product photos</strong>
@@ -676,7 +676,7 @@ function PackshotSession() {
               onClick={() => void loadExample()}
               disabled={exampleBusy}
             >
-              {exampleBusy ? "Loading the example…" : "or load the VELUNE pack · 5 views →"}
+              {exampleBusy ? "Loading the example…" : "or load the VELUNE pack · 6 views →"}
             </button>
 
             {references.length > 0 && <div className={styles.referenceGrid}>

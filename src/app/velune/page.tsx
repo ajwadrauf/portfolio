@@ -11,7 +11,7 @@ import styles from "@/components/velune/Velune.module.css";
 
 export const metadata: Metadata = {
   title: "VELUNE — a chocolate film & creative process · Ajwad Rauf",
-  description: "Inside a fifteen-second fictional chocolate concept: a Blender camera study, nine AI-generated appearance references for the revised H3 take, a generated H3 film with separate ElevenLabs voiceover and five package-panel references.",
+  description: "Inside a fifteen-second fictional chocolate concept: a Blender camera study, nine AI-generated appearance references for the revised H3 take, a generated H3 film with separate ElevenLabs voiceover and six package-panel references.",
 };
 
 const DECISIONS = [
@@ -55,22 +55,14 @@ export default function VelunePage() {
             <p className={styles.eyebrow}>Independent fictional concept / Film study 02</p>
             <h1>VELUNE<span>Wonder within.</span></h1>
             <p className={styles.lead}>A small chocolate contains a world of discovery. The challenge is making that world read in fifteen seconds.</p>
-            <a className={styles.cta} href="#velune-film">Watch the film <span aria-hidden>↓</span></a>
+            <a className={styles.cta} href="#camera-study">Explore the making of <span aria-hidden>↓</span></a>
             <a className={styles.referenceJump} href="#visual-references">Explore the revised appearance references <span aria-hidden="true">↓</span></a>
           </div>
           <aside className={styles.heroNote}>
             <span className={styles.status}>H3 film + ElevenLabs voiceover</span>
-            <p>The revised H3 film is here, with a separate ElevenLabs voiceover. Play them together, balance the original video sound, then explore the references and Blender guide behind the result.</p>
+            <p>Follow the Blender guide, creative decisions, references and sound direction. The finished H3 film and ElevenLabs voiceover come together in the final reveal at the end.</p>
             <dl><div><dt>Format</dt><dd>15 seconds / 16:9</dd></div><div><dt>Edit target</dt><dd>360 frames / 24 fps</dd></div><div><dt>Structure</dt><dd>12 shots / 11 hard cuts</dd></div><div><dt>Project</dt><dd>Independent concept</dd></div></dl>
           </aside>
-        </section>
-
-        <section className={styles.cinema} id="velune-film" aria-labelledby="film-heading">
-          <div className={styles.wrap}>
-            <div className={styles.sectionHead}><div><p className={styles.eyebrow}>The generated film / H3 Max</p><h2 id="film-heading">Wonder within.<br /><em>Picture meets voice.</em></h2></div><p>The supplied 15-second H3 film with ElevenLabs voiceover. Original video sound starts at 50%; switch it off or adjust its level as you listen.</p></div>
-            <SoundtrackPreview soundtrackUrl={VELUNE_MEDIA.voiceover} videoUrl={VELUNE_MEDIA.film} originalAudioAvailable context="showcase" initialOriginal />
-            <div className={styles.filmDownloads}><a href={VELUNE_MEDIA.film} download>Download H3 video · original sound ↘</a><a href={VELUNE_MEDIA.voiceover} download>Download voiceover WAV ↘</a><a href="#camera-study">See the Blender guide ↓</a></div>
-          </div>
         </section>
 
         <section className={styles.cinema} id="camera-study" aria-labelledby="camera-heading">
@@ -139,14 +131,14 @@ export default function VelunePage() {
 
         <section className={styles.artSection} aria-labelledby="art-heading">
           <div className={styles.wrap}>
-            <div className={styles.sectionHead}><div><p className={styles.eyebrow}>04 / Package design</p><h2 id="art-heading">Three centres.<br /><em>One family.</em></h2></div><p>Pistachio Praline, Raspberry Ganache and Salted Caramel share one chocolate shell. The revised pistachio front cover joins four supplied panel views in the packshot example. They are image references for a concept carton; a back panel has not been supplied.</p></div>
+            <div className={styles.sectionHead}><div><p className={styles.eyebrow}>04 / Package design</p><h2 id="art-heading">Three centres.<br /><em>One family.</em></h2></div><p>Pistachio Praline, Raspberry Ganache and Salted Caramel share one chocolate shell. The revised pistachio cover joins the supplied back, top, bottom and side views. Together, these six image references complete the concept carton in the packshot example.</p></div>
             <div className={styles.panelGallery}>{VELUNE_PACKAGE_PANELS.map((panel) => <figure key={panel.face}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={panel.url} alt={`VELUNE pistachio carton reference: ${panel.face} panel`} loading="lazy" />
               <figcaption><strong>{panel.label}</strong><a href={panel.url} download>Download reference ↓</a></figcaption>
             </figure>)}</div>
-            <Link className={styles.referenceJump} href="/ai-studio/packshots">Explore the five-face packshot example ↗</Link>
-            <p className={styles.mediaNote}>In Packshots, load the VELUNE example, open Artwork & dielines, then choose “Load VELUNE carton artwork”. The studio maps cropped photo references to the five faces; the back remains plain.</p>
+            <Link className={styles.referenceJump} href="/ai-studio/packshots">Explore the six-face packshot example ↗</Link>
+            <p className={styles.mediaNote}>In Packshots, load the VELUNE example, open Artwork & dielines, then choose “Load VELUNE carton artwork”. The studio maps cropped photo references to all six faces, including the product story and information on the back.</p>
             <details className={styles.originalArtwork}><summary>Original flat artwork used in the Blender guide</summary>
             <figure className={styles.packaging}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -173,7 +165,7 @@ export default function VelunePage() {
         <section className={styles.soundSection} aria-labelledby="sound-heading">
           <div className={`${styles.wrap} ${styles.soundGrid}`}>
             <div><p className={styles.eyebrow}>06 / Sound direction · Voiceover supplied</p><h2 id="sound-heading">A little curiosity.<br /><em>Room to listen.</em></h2><p>Four short voice lines leave space for the visual reveals. The proposed 80 BPM score moves from a sparse, warm motif to a gentle expansion, then thins for the report and final line.</p><p>The example loads the voice lines, music brief and effect cues separately. Check any existing audio takes against the accepted picture before placing accents and ducking the music in the final edit.</p><Link className={styles.cta} href="/ai-studio/ads#ad-sound">Explore the sound workflow <span aria-hidden>↗</span></Link></div>
-            <div className={styles.voice}><p className={styles.eyebrow}>Proposed voice windows / seconds</p>{VOICE.map((line) => <div key={line.window}><span>{line.window}</span><blockquote>“{line.text}”</blockquote></div>)}<p className={styles.pronunciation}>VELUNE is pronounced veh-LOON. The player above uses the supplied voiceover WAV; these windows record the planned narration timing.</p></div>
+            <div className={styles.voice}><p className={styles.eyebrow}>Proposed voice windows / seconds</p>{VOICE.map((line) => <div key={line.window}><span>{line.window}</span><blockquote>“{line.text}”</blockquote></div>)}<p className={styles.pronunciation}>VELUNE is pronounced veh-LOON. The final player below uses the supplied voiceover WAV; these windows record the planned narration timing.</p></div>
           </div>
         </section>
 
@@ -181,6 +173,14 @@ export default function VelunePage() {
           <div><p className={styles.eyebrow}>Direction & process</p><h2>Ajwad Rauf</h2><p>Creative direction and production review, with AI assistance for the brief and technical build. Nine selected AI-generated images guide the revised appearance. Blender supplies the unchanged camera study; H3 Max produced the supplied picture and original video sound. The separate voiceover WAV was created through the ElevenLabs workflow in Ad Lab.</p></div>
           <div><p className={styles.eyebrow}>Study notes</p><p>VELUNE is an independent fictional concept, not a commissioned campaign. No client results or finished commercial are claimed. The published player combines the supplied H3 take and voiceover during playback; downloads preserve the two original files.</p><Link href="/#ar-work">Back to selected work <span aria-hidden>↗</span></Link></div>
         </section>
+        <section className={styles.cinema} id="velune-film" aria-labelledby="film-heading">
+          <div className={styles.wrap}>
+            <div className={styles.sectionHead}><div><p className={styles.eyebrow}>07 / The finished film · H3 Max</p><h2 id="film-heading">Wonder within.<br /><em>Picture meets voice.</em></h2></div><p>The supplied 15-second H3 film with ElevenLabs voiceover. Original video sound starts at 50%; switch it off or adjust its level as you listen.</p></div>
+            <SoundtrackPreview soundtrackUrl={VELUNE_MEDIA.voiceover} videoUrl={VELUNE_MEDIA.film} originalAudioAvailable context="showcase" initialOriginal />
+            <div className={styles.filmDownloads}><a href={VELUNE_MEDIA.film} download>Download H3 video · original sound ↘</a><a href={VELUNE_MEDIA.voiceover} download>Download voiceover WAV ↘</a><a href="#camera-study">Revisit the Blender guide ↑</a></div>
+          </div>
+        </section>
+
       </main>
       <footer className={`${styles.wrap} ${styles.footer}`}><span>Ajwad Rauf · Toronto · 2026</span><a href="mailto:hello@ajwadrauf.com">hello@ajwadrauf.com ↗</a></footer>
     </div>

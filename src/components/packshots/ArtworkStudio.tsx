@@ -504,7 +504,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
       sourcesRef.current = [...opened]; setSources([...opened]); setSourceId(opened[0].id); setPage(1); opened.length = 0;
       setName("VELUNE · Pistachio reference carton"); setDimensions({ width: 120, height: 180, depth: 40 }); setDimensionInputs({ width: "120", height: "180", depth: "40" }); setUnit("mm"); setShape("carton"); setFinish("matte"); setSelectedPreset(null); setBaseColor(VELUNE_PACKAGE_COLOR);
       setPanels(nextPanels); setOrigins(nextOrigins); setActiveFace("front"); setBatch(null); changed();
-      setNotice("Loaded the newer front cover and top, bottom, left and right references. Back is plain. Photo crops approximate the panel artwork; dimensions remain the proposed 120 × 180 × 40 mm concept size.");
+      setNotice("Loaded all six faces: the newer front cover plus back, top, bottom, left and right references. Photo crops approximate the panel artwork; dimensions remain the proposed 120 × 180 × 40 mm concept size.");
     } catch (cause) { if (alive.current) setError(messageFor(cause)); }
     finally { for (const source of opened) source.dispose(); if (alive.current) setImporting(false); }
   }
@@ -522,7 +522,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
         <span className={styles.localBadge}>On this device · no AI charge</span>
       </div>
 
-      {studioProject?.example === "velune" && <div className="my-4 rounded border border-border-soft p-4"><p className="mb-3 text-sm">VELUNE · revised front cover plus top, bottom, left and right photo references. Loading replaces the current package setup; the back stays plain.</p><button type="button" className={styles.secondary} disabled={editingBusy} onClick={() => void loadVelune()}>Load VELUNE carton artwork</button></div>}
+      {studioProject?.example === "velune" && <div className="my-4 rounded border border-border-soft p-4"><p className="mb-3 text-sm">VELUNE · six faces, with the revised front cover and supplied back, top, bottom, left and right references. Loading replaces the current package setup.</p><button type="button" className={styles.secondary} disabled={editingBusy} onClick={() => void loadVelune()}>Load VELUNE carton artwork</button></div>}
       <div className={styles.projectBar}>
         <label className={styles.nameField}>Project name<input value={name} maxLength={100} onChange={(event) => setName(event.target.value)} disabled={editingBusy} /></label>
         <div className={styles.actions}>
