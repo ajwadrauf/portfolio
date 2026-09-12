@@ -31,7 +31,7 @@ export function CreamMakingOf() {
       <div className={styles.wrap}>
         <div className={styles.heading}>
           <div>
-            <p className={styles.eyebrow}>Behind the film / 18 seconds / 5 references</p>
+            <p className={styles.eyebrow}>Inside the ice-cream film / 18 seconds / 5 references</p>
             <h2 id="cream-making-heading">The motion was planned.<br /><em>The flavour was directed.</em></h2>
           </div>
           <p>A Blender camera plan, five AI-generated stills and a written brief. Here’s how I brought them together for <strong>Cream in motion.</strong></p>
@@ -98,7 +98,7 @@ export function CreamMakingOf() {
         <div className={styles.footer}>
           <a href="/studio/cream/direction-18s.txt" download>Download the full brief <span aria-hidden>↓</span></a>
           <Link href="/ai-studio/blender">Build your own Blender brief <span aria-hidden>↗</span></Link>
-          <a href="#ad-lab-workspace">Back to Ad Lab <span aria-hidden>↑</span></a>
+          <a href="/ai-studio/ads">Back to Ad Lab <span aria-hidden>↑</span></a>
         </div>
       </div>
     </section>

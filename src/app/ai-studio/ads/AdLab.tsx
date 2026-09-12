@@ -1887,7 +1887,7 @@ function AdLabWorkspace({
           <h1 id="ad-lab-workspace" className={styles.heroTitle}>Ad Lab</h1>
           <p className={styles.lead}>Shape the picture. Plan the sound. Make the film.</p>
         </div>
-        <a href="#cream-making-of" className={styles.heroLink}>See how a film was made <span aria-hidden>↘</span></a>
+        <a href="/ai-studio/ads/cream-in-motion" className={styles.heroLink}>Explore the ice-cream case study <span aria-hidden>↘</span></a>
       </div>
 
       <p role="status" className="mt-4 text-xs text-muted">{workspaceReady ? draftStatus : "Opening project storage…"}</p>
@@ -4145,7 +4145,7 @@ function AdLabWorkspace({
           </div>
         )}
         {resultNotice && completedTake && videoUrl && <aside className={styles.resultNotice} aria-label="Completed render notification"><div><p role="status" className="text-sm font-semibold">Your take is ready.</p><button type="button" onClick={() => showResultSection("ad-result")} className="inline-flex min-h-11 items-center gap-3 text-sm font-semibold underline underline-offset-4">Watch & review <span aria-hidden>↗</span></button></div><button type="button" aria-label="Dismiss completed render notification" onClick={() => setResultNotice(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/25 text-lg">×</button></aside>}
-        <AdFinishing key={project?.id ?? "loading"} tracks={mixTracks} onChange={setMixTracks} available={availableMixTracks} duration={finishingDuration} ducking={ducking} onDucking={setDucking} videoUrl={completedTake?.videoUrl ?? (project?.example === "velune" ? project.assets.find((asset) => asset.id === "velune-motion" && asset.status === "ready")?.url ?? null : null)} sceneCards={finishingScenes} onSaveMix={async (dataUrl, manifest) => { const id = `ad-mix-${crypto.randomUUID()}`; await saveAsset({ id, name: "Ad Lab · mixed soundtrack.wav", kind: "audio", dataUrl, role: "Mixed separate soundtrack · place at zero; original video audio unchanged", source: "generated", status: "ready", metadata: manifest }); await saveAsset({ id: `${id}-settings`, name: "Ad Lab · editor cue bundle settings", kind: "document", dataUrl: adDocumentDataUrl({ ...manifest, sceneCues: finishingScenes }), role: "Editor handoff · separate video and soundtrack", source: "generated", status: "ready" }); }} />
+        <AdFinishing key={project?.id ?? "loading"} tracks={mixTracks} onChange={setMixTracks} available={availableMixTracks} duration={finishingDuration} originalAudioAvailable={Boolean(completedTake?.videoUrl)} ducking={ducking} onDucking={setDucking} videoUrl={completedTake?.videoUrl ?? (project?.example === "velune" ? project.assets.find((asset) => asset.id === "velune-motion" && asset.status === "ready")?.url ?? null : null)} sceneCards={finishingScenes} onSaveMix={async (dataUrl, manifest) => { const id = `ad-mix-${crypto.randomUUID()}`; await saveAsset({ id, name: "Ad Lab · mixed soundtrack.wav", kind: "audio", dataUrl, role: "Mixed separate soundtrack · place at zero; original video audio unchanged", source: "generated", status: "ready", metadata: manifest }); await saveAsset({ id: `${id}-settings`, name: "Ad Lab · editor cue bundle settings", kind: "document", dataUrl: adDocumentDataUrl({ ...manifest, sceneCues: finishingScenes }), role: "Editor handoff · separate video and soundtrack", source: "generated", status: "ready" }); }} />
       </div>
     </div>
   );

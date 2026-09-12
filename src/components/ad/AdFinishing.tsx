@@ -4,20 +4,22 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import type { AdMixTrack, AdSceneCard } from "@/lib/adDraft";
 import { encodeWav, mixManifest, mixSoundtrack, readMixMedia, MIX_MAX_BYTES, type DecodedTrack } from "@/lib/adMix";
 
-type Props = { tracks: AdMixTrack[]; onChange: Dispatch<SetStateAction<AdMixTrack[]>>; available: AdMixTrack[]; duration: number; ducking: number; onDucking: (value: number) => void; videoUrl: string | null; sceneCards: AdSceneCard[]; onSaveMix: (dataUrl: string, manifest: Record<string, unknown>) => Promise<void> };
+import { SoundtrackPreview } from "./SoundtrackPreview";
+import styles from "./AdFinishing.module.css";
+
+type Props = { tracks: AdMixTrack[]; onChange: Dispatch<SetStateAction<AdMixTrack[]>>; available: AdMixTrack[]; duration: number; ducking: number; onDucking: (value: number) => void; videoUrl: string | null; originalAudioAvailable?: boolean; sceneCards: AdSceneCard[]; onSaveMix: (dataUrl: string, manifest: Record<string, unknown>) => Promise<void> };
 function download(data: Blob, name: string) { const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 function dataUrl(blob: Blob): Promise<string> { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error("Could not save the mix.")); reader.readAsDataURL(blob); }); }
 
-export function AdFinishing({ tracks, onChange, available, duration, ducking, onDucking, videoUrl, sceneCards, onSaveMix }: Props) {
+export function AdFinishing({ tracks, onChange, available, duration, ducking, onDucking, videoUrl, originalAudioAvailable = false, sceneCards, onSaveMix }: Props) {
   const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [message, setMessage] = useState("");
   const [rendered, setRendered] = useState<{ url: string; bytes: Uint8Array; key: string; masterGain: number } | null>(null);
-  const lock = useRef(false); const video = useRef<HTMLVideoElement>(null); const audio = useRef<HTMLAudioElement>(null); const active = useRef(true);
+  const lock = useRef(false); const active = useRef(true);
   const key = JSON.stringify([tracks, duration, ducking]); const fresh = rendered?.key === key;
   const missing = available.filter((source) => !tracks.some((track) => track.id === source.id && track.url === source.url));
   const invalid = tracks.some((track) => track.enabled && (track.start >= duration || track.fadeIn + track.fadeOut > track.length));
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   useEffect(() => () => { if (rendered) URL.revokeObjectURL(rendered.url); }, [rendered]);
-  useEffect(() => { audio.current?.pause(); video.current?.pause(); }, [key]);
   function update(id: string, change: Partial<AdMixTrack>) { onChange(tracks.map((track) => track.id === id ? { ...track, ...change } : track)); }
   async function attach(file?: File) {
     if (!file || lock.current || tracks.length >= 60) return;
@@ -60,22 +62,36 @@ export function AdFinishing({ tracks, onChange, available, duration, ducking, on
     } catch (e) { if (active.current) setError(e instanceof Error ? e.message : "Could not create the editor bundle."); }
     finally { lock.current = false; if (active.current) setBusy(false); }
   }
-  return <section id="ad-finish" className="my-8 rounded-xl border border-border-soft p-4 sm:p-6" aria-labelledby="finish-title">
-    <p className="label">Local finishing · no generation charge</p><h2 id="finish-title" className="mt-2 text-2xl tracking-tight">Time it. Balance it. Hand it off.</h2>
-    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">Build a stereo WAV from separate voice, music and effects. Preview picture with its native audio muted. The original video download keeps its original audio; use your editor to combine it with this soundtrack.</p>
+  return <section id="ad-finish" className={styles.section} aria-labelledby="finish-title">
+    <header className={styles.header}>
+      <p className={styles.eyebrow}>Soundtrack finishing · no generation charge</p>
+      <h2 id="finish-title">Bring the film and sound together.</h2>
+      <p>Your picture is one part. Shape the voice, music and effects into a finished stereo WAV, then listen with your video before handing it to your editor.</p>
+      <ol className={styles.journey} aria-label="Soundtrack finishing steps"><li>01 · Add takes</li><li>02 · Time & balance</li><li>03 · Listen & export</li></ol>
+    </header>
+    <div className={styles.body}>
+    <div className={styles.step}><h3>01 · Add your audio takes</h3><span>{tracks.length} added · {tracks.filter((track) => track.enabled).length} included in WAV</span></div>
     <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" className="btn-secondary" disabled={!missing.length || busy || tracks.length + missing.filter((source) => !tracks.some((track) => track.id === source.id)).length > 60} onClick={() => onChange((previous) => [...previous.map((track) => { const replacement = missing.find((source) => source.id === track.id); return replacement ? { ...track, url: replacement.url, name: replacement.name, kind: replacement.kind } : track; }), ...missing.filter((source) => !previous.some((track) => track.id === source.id))])}>Use {missing.length || "available"} ready audio {missing.length === 1 ? "take" : "takes"}</button><label className="text-xs font-semibold">Add local audio · up to 16 MB<input className="mt-1 block max-w-full text-xs" type="file" accept="audio/*,.mp3,.wav,.m4a" disabled={busy || tracks.length >= 60} onChange={(event) => { void attach(event.target.files?.[0]); event.target.value = ""; }} /></label></div>
     {!tracks.length && <p className="mt-3 text-sm text-muted">Generate or recover music, effects or scene voice above, then add those real takes here. Demo tones are excluded.</p>}
-    <div className="mt-4 space-y-3">{tracks.map((track) => <details key={track.id} open className="rounded-lg border border-border-soft p-3"><summary className="cursor-pointer text-sm font-semibold">{track.name} · {track.kind} · {track.start.toFixed(1)}s in</summary><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><label className="flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={track.enabled} onChange={(e) => update(track.id, { enabled: e.target.checked })} />Include in WAV</label><button type="button" className="min-h-11 text-xs text-muted underline" onClick={() => onChange(tracks.filter((t) => t.id !== track.id))}>Remove track</button></div><audio controls preload="none" src={track.url} className="mb-3 w-full max-w-sm" /><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className={`${styles.step} ${styles.divider}`}><h3>02 · Time & balance</h3><span>{duration}s soundtrack</span></div>
+    <p className="text-xs text-muted">Open a track to adjust its position, trim, level and fades. Existing scene timings are kept.</p>
+    <div className="mt-4 space-y-3">{tracks.map((track) => <details key={track.id} className="rounded-lg border border-border-soft p-3"><summary className="cursor-pointer text-sm font-semibold">{track.name} · {track.kind} · {track.start.toFixed(1)}s in</summary><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><label className="flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={track.enabled} onChange={(e) => update(track.id, { enabled: e.target.checked })} />Include in WAV</label><button type="button" className="min-h-11 text-xs text-muted underline" onClick={() => onChange(tracks.filter((t) => t.id !== track.id))}>Remove track</button></div><audio controls preload="none" src={track.url} className="mb-3 w-full max-w-sm" /><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <label><span className="label">Track role</span><select className="input mt-1" value={track.kind} onChange={(event) => update(track.id, { kind: event.target.value as AdMixTrack["kind"] })}><option value="voice">Voice · triggers ducking</option><option value="music">Music · lowers under voice</option><option value="effect">Effect · independent level</option></select></label>
-      {([{ field: "start", label: "Timeline start · s", max: duration, min: 0 }, { field: "trim", label: "Source trim · s", max: 600, min: 0 }, { field: "length", label: "Play for · s", max: duration, min: 0.05 }, { field: "gain", label: "Gain · 1 = original", max: 2, min: 0 }, { field: "fadeIn", label: "Fade in · s", max: 30, min: 0 }, { field: "fadeOut", label: "Fade out · s", max: 30, min: 0 }] as const).map(({ field, label, max, min }) => <label key={field}><span className="label">{label}</span><input className="input mt-1" type="number" min={min} max={max} step={0.05} value={track[field]} onChange={(e) => update(track.id, { [field]: Math.min(max, Math.max(min, Number(e.target.value))) })} /></label>)}
+      {([{ field: "start", label: "Start in film · s", max: duration, min: 0 }, { field: "trim", label: "Skip into source · s", max: 600, min: 0 }, { field: "length", label: "Play for · s", max: duration, min: 0.05 }, { field: "gain", label: "Gain · 1 = original", max: 2, min: 0 }, { field: "fadeIn", label: "Fade in · s", max: 30, min: 0 }, { field: "fadeOut", label: "Fade out · s", max: 30, min: 0 }] as const).map(({ field, label, max, min }) => <label key={field}><span className="label">{label}</span><input className="input mt-1" type="number" min={min} max={max} step={0.05} value={Number(track[field].toFixed(3))} onChange={(e) => update(track.id, { [field]: Math.min(max, Math.max(min, Number(e.target.value))) })} /></label>)}
     </div></details>)}</div>
     <label className="mt-4 block max-w-sm"><span className="label">Lower music under voice · {Math.round(ducking * 100)}%</span><input className="mt-2 w-full accent-[var(--accent)]" type="range" min={0} max={1} step={0.05} value={ducking} onChange={(e) => onDucking(Number(e.target.value))} /></label>
     <p className="mt-1 text-xs text-muted">Ducking follows enabled voice clip windows, including silent pauses within each clip. 100 ms attack · 200 ms release. Audio ends at the cut; clips are never stretched or looped.</p>
     {invalid && <p role="alert" className="mt-3 text-sm text-warning">Keep track starts inside the cut and the combined fades no longer than each track window.</p>}
+    <div className={`${styles.step} ${styles.divider}`}><h3>03 · Listen & export</h3><span>Separate stereo WAV</span></div>
+    <p className="text-xs text-muted">Render to hear your mix. The WAV contains the enabled tracks above. Combine it with the original video in your editor for the final MP4.</p>
     <div className="mt-4 flex flex-wrap gap-3"><button type="button" className="btn-primary" disabled={busy || invalid || !tracks.some((track) => track.enabled)} onClick={() => void renderMix()}>{busy ? "Working locally…" : "Render soundtrack preview"}</button>{fresh && rendered && <><button type="button" className="btn-secondary" disabled={busy} onClick={() => download(new Blob([new Uint8Array(rendered.bytes)], { type: "audio/wav" }), "ad-soundtrack.wav")}>Download mixed WAV</button><button type="button" className="btn-secondary" disabled={busy} onClick={() => void bundle()}>Download editor bundle & save mix</button></>}</div>
     {rendered && !fresh && <p className="mt-3 text-sm text-warning">The track settings changed. Render again to preview or export the current mix.</p>}
-    {fresh && rendered && <div className="mt-4 space-y-3"><audio ref={audio} src={rendered.url} controls className="w-full" onPlay={() => { if (video.current) { video.current.currentTime = audio.current?.currentTime ?? 0; void video.current.play().catch(() => {}); } }} onPause={() => video.current?.pause()} onSeeked={() => { if (video.current) video.current.currentTime = audio.current?.currentTime ?? 0; }} onEnded={() => video.current?.pause()} />{videoUrl && <video ref={video} src={videoUrl} muted playsInline preload="metadata" className="max-h-80 w-full rounded-lg bg-black" />}<p className="text-xs text-muted">{rendered.masterGain < 1 ? `Master gain reduced to ${(rendered.masterGain * 100).toFixed(0)}% to prevent clipping. ` : ""}Browser playback is a timing preview. Check synchronization in the final editor export. Separate soundtrack has not been covered by the video AI review.</p></div>}
+    {fresh && rendered && <>
+      <SoundtrackPreview key={`${rendered.url}:${videoUrl}`} soundtrackUrl={rendered.url} videoUrl={videoUrl} originalAudioAvailable={originalAudioAvailable} />
+      <p className="mt-3 text-xs text-muted">{rendered.masterGain < 1 ? `Master gain reduced to ${(rendered.masterGain * 100).toFixed(0)}% to prevent clipping. ` : ""}The separate soundtrack is outside the video AI review.</p>
+    </>}
     {videoUrl && <a href={videoUrl} target="_blank" rel="noreferrer" download className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-accent underline">Download original video · native audio unchanged</a>}
     {error && <p role="alert" className="mt-3 text-sm text-warning">{error}</p>}<p role="status" className="mt-3 text-sm text-muted">{message}</p>
+    </div>
   </section>;
 }
