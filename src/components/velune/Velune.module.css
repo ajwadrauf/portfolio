@@ -232,3 +232,15 @@
 .referenceGroup:last-of-type .referenceCard:first-child .referenceImage { max-height: 520px; aspect-ratio: 16 / 9; background: #29141d; }
 
 @media (min-width: 1001px) { .productReferenceGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.filmDownloads { display: flex; flex-wrap: wrap; gap: 12px 26px; margin-top: 20px; }
+.filmDownloads a { min-height: 44px; display: inline-flex; align-items: center; color: #f5ecd9; font-size: 13px; text-decoration: underline; text-underline-offset: 4px; }
+.panelGallery { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; }
+.panelGallery figure { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.panelGallery img { width: 100%; height: 240px; object-fit: contain; background: white; }
+.panelGallery figcaption { display: grid; gap: 8px; padding: 16px; font-size: 13px; }
+.panelGallery figcaption a { color: var(--accent); text-decoration: underline; min-height: 32px; }
+.originalArtwork { margin-top: 30px; border-top: 1px solid var(--border); }
+.originalArtwork summary { padding-block: 20px; cursor: pointer; }
+@media (max-width: 700px) { .panelGallery { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; } .panelGallery img { height: 180px; } }
+@media (max-width: 420px) { .panelGallery { grid-template-columns: 1fr; } }

@@ -26,6 +26,7 @@ import {
   type PackAngle,
   type PackBrief,
 } from "@/lib/packshot";
+import { VELUNE_PACKAGE_PANELS } from "@/lib/velunePackaging";
 import styles from "./PackshotStudio.module.css";
 
 const ArtworkStudio = dynamic(() => import("@/components/packshots/ArtworkStudio").then((m) => m.ArtworkStudio), { loading: () => <p className="p-6 text-muted" role="status">Opening the artwork workspace…</p> });
@@ -48,20 +49,6 @@ const Required = () => (
   <span className="font-normal normal-case tracking-normal text-warning/80">required</span>
 );
 
-/**
- * A real pack to start from, so the page is usable without hunting for a
- * product photo first.
- *
- * It is the same pack the video work on this site uses, which makes the two
- * tools read as one studio rather than two demos — and it is deliberately an
- * unbranded pack, because branded packaging is refused by the video model's
- * content filter and the same asset has to serve both.
- */
-const EXAMPLE_PACK = {
-  url: "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/CookieExample/BakersBest-ChocolateChip-Bag%20Large.png",
-  angle: "front" as PackAngle,
-  label: "chocolate chip cookie bag, front",
-};
 
 type Job = {
   id: string;
@@ -364,22 +351,23 @@ function PackshotSession() {
     setError(null);
     setExampleBusy(true);
     try {
-      if (references.length >= 16) throw new Error("Remove a reference before adding the example.");
-      const res = await fetch(EXAMPLE_PACK.url);
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const blob = await res.blob();
-      const dataUrl = await toProcessedDataUrl(
-        new File([blob], "example-pack.png", { type: blob.type || "image/png" }),
-        Math.min(Math.floor(MAX_REF_BYTES * 4 / 3), MAX_PACKSHOT_BODY_BYTES - JSON.stringify(references).length - 24_000),
-      );
-      setReferences((prev) => prev.length < 16 ? [...prev,
-        { id: crypto.randomUUID(), name: "Example cookie pack", angle: EXAMPLE_PACK.angle, dataUrl },
-      ] : prev);
-      setUploadAngle(EXAMPLE_PACK.angle);
+      const missing = VELUNE_PACKAGE_PANELS.filter((panel) => !references.some((ref) => ref.id === `velune-example-${panel.face}`));
+      if (references.length + missing.length > 16) throw new Error(`Make room for ${missing.length} VELUNE references before loading the example.`);
+      const added: Reference[] = [];
+      for (const panel of missing) {
+        const res = await fetch(panel.url);
+        if (!res.ok) throw new Error(`The ${panel.face} image could not be opened (${res.status}).`);
+        const blob = await res.blob();
+        const dataUrl = await toProcessedDataUrl(
+          new File([blob], panel.url.split("/").pop()!, { type: blob.type || "image/png" }),
+          Math.min(Math.floor(MAX_REF_BYTES * 4 / 3), MAX_PACKSHOT_BODY_BYTES - JSON.stringify([...references, ...added]).length - 24_000),
+        );
+        added.push({ id: `velune-example-${panel.face}`, name: `VELUNE · ${panel.label}`, angle: panel.face as PackAngle, dataUrl });
+      }
+      setReferences((prev) => [...prev, ...added.filter((ref) => !prev.some((existing) => existing.id === ref.id))]);
+      setUploadAngle("front");
     } catch (e) {
-      setError(
-        `Could not load the example image (${e instanceof Error ? e.message : "unknown"}). It is fetched from storage at click time, so an offline session or a blocked request will stop it — uploading your own photo works either way.`,
-      );
+      setError(`Could not load the VELUNE reference set (${e instanceof Error ? e.message : "unknown"}). No partial set was added; your existing references are unchanged.`);
     } finally {
       setExampleBusy(false);
       uploadLock.current = false;
@@ -557,7 +545,7 @@ function PackshotSession() {
         </div>
         <SpendChip amount={sessionSpend} />
       </div>
-      {project?.example === "velune" && <div className="card my-5 p-5"><strong>VELUNE · packaging from the film study</strong><p className="my-2 text-sm text-muted">Open the artwork workspace to load the actual front-panel concept used in Blender. Dimensions follow the proposed Blender carton; the other faces remain plain until artwork is supplied.</p><button className="btn-secondary" onClick={() => { setArtworkOpened(true); setMode("artwork"); }}>Explore VELUNE artwork ↗</button></div>}
+      {project?.example === "velune" && <div className="card my-5 p-5"><strong>VELUNE · packaging from the film study</strong><p className="my-2 text-sm text-muted">Load the newer pistachio cover with top, bottom, left and right panel references. The live carton uses all five faces; the back stays plain. Dimensions remain the proposed concept size.</p><button className="btn-secondary" onClick={() => { setArtworkOpened(true); setMode("artwork"); }}>Explore VELUNE artwork ↗</button></div>}
       <div className={styles.modeGrid} role="group" aria-label="Choose your starting point">
         <button type="button" className={mode === "photos" ? styles.selectedMode : styles.mode} aria-pressed={mode === "photos"} onClick={() => setMode("photos")}>
           <span className={styles.modeEyebrow}>The familiar workflow</span><strong>From product photos</strong>
@@ -688,7 +676,7 @@ function PackshotSession() {
               onClick={() => void loadExample()}
               disabled={exampleBusy}
             >
-              {exampleBusy ? "Loading the example…" : "or load an example pack →"}
+              {exampleBusy ? "Loading the example…" : "or load the VELUNE pack · 5 views →"}
             </button>
 
             {references.length > 0 && <div className={styles.referenceGrid}>

@@ -12,9 +12,9 @@ export function VeluneCard({ compact = false }: { compact?: boolean }) {
       </div>
       <div className={styles.cardCopy}>
         <p className={styles.eyebrow}>VELUNE / Independent concept</p>
-        <span className={styles.status}>Camera study · In production</span>
+        <span className={styles.status}>H3 film · Voiceover ready</span>
         <h3 id={compact ? "velune-studio-title" : "velune-home-title"}>A little chocolate.<br />A world within.</h3>
-        <p>Twelve shots in fifteen seconds. A chocolate film taking shape through precise camera moves, registered cuts and a carefully held final frame.</p>
+        <p>Twelve shots in fifteen seconds. A generated chocolate film with original video sound and a separate ElevenLabs voiceover, developed from a Blender camera study.</p>
         <Link className={styles.cta} href="/velune">Explore the VELUNE study <span aria-hidden>↗</span></Link>
       </div>
     </article>

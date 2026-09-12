@@ -19,6 +19,7 @@ import {
 import { BoxPreview, type BoxPreviewHandle } from "./BoxPreview";
 import { PackshotActions as CampaignHandoffButton } from "./PackshotActions";
 import { useStudioProject } from "@/components/studio/StudioProjectProvider";
+import { VELUNE_PACKAGE_PANELS, VELUNE_PACKAGE_COLOR } from "@/lib/velunePackaging";
 import styles from "./ArtworkStudio.module.css";
 
 type PanelOrigin = { sourceName: string; page: number; crop: ArtworkCrop; pixels: { width: number; height: number } };
@@ -483,21 +484,31 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
   }
   async function loadVelune() {
     setImporting(true); setError(null);
+    const opened: ArtworkSource[] = [];
     try {
-      const response = await fetch("/studio/velune/box-pistachio-front.png");
-      if (!response.ok) throw new Error("The VELUNE artwork could not be opened.");
-      const file = new File([await response.blob()], "VELUNE-pistachio-concept.png", { type: "image/png" });
-      const source = await openArtwork(file);
-      try {
-        const raster = await source.rasterize(1, FULL_ARTWORK_CROP, 4096);
+      const nextPanels: BoxPanels = {};
+      const nextOrigins: PanelOrigins = {};
+      for (const panel of VELUNE_PACKAGE_PANELS) {
+        const response = await fetch(panel.url);
+        if (!response.ok) throw new Error(`The VELUNE ${panel.face} reference could not be opened. Your current package is unchanged.`);
+        const blob = await response.blob();
+        const file = new File([blob], panel.url.split("/").pop()!, { type: blob.type });
+        const source = await openArtwork(file);
+        opened.push(source);
+        const raster = await source.rasterize(1, panel.crop, 2048);
         if (!alive.current) return;
-        setName("VELUNE · Pistachio concept"); setDimensions({ width: 120, height: 180, depth: 40 }); setDimensionInputs({ width: "120", height: "180", depth: "40" }); setUnit("mm"); setShape("carton"); setSelectedPreset(null); setBaseColor("#556c50");
-        setPanels({ front: { dataUrl: raster.dataUrl, name: file.name, rotation: 0, fit: "contain", background: "#556c50" } }); setOrigins({ front: { sourceName: file.name, page: 1, crop: { ...FULL_ARTWORK_CROP }, pixels: { width: raster.width, height: raster.height } } }); setBatch(null); changed();
-        setNotice("Loaded the Blender front-panel concept on its proposed 120 × 180 × 40 mm carton. Other faces are plain. These are creative dimensions, not approved manufacturing specifications.");
-      } finally { source.dispose(); }
+        nextPanels[panel.face] = { dataUrl: raster.dataUrl, name: panel.label, rotation: 0, fit: "contain", background: VELUNE_PACKAGE_COLOR };
+        nextOrigins[panel.face] = { sourceName: file.name, page: 1, crop: { ...panel.crop }, pixels: { width: raster.width, height: raster.height } };
+      }
+      for (const source of sourcesRef.current) source.dispose();
+      sourcesRef.current = [...opened]; setSources([...opened]); setSourceId(opened[0].id); setPage(1); opened.length = 0;
+      setName("VELUNE · Pistachio reference carton"); setDimensions({ width: 120, height: 180, depth: 40 }); setDimensionInputs({ width: "120", height: "180", depth: "40" }); setUnit("mm"); setShape("carton"); setFinish("matte"); setSelectedPreset(null); setBaseColor(VELUNE_PACKAGE_COLOR);
+      setPanels(nextPanels); setOrigins(nextOrigins); setActiveFace("front"); setBatch(null); changed();
+      setNotice("Loaded the newer front cover and top, bottom, left and right references. Back is plain. Photo crops approximate the panel artwork; dimensions remain the proposed 120 × 180 × 40 mm concept size.");
     } catch (cause) { if (alive.current) setError(messageFor(cause)); }
-    finally { if (alive.current) setImporting(false); }
+    finally { for (const source of opened) source.dispose(); if (alive.current) setImporting(false); }
   }
+
   useEffect(() => {
     if (!studioProject?.drafts.artwork) return;
     void loadProject(new File([JSON.stringify(studioProject.drafts.artwork)], "saved.box-project.json", { type: "application/json" }));
@@ -511,7 +522,7 @@ export function ArtworkStudio({ onUseAsReferences }: { onUseAsReferences?: (refe
         <span className={styles.localBadge}>On this device · no AI charge</span>
       </div>
 
-      {studioProject?.example === "velune" && <div className="my-4 rounded border border-border-soft p-4"><p className="mb-3 text-sm">VELUNE front-panel concept · the artwork used in the Blender carton study. Loading replaces the current package setup.</p><button type="button" className={styles.secondary} disabled={editingBusy} onClick={() => void loadVelune()}>Load VELUNE carton artwork</button></div>}
+      {studioProject?.example === "velune" && <div className="my-4 rounded border border-border-soft p-4"><p className="mb-3 text-sm">VELUNE · revised front cover plus top, bottom, left and right photo references. Loading replaces the current package setup; the back stays plain.</p><button type="button" className={styles.secondary} disabled={editingBusy} onClick={() => void loadVelune()}>Load VELUNE carton artwork</button></div>}
       <div className={styles.projectBar}>
         <label className={styles.nameField}>Project name<input value={name} maxLength={100} onChange={(event) => setName(event.target.value)} disabled={editingBusy} /></label>
         <div className={styles.actions}>

@@ -44,5 +44,8 @@ const find = (nodes, type, inputType) => nodes.find(n => n.type === type && (!in
   check(!find(nodes, 'video') && !!find(nodes, 'audio'), 'Audio-only preview still works');
   check(slots.filter(s => s?.cleanup).length > 0, 'Media cleanup is registered');
   slots.forEach(s => s?.cleanup?.()); check(a.paused && v.paused, 'Unmount stops both media');
+  slots = []; props = { soundtrackUrl: '/supplied.wav', videoUrl: '/supplied-h3.mp4', originalAudioAvailable: true, context: 'showcase', initialOriginal: true }; nodes = render();
+  check(find(nodes, 'video').props.muted === false && find(nodes, 'input', 'checkbox').props.checked === true, 'Published VELUNE film starts with original audio enabled');
+  check(find(nodes, 'audio').props.src === '/supplied.wav' && find(nodes, 'video').props.src === '/supplied-h3.mp4', 'Showcase preserves separate supplied media sources');
   console.log(`PASS: ${checks} soundtrack preview playback checks. No paid calls.`);
 })().catch(e => { console.error(e); process.exit(1); });

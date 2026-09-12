@@ -35,7 +35,7 @@ const MAX_PROJECTS = 24;
 const TIMEOUT_MS = 15_000;
 
 /** Only change this when an actual, reviewed AI video result has been supplied. */
-export const VELUNE_FINAL_VIDEO: string | null = null;
+export const VELUNE_FINAL_VIDEO: string | null = VELUNE_MEDIA.film;
 export function veluneVisualAssets(): StudioAsset[] {
   return VELUNE_REFERENCES.map((ref) => ({ id: ref.id, name: `VELUNE · ${String(ref.index).padStart(2, "0")} · ${ref.title}`, kind: "image", url: ref.url, role: ref.role, source: "example", status: "ready", metadata: { fileName: ref.fileName, provenance: "AI-generated reference supplied by Ajwad", referenceToken: `[Image${ref.index}]`, referenceRole: ref.kind === "casting" ? "character" : ref.kind === "scene" ? "composition" : "product", shotIds: [...ref.shotIds], use: "Fictional concept direction; not approved real-product photography", width: ref.width, height: ref.height } }));
 }
@@ -47,6 +47,7 @@ export function veluneAssets(): StudioAsset[] {
     { id: "velune-report", name: "The Centre Report · concept", kind: "image", url: VELUNE_MEDIA.report, role: "Provisional report layout; replace with approved artwork for final graphics", source: "example", status: "ready" },
     { id: "velune-report-v2", name: "The Centre Report · v2 finishing master", kind: "document", url: "/studio/velune/finishing/velune_centre_report_v2.svg", role: "Exact report layout for final compositing; not an H3 image reference", source: "example", status: "ready" },
     { id: "velune-contact-sheet", name: "VELUNE · shot contact sheet", kind: "image", url: VELUNE_MEDIA.contactSheet, role: "Planning overview, not a texture reference", source: "blender", status: "ready" },
+    { id: "velune-voiceover", name: "VELUNE · supplied ElevenLabs voiceover", kind: "audio", url: VELUNE_MEDIA.voiceover, role: "Play at zero alongside the H3 film; original video audio remains separate", source: "example", status: "ready" },
     { id: "velune-final", name: "VELUNE · final AI film", kind: "video", ...(VELUNE_FINAL_VIDEO ? { url: VELUNE_FINAL_VIDEO } : {}), role: "Finished film supplied by Ajwad", source: "generated", status: VELUNE_FINAL_VIDEO ? "ready" : "pending" },
   ];
 }

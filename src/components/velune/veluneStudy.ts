@@ -15,6 +15,8 @@ export const VELUNE_SHOTS = [
 ] as const;
 
 export const VELUNE_MEDIA = {
+  film: "/studio/velune/film/velune-h3.mp4",
+  voiceover: "/studio/velune/film/velune-voiceover.wav",
   animatic: "/studio/velune/animatic.mp4",
   poster: "/studio/velune/poster.jpg",
   contactSheet: "/studio/velune/contact-sheet.jpg",
