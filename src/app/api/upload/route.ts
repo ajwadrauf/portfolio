@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Clip and track references need live mode — they upload to the generation provider. Unlock live mode, or use image references in demo mode.",
+            "Clip and track references need live mode because they upload to the generation provider. Unlock live mode, or use image references in demo mode.",
         },
         { status: 400 },
       );
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     if (file.size > limits.maxBytes) {
       return NextResponse.json(
         {
-          error: `File is ${(file.size / 1024 / 1024).toFixed(1)}MB — trim it under ${limits.maxMB}MB. A reference only has to be as long as the moment you want copied.`,
+          error: `File is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${limits.maxMB}MB. A reference only has to be as long as the moment you want copied.`,
         },
         { status: 413 },
       );

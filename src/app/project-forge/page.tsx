@@ -3,17 +3,17 @@ import Link from "next/link";
 import { Wordmark } from "@/components/Wordmark";
 
 export const metadata: Metadata = {
-  title: "Project Forge — Case study · Ajwad Rauf",
+  title: "Project Forge · Case study · Ajwad Rauf",
   description:
     "An internal production platform for an enterprise retail CRM email program: a badge brief in, a reviewed, deployment-ready email asset out.",
 };
 
 const META = [
-  { k: "Role", v: "Design & build — solo" },
+  { k: "Role", v: "Solo design & build" },
   { k: "Timeline", v: "2025–2026" },
-  { k: "Client", v: "Loblaw Companies — internal" },
+  { k: "Client", v: "Loblaw Companies (internal)" },
   { k: "Type", v: "Internal web app, in production" },
-  { k: "Access", v: "No public URL — internal tool" },
+  { k: "Access", v: "Internal tool, no public URL" },
 ];
 
 const TAGS = ["Internal tooling", "Workflow automation", "Next.js + Firebase"];
@@ -27,14 +27,14 @@ const FACTS = [
 
 const PHASES = [
   {
-    label: "Phase 1 — Intake",
+    label: "Phase 1 · Intake",
     nodes: [
       { n: "01", t: "Brief", d: "Request captured with campaign, dates and targeting." },
       { n: "02", t: "Badge Build", d: "Creative and links assembled against the brief." },
     ],
   },
   {
-    label: "Phase 2 — Production & release",
+    label: "Phase 2 · Production & release",
     nodes: [
       { n: "03", t: "Review", d: "Agency review with structured feedback." },
       { n: "04", t: "QA", d: "Copy, links and compliance checks." },
@@ -83,7 +83,7 @@ const CAPABILITIES: { term: string; desc: string; strong: string }[] = [
   },
   {
     term: "Scheduled automation",
-    desc: "Cron jobs send a {s} plus link-plan and UTM reminders and rejection follow-ups — and skip weekends.",
+    desc: "Cron jobs send a {s} plus link-plan and UTM reminders and rejection follow-ups. They skip weekends.",
     strong: "daily digest",
   },
 ];
@@ -111,7 +111,7 @@ const HIGHLIGHTS = [
   },
   {
     h: "Notifications as a system, not an afterthought",
-    p: "Each stage transition fires its own templated email, and scheduled jobs chase the work that would otherwise stall — reminders, digests and follow-ups on a weekday cadence.",
+    p: "Each stage transition fires its own templated email. Scheduled jobs keep work moving with reminders, digests and follow-ups on a weekday cadence.",
   },
   {
     h: "One record, many outputs",
@@ -205,7 +205,7 @@ export default function ProjectForgePage() {
           />
           <span>
             <span className="font-semibold">
-              No public URL — this is an internal Loblaw tool.
+              This is an internal Loblaw tool with no public URL.
             </span>{" "}
             &ldquo;Project Forge&rdquo; is a stand-in name, and the product
             name, interface screenshots, campaign data and internal metrics are
@@ -224,7 +224,7 @@ export default function ProjectForgePage() {
             <p className="mt-7 max-w-[64ch] text-[15px] leading-[1.75] sm:text-[17px]">
               Project Forge is the system a retail marketing team uses to brief,
               build, review and ship the promotional badges that run in their
-              CRM emails — the offer tiles that carry a campaign&apos;s price
+              CRM emails. These offer tiles carry a campaign&apos;s price
               points, dates and calls to action.
             </p>
             <p className="mt-4 max-w-[64ch] text-[15px] leading-[1.75] text-muted sm:text-[17px]">
@@ -368,7 +368,7 @@ export default function ProjectForgePage() {
               aria-hidden
               className="absolute left-0 top-[21px] h-[9px] w-[9px] rounded-full border border-border-strong"
             />
-            Quantified impact — turnaround time, volume, error rate — available
+            Measures of turnaround time, volume and error rate are available
             on request rather than published.
           </li>
         </ul>

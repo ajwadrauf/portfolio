@@ -169,7 +169,7 @@ export function judge(
    */
   if (kind === "video") {
     if (!problems.length) {
-      notes.push("Reachable and the right kind of file. Duration and dimensions are not checked here — the published limits are for stills.");
+      notes.push("Reachable and the right kind of file. Duration and dimensions are not checked here. The published limits are for stills.");
     }
     return { url, slot, ok: problems.length === 0, detail, problems, notes };
   }
@@ -178,10 +178,10 @@ export function judge(
     const small = Math.min(width, height);
     const large = Math.max(width, height);
     if (small < IMAGE_LIMITS.minSide) {
-      problems.push(`${width}×${height} — the short edge is under the ${IMAGE_LIMITS.minSide}px minimum.`);
+      problems.push(`${width}×${height}: the short edge is under the ${IMAGE_LIMITS.minSide}px minimum.`);
     }
     if (large > IMAGE_LIMITS.maxSide) {
-      problems.push(`${width}×${height} — the long edge is over the ${IMAGE_LIMITS.maxSide}px maximum.`);
+      problems.push(`${width}×${height}: the long edge is over the ${IMAGE_LIMITS.maxSide}px maximum.`);
     }
     const aspect = width / height;
     if (aspect < IMAGE_LIMITS.minAspect || aspect > IMAGE_LIMITS.maxAspect) {
@@ -190,7 +190,7 @@ export function judge(
       );
     }
   } else if (!problems.length) {
-    notes.push("Reachable, but the dimensions could not be read from the file header — check them by hand.");
+    notes.push("Reachable, but the dimensions could not be read from the file header. Check them by hand.");
   }
 
   return { url, slot, ok: problems.length === 0, detail, problems, notes };

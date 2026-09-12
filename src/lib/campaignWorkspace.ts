@@ -73,7 +73,7 @@ export function veluneCampaignDraft(): CampaignDraft {
   const draft = emptyCampaignDraft();
   draft.step = "brief"; draft.workflow = "hero"; draft.exactText = true;
   draft.imageDataUrl = VELUNE_REFERENCES[0].url;
-  draft.productContext = { name: "VELUNE chocolate", category: "fictional chocolate concept", colors: ["pistachio green", "raspberry plum", "caramel gold", "chocolate"], texture: "matte carton, glossy chocolate", packagingType: "AI-generated solo pistachio-carton appearance reference — not flat label artwork" };
+  draft.productContext = { name: "VELUNE chocolate", category: "fictional chocolate concept", colors: ["pistachio green", "raspberry plum", "caramel gold", "chocolate"], texture: "matte carton, glossy chocolate", packagingType: "AI-generated solo pistachio-carton appearance reference, not flat label artwork" };
   draft.brief = {
     productName: "VELUNE · concept study", mood: "Cinematic, tactile, curious", setting: "Sculptural chocolate forms against a deep plum studio", palette: "Deep plum, warm ivory, cocoa brown and restrained caramel highlights",
     targetAudience: "Portfolio viewers exploring a fictional premium chocolate campaign", headlineEN: "Discover the centre", headlineFR: "Découvrez le cœur",

@@ -39,7 +39,7 @@ export function CampaignResults({ jobs, snapshots, busy, live, approvedHeroId, w
         if (!ext) throw new Error("Storage returned an unsupported file. Download the asset individually.");
         const name = `${String(index + 1).padStart(2, "0")}_${job.deliverableId}.${ext}`;
         files[name] = new Uint8Array(await blob.arrayBuffer());
-        manifest.push({ file: name, jobId: job.id, model: job.modelId, estimatedCost: job.cost, prompt: job.prompt, textOverlay: job.textOverlay, approvedHeroId: snapshots[job.snapshotId]?.approvedHeroId, status: "Generated output — human review required" });
+        manifest.push({ file: name, jobId: job.id, model: job.modelId, estimatedCost: job.cost, prompt: job.prompt, textOverlay: job.textOverlay, approvedHeroId: snapshots[job.snapshotId]?.approvedHeroId, status: "Generated output · human review required" });
       }
       files["manifest.json"] = strToU8(JSON.stringify({ exportedAt: new Date().toISOString(), assets: manifest }, null, 2));
       files["README.txt"] = strToU8("Campaign Studio export\nSelected completed assets only. No mock previews, source references or API credentials are included.\nReview packaging, claims, bilingual copy and channel requirements before publishing. Video files contain their original embedded audio.\n");

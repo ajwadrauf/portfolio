@@ -5,7 +5,7 @@ import { VeluneCard } from "@/components/velune/VeluneCard";
 import { StudioStart } from "@/components/studio/StudioStart";
 
 export const metadata: Metadata = {
-  title: "AI Content Studio — Ajwad Rauf",
+  title: "AI Content Studio · Ajwad Rauf",
   description:
     "A working AI content studio: product imagery, bilingual campaigns, motion and sound. Watch a finished Seedance film beside its Blender motion guide and explore the tools behind it.",
 };
@@ -24,7 +24,7 @@ const TOOLS = [
     href: "/ai-studio/ads",
     name: "Ad Lab",
     task: "Shape a product ad with a beat sheet, references and sound direction",
-    body: "Preset ad recipes any SKU can run through — aesthetics, beat-by-beat action, overlay spec — every part editable, with the product held still by reference-to-video. Sound is built in layers rather than asked for in one go.",
+    body: "Preset ad recipes any SKU can run through, with editable aesthetics, beat-by-beat action and overlay specs. Reference-to-video keeps the product consistent. Sound is built in layers rather than asked for in one go.",
     tags: ["Short-form video", "Prompt systems", "Sound design"],
     cta: "Open Ad Lab",
   },
@@ -32,7 +32,7 @@ const TOOLS = [
     href: "/ai-studio/studio",
     name: "Campaign Studio",
     task: "Build an editable campaign brief and a multi-format creative pack",
-    body: "Vision analysis, an AI-written brief you can edit, then stills and video across formats, languages and seasons — each routed to the model that suits it at the price it deserves.",
+    body: "Vision analysis, an AI-written brief you can edit, then stills and video across formats, languages and seasons. Each deliverable goes to the model that suits it at the price it deserves.",
     tags: ["Stills", "Motion", "EN/FR versioning"],
     cta: "Open Campaign Studio",
   },
@@ -48,7 +48,7 @@ const TOOLS = [
     href: "/ai-studio/blender",
     name: "Blender",
     task: "Build a shot brief for editable 3D motion guidance",
-    body: "Camera, timing and blocking settled in geometry before a generative pass ever runs — the same route that produced the study above. The builder checks the brief for the mistakes that fail quietly.",
+    body: "Settle camera, timing and blocking in geometry before a generative pass ever runs. This is the route that produced the study above. The builder checks the brief for mistakes that fail quietly.",
     tags: ["3D control passes", "Camera plans", "Motion reference"],
     cta: "Build a Blender brief",
   },
@@ -64,7 +64,7 @@ const TOOLS = [
     href: "/ai-studio/models",
     name: "Model landscape",
     task: "Compare the configured models and choose a route for the job",
-    body: "Every route with its price, what it is good at, and where it breaks — image, video and sound in one table, so picking one is a decision rather than a habit.",
+    body: "Image, video and sound in one table, with each route’s price, strengths and limits. Pick a model for the job rather than out of habit.",
     tags: ["Routing", "Cost per render", "Ready / emerging"],
     cta: "Open the model landscape",
   },
@@ -78,7 +78,7 @@ const PRACTICE = [
   },
   {
     h: "Stand up the workflow",
-    p: "Self-filling intake, one brief driving every deliverable, routing by job and price, and named quality gates — written down in the playbook so it survives past one person.",
+    p: "Self-filling intake, one brief driving every deliverable, routing by job and price, and named quality gates. The playbook records the process so it survives past one person.",
   },
   {
     h: "Evaluate the tools",
@@ -102,7 +102,7 @@ const LEARNED = [
   },
   {
     h: "AI can't know what it never saw",
-    p: "A generated packshot of a panel no camera captured is a plausible reconstruction, not a record. It gets labelled that way every time — a wrong ingredient list is a recall, not a retouch.",
+    p: "A generated packshot of a panel no camera captured is a plausible reconstruction, not a record. It gets labelled that way every time. A wrong ingredient list is a recall, not a retouch.",
   },
   {
     h: "The models change. The production record stays.",
@@ -201,14 +201,14 @@ export default function StudioOverview() {
             </h2>
             <p className="mt-4 leading-relaxed text-muted">
               One campaign multiplies across formats, placements, seasons, banners
-              and — in Canada — two official languages. One idea becomes forty
+              and, in Canada, two official languages. One idea becomes forty
               assets before it reaches a shopper. Traditional production can make
               the one beautifully; it cannot make the forty at that cadence.
             </p>
             <p className="mt-4 leading-relaxed text-muted">
               That is the gap this closes, and it moves where craft lives. An
               adaptation that took a studio day becomes a routed call costing
-              cents, so judgment moves upstream — into the brief, the prompt
+              cents, so judgment moves upstream into the brief, the prompt
               system and the quality gate.
             </p>
           </div>
@@ -262,8 +262,8 @@ export default function StudioOverview() {
             Browse it free. Generating is the part that costs.
           </h2>
           <p className="mt-4 leading-relaxed text-muted">
-            Every page here is open, and demo mode walks the whole pipeline —
-            intake, brief, routing, quality gates — at zero spend. Live rendering
+            Every page here is open. Demo mode walks through intake, the brief,
+            routing and quality gates at zero spend. Live rendering
             is behind a passcode, because each run bills a real account. Every live
             run shows its estimated cost and asks before it spends.
           </p>

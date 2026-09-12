@@ -140,7 +140,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
    * the tokens actually resolve against the uploaded files.
    */
   const assets = project?.assets.filter((asset) => asset.status === "ready" && asset.kind !== "document") ?? [];
-  const manifest = plan.map((row) => ({ token: normalizeRefTokens(row.slot).text, job: `${row.what} — ${row.role}`, asset: assets.find((asset) => asset.id === draft.referenceAssets[row.slot] && asset.kind === (row.slot.startsWith("@Video") ? "video" : "image")) }));
+  const manifest = plan.map((row) => ({ token: normalizeRefTokens(row.slot).text, job: `${row.what}: ${row.role}`, asset: assets.find((asset) => asset.id === draft.referenceAssets[row.slot] && asset.kind === (row.slot.startsWith("@Video") ? "video" : "image")) }));
   const openInLab = async () => {
     if (busy) return;
     setBusy(true); setActionError("");
@@ -244,7 +244,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                   {m.label}
                 </option>
               ))}
-              <option value="">Something else — describe it below</option>
+              <option value="">Something else (describe it below)</option>
             </select>
           </Field>
         </div>
@@ -322,7 +322,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           </div>
           <p className="mt-1 text-xs leading-relaxed text-muted">
             {build
-              ? "One flat ID colour per subject, shaded enough to show its form and contact shadow. Everything else in the scene stays neutral grey — the colour is the mapping, so a second grey erases it."
+              ? "One flat ID colour per subject, shaded enough to show its form and contact shadow. Everything else in the scene stays neutral grey. The colour is the mapping, so a second grey erases it."
               : "One flat ID colour per subject you intend to name in the prompt. Everything else stays neutral grey."}
           </p>
           <div className="mt-3 space-y-3">
@@ -332,7 +332,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                   <input
                     className="input"
                     aria-label={`Subject ${i + 1} ID colour`}
-                    placeholder="ID colour + hex — orange #D94F0A"
+                    placeholder="ID colour + hex, e.g. orange #D94F0A"
                     value={s.color}
                     onChange={(e) =>
                       set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, color: e.target.value } : x)))
@@ -341,7 +341,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                   <input
                     className="input"
                     aria-label={`Subject ${i + 1} proxy object`}
-                    placeholder="Proxy — e.g. box on the counter"
+                    placeholder="Proxy, e.g. box on the counter"
                     value={s.proxy}
                     onChange={(e) =>
                       set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, proxy: e.target.value } : x)))
@@ -353,8 +353,8 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                       aria-label={`Subject ${i + 1} becomes`}
                       placeholder={
                         build
-                          ? "Becomes — what to size and shape it like"
-                          : "Becomes — e.g. the product package"
+                          ? "Becomes: what to size and shape it like"
+                          : "Becomes, e.g. the product package"
                       }
                       value={s.becomes}
                       onChange={(e) =>
@@ -384,7 +384,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
                       <input
                         className="input min-w-0 flex-1"
                         aria-label={`Subject ${i + 1} look reference`}
-                        placeholder="Look ref — e.g. Image 1"
+                        placeholder="Look ref, e.g. Image 1"
                         value={s.ref}
                         onChange={(e) =>
                           set("subjects", b.subjects.map((x, j) => (j === i ? { ...x, ref: e.target.value } : x)))
@@ -454,7 +454,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           label={build ? "What the shot is" : "Creative direction"}
           hint={
             build
-              ? "One sentence, so whoever builds the scene knows what they are staging. Look and style are not their problem — that lives in the prompt."
+              ? "One sentence, so whoever builds the scene knows what they are staging. Look and style live in the prompt."
               : "One sentence: subject, setting, event, style, governing camera idea."
           }
         >
@@ -474,7 +474,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           half is a placeholder.
         */}
         <Field
-          label={build ? "Dynamics — simulate or stand in?" : "The blockout's subject motion"}
+          label={build ? "Dynamics: simulate or stand in?" : "The blockout's subject motion"}
           hint={
             build
               ? "Decides how much of this shot is worth simulating in 3D, and what the build brief has to declare as a placeholder so the video prompt can override it."
@@ -486,14 +486,14 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
               [
                 {
                   id: "resolve" as const,
-                  title: build ? "Stand it in — don't simulate" : "A placeholder — re-solve it",
+                  title: build ? "Use a stand-in" : "Re-solve the placeholder",
                   body: build
                     ? "Slide proxies along a path to hold the timing. Cheap to build, and the brief flags it so the video prompt re-solves it."
                     : "Camera, staging and timing are inherited exactly. The model re-solves how things actually move.",
                 },
                 {
                   id: "inherit" as const,
-                  title: build ? "Simulate it properly" : "Animated — inherit it",
+                  title: build ? "Simulate it properly" : "Inherit the animation",
                   body: build
                     ? "Real dynamics in Blender. Slow to build and to art-direct, but the generation can then be told to follow it."
                     : "Subject trajectories come across with the camera. Right when the motion was genuinely animated.",
@@ -523,7 +523,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
             hint={
               build
                 ? "Anything granular or fluid a subject moves through. Naming it tells the build how much to simulate locally, and puts the placeholder declaration in the brief."
-                : "Anything granular or fluid a subject moves through, lands in or rises out of. Naming it writes the physics block — bow wave, furrow, slump-back, and the rule that nothing floats above it."
+                : "Anything granular or fluid a subject moves through, lands in or rises out of. Naming it writes the physics block: bow wave, furrow, slump-back, and the rule that nothing floats above it."
             }
           >
             <input
@@ -536,7 +536,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
         )}
 
         <Field
-          label={build ? "Leave blank — added in post" : "Composited after generation"}
+          label={build ? "Leave blank for post-production" : "Composited after generation"}
           hint={
             build
               ? "Anything with readable type. Do not model or letter it: it is composited later, and geometry for it here only gives the model something to garble."
@@ -563,8 +563,8 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           */}
           <span className="chip !border-accent/30 !text-accent">
             {build
-              ? "Output: Blender build brief — for Claude Code, Cowork or MCP"
-              : "Output: Seedance prompt — for the Ad Lab"}
+              ? "Output: Blender build brief for Claude Code, Cowork or MCP"
+              : "Output: Seedance prompt for the Ad Lab"}
           </span>
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => void copy()}>
@@ -585,7 +585,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
         <p className="mt-2 text-xs leading-relaxed text-muted">
           {build ? (
             <>
-              Hand this to whatever is driving Blender — Claude Code, Cowork, an
+              Hand this to whatever is driving Blender: Claude Code, Cowork or an
               MCP session. It says what to build, how to animate it, and what to
               declare as a placeholder. Pair it with the guide below, which it
               cites by section.

@@ -3,7 +3,7 @@ import { MODELS } from "@/lib/models";
 import { ModelExplorer } from "@/components/studio/ModelExplorer";
 
 export const metadata: Metadata = {
-  title: "Model Landscape — AI Content Studio",
+  title: "Model Landscape · AI Content Studio",
   description:
     "The 2026 AI production model landscape: image and video models compared by strengths, cost and the jobs they should own.",
 };
@@ -23,7 +23,7 @@ const IMAGE_NOTES = [
   },
   {
     name: "Ideogram (not wired in, on the radar)",
-    take: "The typography specialist. If the studio's flyer/promo tile volume grows, a dedicated text-in-image model is the next evaluation — a good example of the continuous pilot-and-adopt loop.",
+    take: "The typography specialist. If the studio's flyer/promo tile volume grows, a dedicated text-in-image model is the next evaluation. It is a good example of the continuous pilot-and-adopt loop.",
   },
 ];
 
@@ -37,7 +37,7 @@ const VIDEO_NOTES = [
     take: "Two configured fal routes for short product motion. This app offers fixed 5- or 10-second durations. Standard returns silent picture; Pro is treated as audio-on. Compare the exact scenario above rather than a blanket price multiple.",
   },
   {
-    name: "Seedance 2.5 (ByteDance) — reference-to-video",
+    name: "Seedance 2.5 (ByteDance) · reference-to-video",
     take: "The configured multimodal route for the Blender-to-film workflow. Image, video and audio references each receive a role and positional token. The app supports up to 30-second output and limits reference output to 480p or 720p. A motion guide supplies direction; generated timing, product identity and text still need review. Video inputs affect the estimate as well as the output duration.",
   },
   {
@@ -62,7 +62,7 @@ export default function ModelsPage() {
         The model landscape, and why routing beats picking
       </h1>
       <p className="mt-4 text-lg leading-relaxed text-muted">
-        There is no single best model — there are jobs, and models that are
+        There is no single best model. There are jobs, and models that are
         currently best at them, at a price. A production studio&apos;s edge is a
         routing table it re-evaluates monthly, not a favorite tool. This page is
         the live routing table behind the Studio demo.
@@ -98,7 +98,7 @@ export default function ModelsPage() {
       </p>
       </details>
 
-      <h2 className="mt-12 text-xl">Stills — the read</h2>
+      <h2 className="mt-12 text-xl">My take on stills</h2>
       <div className="mt-4 space-y-4">
         {IMAGE_NOTES.map((n) => (
           <div key={n.name} className="card p-5">
@@ -108,7 +108,7 @@ export default function ModelsPage() {
         ))}
       </div>
 
-      <h2 className="mt-12 text-xl">Video — the read</h2>
+      <h2 className="mt-12 text-xl">My take on video</h2>
       <div className="mt-4 space-y-4">
         {VIDEO_NOTES.map((n) => (
           <div key={n.name} className="card p-5">
@@ -130,7 +130,7 @@ export default function ModelsPage() {
           </ul>
         </div>
         <div className="card border-warning/40 p-5">
-          <p className="font-semibold text-warning">Emerging — pilot now</p>
+          <p className="font-semibold text-warning">Emerging · pilot now</p>
           <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted">
             <li>Multi-shot narrative spots (Seedance-class models)</li>
             <li>Automated brand-compliance checking</li>

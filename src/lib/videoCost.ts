@@ -64,20 +64,20 @@ export const VIDEO_RESOLUTIONS: {
   label: string;
   note: string;
 }[] = [
-  { id: "768p", label: "768p — native", note: "H3 Max native generation. A good starting point for the full film." },
+  { id: "768p", label: "768p · native", note: "H3 Max native generation. A good starting point for the full film." },
   {
     id: "480p",
-    label: "480p — draft",
+    label: "480p · draft",
     note: "Roughly a fifth the cost of 1080p. Right for judging composition, timing and whether the idea works at all.",
   },
   {
     id: "720p",
-    label: "720p — social",
+    label: "720p · social",
     note: "Fine for feed and stories, where the player is a few hundred pixels wide anyway.",
   },
   {
     id: "1080p",
-    label: "1080p — final",
+    label: "1080p · final",
     note: "Billed at a higher rate per token as well as having four times the pixels of 480p. Worth it once the take is right.",
   },
 ];

@@ -55,7 +55,7 @@ export const REFERENCE_CLIPS: ReferenceClip[] = [
     id: "vibrant-churn",
     name: "Vibrant churn",
     brief:
-      "Continuous, fluid sweeping motion across tightly packed, chaotic clusters. Lively and playful, with no single fixed focal point — the elements constantly shift and churn. Point a product at this when it needs to feel highly creative, energetic, or bursting with variety. The wrong choice for minimalist, rigid, or highly serious branding.",
+      "Continuous, fluid sweeping motion across tightly packed, chaotic clusters. Lively and playful, with no single fixed focal point. The elements constantly shift and churn. Point a product at this when it needs to feel highly creative, energetic, or bursting with variety. The wrong choice for minimalist, rigid, or highly serious branding.",
     suggestedRole: "motion",
     file: "https://cd8lfvpdkybjxvfw.public.blob.vercel-storage.com/VibrantChurn.mp4",
   },

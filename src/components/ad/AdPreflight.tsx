@@ -98,7 +98,7 @@ function readableReport(saved: SavedReview, take: CompletedPreflightTake): strin
     "",
     ...report.checks.flatMap((check) => [
       `## ${check.group} · ${check.title}`,
-      `**${check.status === "pass" && check.basis === "metadata" ? "Metadata check passed" : STATUS[check.status]?.label ?? "Needs review"}** — ${BASIS[check.basis] ?? "Unknown basis"}`,
+      `**${check.status === "pass" && check.basis === "metadata" ? "Metadata check passed" : STATUS[check.status]?.label ?? "Needs review"}** · ${BASIS[check.basis] ?? "Unknown basis"}`,
       check.evidence,
       ...(check.timestamps.length ? [`Review at: ${check.timestamps.map(stamp).join(", ")}`] : []),
       `Next step: ${check.action}`,

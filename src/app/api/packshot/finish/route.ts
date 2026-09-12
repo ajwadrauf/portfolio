@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         mock: true,
         error: hasKey
-          ? "Finishing needs live mode — enter your access code to run it."
+          ? "Finishing needs live mode. Enter your access code to run it."
           : "Finishing runs on Recraft, and RECRAFT_API_TOKEN is not set.",
         cost: 0,
       });

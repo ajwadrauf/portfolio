@@ -29,7 +29,7 @@ export async function POST(req: Request) {
         mock: true,
         values: Object.fromEntries(preset.fields.map((f) => [f.key, f.example])),
         rationale:
-          "Demo mode — example values loaded. With a Gemini key, these fields are read and reasoned from your actual photo.",
+          "Demo mode: example values loaded. With a Gemini key, these fields are read and reasoned from your actual photo.",
       });
     }
 

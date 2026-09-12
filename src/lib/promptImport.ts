@@ -149,7 +149,7 @@ export function importPrompt(raw: string): ImportedPrompt {
   const { text, changed } = normalizeRefTokens(stripped);
   if (changed > 0) {
     notes.push(
-      `Converted ${changed} reference token${changed === 1 ? "" : "s"} to the bracketed form the API resolves — @Image 1 becomes [Image1]. Left as written, they read as literal text and the reference is ignored.`,
+      `Converted ${changed} reference token${changed === 1 ? "" : "s"} to the bracketed form the API resolves: @Image 1 becomes [Image1]. Left as written, they read as literal text and the reference is ignored.`,
     );
   }
 

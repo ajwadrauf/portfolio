@@ -625,9 +625,8 @@ function PackshotSession() {
                   <span className="font-bold text-danger">Too many references.</span>{" "}
                   {cappedBy.label} accepts {refCap}. Remove{" "}
                   {references.length - refCap} before running, or pick a model
-                  with a higher ceiling — the run is refused rather than
-                  silently dropping the extras, because a dropped face turns a
-                  grounded angle into a reconstruction without saying so.
+                  with a higher ceiling. All references stay attached until you choose
+                  which ones to remove.
                 </p>
               ) : (
                 <p className="mt-1.5 text-xs leading-relaxed text-muted">
@@ -641,7 +640,7 @@ function PackshotSession() {
                 (challenger.maxReferenceImages ?? 16) !==
                   (primary.maxReferenceImages ?? 16) && (
                   <p className="mt-2 border-t border-border-soft pt-2 text-[11px] leading-relaxed text-muted">
-                    The A/B is held to the stricter of the two —{" "}
+                    The A/B uses the lower limit:{" "}
                     {primary.label.split(" (")[0]} takes{" "}
                     {primary.maxReferenceImages}, {challenger.label.split(" (")[0]}{" "}
                     takes {challenger.maxReferenceImages}.
@@ -817,7 +816,7 @@ function PackshotSession() {
               >
                 {PACKSHOT_MODELS.map((m) => (
                   <option key={m} value={m}>
-                    {MODELS[m].label} —{" "}
+                    {MODELS[m].label} ·{" "}
                     {(MODELS[m].outputSizes?.presets ?? []).some(
                       (x) => (x.costMultiplier ?? 1) !== 1,
                     )
@@ -840,10 +839,10 @@ function PackshotSession() {
                 value={challengerId}
                 onChange={(e) => setChallengerId(e.target.value)}
               >
-                <option value="">Off — primary only</option>
+                <option value="">Off · primary only</option>
                 {PACKSHOT_MODELS.filter((m) => m !== modelId).map((m) => (
                   <option key={m} value={m}>
-                    {MODELS[m].label} —{" "}
+                    {MODELS[m].label} ·{" "}
                     {(MODELS[m].outputSizes?.presets ?? []).some(
                       (x) => (x.costMultiplier ?? 1) !== 1,
                     )
@@ -899,7 +898,7 @@ function PackshotSession() {
               reconstruct. GPT Image 2 follows a written brief most literally.
               Seedream is the value benchmark and the only one where 4K is free.
               Recraft&apos;s two tiers restage a single photo rather than
-              synthesising an angle — draft on Utility, finish on Utility Pro.
+              synthesising an angle. Draft on Utility, finish on Utility Pro.
               With a challenger set, every angle runs on both models side by
               side: the bake-off that should decide your default.
             </p>
@@ -987,7 +986,7 @@ function PackshotSession() {
                 {sizeSupport.presets.length > 1 &&
                   sizeSupport.presets.every((x) => (x.costMultiplier ?? 1) === 1) && (
                     <p className="mt-1.5 text-xs leading-relaxed text-success">
-                      Size does not change the price on this model — take the
+                      Size does not change the price on this model. Take the
                       largest tier that renders.
                     </p>
                   )}

@@ -24,8 +24,8 @@ export function veluneBlenderReferenceAssets(): Record<string, string> {
 function veluneShotAction(shot: (typeof VELUNE_SHOTS)[number]): string {
   const referenceIds = new Set(veluneShotReferenceIds(shot.id));
   const references = VELUNE_REFERENCES.filter((reference) => referenceIds.has(reference.id));
-  const appearance = references.length ? ` Appearance references: ${references.map((reference) => `[Image${reference.index}] — ${reference.role}`).join("; ")}.` : "";
-  return `${shot.id} — ${shot.title}. ${shot.note}${appearance}`;
+  const appearance = references.length ? ` Appearance references: ${references.map((reference) => `[Image${reference.index}] · ${reference.role}`).join("; ")}.` : "";
+  return `${shot.id} · ${shot.title}. ${shot.note}${appearance}`;
 }
 
 export function veluneBlenderBrief(): BlenderBrief {
@@ -71,7 +71,7 @@ export function velunePromptDraft(): PromptDraft {
       music: "No music baked into this generation; plan and finish the soundtrack separately.",
     },
     slots: [
-      { id: "velune-motion", assetId: "velune-motion", media: "video", job: "Actual Blender camera study — camera, edit, motion and timing" },
+      { id: "velune-motion", assetId: "velune-motion", media: "video", job: "Actual Blender camera study · camera, edit, motion and timing" },
       ...VELUNE_REFERENCES.map((reference) => ({ id: reference.id, assetId: reference.id, media: "image" as const, job: reference.role })),
     ],
     beats: VELUNE_SHOTS.map((shot, index) => ({ seconds: (shot.end - shot.start) / 24, role: index === 0 ? "open" : index === 4 ? "climax" : index === 11 ? "resolve" : "build", action: veluneShotAction(shot), audio: "" })),
@@ -132,7 +132,7 @@ export async function downloadProductionBundle(input: {
         const safeName = `${manifest.length + 1}_${asset.name.replace(/[^a-zA-Z0-9._-]/g, "_")}${/\.(?:jpe?g|png|webp|mp4|webm|mp3|wav)$/i.test(asset.name) ? "" : extension}`;
         files[`references/${safeName}`] = new Uint8Array(await blob.arrayBuffer());
         row.file = `references/${safeName}`;
-      } else row.status = "external link — download separately";
+      } else row.status = "external link: download separately";
     }
     manifest.push(row);
   }

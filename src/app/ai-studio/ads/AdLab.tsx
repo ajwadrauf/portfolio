@@ -162,7 +162,7 @@ function previousTakes(): CompletedTake[] {
  * everything after the offending character in some mail clients.
  */
 const ACCESS_REQUEST_MAILTO = `mailto:hello@ajwadrauf.com?subject=${encodeURIComponent(
-  "Access code request — AI Content Studio",
+  "Access code request · AI Content Studio",
 )}&body=${encodeURIComponent(
   [
     "Hi Ajwad,",
@@ -194,7 +194,7 @@ const OVERDUE_MS = 500_000;
 
 /** A pre-addressed report for a render that has run long. */
 const STUCK_RENDER_MAILTO = `mailto:hello@ajwadrauf.com?subject=${encodeURIComponent(
-  "Long-running render — AI Content Studio",
+  "Long-running render · AI Content Studio",
 )}&body=${encodeURIComponent(
   [
     "Hi Ajwad,",
@@ -312,7 +312,7 @@ async function toProcessedDataUrl(file: File, usedWireBytes = 0): Promise<string
      * the spend confirmed — so refuse here, where the fix is one click.
      */
     throw new Error(
-      `This reference does not fit alongside the ones already added — inline references share a ${Math.round(
+      `This reference does not fit alongside the ones already added. Inline references share a ${Math.round(
         MAX_INLINE_WIRE_BYTES / 1024 / 1024,
       )}MB request body. Remove one, or add this by URL instead: a hosted reference is passed as a link and costs the body nothing.`,
     );
@@ -1196,12 +1196,12 @@ function AdLabWorkspace({
   const readPromptFile = useCallback(
     async (file: File) => {
       if (!isPromptFile(file)) {
-        setImportError("Pick a .txt or .md file — anything else arrives as gibberish.");
+        setImportError("Choose a .txt or .md file so the prompt can be read correctly.");
         return;
       }
       if (file.size > MAX_PROMPT_FILE_BYTES) {
         setImportError(
-          `That file is ${Math.round(file.size / 1024)}KB. A prompt is a few KB — this looks like the wrong file.`,
+          `That file is ${Math.round(file.size / 1024)}KB. A prompt is usually a few KB. This looks like the wrong file.`,
         );
         return;
       }
@@ -1314,7 +1314,7 @@ function AdLabWorkspace({
           // before the upload rather than after a round trip.
           if (health && !health.live) {
             setRefError(
-              `${isAudio ? "Tracks" : "Clips"} upload to the generation provider, so they need live mode — and this session is in demo mode. Unlock it with the "Demo mode · Unlock" button at the top of this page, or use image references, which stay in the browser.`,
+              `${isAudio ? "Tracks" : "Clips"} upload to the generation provider and need live mode. This session is in demo mode. Unlock it with the "Demo mode · Unlock" button at the top of this page, or use image references, which stay in the browser.`,
             );
             return;
           }
@@ -1326,8 +1326,8 @@ function AdLabWorkspace({
           if (file.size > cap) {
             setRefError(
               isAudio
-                ? `That track is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${capMB}MB — the reference only needs to be as long as the cut.`
-                : `That clip is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${capMB}MB — around ${VIDEO_REF_LIMITS.idealSeconds} seconds is all the model reads.`,
+                ? `That track is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${capMB}MB. The reference only needs to be as long as the cut.`
+                : `That clip is ${(file.size / 1024 / 1024).toFixed(1)}MB. Trim it under ${capMB}MB. Around ${VIDEO_REF_LIMITS.idealSeconds} seconds is all the model reads.`,
             );
             return;
           }
@@ -1392,7 +1392,7 @@ function AdLabWorkspace({
     const media = referenceMediaOfUrl(url);
     if (!media) {
       setRefError(
-        `That URL doesn't end in a file extension this model reads. It needs to point straight at the file — ${VIDEO_REF_LIMITS.formats} for clips, ${AUDIO_REF_LIMITS.formats} for tracks, JPG/PNG/WebP for stills — not at a page that plays it. A YouTube or Drive link won't work; a direct link ending in .mp4 will.`,
+        `That URL doesn't end in a file extension this model reads. Use a direct link to the file: ${VIDEO_REF_LIMITS.formats} for clips, ${AUDIO_REF_LIMITS.formats} for tracks, JPG/PNG/WebP for stills. Links to playback pages are not supported. A YouTube or Drive link won't work; a direct link ending in .mp4 will.`,
       );
       return;
     }
@@ -1638,7 +1638,7 @@ function AdLabWorkspace({
       // Deliberately leaves the handle in place — the render is still running
       // and already paid for, so the failed screen offers to collect it.
       throw new Error(
-        "Still rendering after 10 minutes. Nothing is lost — the job is finishing on the provider side and you can collect it below.",
+        "Still rendering after 10 minutes. The job is still finishing with the provider. You can collect it below.",
       );
     } catch (e) {
       fail(e instanceof Error ? e.message : "Generation failed", "generate");
@@ -1858,7 +1858,7 @@ function AdLabWorkspace({
       ? [
           {
             id: "native" as AudioMode,
-            title: h3 ? "Native sound — keep the model’s audio" : "Native sound — start here",
+            title: h3 ? "Native sound · keep the model’s audio" : "Native sound · start here",
             body: modelId.startsWith("seedance")
               ? "One video request, one MP4 with sound. Seedance generates effects, ambience and musical direction with no extra native-audio charge. Audition this first."
               : "Sound is generated with the picture in one file. Listen to the result before deciding whether it needs a separate score or effects.",
@@ -1868,15 +1868,15 @@ function AdLabWorkspace({
     {
       id: "layered" as AudioMode,
       title: cap.native
-        ? `Layered — add an ElevenLabs score`
-        : `Layered — a composed music bed (${modelName} renders no sound)`,
+        ? `Layered · add an ElevenLabs score`
+        : `Layered · a composed music bed (${modelName} renders no sound)`,
       body: cap.native
         ? "Ask the video model for effects and ambience, then compose an instrumental track through fal. Extra audio charge; the track stays a separate file for your final edit."
         : "This model returns a silent MP4, so the whole soundtrack is built here: ElevenLabs Music writes the bed and you add effects in the edit.",
     },
     {
       id: "silent" as AudioMode,
-      title: h3 ? "External soundtrack — finish with ElevenLabs" : "Silent — deliver picture only",
+      title: h3 ? "External soundtrack · finish with ElevenLabs" : "Silent · deliver picture only",
       body: h3 ? "Generate the picture first. The prompt requests no speech or music, but H3 can still return native audio. Mute or discard that track, then add your separate ElevenLabs voice, music and effects. This selection does not auto-generate music." : cap.switchable
         ? `Native audio is switched off at the API, not just asked off in the prompt. Use this for a soundtrack you will build entirely in the edit.`
         : "The prompt asks for a silent take. Use this for a soundtrack you will build entirely in the edit.",
@@ -1943,7 +1943,7 @@ function AdLabWorkspace({
           <p className="mt-1.5 text-xs leading-relaxed text-muted">
             A render that timed out, or one started before this page began
             remembering job handles, still exists on the provider. Collecting
-            it costs nothing — the work is already done and billed.
+            it costs nothing because the work is already done and billed.
           </p>
 
           {recovering && !recent && (
@@ -2006,7 +2006,7 @@ function AdLabWorkspace({
             <p className="mt-1 text-xs leading-relaxed text-muted">
               fal dashboard → Requests. Collected against{" "}
               <span className="font-semibold text-foreground">{modelName}</span>,
-              the model selected in Format — switch models first if the render was
+              the model selected in Format. Switch models first if the render was
               made with a different one.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -2144,7 +2144,7 @@ function AdLabWorkspace({
       {blenderLane && <p className="mt-3 text-xs text-muted">Need to write the brief first? <Link href="/ai-studio/blender" className="inline-flex min-h-6 items-center font-semibold text-accent underline underline-offset-4">Open the Blender prompt builder ↗</Link></p>}
       </div>
 
-      {referenceManifest.length > 0 && <details className="my-5 rounded-xl border border-border-soft p-4" open={bindingProblems.length > 0}><summary className="min-h-8 cursor-pointer text-sm font-semibold">Imported reference slots · {bindingProblems.length ? "review required before generation" : "all positions match"}</summary><p className="mt-2 text-xs text-muted">Each prompt token must still point to its intended file. Add missing files in References, assign them here, then apply the slot order.</p><div className="mt-3 grid gap-3 sm:grid-cols-2">{referenceManifest.map((row, i) => <label key={`${row.token}-${i}`}><span className="label">{refLabel(row.token)} · {row.job}</span><select className="input mt-1" value={row.assetId ?? ""} onChange={(e) => setReferenceManifest((previous) => previous.map((binding, j) => i === j ? { ...binding, assetId: e.target.value || null } : binding))}><option value="">Missing — attach and assign a file</option>{boardReferences.filter((r) => row.token.toLowerCase().startsWith(`[${r.kind}`)).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>)}</div><button type="button" className="btn-secondary mt-3" disabled={referenceManifest.some((row) => !row.assetId || !boardReferences.some((r) => r.id === row.assetId))} onClick={() => setRefs((previous) => [...previous].sort((a, b) => { const index = (id?: string) => Number(referenceManifest.find((row) => row.assetId === id)?.token.match(/\d+/)?.[0] ?? 100); return index(a.id) - index(b.id); }))}>Apply declared slot order</button>{bindingProblems.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-4 text-xs text-warning">{bindingProblems.map((problem, i) => <li key={i}>{problem}</li>)}</ul>}</details>}
+      {referenceManifest.length > 0 && <details className="my-5 rounded-xl border border-border-soft p-4" open={bindingProblems.length > 0}><summary className="min-h-8 cursor-pointer text-sm font-semibold">Imported reference slots · {bindingProblems.length ? "review required before generation" : "all positions match"}</summary><p className="mt-2 text-xs text-muted">Each prompt token must still point to its intended file. Add missing files in References, assign them here, then apply the slot order.</p><div className="mt-3 grid gap-3 sm:grid-cols-2">{referenceManifest.map((row, i) => <label key={`${row.token}-${i}`}><span className="label">{refLabel(row.token)} · {row.job}</span><select className="input mt-1" value={row.assetId ?? ""} onChange={(e) => setReferenceManifest((previous) => previous.map((binding, j) => i === j ? { ...binding, assetId: e.target.value || null } : binding))}><option value="">Missing · attach and assign a file</option>{boardReferences.filter((r) => row.token.toLowerCase().startsWith(`[${r.kind}`)).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>)}</div><button type="button" className="btn-secondary mt-3" disabled={referenceManifest.some((row) => !row.assetId || !boardReferences.some((r) => r.id === row.assetId))} onClick={() => setRefs((previous) => [...previous].sort((a, b) => { const index = (id?: string) => Number(referenceManifest.find((row) => row.assetId === id)?.token.match(/\d+/)?.[0] ?? 100); return index(a.id) - index(b.id); }))}>Apply declared slot order</button>{bindingProblems.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-4 text-xs text-warning">{bindingProblems.map((problem, i) => <li key={i}>{problem}</li>)}</ul>}</details>}
       <AdSceneBoard cards={boardCards} onChange={setSceneCards} references={boardReferences} duration={duration} onApply={(text) => { setSceneCards(boardCards); setFinalPrompt((previous) => `${previous.replace(/\n?\n?SCENE BOARD[\s\S]*?END SCENE BOARD/g, "").trim()}\n\nSCENE BOARD\n${text}\nEND SCENE BOARD`); setImported(true); if (!generateLock.current) setPhase("ready"); }} />
       <div className={styles.flow}>
         {/* ---------- the Blender lane opens on the prompt itself ---------- */}
@@ -2231,7 +2231,7 @@ function AdLabWorkspace({
                 .{" "}
                 {slotGaps.length === 0 && attached.image + attached.video > 0
                   ? "All of them are attached below."
-                  : "Add them below in that order — references are numbered as they are uploaded, not by what the files are called."}
+                  : "Add them below in that order. References are numbered as they are uploaded, not by what the files are called."}
               </p>
             )}
           </Step>
@@ -2406,7 +2406,7 @@ function AdLabWorkspace({
           {autofillRationale && (
             <div className="mt-3 rounded-[6px] border border-accent/30 bg-accent/5 p-3 text-xs leading-relaxed text-muted">
               <span className="font-bold text-accent">Filled from your photo.</span>{" "}
-              {autofillRationale} Review every field — especially the price —
+              {autofillRationale} Review every field, especially the price,
               before composing.
             </div>
           )}
@@ -2423,7 +2423,7 @@ function AdLabWorkspace({
                   )}
                   {f.key === "price" && productImage && !autofilledKeys.has("price") && (
                     <span className="rounded bg-warning/15 px-1 py-px text-[10px] font-bold normal-case tracking-normal text-warning">
-                      not on pack — set it
+                      not on pack · set it
                     </span>
                   )}
                 </span>
@@ -2453,7 +2453,7 @@ function AdLabWorkspace({
         <Step
           id="ad-recipe"
           n={STEP.recipe}
-          title={`The recipe — ${preset.name}`}
+          title={`The recipe · ${preset.name}`}
           aside={
             <div className="flex items-center gap-2">
               {recipeEdited && (
@@ -2481,9 +2481,9 @@ function AdLabWorkspace({
         >
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
             {presetId === CUSTOM_PRESET_ID
-              ? "Write the concept in the four parts a video model actually reads: how it looks, what happens beat by beat, what text appears, and what it sounds like. Nothing here is required — the parts you leave blank are simply not sent."
+              ? "Write the concept in the four parts a video model actually reads: how it looks, what happens beat by beat, what text appears, and what it sounds like. Nothing here is required. Blank parts are not sent."
               : editingRecipe
-                ? "Change anything. An edited recipe is rebuilt into the prompt section by section — your beats, your sound design — instead of using the preset's hand-tuned paragraph."
+                ? "Change anything. An edited recipe is rebuilt into the prompt section by section, using your beats and sound design in place of the preset's hand-tuned paragraph."
                 : "The concept, deconstructed into the four things a video model actually reads. Edit any of it to make the concept yours."}
           </p>
 
@@ -2509,7 +2509,7 @@ function AdLabWorkspace({
                     onChange={(e) => editRecipe({ sfx: fromLines(e.target.value) })}
                   />
                   <span className="mt-1 block text-xs text-muted">
-                    Effects and ambience only — music is set in step {STEP.sound}.
+                    Effects and ambience only. Music is set in step {STEP.sound}.
                   </span>
                 </label>
               </div>
@@ -2713,7 +2713,7 @@ function AdLabWorkspace({
                 <p className="mt-2 text-xs leading-relaxed text-muted">
                   Order is the only thing here the model reads. The job
                   dropdown on each reference feeds the recipe composer, which
-                  this lane skips — what each slot is for is already stated in
+                  this lane skips. Each slot’s purpose is already stated in
                   your prompt&apos;s{" "}
                   <span className="font-mono text-[11px]">[Reference roles]</span>{" "}
                   block.
@@ -2724,8 +2724,7 @@ function AdLabWorkspace({
                     <span className="min-w-0 text-muted">
                       <span className="font-semibold text-foreground">The clay control pass.</span>{" "}
                       Camera, blocking, timing, occlusion order and light
-                      direction come from here — which is why nothing in this
-                      lane asks you to describe them.
+                      direction come from here, so you don’t need to describe them again.
                     </span>
                   </li>
                   <li className="flex gap-3 text-xs leading-relaxed">
@@ -2852,7 +2851,7 @@ function AdLabWorkspace({
                 <input
                   className="input min-w-0 flex-1 basis-64 font-mono text-xs"
                   aria-label="Reference URL"
-                  placeholder="…or paste a direct URL — https://example.com/camera-move.mp4"
+                  placeholder="…or paste a direct URL, e.g. https://example.com/camera-move.mp4"
                   value={refUrl}
                   onChange={(e) => setRefUrl(e.target.value)}
                   onKeyDown={(e) => {
@@ -2907,21 +2906,21 @@ function AdLabWorkspace({
                   Images are processed in your browser, but clips and tracks are
                   uploaded to the generation provider. Use the{" "}
                   <span className="font-semibold">Demo mode · Unlock</span> button
-                  at the top of this page — or paste a URL in the field above,
+                  at the top of this page, or paste a URL in the field above,
                   which skips the upload entirely.
                 </p>
               )}
               <details className="mt-3">
                 <summary className="cursor-pointer text-xs font-semibold text-foreground">
-                  Uploading and pasting a URL are different paths — how, and which to use
+                  Should I upload a file or paste a URL?
                 </summary>
                 <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
                   <span className="font-semibold text-foreground">
                     Uploading and pasting a URL are different paths.
                   </span>{" "}
                   {health?.blob
-                    ? "An upload goes from your browser straight to this site's Blob store and comes back as a permanent URL — it never passes through a server function, which is what lifts the size ceiling. "
-                    : "An upload goes through fal's storage service, which is permissioned separately from generation — so a key that renders video fine can still be refused a file upload. "}
+                    ? "An upload goes from your browser straight to this site's Blob store and comes back as a permanent URL. This supports larger files because they don’t pass through a server function. "
+                    : "An upload goes through fal's storage service, which needs separate permission from generation. A key that renders video can still be refused a file upload. "}
                   A URL is handed
                   straight to the model, so it needs no upload, no live mode and no
                   storage access. It has to be a direct link to the file (ending in
@@ -2940,7 +2939,7 @@ function AdLabWorkspace({
                   </span>{" "}
                   An uploaded image is resized and carried inside the request
                   itself, so nothing has to fetch it. A pasted image URL is fetched
-                  by the generation provider at render time — and when that fetch
+                  by the generation provider at render time. When that fetch
                   fails, the provider does not report a missing file. It reports a
                   content-policy violation about the imagery, which sends you
                   looking for a problem in a picture that was never opened. Use{" "}
@@ -2952,8 +2951,8 @@ function AdLabWorkspace({
                   still to borrow a palette from, a <strong>short clip</strong>{" "}
                   whose camera move and cut rhythm you want imitated, or a{" "}
                   <strong>track</strong> whose beats the action should land on. Each
-                  gets a job in the prompt — set it in the dropdown.{" "}
-                  <strong>Trim clips before uploading</strong> — these models read
+                  gets a job in the prompt. Set it in the dropdown.{" "}
+                  <strong>Trim clips before uploading.</strong> These models read
                   the camera move, not the content, so anything past a few seconds
                   costs upload time and buys nothing.
                 </p>
@@ -2972,7 +2971,7 @@ function AdLabWorkspace({
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-[11px] text-accent">{refLabel("[Image1]")}</p>
                     <p className="text-xs text-muted">
-                      Product identity — from your product photo
+                      Product identity · from your product photo
                     </p>
                   </div>
                 </div>
@@ -3040,7 +3039,7 @@ function AdLabWorkspace({
                         aria-label={`Job for ${refLabel(token)}`}
                         title={
                           blenderLane
-                            ? "A label for you — your prompt's [Reference roles] block is what the model reads."
+                            ? "A label for you. The model reads your prompt's [Reference roles] block."
                             : "Sets how the composer describes this reference in the prompt."
                         }
                         className="mt-0.5 w-full bg-transparent text-xs text-muted outline-none"
@@ -3085,7 +3084,7 @@ function AdLabWorkspace({
                       <span className="ml-1.5 text-muted">track</span>
                     </p>
                     <p className="text-xs text-muted">
-                      Musical timing — your composed bed, from step {STEP.sound}
+                      Musical timing · your composed bed, from step {STEP.sound}
                     </p>
                   </div>
                 </div>
@@ -3099,7 +3098,7 @@ function AdLabWorkspace({
                 Abstract on purpose. The model reads a clip&apos;s camera move,
                 cutting rhythm and energy and applies them to your product, so
                 a reference with no subject in it has nothing to leak into the
-                render — only motion.
+                render except motion.
               </p>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -3163,7 +3162,7 @@ function AdLabWorkspace({
                   out of the repo entirely. Or commit the four files to{" "}
                   <code className="font-mono">public/references/</code> under the
                   names above. Either way they cost nothing per use and never
-                  expire, unlike an upload — and either way the value is read at
+                  expire, unlike an upload. The value is read at
                   build time, so a new clip needs a redeploy, not just a
                   restart.
                 </p>
@@ -3200,7 +3199,7 @@ function AdLabWorkspace({
             >
               {AD_VIDEO_MODELS.map((m) => (
                 <option key={m} value={m}>
-                  {MODELS[m].label} —{" "}
+                  {MODELS[m].label} ·{" "}
                   {m === H3_MODEL_ID ? "$0.08/s at 768p + reference inputs" : usesTokenPricing(m)
                     ? `~$${MODELS[m].unitCost}/s at 720p, by token`
                     : `$${MODELS[m].unitCost}/s`}
@@ -3214,7 +3213,7 @@ function AdLabWorkspace({
               {supportsRefs
                 ? `Reference-to-video: each file has a position in the prompt (${refLabel("[Image1]")}, ${refLabel("[Video1]")}, ${refLabel("[Audio1]")}…). References guide identity and motion; review the result for drift.`
                 : endFrameActive
-                  ? "First frame and, optionally, last frame: give it both ends and it generates only the move between them, which is the tightest control available without a clay pass. No video input means no input duration on the bill, so it is markedly cheaper than the reference endpoint — the trade is that identity is held by one still rather than several."
+                  ? "First frame and, optionally, last frame: give it both ends and it generates only the move between them, which is the tightest control available without a clay pass. No video input means no input duration on the bill, so it is markedly cheaper than the reference endpoint. Identity is held by one still rather than several."
                   : "Single grounding frame: the product photo conditions the first frame, then the model extrapolates. Cheaper, but the pack can drift as the camera moves."}
             </p>
           </details>
@@ -3270,7 +3269,7 @@ function AdLabWorkspace({
             {allowedAspects.length < ASPECTS.length && (
               <p className="mt-2 text-xs text-muted">
                 {modelName} renders {allowedAspects.length} shapes. H3 Max and Seedance Reference
-                add square, portrait, 4:3 and cinematic — useful when one
+                add square, portrait, 4:3 and cinematic, useful when one
                 concept has to ship as a vertical and a feed tile.
               </p>
             )}
@@ -3311,9 +3310,9 @@ function AdLabWorkspace({
             )}
             <span className="mt-1 block text-xs leading-relaxed text-muted">
               {allowedDurations
-                ? `This model renders ${allowedDurations.join("s or ")}s only — the endpoint takes those two lengths and rejects anything between them.`
+                ? `This model renders ${allowedDurations.join("s or ")}s only. The endpoint takes those two lengths and rejects anything between them.`
                 : secondsCap >= 30
-                  ? "Seedance 2.5 renders up to 30s in a single pass — no stitching."
+                  ? "Seedance 2.5 renders up to 30s in a single pass, with no stitching."
                   : `This model caps at ${secondsCap}s.`}{" "}
               {!imported && <>The concept is designed for {preset.durationSeconds}s.</>}
             </span>
@@ -3322,7 +3321,7 @@ function AdLabWorkspace({
           {/* Resolution + live cost */}
           {h3 ? <H3VideoSettings resolution={resolution} onChange={setResolution} seconds={duration} imagePixels={referenceImagePixels} videoSeconds={inputVideoSeconds} audioSeconds={inputAudioSeconds} pending={Boolean(h3InputProblem)} /> : tokenBilled ? (
             <div className="mt-5 border-t border-border-soft pt-4">
-              <span className="label">Resolution — the real cost lever</span>
+              <span className="label">Resolution · affects cost</span>
               <div className="mt-2 grid gap-2 md:grid-cols-3">
                 {allowedResolutions.map((r) => {
                   const at = estimateCost(modelId, {
@@ -3369,7 +3368,7 @@ function AdLabWorkspace({
               </div>
               <details className="mt-3 rounded-[6px] border border-border-soft bg-surface-2 p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-foreground">
-                  How this is priced — {frame.width}×{frame.height} × {duration}s
+                  How this is priced · {frame.width}×{frame.height} × {duration}s
                   = ~${videoCost.toFixed(2)}
                 </summary>
                 <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">
@@ -3399,7 +3398,7 @@ function AdLabWorkspace({
             </div>
           ) : (
             <p className="mt-5 border-t border-border-soft pt-4 text-xs leading-relaxed text-muted">
-              {modelName} is billed per second — ${MODELS[modelId].unitCost}/s ×{" "}
+              {modelName} is billed per second: ${MODELS[modelId].unitCost}/s ×{" "}
               {duration}s = <span className="font-bold text-accent">${videoCost.toFixed(2)}</span>.
               Resolution is fixed by the model, so shape and length are the only
               cost levers here. Seedance 2.5 exposes resolution as a third one.
@@ -3512,7 +3511,7 @@ function AdLabWorkspace({
                   <>
                     {" "}
                     It runs as an endpoint on fal and bills to the same fal key
-                    as the video — there is no separate ElevenLabs account to
+                    as the video. There is no separate ElevenLabs account to
                     connect, and the configuration status above shows whether that key is present.
                   </>
                 )}
@@ -3551,7 +3550,7 @@ function AdLabWorkspace({
                       ? `Generate another track (~$${musicCost.toFixed(2)})`
                       : `Generate instrumental (${musicSeconds}s, ~$${musicCost.toFixed(2)})`}
                 </button>
-                {musicReady && <span className="chip border-success/40 !text-success">{musicMock ? "Demo tone — not ElevenLabs output" : "ElevenLabs track ready"}</span>}
+                {musicReady && <span className="chip border-success/40 !text-success">{musicMock ? "Demo tone · not ElevenLabs output" : "ElevenLabs track ready"}</span>}
               </div>
               {musicUrl && !musicReady && <p className="mt-2 text-xs text-warning">This track belongs to earlier sound settings. You can still download it, but it will not be attached to the new brief. Generate a matching track first.</p>}
 
@@ -3605,7 +3604,7 @@ function AdLabWorkspace({
                   </label>
                   {musicAsTimingRef && !musicReady && (
                     <p className="mt-2 rounded-[6px] border border-warning/40 bg-warning/10 p-2 text-xs leading-relaxed text-warning">
-                      Compose the bed first — the reference has to exist before
+                      Compose the bed first. The reference has to exist before
                       the render starts.
                     </p>
                   )}
@@ -3628,7 +3627,7 @@ function AdLabWorkspace({
                 <p className="mt-3 rounded-[6px] border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
                   <span className="font-bold">Beat-sensitive concept.</span>{" "}
                   This preset cuts its action to a musical pulse, but the bed
-                  is composed without the model seeing it — the beats will not
+                  is composed without the model seeing it, so the beats will not
                   line up on their own.{" "}
                   {cap.refAudio
                     ? "Tick the box above to hand the track back as a timing reference, or budget an alignment pass in the editor."
@@ -3670,7 +3669,7 @@ function AdLabWorkspace({
                   >
                     ▶
                   </span>
-                  Spot effects — {MODELS[SFX_MODEL_ID].label.split(" (")[0]}
+                  Spot effects · {MODELS[SFX_MODEL_ID].label.split(" (")[0]}
                 </span>
                 <span className="label-sm">
                   {Object.keys(sfxTracks).length} of {effectLines.length} generated ·
@@ -3731,7 +3730,7 @@ function AdLabWorkspace({
                     </div>
                     {sfxTracks[line] && (
                       <div className="mt-2">
-                        <p className="mb-2 text-xs text-muted">{sfxMocks[line] ? "Demo noise — not an ElevenLabs effect" : "ElevenLabs effect · separate audio file"}</p>
+                        <p className="mb-2 text-xs text-muted">{sfxMocks[line] ? "Demo noise · not an ElevenLabs effect" : "ElevenLabs effect · separate audio file"}</p>
                         <audio src={sfxTracks[line]} controls className="h-9 w-full max-w-sm" />
                         <a
                           href={sfxTracks[line]}
@@ -3783,8 +3782,8 @@ function AdLabWorkspace({
         >
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
             {recipeEdited
-              ? "Your edited recipe is rebuilt into a prompt section by section, then polished for the target duration. Nothing is generated yet — read it before you spend."
-              : "The recipe, your product fields and every reference job are compiled into one prompt, then polished for the target duration. Nothing is generated yet — read it before you spend."}
+              ? "Your edited recipe is rebuilt into a prompt section by section, then polished for the target duration. Nothing is generated yet. Read it before you spend."
+              : "The recipe, your product fields and every reference job are compiled into one prompt, then polished for the target duration. Nothing is generated yet. Read it before you spend."}
           </p>
           <button
             className="btn-primary mt-4"
@@ -3804,7 +3803,7 @@ function AdLabWorkspace({
               className="mt-4 rounded-[6px] border border-danger/50 bg-danger/10 p-3 text-sm leading-relaxed text-danger"
             >
               <span className="font-bold">Compose failed.</span> {error.text}{" "}
-              Everything you entered is still here — fix what it names and press
+              Everything you entered is still here. Fix the issue described above and press
               Compose again.
             </p>
           )}
@@ -3820,7 +3819,7 @@ function AdLabWorkspace({
           {finalPrompt && (
             <>
               <label className="mt-5 block">
-                <span className="mb-1 block label">Video prompt — edit before you spend</span>
+                <span className="mb-1 block label">Video prompt · edit before you spend</span>
                 <textarea
                   className="input min-h-40 font-mono text-xs leading-relaxed"
                   value={videoPromptFor(modelId, finalPrompt)}
@@ -3866,8 +3865,8 @@ function AdLabWorkspace({
                 ))}
               </ul>
               <p className="mt-2 text-xs leading-relaxed text-muted">
-                An unresolved token is read as prose rather than rejected — the
-                render comes back looking fine and built on nothing.
+                An unresolved token is read as prose rather than rejected. The
+                render may look fine while missing the reference you intended.
               </p>
             </div>
           )}
@@ -3980,7 +3979,7 @@ function AdLabWorkspace({
                               {checking ? "Checking…" : "Collect the render"}
                             </button>
                             <p className="mt-2 text-xs leading-relaxed text-muted">
-                              Free — the render is already paid for and this
+                              Free to collect. The render is already paid for and this
                               just reads the result.
                             </p>
                           </div>
@@ -4044,8 +4043,8 @@ function AdLabWorkspace({
               <div className="border-t border-border-soft bg-warning/[0.06] p-4">
                 <p className="label !text-warning">This was a demo render</p>
                 <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-foreground">
-                  The whole pipeline ran — prompt, references, cost estimate —
-                  but the video above is a mock and nothing was charged. To run
+                  The prompt, references and cost estimate were processed.
+                  The video above is a mock and nothing was charged. To run
                   this same brief against the live models, you need an access
                   code.
                 </p>

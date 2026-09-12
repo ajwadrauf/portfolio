@@ -42,7 +42,7 @@ export function mockImageDataUrl(opts: {
   <text x="${w / 2}" y="${h - 60}" text-anchor="middle" font-family="system-ui,sans-serif"
     font-size="${Math.round(w * 0.024)}" fill="#66645e">${escapeXml(opts.sublabel)}</text>
   <text x="${w / 2}" y="${h - 28}" text-anchor="middle" font-family="system-ui,sans-serif"
-    font-size="${Math.round(w * 0.02)}" fill="#94897a">DEMO MODE — add API keys for live generation</text>
+    font-size="${Math.round(w * 0.02)}" fill="#94897a">DEMO MODE: add API keys for live generation</text>
 </svg>`;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }
@@ -91,6 +91,6 @@ export function mockBrief(): CampaignBrief {
     videoPrompt:
       "A chilled slim can of sparkling water stands on a wet reflective surface. Slow push-in as a crystal-clear splash erupts behind it in slow motion, droplets catching studio daylight. The camera settles on the can, condensation rolling down its side. Audio: crisp fizz, gentle splash, a bright minimal music sting. Cinematic 4K, photorealistic lighting, product photography quality.",
     negativePrompt: "blurry, deformed packaging, warped text, watermark, extra cans, cartoonish",
-    seasonalTheme: "cozy winter holiday — warm bokeh lights, evergreen sprigs, frosted glass",
+    seasonalTheme: "cozy winter holiday: warm bokeh lights, evergreen sprigs, frosted glass",
   };
 }

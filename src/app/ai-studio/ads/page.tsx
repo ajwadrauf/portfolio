@@ -6,9 +6,9 @@ import { AdLab } from "./AdLab";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Ad Lab — AI Content Studio",
+  title: "Ad Lab · AI Content Studio",
   description:
-    "Preset mini product ad recipes — structured, deconstructed video prompts any SKU can run through. Pick a concept, swap the product, generate.",
+    "Preset mini product ad recipes with structured video prompts any SKU can run through. Pick a concept, swap the product, generate.",
 };
 
 /**

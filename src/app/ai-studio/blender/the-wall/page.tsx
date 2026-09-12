@@ -11,9 +11,9 @@ import {
 } from "@/lib/theWall";
 
 export const metadata: Metadata = {
-  title: "The Wall — a clay control pass · AI Content Studio",
+  title: "The Wall · a clay control pass · AI Content Studio",
   description:
-    "A worked Blender clay pass for Seedance 2.5: twelve seconds of untextured geometry that settles every camera decision before a credit is spent — including the moment the brief's final frame turned out to be arithmetically impossible.",
+    "A worked Blender clay pass for Seedance 2.5: twelve seconds of untextured geometry that settles every camera decision before a credit is spent, including the moment the brief's final frame turned out to be arithmetically impossible.",
 };
 
 function SectionHead({ n, title, lede }: { n: string; title: string; lede?: string }) {
@@ -51,7 +51,7 @@ export default function TheWallPage() {
         </div>
         <p className="mt-3 max-w-[68ch] text-xs leading-relaxed text-muted">
           The clay pass itself. Neutral bed, one flat ID colour per mapped
-          subject, one light direction, no text anywhere in frame — everything
+          subject, one light direction, no text anywhere in frame. Everything
           the model is meant to read, and nothing it is meant to invent.
         </p>
 
@@ -73,7 +73,7 @@ export default function TheWallPage() {
         <SectionHead
           n="01"
           title="One continuous move, four state changes"
-          lede="Each beat ends on a visible state the prompt can name. Consecutive, non-overlapping, one primary change apiece — three actions in a single range produces omissions, not precision."
+          lede="Each beat ends on a visible state the prompt can name. Keep beats consecutive and non-overlapping, with one primary change apiece. Three actions in a single range produce omissions, not precision."
         />
         <WallBeatCards />
       </section>
@@ -107,7 +107,7 @@ export default function TheWallPage() {
         <p className="mt-4 max-w-[68ch] text-sm leading-relaxed text-muted">
           Worth being plain about why this matters more than the render: the
           fault was in the brief, not the software, and no amount of generating
-          would have surfaced it — only a calculation did. Found before the
+          would have surfaced it. Only a calculation did. Found before the
           build, it costs an afternoon of arithmetic. Found after, it costs
           every take shot against a frame that could never exist.
         </p>

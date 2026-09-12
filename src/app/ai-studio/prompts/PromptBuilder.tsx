@@ -190,7 +190,7 @@ export function PromptBuilder() {
       <p className="mt-2 max-w-3xl text-muted">
         A reference-to-video prompt is not a sentence you write, it is a
         structure you fill. Set the frame, say what each reference is for,
-        then spend the seconds deliberately — the two parts people skip are
+        then spend the seconds deliberately. The two parts people skip are
         the one that stops the product drifting and the one that decides how
         long the payoff gets. Fill it in, or load the worked example and take
         it apart.
@@ -211,7 +211,7 @@ export function PromptBuilder() {
         </span>
         <span className="text-muted">
           When the camera move has to be exact and repeatable, block it out in
-          3D — the Blender page writes the brief that builds it, and the clip it
+          3D. The Blender page writes the brief that builds it, and the clip it
           produces becomes [Video1] below.
         </span>
         <span aria-hidden className="font-semibold text-accent">
@@ -331,7 +331,7 @@ export function PromptBuilder() {
 
         {slots.length === 0 && (
           <p className="mt-3 text-xs text-muted">
-            No references yet. A prompt with none is still valid — it just has
+            No references yet. A prompt with none is still valid; it just has
             nothing holding the product still.
           </p>
         )}
@@ -401,7 +401,7 @@ export function PromptBuilder() {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="flex items-baseline gap-3 font-semibold">
             <span className="font-mono text-[11px] text-accent">05</span>
-            Timeline — how the seconds are spent
+            Timeline: how the seconds are spent
           </h2>
           <button
             className="-my-2 inline-flex items-center py-2 text-xs font-semibold text-accent hover:underline"
@@ -414,14 +414,14 @@ export function PromptBuilder() {
         {openWhy === "timeline" && (
           <p className="mt-3 max-w-3xl rounded-[6px] border border-accent/25 bg-accent/[0.04] p-3 text-xs leading-relaxed text-muted">
             <span className="font-bold text-foreground">
-              The prompt does not set the duration — the API does.
+              The API sets the duration.
             </span>{" "}
             Writing &ldquo;14 seconds&rdquo; into a prompt does not make a
             14-second video; the duration parameter does, and if the two
             disagree the model compresses or pads to fill the real length.
             Timestamps are a proportional plan, not a frame-accurate cue sheet:
             models have no clock. What they genuinely buy you is explicit
-            ordering and relative weight — and, more usefully, they force the
+            ordering and relative weight. More usefully, they force the
             arithmetic into the open. Five beats in eight seconds is 1.6
             seconds each, which is too fast to read, and this is the only
             moment noticing that is free.
@@ -525,7 +525,7 @@ export function PromptBuilder() {
               <input
                 className="input mt-2 !py-1 text-xs"
                 aria-label={`Beat ${i + 1} sound effect`}
-                placeholder="Effect landing in this beat — timestamped automatically, e.g. a plastic snap for the lid"
+                placeholder="Effect for this beat, e.g. a plastic snap for the lid. Timestamp added automatically."
                 value={b.audio}
                 onChange={(e) => setBeat(i, { audio: e.target.value })}
               />

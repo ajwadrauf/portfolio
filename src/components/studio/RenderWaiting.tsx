@@ -69,8 +69,8 @@ export function RenderWaiting({ starting, overdue, elapsed, modelName, requestId
             {starting
               ? "Sending your brief to the model. The request ID appears here once it is accepted."
               : overdue
-                ? "This one is taking a little longer. The result is still being polled — nothing is lost, and there is no need to submit again."
-                : "The model has your brief. The finished film lands here as soon as it is ready — this tab is safe to leave."}
+                ? "This one is taking a little longer. I’m still checking for the result. There’s no need to submit again."
+                : "The model has your brief. The finished film lands here as soon as it is ready. You can leave this tab while it renders."}
           </p>
         </div>
         <p className={styles.timer}><span>{elapsed}</span> elapsed <span className={styles.divider}>/</span> {modelName}</p>

@@ -12,7 +12,7 @@ export const PREFLIGHT_GROUPS = [
   ] },
   { group: "If a real product is shown", items: [
     { id: "authentic_capture", title: "The product in frame originates from authentic capture of the actual item", action: "Compare against the authentic capture and record its source asset ID." },
-    { id: "no_substitution", title: "AI work is confined to the surroundings — no synthetic substitution of the product", action: "Check source capture and production history; visual similarity alone does not prove provenance." },
+    { id: "no_substitution", title: "AI work is confined to the surroundings: no synthetic substitution of the product", action: "Check source capture and production history; visual similarity alone does not prove provenance." },
     { id: "product_truth", title: "Nothing has been added, enlarged, improved or made more appetising than the real thing", action: "Compare the actual product and portion with every relevant shot, including fillings and texture." },
     { id: "source_traceability", title: "The authentic source file is filed and traceable to this final asset", action: "Record the source location and link it to this exact delivered take." },
   ] },
@@ -24,7 +24,7 @@ export const PREFLIGHT_GROUPS = [
     { id: "voice_rights", title: "Any voice is original synthetic, non-impersonative, and rights-cleared", action: "Record the voice source, commercial-use licence and any relevant consent." },
   ] },
   { group: "Before it ships", items: [
-    { id: "overall_impression", title: "Both tests answered — fidelity, and the catch-all", action: "A named reviewer must answer both consumer-impression tests against the complete ad." },
+    { id: "overall_impression", title: "Both tests answered: fidelity, and the catch-all", action: "A named reviewer must answer both consumer-impression tests against the complete ad." },
     { id: "food_children", title: "Child-directed and food-advertising requirements checked, unchanged by AI being involved", action: "Confirm audience, market and applicable requirements with the responsible reviewer." },
     { id: "internal_disclosure", title: "Material AI use is disclosed internally in the approval workflow", action: "Attach the internal AI-use disclosure and approval record." },
     { id: "external_disclosure", title: "External disclosure decided against channel, platform and regulatory requirements", action: "Record the disclosure decision for the intended channel and market." },

@@ -106,7 +106,7 @@ export const SHOWCASE: ShowcaseItem[] = [
     id: "bilingual-tile",
     file: "/showcase/bilingual-tile.jpg",
     title: "Bilingual promo tile",
-    note: "EN/FR from one brief — routed to the pro tier because type is where image models fail.",
+    note: "EN/FR from one brief, routed to the pro tier because type is where image models fail.",
     model: "Seedream v4",
     cost: "$0.06",
   },

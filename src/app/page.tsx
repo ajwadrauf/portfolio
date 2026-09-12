@@ -23,9 +23,9 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Ajwad Rauf — applied AI, creative work and production systems",
+  title: "Ajwad Rauf · applied AI, creative work and production systems",
   description:
-    "I turn emerging AI into creative work and production systems people can actually use. AI Content Studio, Persopot and Project Forge — applied AI and creative technology, from Toronto.",
+    "I turn emerging AI into creative work and production systems people can actually use. Explore AI Content Studio, Persopot and Project Forge. Applied AI and creative technology, from Toronto.",
 };
 
 /**
@@ -172,7 +172,7 @@ export default function Home() {
               <p className="ar-film-project-note">
                 See it in practice: an ice-cream film choreographed in Blender and
                 brought to life with Seedance. The camera plan, the references and
-                the result — all part of the work.
+                the result are all part of the work.
               </p>
               <div className="ar-tags">
                 <span>Retail &amp; CPG</span>

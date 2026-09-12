@@ -256,7 +256,7 @@ export const PACK_VARIABLES: PackVariable[] = [
     id: "dimensions",
     label: "Dimensions (H × W × D)",
     placeholder: "280 × 190 × 80 mm",
-    why: "Decides proportion, which is the most common reconstruction failure and the hardest to spot in isolation — the pack looks right until it sits on a planogram beside a real one.",
+    why: "Decides proportion, which is the most common reconstruction failure and the hardest to spot in isolation. The pack looks right until it sits on a planogram beside a real one.",
   },
   {
     id: "fill",
@@ -267,7 +267,7 @@ export const PACK_VARIABLES: PackVariable[] = [
       "full, taut, stands unaided",
       "part-filled, slumping at the top",
       "loosely filled, soft and creased",
-      "rigid — holds its shape regardless",
+      "rigid, holds its shape regardless",
     ],
   },
   {
@@ -346,7 +346,7 @@ export function resolveSize(
     return {
       px: support.presets[0]?.px,
       note: requested.presetId || requested.px
-        ? "This model does not take an output size — it renders at its own resolution and only the shape is yours to choose."
+        ? "This model does not take an output size. It renders at its own resolution and only the shape is yours to choose."
         : undefined,
     };
   }
@@ -360,7 +360,7 @@ export function resolveSize(
       px: snapped,
       note:
         snapped !== desiredPx
-          ? `${desiredPx}px is not renderable here — using ${snapped}px, the nearest size within ${min}–${max} that divides by ${multipleOf}.`
+          ? `${desiredPx}px is not renderable here. Using ${snapped}px, the nearest size within ${min}–${max} that divides by ${multipleOf}.`
           : undefined,
     };
   }
@@ -373,7 +373,7 @@ export function resolveSize(
       px: nearest.px,
       note:
         nearest.px !== desiredPx
-          ? `This model renders at named tiers only — ${desiredPx}px was rounded to ${nearest.label}.`
+          ? `This model renders at named tiers only: ${desiredPx}px was rounded to ${nearest.label}.`
           : undefined,
     };
   }
@@ -383,7 +383,7 @@ export function resolveSize(
     presetId: fallback.id,
     px: fallback.px,
     note: requested.presetId
-      ? `Unknown output-size preset "${requested.presetId}" — using ${fallback.label}.`
+      ? `Unknown output-size preset "${requested.presetId}". Using ${fallback.label}.`
       : undefined,
   };
 }
@@ -439,7 +439,7 @@ export function suggestModel(opts: {
       text:
         `${ungrounded.length} of your ${targets.length} target angle${targets.length === 1 ? "" : "s"} ` +
         `(${ungrounded.join(", ")}) have missing face evidence. This model restages a single ` +
-        `photo rather than reading a set, so it cannot turn the pack around — it will hand back the face ` +
+        `photo rather than reading a set, so it cannot turn the pack around. It will hand back the face ` +
         `it was given, restaged. Either untick those angles, or switch to a model that reads several references.`,
       suggest: "nano-banana-pro",
     };
@@ -450,7 +450,7 @@ export function suggestModel(opts: {
       severity: "warn",
       text:
         `${ungrounded.length} target angle${ungrounded.length === 1 ? " is" : "s are"} being reconstructed, ` +
-        `and this model reads at most ${maxReferenceImages} references — so it is doing that from less ` +
+        `and this model reads at most ${maxReferenceImages} references, so it is doing that from less ` +
         `evidence than you have. A model that takes the whole set will invent less.`,
       suggest: "nano-banana-pro",
     };
@@ -485,7 +485,7 @@ export function buildPackshotPrompt(
   const coverage = getCoverage(target, provided);
   const grounded = coverage.status === "full"
     ? ""
-    : ` Missing reference evidence for these visible faces: ${coverage.missing.join(", ")}. Reconstruct those faces conservatively and consistently with the visible packaging design, keeping brand elements coherent — this output will be flagged for label review.`;
+    : ` Missing reference evidence for these visible faces: ${coverage.missing.join(", ")}. Reconstruct those faces conservatively and consistently with the visible packaging design, keeping brand elements coherent. This output will be flagged for label review.`;
   /*
    * The physical description leads, before the camera instruction.
    *

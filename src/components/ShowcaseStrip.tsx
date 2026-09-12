@@ -99,7 +99,7 @@ export function ShowcaseStrip({ items }: { items: ShowcaseItem[] }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
         <span className="label !tracking-[0.16em]">Made with the studio</span>
         <span className="text-xs text-muted/80">
-          Made with the tools on this site — each tile names what produced it.
+          Made with the tools on this site. Each tile names what produced it.
         </span>
       </div>
 

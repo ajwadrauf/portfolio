@@ -34,7 +34,7 @@ export const LANES: Lane[] = [
       "Camera path, lens and framing",
       "Blocking and motion paths",
       "Timing and shot-size transitions",
-      "Occlusion order — who passes in front of whom",
+      "Occlusion order: who passes in front of whom",
       "Ground contact and light direction",
     ],
     never: [
@@ -60,7 +60,7 @@ export const LANES: Lane[] = [
       "Blocking or timing",
       "Anything structural",
     ],
-    why: "Photographs, brand assets or Blender renders — never the same file as the clay. The prompt binds each reference to its job explicitly.",
+    why: "Photographs, brand assets or Blender renders. Never use the same file as the clay. The prompt binds each reference to its job explicitly.",
   },
 ];
 
@@ -97,7 +97,7 @@ export const MOVED_UPSTREAM = [
 export const PHASES = [
   { n: "01", name: "Probe", body: "Small throwaway calls to learn the environment. The Blender API changes between versions and training data is not authoritative about it." },
   { n: "02", name: "Confirm", body: "Delivery aspect, shot structure, proxy-to-subject mapping, lens per shot, and what gets composited after rather than generated." },
-  { n: "03", name: "Script", body: "One self-contained .py file. Every MCP call runs in a fresh namespace, so a scene built through chat cannot be rebuilt — and this pass gets re-rendered many times." },
+  { n: "03", name: "Script", body: "One self-contained .py file. Every MCP call runs in a fresh namespace, so a scene built through chat cannot be rebuilt. This pass gets re-rendered many times." },
   { n: "04", name: "Verify", body: "Render checkpoint frames and look at them. A script exiting cleanly is not evidence the render is right." },
   { n: "05", name: "Package", body: "One folder per shot, named so upload order matches the @Video 1 / @Image 1 indices the prompt refers to." },
   { n: "06", name: "Generate", body: "Run Seedance, review, and route each failure to the layer that owns it." },
@@ -117,7 +117,7 @@ export const CLAY_CHECKS = [
   "One clear light direction, consistent across the shot",
   "Implied speeds are physically sane",
   "Frame 1 is a real composition, not a lead-in",
-  "Clip is under 30 seconds — under 10 is better",
+  "Clip is under 30 seconds. Under 10 is better",
 ];
 
 /**
@@ -128,9 +128,9 @@ export const ROUTING = [
   { symptom: "Camera move is wrong", layer: "Blender", fix: "Re-key the camera, re-render the clay" },
   { symptom: "Subject in the wrong place at the wrong time", layer: "Blender", fix: "Re-block, re-render" },
   { symptom: "Motion reads too fast or too slow", layer: "Blender", fix: "Retime against the m/s table" },
-  { symptom: "Framing is off", layer: "Blender", fix: "Adjust lens or position — not the prompt" },
+  { symptom: "Framing is off", layer: "Blender", fix: "Adjust lens or position, not the prompt" },
   { symptom: "Grey plastic or empty void leaking in", layer: "Prompt", fix: "Strengthen the exclusion block" },
-  { symptom: "Proxy read literally — the capsule stays a capsule", layer: "Both", fix: "Add the mapping sentence, and give the proxy real proportions" },
+  { symptom: "Proxy read literally: the capsule stays a capsule", layer: "Both", fix: "Add the mapping sentence, and give the proxy real proportions" },
   { symptom: "Wrong colour, material or mood", layer: "Look refs", fix: "Better reference still, tighter style sentence" },
   { symptom: "Identity drifts mid-clip", layer: "Prompt", fix: "More references of that subject, or a shorter clip" },
   { symptom: "Garbled text", layer: "Neither", fix: "Remove it from the generation and composite it after" },
@@ -138,12 +138,12 @@ export const ROUTING = [
 
 /** Documented limits. Verified against the live surface before a paid run. */
 export const SPECS = [
-  { k: "References per generation", v: "50 total — 30 images, 10 videos, 10 audio" },
+  { k: "References per generation", v: "50 total: 30 images, 10 videos, 10 audio" },
   { k: "Reference video duration", v: "30s across all clips" },
-  { k: "Clay render size", v: "1280×720 or 1080×1080 — above 720p buys nothing" },
+  { k: "Clay render size", v: "1280×720 or 1080×1080. Above 720p buys nothing" },
   { k: "Frame rate", v: "24 fps, set in Blender, not fixed afterwards" },
   { k: "Output length", v: "4–30s in one pass" },
-  { k: "Native resolution", v: "480p and 720p — anything higher is a provider upscale" },
+  { k: "Native resolution", v: "480p and 720p. Anything higher is a provider upscale" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -207,7 +207,7 @@ export const CAMERA_MOVES: CameraMove[] = [
   {
     id: "push",
     label: "Push in",
-    rig: "Dolly the camera toward the anchor along one axis. Hold the focal length — a push and a zoom are different shots.",
+    rig: "Dolly the camera toward the anchor along one axis. Hold the focal length. A push and a zoom are different shots.",
     use: "Building attention on one thing. The default for a product coming to rest.",
     transport: "eased",
   },
@@ -215,7 +215,7 @@ export const CAMERA_MOVES: CameraMove[] = [
     id: "pull",
     label: "Pull back to reveal",
     rig: "The push in reverse: start close, end wide, focal length fixed.",
-    use: "When the context is the point — the pack, then the shelf it sits on.",
+    use: "When the context is the point: the pack, then the shelf it sits on.",
     transport: "eased",
   },
   {
@@ -229,7 +229,7 @@ export const CAMERA_MOVES: CameraMove[] = [
     id: "crane",
     label: "Crane up",
     rig: "Raise the camera and let the TRACK_TO constraint tilt it down as it climbs. Optionally widen the lens on the way.",
-    use: "Ending on scale — the hero small in a larger arrangement.",
+    use: "Ending on scale: the hero small in a larger arrangement.",
     transport: "eased",
   },
   {
@@ -242,7 +242,7 @@ export const CAMERA_MOVES: CameraMove[] = [
   {
     id: "carousel",
     label: "Macro carousel",
-    rig: "A short arc at close range on a long lens — bake the position per frame rather than fighting a path constraint at this scale.",
+    rig: "A short arc at close range on a long lens. Bake the position per frame rather than fighting a path constraint at this scale.",
     use: "Surface and texture: crumb, grain, condensation, foil. The food move.",
     transport: "linear",
   },
@@ -250,14 +250,14 @@ export const CAMERA_MOVES: CameraMove[] = [
     id: "topdown",
     label: "Top-down descend",
     rig: "Camera overhead pointing straight down, descending. Zero rotation already points a Blender camera down its negative Z.",
-    use: "Flatlays and arrangements — the angle retail media uses most and previs covers least.",
+    use: "Flatlays and arrangements, the angle retail media uses most and previs covers least.",
     transport: "eased",
   },
   {
     id: "rise",
     label: "Rise with the subject",
     rig: "Anchor and camera both climb, the camera slightly behind and wider, so the subject holds its place in frame while it lifts.",
-    use: "A lift out of something — a pack out of a pile, a fork out of a bowl.",
+    use: "A lift out of something: a pack out of a pile, a fork out of a bowl.",
     transport: "eased",
   },
   {
@@ -277,7 +277,7 @@ export const CAMERA_MOVES: CameraMove[] = [
   {
     id: "handheld",
     label: "Handheld drift",
-    rig: "Frame it static, then add a NOISE modifier to the camera's location f-curves at low strength — around 0.015 at scale 15.",
+    rig: "Frame it static, then add a NOISE modifier to the camera's location f-curves at low strength, around 0.015 at scale 15.",
     use: "Taking the sterility off a locked shot. Enough to feel human, not enough to read as shake.",
     transport: "static",
   },
@@ -389,7 +389,7 @@ export const EXAMPLE_BRIEF: BlenderBrief = {
   beats: [
     { from: "0", to: "3", action: "Macro orbit around one chip inside a dense bed. The bed is at rest; only parallax moves." },
     { from: "3", to: "6", action: "The camera pulls back and lifts. The wall of chips resolves into a landscape ending at a central depression." },
-    { from: "6", to: "8.5", action: "One cookie descends slower than gravity, tumbling gently, and settles into the depression — chips displaced outward, a scatter flicked up, the rim cascading inward behind it." },
+    { from: "6", to: "8.5", action: "One cookie descends slower than gravity, tumbling gently, and settles into the depression, with chips displaced outward, a scatter flicked up, the rim cascading inward behind it." },
     { from: "8.5", to: "12", action: "The camera cranes back and up. The cookie ploughs forward to the near ridge and tilts face-on. Four packs heave up through the bed behind it and settle seated in the chips." },
   ],
   creative:
@@ -514,24 +514,24 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
   const frames = Math.round(Number(dur || 12) * 24);
 
   out.push(
-    `# Clay control pass — shot ${has(b.shotId) ? clean(b.shotId) : "1A"}`,
+    `# Clay control pass · shot ${has(b.shotId) ? clean(b.shotId) : "1A"}`,
     "",
     "Build this in Blender and export a clay blockout. It is a control pass for a",
     "video model, not a finished render: its job is to settle camera, staging,",
     "timing and occlusion so those decisions are made where changing them is free.",
     "",
-    "Read CLAUDE.md in this folder first — especially §6 (render settings) and §7",
+    "Read CLAUDE.md in this folder first, especially §6 (render settings) and §7",
     "(animating the pass). Probe the API before writing, as §4 describes; do not",
     "guess enum identifiers for this build.",
     "",
     "## Scene",
     "",
-    `- Duration ${dur}s at 24 fps — frames 1 to ${frames}.`,
+    `- Duration ${dur}s at 24 fps: frames 1 to ${frames}.`,
     `- Aspect ${b.aspect}, rendered at 720p on the short edge.`,
     "- Real-world scale. Set unit scale before modelling, not after.",
     "- One flat ID colour per mapped subject, assigned as Base Color on a",
-    "  Principled BSDF at roughness 0.55 — shaded, not unlit, so the form and the",
-    "  contact shadow survive. No textures, no reflections, no depth of field —",
+    "  Principled BSDF at roughness 0.55, shaded, not unlit, so the form and the",
+    "  contact shadow survive. Avoid textures, reflections and depth of field because",
     "  all three obscure the geometry the model is meant to read.",
     "- Render sharp: no motion blur in the clay. Blur is asked for in the video",
     "  prompt, where it belongs.",
@@ -587,8 +587,8 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
      */
     "- Attach the anchor to the SUBJECT, not to whatever carries it, and set that",
     "  subject's origin where the camera should look BEFORE animating. A tool's",
-    "  origin defaults to its geometric centre — a spoon's is halfway down the",
-    "  shaft, not in the bowl — so aiming at the carrier frames the handle, and",
+    "  origin defaults to its geometric centre. A spoon's is halfway down the",
+    "  shaft, not in the bowl. Aiming at the carrier frames the handle, and",
     "  any rotation swings the subject around a point it is not centred on.",
     "  With the origin set correctly, parenting or COPY_LOCATION both work; with",
     "  it wrong, neither does.",
@@ -606,7 +606,7 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
   out.push(
     has(b.keyLight)
       ? `- Key: ${clean(b.keyLight)}.`
-      : "- One key light. Direction matters; character does not — the video model",
+      : "- One key light. Direction matters to the video model; character does not.",
   );
   out.push(
     "- Direction is inherited by the generation, so fix it here and keep it",
@@ -620,7 +620,7 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
   );
   for (const s of mapped) {
     out.push(
-      `- **${clean(s.color)}** — ${has(s.proxy) ? clean(s.proxy) : "proxy"}, becomes ${clean(s.becomes)} in the finished frame.`,
+      `- **${clean(s.color)}**: ${has(s.proxy) ? clean(s.proxy) : "proxy"}, becomes ${clean(s.becomes)} in the finished frame.`,
     );
   }
   out.push(
@@ -634,7 +634,7 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
      */
     "Colours above are the mapping, so pin them as values. Assign each as the",
     "Base Color of a Principled BSDF at roughness 0.55, converting from hex to",
-    "linear first — see hex_to_linear in CLAUDE.md §6. Do NOT use flat unlit",
+    "linear first. See hex_to_linear in CLAUDE.md §6. Do NOT use flat unlit",
     "materials or a viewport-solid render for subjects: it separates the colours",
     "and destroys the contact shadows and light direction the generation reads.",
     "",
@@ -657,7 +657,7 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
   if (beats.length) {
     for (const beat of beats) {
       const range = has(beat.to) ? `${clean(beat.from)}–${clean(beat.to)}s` : `${clean(beat.from)}s`;
-      out.push(`- **${range}** — ${clean(beat.action)}`);
+      out.push(`- **${range}**: ${clean(beat.action)}`);
     }
     out.push("");
   }
@@ -669,23 +669,23 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
     "  both:",
     blenderEditMode(b) === "cuts" ? "    · Set CAMERA interpolation separately inside each shot: hold locked shots, preserve registered turns, and animate only the moves that the shot names. Camera changes at a hard cut are instantaneous, not a dolly between sets." : `    · The CAMERA on this shot is ${move ? move.transport : "eased"}. ${
       move?.transport === "linear"
-        ? "Set its f-curves to LINEAR — a dolly, a track and an orbit are mechanically constant, and a uniform motion field is easier for the video model to hold coherent."
+        ? "Set its f-curves to LINEAR. A dolly, a track and an orbit are mechanically constant, and a uniform motion field is easier for the video model to hold coherent."
         : move?.transport === "static"
           ? "It does not travel, so there is nothing to interpolate; any drift comes from a modifier, not from keyframes."
           : "Ease it. The move starts or stops inside the shot, so it has to accelerate."
     }`,
     "    · The SUBJECTS are never linear. Anything under gravity accelerates, and",
     "      constant-velocity subject motion is the clearest tell of unedited",
-    "      keyframes — the model copies the curve it is shown.",
+    "      keyframes. The model copies the curve it is shown.",
     "- Rotate travelling objects in all three axes, not just around Z.",
-    "- Seat contacts honestly. Half-buried means buried — do not float an object",
+    "- Seat contacts honestly. Half-buried means buried. Do not float an object",
     "  above a surface and rely on the camera angle to hide the gap.",
   );
   if (b.physics === "resolve" && has(b.medium)) {
     const m = dropArticle(b.medium);
     out.push(
       "",
-      `### The ${m} is a placeholder — say so`,
+      `### The ${m} is a placeholder: say so`,
       "",
       `This shot has subjects moving through ${m}. Simulating that fully is slow`,
       "and painful to art-direct, so either simulate a few hundred bodies in the",
@@ -709,7 +709,7 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
     "- Does anything slide across a surface without disturbing it? Simulate it",
     "  locally, or write it into the video prompt as a placeholder to override.",
     "- Does anything finish floating, intersecting, or resting on a suspiciously",
-    "  level line? Seat it — the generation amplifies it.",
+    "  level line? Seat it. The generation amplifies it.",
     "",
     "## Export",
     "",
@@ -723,7 +723,7 @@ export function composeBlenderBuildBrief(b: BlenderBrief): string {
      * wrong, and whose name nobody reads until the upload order is already
      * scrambled. Set the path without an extension and let Blender add it.
      */
-    `- Set \`scene.render.filepath\` to \`${has(b.shotId) ? clean(b.shotId) : "1A"}_clay\` with NO extension —`,
+    `- Set \`scene.render.filepath\` to \`${has(b.shotId) ? clean(b.shotId) : "1A"}_clay\` with NO extension.`,
     "  Blender appends the frame range and the container suffix itself. Writing",
     "  the extension yourself produces `..._clay.mp40001-0072.mp4`.",
     "- One folder per shot, ordered so upload order matches the reference indices",
@@ -756,7 +756,7 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
     }
   }
   out.push(
-    `MODE: Clay Renderer / Omni Reference${b.physics === "resolve" ? " — camera locked, physics free" : ""}`,
+    `MODE: Clay Renderer / Omni Reference${b.physics === "resolve" ? " · camera locked, physics free" : ""}`,
     `MATERIALS: @Video 1 clay blockout${materials.length ? ` · ${materials.join(" · ")}` : ""}`,
     // The stated length is not redundant with "match @Video 1": it is what
     // lets the lab set its own slider on import. A 12s timeline rendered at 8s
@@ -775,7 +775,7 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
      * what stops it: naming the placeholder beats describing the goal.
      */
     b.physics === "resolve"
-      ? "@Video 1 is a clay blockout. It is a camera and staging reference, not a physics reference. Inherit exactly: the camera's path, speed and shot-size progression; the duration and order of the beats; which object occludes which; the direction of the key light; and where each element sits in the final frame. Do not inherit its physics — its subject motion is a placeholder standing in for dynamics that were never simulated. Keep only the start point, end point and duration of each move and re-solve everything between them as real physical motion."
+      ? "@Video 1 is a clay blockout. It is a camera and staging reference, not a physics reference. Inherit exactly: the camera's path, speed and shot-size progression; the duration and order of the beats; which object occludes which; the direction of the key light; and where each element sits in the final frame. Do not inherit its physics. Its subject motion is a placeholder standing in for dynamics that were never simulated. Keep only the start point, end point and duration of each move and re-solve everything between them as real physical motion."
       : "@Video 1 is a clay blockout. Inherit only camera movement, shot-size transitions, subject trajectories, blocking, timing, occlusion order, and the direction of the light.",
   );
 
@@ -804,11 +804,11 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
     out.push(
       "",
       "[Physics and secondary motion]",
-      `Every solid subject is a three-dimensional object with real thickness and a visible edge — never a flat disc, never a cutout, never a sprite. While travelling it rotates in all three axes, with rotation that eases rather than running at constant speed or snapping to an angle.`,
+      `Every solid subject is a three-dimensional object with real thickness and a visible edge, never a flat disc, never a cutout, never a sprite. While travelling it rotates in all three axes, with rotation that eases rather than running at constant speed or snapping to an angle.`,
       `The ${m} is a granular material, not a surface texture: thousands of small loose bodies that roll, tumble and knock into each other individually rather than sliding together as a sheet.`,
       `On contact, material is displaced outward in a low ring, a few pieces flicked up to bounce once and settle, and the rim of the resulting depression cascades inward and keeps settling a beat after the object has stopped.`,
-      `Travelling through it displaces material continuously, not only at the moment of contact. Anything crossing the ${m} is partly submerged in it: a bow wave builds and spills at the leading edge, material shears outward into low banks along both flanks, and a furrow opens behind — a furrow made of individual pieces catching the light, never a smooth dark void and never a clean carved groove. Its walls cannot hold a steep face, so they slump inward and partly refill the trench a beat behind. The trail is a transient disturbance, not a permanent channel.`,
-      `Rising out of the ${m} works the same way in reverse and happens in stages: the surface domes upward first, then parts; material sheets off the emerging object continuously, running down its faces and catching in any recess; and a collar of loose material avalanches inward against the base as the bed slumps to fill the space. Anything emerging finishes seated in the ${m} rather than standing on it or floating above it — partly buried, with an uneven bank piled against its base and no gap of any kind between object and bed.`,
+      `Travelling through it displaces material continuously, not only at the moment of contact. Anything crossing the ${m} is partly submerged in it: a bow wave builds and spills at the leading edge, material shears outward into low banks along both flanks, and a furrow opens behind, a furrow made of individual pieces catching the light, never a smooth dark void and never a clean carved groove. Its walls cannot hold a steep face, so they slump inward and partly refill the trench a beat behind. The trail is a transient disturbance, not a permanent channel.`,
+      `Rising out of the ${m} works the same way in reverse and happens in stages: the surface domes upward first, then parts; material sheets off the emerging object continuously, running down its faces and catching in any recess; and a collar of loose material avalanches inward against the base as the bed slumps to fill the space. Anything emerging finishes seated in the ${m} rather than standing on it or floating above it: partly buried, with an uneven bank piled against its base and no gap of any kind between object and bed.`,
       `Everything eases in and out. Natural motion blur consistent with a 180-degree shutter. Nothing moves through the ${m} without the ${m} reacting to it, and the bed is never static while anything is moving in it.`,
     );
   }
@@ -849,7 +849,7 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
   if (has(b.lightCharacter)) globals.push(`Lighting character: ${clean(b.lightCharacter)}.`);
   if (mapped.length) {
     globals.push(
-      `Exactly ${mapped.length} mapped subject${mapped.length === 1 ? "" : "s"} throughout — no duplicates, nothing added.`,
+      `Exactly ${mapped.length} mapped subject${mapped.length === 1 ? "" : "s"} throughout: no duplicates, nothing added.`,
     );
   }
   globals.push(blenderEditMode(b) === "cuts" ? "Keep lighting coherent within each shot. Preserve the edited shot order and hard-cut boundaries in @Video 1; do not add transitions or blend adjacent shots." : `Continuous lighting. No cuts other than those in @Video 1.`);
@@ -862,19 +862,19 @@ export function composeBlenderPrompt(b: BlenderBrief): string {
   out.push(
     "",
     "[Exclusions]",
-    `No text, no captions, no subtitles, no on-screen type, no logos, no watermarks, no background music. Do not inherit primitive geometry, flat grey materials, placeholder shapes, axes, guide lines, path curves, camera frustums, or the empty set from @Video 1 — ${inheritScope}.`,
+    `No text, no captions, no subtitles, no on-screen type, no logos, no watermarks, no background music. Do not inherit primitive geometry, flat grey materials, placeholder shapes, axes, guide lines, path curves, camera frustums, or the empty set from @Video 1: ${inheritScope}.`,
   );
   if (b.physics === "resolve" && has(b.medium)) {
     const m = dropArticle(b.medium);
     out.push(
-      `Do not reproduce the blockout's flat, sliding, sprite-like subject motion or its frozen bed — those are placeholders, not direction. Nothing slides across the top of the ${m} without sinking into it and moving it, and nothing travels through it leaving it undisturbed behind. No smooth dark voids, holes or shadow shapes standing in for a disturbed area. No trench that stays open and clean once the object has passed. Nothing hovers, floats or hangs in clean air above the ${m}, and no visible gap or level waterline separates an object from the material it is standing in.`,
+      `Do not reproduce the blockout's flat, sliding, sprite-like subject motion or its frozen bed. Those are placeholders, not direction. Nothing slides across the top of the ${m} without sinking into it and moving it, and nothing travels through it leaving it undisturbed behind. No smooth dark voids, holes or shadow shapes standing in for a disturbed area. No trench that stays open and clean once the object has passed. Nothing hovers, floats or hangs in clean air above the ${m}, and no visible gap or level waterline separates an object from the material it is standing in.`,
     );
   }
 
   if (has(b.composited)) {
     out.push(
       "",
-      `[Composited after generation — do not render these]`,
+      `[Composited after generation: do not render these]`,
       clean(b.composited),
     );
   }
@@ -952,7 +952,7 @@ export function briefIssues(
   if (mode === "seedance" && mapped.length > 0 && !mapped.some((s) => has(s.ref))) {
     issues.push({
       text: "No subject has a look reference.",
-      why: "With nothing to hold appearance steady the model invents every surface, and invents them differently on every generation — the most common source of drift between takes. Generic matter renders fine from description, but anything that has to be itself needs a reference.",
+      why: "With nothing to hold appearance steady the model invents every surface, and invents them differently on every generation, the most common source of drift between takes. Generic matter renders fine from description, but anything that has to be itself needs a reference.",
     });
   }
 
@@ -1017,7 +1017,7 @@ export function briefIssues(
     if (cur.f < prev.t) {
       issues.push({
         text: `The beats at ${prev.from}–${prev.to}s and ${cur.from}–${cur.to}s overlap.`,
-        why: "Two beats claiming the same seconds leaves the operator to pick one, while the video prompt states both — so the blockout and the prompt disagree about what happens when.",
+        why: "Two beats claiming the same seconds leaves the operator to pick one, while the video prompt states both, so the blockout and the prompt disagree about what happens when.",
       });
     }
     if (cur.f > prev.t) issues.push({ text: `There is a gap from ${prev.t}s to ${cur.f}s.`, why: "Describe the hold or transition, or close the gap.", field: "blender-timeline" });
@@ -1056,7 +1056,7 @@ export function briefIssues(
 export const VENDOR_OVERLAP = {
   name: "Higgsfield for Blender",
   dated: "Late August 2026",
-  what: "An add-on that prompts an editable blockout into your open .blend, animates a camera from a description as real bones and keyframes, and can trigger Seedance renders — with an MCP bridge so an agent works in the scene directly. Seven tabs, Blender 4.2–5.1, on the same credits as their other plugins.",
+  what: "An add-on that prompts an editable blockout into your open .blend, animates a camera from a description as real bones and keyframes, and can trigger Seedance renders, with an MCP bridge so an agent works in the scene directly. Seven tabs, Blender 4.2–5.1, on the same credits as their other plugins.",
   helps: [
     {
       k: "First blockout, faster",
@@ -1064,7 +1064,7 @@ export const VENDOR_OVERLAP = {
     },
     {
       k: "Camera as a rig, not a description",
-      v: "It animates to standard bones and actions, so the curves are tweakable rather than regenerated — the same property that makes a clay pass worth building.",
+      v: "It animates to standard bones and actions, so the curves are tweakable rather than regenerated, the same property that makes a clay pass worth building.",
     },
     {
       k: "Reblocking",
@@ -1074,7 +1074,7 @@ export const VENDOR_OVERLAP = {
   doesNotChange: [
     {
       k: "A blockout is not automatically a control pass",
-      v: "Neutral grey, one flat ID colour per mapped subject, one unambiguous light direction, contact shadows, 24 fps, no text or gizmos. Geometry arriving faster does not make it legible to the model — the checklist above still decides that.",
+      v: "Neutral grey, one flat ID colour per mapped subject, one unambiguous light direction, contact shadows, 24 fps, no text or gizmos. Geometry arriving faster does not make it legible to the model. The checklist above still decides that.",
     },
     {
       k: "The prompt still has to bind the references",
@@ -1086,14 +1086,14 @@ export const VENDOR_OVERLAP = {
     },
     {
       k: "Their own docs scope it to previz",
-      v: "Blockout is not a production asset — clean topology, UVs and instancing are still modelling work, and reblocking mid-production with cached simulations is explicitly not the easy case.",
+      v: "Blockout is not a production asset. Clean topology, UVs and instancing are still modelling work, and reblocking mid-production with cached simulations is explicitly not the easy case.",
     },
   ],
   /** The detail that decides whether it is cheap, and the easiest one to miss. */
   costCatch:
-    "The unlimited Seedance plans that make Higgsfield look inexpensive are, by their own terms, available only through higgsfield.ai directly — not through MCP, CLI, Canvas or Supercomputer. Drive it from an agent or the API and you are back on per-generation credits.",
+    "The unlimited Seedance plans that make Higgsfield look inexpensive are, by their own terms, available only through higgsfield.ai directly, not through MCP, CLI, Canvas or Supercomputer. Drive it from an agent or the API and you are back on per-generation credits.",
   verdict:
-    "Worth using as a front end to the clay pass. Not a reason to move a production pipeline onto it — this studio generates through fal, where the routing, cost model and quality gates already live, and a vendor suite would trade those for an integration it does not need.",
+    "Worth using as a front end to the clay pass. Not a reason to move a production pipeline onto it. This studio generates through fal, where the routing, cost model and quality gates already live, and a vendor suite would trade those for an integration it does not need.",
   caveat:
     "Assembled from vendor material and secondary coverage, not hands-on use. Two things worth confirming against the live docs before committing: whether the API exposes Seedance 2.5 reference-to-video with video references, and whether the add-on's blockout is neutral clay or merely untextured geometry.",
 };

@@ -5,7 +5,7 @@ import { PreflightChecklist } from "./PreflightChecklist";
 import { PLAYBOOK_CHECKLIST } from "@/lib/adPreflight";
 
 export const metadata: Metadata = {
-  title: "Production Playbook — AI Content Studio",
+  title: "Production Playbook · AI Content Studio",
   description:
     "The reusable playbook behind the demo: workflow, prompt system, model routing, quality gates, cost governance, the generative-AI guardrails this work is held to, a pre-flight checklist, and measurement.",
 };
@@ -43,7 +43,7 @@ const GATES = [
   {
     n: "01",
     name: "Product fidelity",
-    ask: "Is this the actual product — shape, colors, packaging — or a plausible look-alike?",
+    ask: "Do the shape, colors and packaging match the actual product, or is this a plausible look-alike?",
     how: "Compare the result with the approved source. AI can flag differences; the accountable reviewer decides whether it is faithful enough for the intended use.",
   },
   {
@@ -71,16 +71,16 @@ const GATES = [
  * that settle everything not covered.
  */
 const STANDING_PERMISSION =
-  "AI may be used as a creative and production tool wherever the result is original, properly authorised, non-impersonative, accurate, and not misleading to a consumer. Everything already required — Legal, Regulatory, Privacy, Procurement, InfoSec, Brand, advertising approval — still applies. AI is a new way to make the asset, not a new route around the approvals.";
+  "AI may be used as a creative and production tool wherever the result is original, properly authorised, non-impersonative, accurate, and not misleading to a consumer. Existing Legal, Regulatory, Privacy, Procurement, InfoSec, Brand and advertising approvals still apply. AI is a new way to make the asset, not a new route around the approvals.";
 
 const HARD_STOPS = [
   {
     h: "Nobody real, unless they said yes",
-    p: "No cloning, imitating or deliberately evoking the voice, likeness or recognisable characteristics of an actual person without documented rights. Celebrities, influencers, performers, customers, employees, executives — the same line for all of them, and for third-party characters and branded voices. Original synthetic creation is the preferred route; replication is not a shortcut, it is the thing being prohibited.",
+    p: "No cloning, imitating or deliberately evoking the voice, likeness or recognisable characteristics of an actual person without documented rights. The same line applies to celebrities, influencers, performers, customers, employees and executives, as well as third-party characters and branded voices. Original synthetic creation is the preferred route; replication is not a shortcut, it is the thing being prohibited.",
   },
   {
     h: "The overall impression is the test",
-    p: "Nothing may materially misrepresent the product, its appearance, quantity, function or performance; a person's identity or relationship to the brand; a customer experience, testimonial or endorsement; or a relationship with another company. Judged the way a reasonable consumer would take the finished ad as a whole — not by whether each component survives inspection on its own. An ad can be assembled entirely from true parts and still fail this.",
+    p: "Nothing may materially misrepresent the product, its appearance, quantity, function or performance; a person's identity or relationship to the brand; a customer experience, testimonial or endorsement; or a relationship with another company. Judge the finished ad as a whole, as a reasonable consumer would, rather than inspecting each component in isolation. An ad can be assembled entirely from true parts and still fail this.",
   },
   {
     h: "The product is not the part you may invent",
@@ -111,7 +111,7 @@ const PRODUCT_TRUTH = {
 const PEOPLE = [
   {
     h: "Synthetic people, by surface",
-    p: "Fully synthetic talent is available for stills — lifestyle, social, digital, print, display — provided it is an original creation and not a copy of an identifiable person. For OLV, television and broadcast, the conservative default holds: not without specific review and approval. That is a position about consumer acceptance and talent agreements rather than about capability, and it is expected to move.",
+    p: "Fully synthetic talent is available for lifestyle, social, digital, print and display stills, provided it is an original creation and not a copy of an identifiable person. For OLV, television and broadcast, the conservative default holds: not without specific review and approval. That is a position about consumer acceptance and talent agreements rather than about capability, and it is expected to move.",
   },
   {
     h: "Hands are not talent",
@@ -119,7 +119,7 @@ const PEOPLE = [
   },
   {
     h: "Voices",
-    p: "Original synthetic voice is fine for radio and digital audio. It must not clone a real individual, imitate an identifiable person, impersonate a recognisable character or protected brand voice, or leave a listener wrong about who is speaking — and the commercial-use rights have to be real.",
+    p: "Original synthetic voice is fine for radio and digital audio. It must not clone a real individual, imitate an identifiable person, impersonate a recognisable character or protected brand voice, or leave a listener wrong about who is speaking. The commercial-use rights have to be real.",
   },
   {
     h: "Manufactured authority",
@@ -129,9 +129,9 @@ const PEOPLE = [
 
 const PAPER_TRAIL = [
   ["Approved tools only", "Platforms cleared under the applicable technology, security, procurement and privacy requirements. That is a list someone maintains, not a judgement call at 6pm."],
-  ["What never gets uploaded", "Confidential information, personal information, biometric source material, talent recordings, licensed content, or third-party assets whose AI-processing rights have not been confirmed — unless that specific system is authorised for it."],
+  ["What never gets uploaded", "Confidential information, personal information, biometric source material, talent recordings, licensed content, or third-party assets whose AI-processing rights have not been confirmed, unless that specific system is authorised for it."],
   ["Retain the real source", "Where AI materially assists final product imagery, the authentic source frame stays in the asset-management system and stays traceable to the delivered creative. If you cannot produce the original, you cannot defend the final."],
-  ["The record", "Platform or vendor, what the AI component actually was, the approved source asset, confirmation of commercial-use rights, talent consent where relevant, and any specific exception granted. Meaningful provenance — not a log of every routine retouch."],
+  ["The record", "Platform or vendor, what the AI component actually was, the approved source asset, confirmation of commercial-use rights, talent consent where relevant, and any specific exception granted. Keep meaningful provenance without logging every routine retouch."],
   ["Accountability does not transfer", "Marketing, agency and production partners own the finished asset whether or not AI touched it. There is no version of this where the model is responsible."],
 ];
 
@@ -144,7 +144,7 @@ const TESTS = [
   {
     label: "The catch-all",
     q: "Could a reasonable consumer be materially misled about who or what they are seeing or hearing, what they are buying, what it does, or whether a real person took part or endorsed it?",
-    then: "Yes or unsure — stop and escalate before publication.",
+    then: "If yes or unsure, stop and escalate before publication.",
   },
 ];
 
@@ -154,7 +154,7 @@ const ENFORCED_HERE = [
   ["Reconstructed angles are labelled", "Packshot views the model extrapolated rather than grounded in a supplied reference are marked for label QA, so nobody mistakes a plausible back-of-pack for a photographed one."],
   ["The prompt contributes to the record", "Generated outputs retain their prompts and saved request details where available. The complete record also needs source assets, rights, applicable consent and a human decision."],
   ["References guide product identity", "Reference-to-video assigns source images a role and instructs against drift. Inspect the generated packaging, shape and text; a reference is direction, not a fidelity guarantee."],
-  ["The demo states its own limits", "Where the pipeline cannot guarantee something — music that is not frame-synced, a take that needs an alignment pass — it says so in the interface rather than in a footnote."],
+  ["The demo states its own limits", "The interface states what the pipeline cannot guarantee, such as frame-synced music or a take that needs an alignment pass, rather than leaving it in a footnote."],
 ];
 
 
@@ -189,7 +189,7 @@ export default function PlaybookPage() {
           The production playbook
         </h1>
         <p className="mt-5 text-lg leading-relaxed text-muted">
-          A studio isn&apos;t a person who&apos;s good with tools — it&apos;s a documented
+          A studio needs more than someone who is good with tools. It needs a documented
           system anyone trained can run. This is the playbook the{" "}
           <Link href="/ai-studio/studio" className="font-medium text-accent hover:underline">
             demo pipeline
@@ -279,7 +279,7 @@ export default function PlaybookPage() {
 
             <div className="mt-6 space-y-4 text-sm leading-relaxed text-muted">
               <p>
-                Intake takes one grounding asset — the product photo — plus the
+                Intake takes the product photo as its grounding asset, plus the
                 minimum viable context. The vision model extracts everything it
                 can see and interviews only for what it can&apos;t. An intake form
                 that fills itself is the difference between a pipeline teams
@@ -315,13 +315,13 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
             <p className="mt-4 text-sm leading-relaxed text-muted">
               Each deliverable has a prompt <em>builder</em>, not a prompt.
               Change one field in the brief and eight prompts update. That is
-              what makes versioning — EN/FR, seasonal, per-format — a parameter
+              what makes EN/FR, seasonal and per-format versioning a parameter
               instead of a project.
             </p>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted">
               {[
                 "Subject and action first; camera, light and setting second; style descriptor last.",
-                "Real product attributes injected from vision analysis — never invented.",
+                "Real product attributes come from vision analysis and are never invented.",
                 "Video prompts carry an explicit Audio: cue; native-audio models reward sound design written into the prompt.",
                 "Negative prompts are maintained per style, with artifact patterns added as QA finds them.",
                 "Use authorised product references. Keep final brand lockups and critical type in controlled artwork or compositing, then inspect the result.",
@@ -340,7 +340,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
             <SectionHead
               num="03"
               title="Model routing"
-              lede="Draft cheap, finish premium. Routing — not negotiation — is where an AI studio finds most of its cost efficiency."
+              lede="Draft cheap, finish premium. Choosing the right model for each job is where an AI studio finds most of its cost efficiency."
             />
             <div className="overflow-x-auto rounded-[6px] border border-border-soft">
               <table className="w-full min-w-[560px] border-collapse text-sm">
@@ -407,7 +407,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
                 ["Pre-flight estimate", "Shown and confirmed before any live generation."],
                 ["One price config", "List prices live in one file; the estimator reads from it."],
                 ["Visible spend", "A running cost estimate is tracked in the browser and always on screen."],
-                ["Free demo mode", "The full pipeline mocks itself — UX work and training never burn credits."],
+                ["Free demo mode", "The full pipeline mocks itself, so UX work and training never burn credits."],
                 ["Cheap defaults", "Cost-efficient tiers are default; premium is an explicit choice."],
                 ["Handles, not reruns", "Assets generated with trim room so a near-miss is an edit, not a regeneration."],
               ].map(([t, d]) => (
@@ -424,7 +424,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
             <SectionHead
               num="06"
               title="Guardrails"
-              lede="The generative-AI guidelines this work is held to, restated as decisions rather than clauses. They exist so the studio can move fast — the risky questions are answered before anyone is mid-render."
+              lede="The generative-AI guidelines this work is held to, restated as decisions rather than clauses. They let the studio move fast by answering the risky questions before anyone is mid-render."
             />
 
             {/* The permission, before the restrictions. */}
@@ -512,7 +512,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
               A guideline nothing implements is a hope. These are the places
-              the studio in this demo makes the rule structural — so following
+              the studio in this demo makes the rule structural, so following
               it is the default path, not the disciplined one.
             </p>
             <dl className="mt-4 divide-y divide-border-soft border-y border-border-soft">
@@ -543,7 +543,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
                 <h4 className="font-semibold">Saying so</h4>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted">
                   Material AI use is disclosed internally, in the approval
-                  workflow, always. External disclosure is decided by context —
+                  workflow, always. External disclosure is decided by context:
                   channel, platform, contract, regulation. The one hard case:
                   where staying quiet about AI would itself make the ad
                   misleading, it goes to Legal before it goes out.
@@ -556,7 +556,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
               guidelines get reviewed against regulation, platform and
               broadcaster requirements, talent agreements, campaign learnings
               and the quality of synthetic media itself. The clause most likely
-              to move first is the broadcast one — synthetic on-camera talent
+              to move first is the broadcast one. The restriction on synthetic on-camera talent
               is a conservative default about consumer and legal acceptance,
               not a permanent technical judgement.
             </p>
@@ -585,7 +585,7 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
               lede="Built to be handed over, not held onto."
             />
             <p className="text-sm leading-relaxed text-muted">
-              Every generated asset in the demo exposes its prompt — the
+              Every generated asset in the demo exposes its prompt. The
               pipeline shows its work. That&apos;s the teaching model: every
               workflow visible, every decision documented, every playbook
               written so the second person, and the tenth, can run it.

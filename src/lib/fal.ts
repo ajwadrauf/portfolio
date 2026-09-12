@@ -126,12 +126,12 @@ export function describeFalError(e: unknown, operation: "upload" | "generation" 
     return "fal says this account's balance is exhausted. Top it up at fal.ai/dashboard/billing and try again.";
   }
   if (status === 401) {
-    return "fal rejected the API key. Check FAL_KEY in .env.local — it should be the whole key, in the form <id>:<secret> — then restart the server.";
+    return "fal rejected the API key. Check FAL_KEY in .env.local. It should be the whole key, in the form <id>:<secret>. Then restart the server.";
   }
   if (status === 403) {
     if (operation === "generation") return "fal refused access to this model or request (403). Check the configured endpoint and the fal key’s model permissions.";
     return (
-      "fal refused the upload (403). Uploads go to a different service than generation — rest.fal.ai rather than fal.run — " +
+      "fal refused the upload (403). Uploads go to a different service than generation (rest.fal.ai rather than fal.run), " +
       "and a key can be allowed to run models while still not being allowed to use storage. This is a key-permission problem, not a billing one: " +
       "an empty balance reports \u201cExhausted balance\u201d instead. Either issue an Admin-scope key at fal.ai/dashboard/keys, " +
       "or skip the upload and paste a public URL for the clip or track instead."
@@ -469,7 +469,7 @@ export async function falRecentVideoRequests(
     throw new Error(
       `fal request history returned ${res.status}. ${
         res.status === 401 || res.status === 403
-          ? "This key may not carry platform-API permission — the dashboard's Requests tab shows the same list."
+          ? "This key may not carry platform-API permission. The dashboard's Requests tab shows the same list."
           : await res.text().catch(() => "")
       }`,
     );

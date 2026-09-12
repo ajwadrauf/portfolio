@@ -139,17 +139,17 @@ export const BASE_RECIPE: RecipeStep[] = [
   {
     media: "image",
     role: "product",
-    what: "A second angle of the same product — three-quarter or side.",
+    what: "A second angle of the same product, from a three-quarter or side view.",
     why: "Two angles give the model geometry to hold onto. This is the single biggest reduction in drift.",
     impact: "critical",
     ifMissing:
-      "One angle leaves the model guessing at the sides and back, so the pack warps as the camera moves — the most common reason a take gets paid for twice.",
+      "One angle leaves the model guessing at the sides and back, so the pack warps as the camera moves; this is the most common reason a take gets paid for twice.",
   },
   {
     media: "video",
     role: "motion",
     what: "A 3-5 second clip whose camera move you want imitated.",
-    why: "Camera language is far easier to show than to describe. Trim tight — the model reads the move, not the content.",
+    why: "Camera language is far easier to show than to describe. Trim tight. The model reads the move, not the content.",
     impact: "helpful",
   },
 ];
@@ -169,21 +169,21 @@ export function audioCue(
   musicBrief: string,
 ): string {
   if (audioMode === "silent") {
-    return "Audio: none. Render the shot completely silent — no sound effects, no ambience, no music.";
+    return "Audio: none. Render the shot completely silent: no sound effects, no ambience, no music.";
   }
   const effects = sfx.join(" ");
   if (audioMode === "layered") {
-    return `Audio: ${effects} Sound effects and ambience only — no music, no musical score, no soundtrack.`;
+    return `Audio: ${effects} Sound effects and ambience only. No music, no musical score, no soundtrack.`;
   }
   return musicBrief.trim()
     ? `Audio: ${effects} Underscored throughout by music: ${musicBrief.trim()}`
-    : `Audio: ${effects} No music — sound effects only.`;
+    : `Audio: ${effects} No music. Use sound effects only.`;
 }
 
 const COMMON_FIELDS: AdField[] = [
   {
     key: "brand", label: "Brand name", placeholder: "KOLDA", example: "KOLDA",
-    autofill: "Read the brand name exactly as printed on the packaging. Return an empty string if no brand is legible — do not guess.",
+    autofill: "Read the brand name exactly as printed on the packaging. Return an empty string if no brand is legible. Do not guess.",
   },
   {
     key: "tagline", label: "Tagline", placeholder: "Simple. Done right.", example: "Dark roast. Zero drama.",
@@ -191,7 +191,7 @@ const COMMON_FIELDS: AdField[] = [
   },
   {
     key: "price", label: "Price", placeholder: "$3.99", example: "$9.99",
-    autofill: "Only a price that is actually printed and legible on the packaging, formatted like \"$3.99\". Return an empty string otherwise — NEVER invent a price; a wrong price in an ad is a compliance failure.",
+    autofill: "Only a price that is actually printed and legible on the packaging, formatted like \"$3.99\". Return an empty string otherwise. NEVER invent a price; a wrong price in an ad is a compliance failure.",
   },
 ];
 
@@ -208,7 +208,7 @@ export const AD_PRESETS: AdPreset[] = [
     aspect: "9:16",
     durationSeconds: 8,
     aesthetics: [
-      "Top-down, overhead flat-lay. Static camera — zero panning or zooming.",
+      "Top-down, overhead flat-lay. Static camera: zero panning or zooming.",
       "Snappy, high-contrast stop-motion aesthetic.",
       "Monochromatic ultra-bright single-color background; minimalist environment.",
       "Reverse-chronological timeline: finished product back to original packaging.",
@@ -216,13 +216,13 @@ export const AD_PRESETS: AdPreset[] = [
     scenes: [
       { title: "The finished product", description: "Fully prepared, plated item centered on the colored background." },
       { title: "The removal", description: "A human hand enters frame and pulls the plated item away." },
-      { title: "Deconstruction — toppings", description: "A utensil scoops the topping off in fluid, reverse-gravity motion." },
-      { title: "Deconstruction — base", description: "A second utensil lifts the base food upward and out of frame." },
+      { title: "Deconstruction · toppings", description: "A utensil scoops the topping off in fluid, reverse-gravity motion." },
+      { title: "Deconstruction · base", description: "A second utensil lifts the base food upward and out of frame." },
       { title: "Raw transformation", description: "Cooked product snaps to raw state, flying backward out of the cooking vessel and sliding into its branded packaging." },
       { title: "The product shot", description: "A hand places the raw, packaged product flat against the background." },
       { title: "Text overlay", description: "Bold stark text snaps on: brand top-left, tagline middle-left, price bottom-right." },
     ],
-    overlay: "Brand name top-left, tagline middle-left, price bottom-right — bold, stark, snapping on in sync with the final audio cue.",
+    overlay: "Brand name top-left, tagline middle-left, price bottom-right in bold, stark lettering, snapping on in sync with the final audio cue.",
     sfx: [
       "Rewind / reverse-playback whoosh distortion matching the reverse visuals.",
       "Utensil clinks and soft food movement, played backwards.",
@@ -235,18 +235,18 @@ export const AD_PRESETS: AdPreset[] = [
         media: "image",
         role: "product",
         what: "A photo of the product's prepared form, if you have one.",
-        why: "This concept ends on the raw pack but opens on the finished dish — showing both halves stops the model inventing the food.",
+        why: "This concept ends on the raw pack but opens on the finished dish. Showing both halves stops the model inventing the food.",
         impact: "helpful",
       },
     ],
     fields: [
       {
         key: "product", label: "Product (raw, packaged)", placeholder: "a bag of spaghetti", example: "a bag of dried spaghetti in simple packaging",
-        autofill: "Describe the packaged product exactly as photographed — packaging type, contents, dominant colors, finish.",
+        autofill: "Describe the packaged product exactly as photographed: packaging type, contents, dominant colors, finish.",
       },
       {
         key: "plated", label: "Finished form (plated)", placeholder: "a white bowl of spaghetti with red sauce", example: "a white bowl of spaghetti topped with rich red tomato sauce",
-        autofill: "Describe the most appetizing prepared, plated or served form of this product — the finished result a shopper imagines (for coffee: a steaming mug; for pasta: a sauced bowl).",
+        autofill: "Describe the most appetizing prepared, plated or served form of this product: the finished result a shopper imagines (for coffee: a steaming mug; for pasta: a sauced bowl).",
       },
       {
         key: "vessel", label: "Cooking vessel", placeholder: "a pot on a stove", example: "a yellow pot on a yellow stove",
@@ -289,7 +289,7 @@ export const AD_PRESETS: AdPreset[] = [
       {
         media: "image",
         role: "style",
-        what: "A lighting reference — any image with the glow you want.",
+        what: "A lighting reference: any image with the glow you want.",
         why: "Weightless assembly lives or dies on light. Borrowing a lighting mood is faster than describing one.",
         impact: "optional",
       },
@@ -301,7 +301,7 @@ export const AD_PRESETS: AdPreset[] = [
       },
       {
         key: "product", label: "Finished product", placeholder: "a bag of coffee", example: "a kraft bag of dark roast whole-bean coffee",
-        autofill: "Describe the finished packaged product exactly as photographed — packaging type, colors, finish.",
+        autofill: "Describe the finished packaged product exactly as photographed: packaging type, colors, finish.",
       },
       { key: "bg", label: "Background color", placeholder: "deep forest green", example: "deep forest green", autofill: BG_AUTOFILL },
       ...COMMON_FIELDS,
@@ -326,10 +326,10 @@ export const AD_PRESETS: AdPreset[] = [
       { title: "The action", description: "The single satisfying action unfolds in slow motion." },
       { title: "The loop point", description: "The action resolves back to the opening framing so the clip loops invisibly." },
     ],
-    overlay: "Minimal: a small brand watermark bottom corner only — the texture carries the ad.",
+    overlay: "Minimal: a small brand watermark bottom corner only. The texture carries the ad.",
     sfx: [
       "ASMR-forward: the action's real sound, close-mic'd, crisp and intimate.",
-      "Nothing else in the mix — the texture carries it.",
+      "Nothing else in the mix. The texture carries it.",
     ],
     musicStyleId: "minimal-ambient",
     referenceRecipe: [
@@ -358,12 +358,12 @@ export const AD_PRESETS: AdPreset[] = [
       },
       {
         key: "action", label: "The satisfying action", placeholder: "a slow pour with rising bubbles", example: "a slow pour, bubbles racing to the surface in slow motion",
-        autofill: "Describe ONE hypnotic, satisfying macro action true to this product — a pour, crack, drizzle, bloom, fizz or steam — worth watching on loop.",
+        autofill: "Describe ONE hypnotic, satisfying macro action true to this product and worth watching on loop: a pour, crack, drizzle, bloom, fizz or steam.",
       },
       ...COMMON_FIELDS.filter((f) => f.key === "brand"),
     ],
     template: (p, mode, musicBrief) =>
-      `Extreme macro close-up, shallow depth of field, rich natural lighting raking across the surface. ${p.product}: ${p.action}, unfolding in luxurious slow motion. The action resolves back to the exact opening framing so the clip loops seamlessly. A small "${p.brand}" watermark sits in the bottom corner; no other text. ${audioCue(["ASMR-forward — the real sound of the action, close-mic'd, crisp and intimate."], mode, musicBrief)}`,
+      `Extreme macro close-up, shallow depth of field, rich natural lighting raking across the surface. ${p.product}: ${p.action}, unfolding in luxurious slow motion. The action resolves back to the exact opening framing so the clip loops seamlessly. A small "${p.brand}" watermark sits in the bottom corner; no other text. ${audioCue(["ASMR-forward: the real sound of the action, close-mic'd, crisp and intimate."], mode, musicBrief)}`,
   },
   {
     id: "ordered-array",
@@ -374,7 +374,7 @@ export const AD_PRESETS: AdPreset[] = [
     preferredModelId: "seedance-2.5-ref",
     aesthetics: [
       "Bright, colourful commercial style on one saturated background.",
-      "Highly ordered geometric arrays — everything gridded, aligned, deliberate.",
+      "Highly ordered geometric arrays: everything gridded, aligned, deliberate.",
       "Clean and premium, but rhythmically driven: cuts land on the beat.",
       "Ends on a slow-motion sensory climax, not a product card.",
     ],
@@ -385,7 +385,7 @@ export const AD_PRESETS: AdPreset[] = [
       { title: "The climax", description: "The sensory payoff hits and instantly enters slow motion." },
       { title: "Text overlay", description: "Bold stark text snaps on over the settled frame." },
     ],
-    overlay: "Brand top-left, tagline middle-left, price bottom-right — snapping on with the final beat.",
+    overlay: "Brand top-left, tagline middle-left, price bottom-right, snapping on with the final beat.",
     sfx: [
       "Crisp granular sounds of the raw ingredient moving and settling.",
       "Tight mechanical snaps as each formation locks into place.",
@@ -412,7 +412,7 @@ export const AD_PRESETS: AdPreset[] = [
       {
         media: "image",
         role: "style",
-        what: "A palette reference — any image with the colour mood you want.",
+        what: "A palette reference: any image with the colour mood you want.",
         why: "Borrows colour and lighting only, never subject matter. Useful when the packaging alone is too plain to set a mood.",
         impact: "optional",
       },
@@ -420,7 +420,7 @@ export const AD_PRESETS: AdPreset[] = [
     fields: [
       {
         key: "product", label: "Product (packaged)", placeholder: "a bag of whole bean coffee", example: "a bright yellow bag of No Frills whole bean dark roast coffee",
-        autofill: "Describe the packaged product exactly as photographed — packaging type, dominant colours, finish.",
+        autofill: "Describe the packaged product exactly as photographed: packaging type, dominant colours, finish.",
       },
       {
         key: "variants", label: "Variants to array", placeholder: "three roasts: dark, medium, decaf", example: "three roasts: dark, medium and decaf",
@@ -432,24 +432,24 @@ export const AD_PRESETS: AdPreset[] = [
       },
       {
         key: "climax", label: "Slow-motion climax", placeholder: "a scoop lifts and beans cascade back", example: "a metal scoop plunges into a mound of beans and lifts, beans cascading back in a arc",
-        autofill: "Describe ONE tactile, sensory action with this product worth seeing in slow motion — a pour, a cascade, a crack, a bloom of steam.",
+        autofill: "Describe ONE tactile, sensory action with this product worth seeing in slow motion: a pour, a cascade, a crack, a bloom of steam.",
       },
       { key: "bg", label: "Background colour", placeholder: "ultra-bright yellow", example: "ultra-bright yellow", autofill: BG_AUTOFILL },
       ...COMMON_FIELDS,
     ],
     template: (p, mode, musicBrief) =>
-      `Bright, colourful commercial style on a ${p.bg} background — ${p.product} as the star, featuring ${p.variants}. ${p.rawElement} and their corresponding packs are arranged in highly ordered geometric arrays; the overall frame is clean, premium and rhythmically driven. The opening establishes visual focus tight on ${p.rawElement}, with the music dropping on the downbeat. The variants then line up in neat formations, cutting to close-ups on each in turn. At the climax ${p.climax} — instantly entering slow motion, every grain and highlight readable, before the frame settles back into its grid. Bold stark text snaps on at the end: "${p.brand}" top-left, "${p.tagline}" middle-left, "${p.price}" bottom-right. ${audioCue(["Crisp granular sounds of the ingredient moving and settling, tight mechanical snaps as each formation locks into place, a deep slow-motion whoosh at the climax and a clean stamp on the price."], mode, musicBrief)}`,
+      `Bright, colourful commercial style on a ${p.bg} background: ${p.product} as the star, featuring ${p.variants}. ${p.rawElement} and their corresponding packs are arranged in highly ordered geometric arrays; the overall frame is clean, premium and rhythmically driven. The opening establishes visual focus tight on ${p.rawElement}, with the music dropping on the downbeat. The variants then line up in neat formations, cutting to close-ups on each in turn. At the climax ${p.climax}, instantly entering slow motion, every grain and highlight readable, before the frame settles back into its grid. Bold stark text snaps on at the end: "${p.brand}" top-left, "${p.tagline}" middle-left, "${p.price}" bottom-right. ${audioCue(["Crisp granular sounds of the ingredient moving and settling, tight mechanical snaps as each formation locks into place, a deep slow-motion whoosh at the climax and a clean stamp on the price."], mode, musicBrief)}`,
   },
   {
     id: "multiply-grid",
     name: "Stop-Motion Multiply",
-    hook: "One product becomes many — duplicating in rhythm until it fills a perfect grid. Price lands center.",
+    hook: "One product becomes many. It duplicates in rhythm until it fills a perfect grid. Price lands center.",
     aspect: "9:16",
     durationSeconds: 8,
     aesthetics: [
       "Top-down flat-lay, static camera, punchy stop-motion rhythm.",
       "Bold single-color background; hard graphic shadows.",
-      "The product duplicates on musical beats — 1, 2, 4, 8 — into a tidy grid.",
+      "The product duplicates on musical beats (1, 2, 4, 8) into a tidy grid.",
       "Ends as a poster-like frame with the price dead center.",
     ],
     scenes: [
@@ -481,13 +481,13 @@ export const AD_PRESETS: AdPreset[] = [
     fields: [
       {
         key: "product", label: "Product", placeholder: "a can of sparkling water", example: "a teal can of sparkling water",
-        autofill: "Describe the packaged product exactly as photographed, compactly — it must read clearly as one repeated unit in a grid.",
+        autofill: "Describe the packaged product exactly as photographed, compactly. It must read clearly as one repeated unit in a grid.",
       },
       { key: "bg", label: "Background color", placeholder: "hot coral", example: "hot coral", autofill: BG_AUTOFILL },
       ...COMMON_FIELDS,
     ],
     template: (p, mode, musicBrief) =>
-      `Top-down flat-lay on a ${p.bg} seamless background, static camera, punchy stop-motion rhythm with hard graphic shadows. ${p.product} lands center-frame with a thud; on each beat it duplicates — one, two, four, eight — snapping into a perfect tidy grid that fills the frame edge to edge. The grid scales down slightly and "${p.price}" stamps dead-center on the final beat, with "${p.brand}" small at the top and the tagline "${p.tagline}" beneath it. ${audioCue(["Snappy stop-motion foley on every product landing, rhythmic thuds as the grid multiplies, and a big stamp sound with the price."], mode, musicBrief)}`,
+      `Top-down flat-lay on a ${p.bg} seamless background, static camera, punchy stop-motion rhythm with hard graphic shadows. ${p.product} lands center-frame with a thud; on each beat it duplicates (one, two, four, eight), snapping into a perfect tidy grid that fills the frame edge to edge. The grid scales down slightly and "${p.price}" stamps dead-center on the final beat, with "${p.brand}" small at the top and the tagline "${p.tagline}" beneath it. ${audioCue(["Snappy stop-motion foley on every product landing, rhythmic thuds as the grid multiplies, and a big stamp sound with the price."], mode, musicBrief)}`,
   },
   {
     /**
@@ -504,7 +504,7 @@ export const AD_PRESETS: AdPreset[] = [
      */
     id: CUSTOM_PRESET_ID,
     name: "Create your own",
-    hook: "Start from a blank recipe and write the concept yourself — same structure, none of the content.",
+    hook: "Start from a blank recipe and write the concept yourself: the same structure, none of the content.",
     aspect: "9:16",
     durationSeconds: 8,
     aesthetics: [],
@@ -517,7 +517,7 @@ export const AD_PRESETS: AdPreset[] = [
     fields: [
       {
         key: "product", label: "Product", placeholder: "a bag of dried spaghetti", example: "a bag of dried spaghetti in simple packaging",
-        autofill: "Describe the packaged product exactly as photographed — packaging type, contents, dominant colors, finish.",
+        autofill: "Describe the packaged product exactly as photographed: packaging type, contents, dominant colors, finish.",
       },
       {
         key: "brand", label: "Brand name", placeholder: "No Name", example: "No Name",
@@ -525,7 +525,7 @@ export const AD_PRESETS: AdPreset[] = [
       },
       {
         key: "tagline", label: "Tagline", placeholder: "Simply good pasta", example: "Simply good pasta",
-        autofill: "Leave blank — a tagline is a brand decision, not something to read off a photo.",
+        autofill: "Leave blank. A tagline is a brand decision, not something to read off a photo.",
       },
       {
         key: "price", label: "Price", placeholder: "$1.99", example: "$1.99",
@@ -605,7 +605,7 @@ export function composeFromRecipe(
       const title = sc.title.trim();
       const desc = sc.description.trim();
       if (!title && !desc) return "";
-      return `${i + 1}. ${[title, desc].filter(Boolean).join(" — ")}`;
+      return `${i + 1}. ${[title, desc].filter(Boolean).join(": ")}`;
     })
     .filter(Boolean);
   if (beats.length) parts.push(`Action, in order: ${beats.join(" ")}`);
@@ -705,7 +705,7 @@ const SILENT_MODEL: AudioCapability = {
   native: false,
   switchable: false,
   refAudio: false,
-  note: "Renders picture only — this model returns a silent MP4, so every ad it makes needs its sound built in the edit.",
+  note: "Renders picture only. This model returns a silent MP4, so every ad it makes needs its sound built in the edit.",
 };
 
 const AUDIO_CAPABILITIES: Record<string, AudioCapability> = {
@@ -714,13 +714,13 @@ const AUDIO_CAPABILITIES: Record<string, AudioCapability> = {
     native: true,
     switchable: false,
     refAudio: false,
-    note: "Native 48kHz audio generated with the picture — the best synced sound effects and lip-sync in the set. It cannot take audio in, only put it out, and it approximates music rather than composing it.",
+    note: "Native 48kHz audio generated with the picture: the best synced sound effects and lip-sync in the set. It cannot take audio in, only put it out, and it approximates music rather than composing it.",
   },
   "veo-3.1-fast": {
     native: true,
     switchable: false,
     refAudio: false,
-    note: "Native synchronized audio with the picture. Sound effects land on frame; music comes out as a texture, not a track. Audio is output-only — nothing can be fed in.",
+    note: "Native synchronized audio with the picture. Sound effects land on frame; music comes out as a texture, not a track. Audio is output-only. Nothing can be fed in.",
   },
   "seedance-2.5": {
     native: true,
@@ -747,7 +747,7 @@ const AUDIO_CAPABILITIES: Record<string, AudioCapability> = {
     native: true,
     switchable: false,
     refAudio: false,
-    note: "Renders its own audio with the picture. The switch that turns it off is not wired here, so the take arrives with sound and is billed at the audio-on rate — plan the edit around that rather than around silence.",
+    note: "Renders its own audio with the picture. The switch that turns it off is not wired here, so the take arrives with sound and is billed at the audio-on rate. Plan the edit around that rather than around silence.",
   },
   "runway-gen4": SILENT_MODEL,
 };
@@ -866,8 +866,8 @@ export const REFERENCE_ROLES = [
   {
     id: "style",
     label: "Style / palette",
-    hint: "Colour, lighting and mood to borrow — not the subject.",
-    instruction: "the colour palette, lighting and overall mood only — not its subject matter",
+    hint: "Colour, lighting and mood to borrow, not the subject.",
+    instruction: "the colour palette, lighting and overall mood only, not its subject matter",
     media: ["image", "video"],
   },
   {
@@ -880,7 +880,7 @@ export const REFERENCE_ROLES = [
   {
     id: "motion",
     label: "Motion / camera",
-    hint: "The camera move and pacing to imitate — best read from a clip.",
+    hint: "The camera move and pacing to imitate, best read from a clip.",
     instruction: "the camera movement, pacing and shot dynamics",
     media: ["video", "image"],
   },
@@ -889,7 +889,7 @@ export const REFERENCE_ROLES = [
     label: "Edit rhythm / musical timing",
     hint: "Cut timing to match. A clip supplies its cuts; a track supplies its beats.",
     instruction:
-      "the edit rhythm and musical timing — cut the action to its beats and land the accents on them",
+      "the edit rhythm and musical timing. Cut the action to its beats and land the accents on them",
     media: ["video", "audio"],
   },
   {
@@ -897,7 +897,7 @@ export const REFERENCE_ROLES = [
     label: "Voiceover / dialogue",
     hint: "A spoken line to time the picture against. Audio only.",
     instruction:
-      "the spoken performance — time the picture to this delivery and keep the words intact",
+      "the spoken performance. Time the picture to this delivery and keep the words intact",
     media: ["audio"],
   },
   {
@@ -940,7 +940,7 @@ export function referenceBlock(refs: ReferenceSpec[]): string {
   const lock = productToken
     ? ` Hold the product in ${productToken} pixel-consistent throughout: same packaging, same label text, same proportions, no drift, no re-imagining, even as the camera moves.`
     : "";
-  return ` Reference usage — ${lines.join(" ")}${lock}`;
+  return ` Reference usage: ${lines.join(" ")}${lock}`;
 }
 
 /** Per-model duration ceiling (seconds). Seedance 2.5 does native 30s takes. */

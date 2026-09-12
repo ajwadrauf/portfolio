@@ -659,7 +659,7 @@ function StatusBar({
         <LiveGate />
         {health && !health.live && !health.gemini && !health.fal && (
           <span className="chip border-warning/40 text-warning">
-            Demo mode — zero-cost mocks; add API keys to go live
+            Demo mode · free mock outputs
           </span>
         )}
       </div>
@@ -702,7 +702,7 @@ function StepTracker({ step }: { step: Step }) {
             {i + 1}
           </span>
           <span className={i === idx ? "font-semibold" : "text-muted"}>{s.label}</span>
-          {i < STEPS.length - 1 && <span className="mx-1 text-muted/40">—</span>}
+          {i < STEPS.length - 1 && <span className="mx-1 text-muted/40">·</span>}
         </li>
       ))}
     </ol>
@@ -847,7 +847,7 @@ function ClarifyStep({
       <div>
         <h1 className="text-[1.75rem] tracking-[-0.03em]">A couple of questions</h1>
         <p className="mt-2 text-muted">
-          The model only asks what it can&apos;t see — smart defaults are preselected.
+          The model only asks what it can&apos;t see. Suggested defaults are preselected.
         </p>
         <div className="mt-6 space-y-6">
           {questions.map((q) => (
@@ -944,8 +944,8 @@ function BriefStep({
     <section className="mt-8">
       <h1 className="text-[1.75rem] tracking-[-0.03em]">The campaign brief</h1>
       <p className="mt-2 max-w-2xl text-muted">
-        One brief drives all eight deliverables. Every field is editable —
-        this is the human judgment gate before anything generates.
+        One brief drives all eight deliverables. Review and edit every field
+        before anything generates.
       </p>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {BRIEF_FIELDS.map((f) => (
@@ -1004,8 +1004,7 @@ function DeliverablesStep({
     <section className="mt-8">
       <h1 className="text-[1.75rem] tracking-[-0.03em]">The content pack</h1>
       <p className="mt-2 max-w-2xl text-muted">
-        Each deliverable routes to the model best suited — and priced — for the
-        job. Costs are shown before anything runs.
+        Each deliverable routes to a model chosen for the job and budget. Costs are shown before anything runs.
       </p>
       <div className="mt-6 grid gap-3 sm:grid-cols-2" role="group" aria-label="Campaign production workflow">
         <button type="button" onClick={() => onWorkflow("batch")} aria-pressed={workflow === "batch"} className={`rounded-xl border p-5 text-left ${workflow === "batch" ? "border-accent bg-accent/5" : "border-border-soft"}`}><span className="block font-semibold">Fast batch</span><span className="mt-2 block text-sm leading-relaxed text-muted">Independent ideas from your product references. Generate your selected formats together.</span></button>
@@ -1074,7 +1073,7 @@ function DeliverablesStep({
           <p className="text-2xl font-bold text-accent">${totalEstimate.toFixed(2)}</p>
           {!live && (
             <p className="text-xs text-warning">
-              Demo mode: nothing will be charged — mocks render instead.
+              Demo mode: mock outputs will render at no charge.
             </p>
           )}
         </div>

@@ -50,7 +50,7 @@ async function inspect(slot: string, url: string, kind: RefKind = "image"): Prom
     });
     if (!res.ok && res.status !== 206) {
       return judge(slot, url, undefined,
-        `The URL returned ${res.status} ${res.statusText}. The provider fetches references itself, so a file it cannot download is rejected — often reported as a content problem rather than a missing file.`, kind);
+        `The URL returned ${res.status} ${res.statusText}. The provider fetches references itself, so a file it cannot download is rejected. This is often reported as a content problem rather than a missing file.`, kind);
     }
 
     const contentType = res.headers.get("content-type") ?? undefined;

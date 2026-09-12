@@ -41,7 +41,7 @@ export const MUSIC_STYLES: MusicStyle[] = [
     id: "warm-acoustic",
     label: "Warm acoustic",
     prompt:
-      "Warm acoustic advertising bed at 100 BPM. Fingerpicked nylon guitar, soft brushed snare, gentle upright bass, light tambourine. Honest, homey and inviting — a farmers-market feeling. Simple resolved ending. Instrumental, no vocals.",
+      "Warm acoustic advertising bed at 100 BPM. Fingerpicked nylon guitar, soft brushed snare, gentle upright bass, light tambourine. Honest, homey and inviting, with a farmers-market feeling. Simple resolved ending. Instrumental, no vocals.",
   },
   {
     id: "retro-funk",

@@ -138,15 +138,15 @@ export const MODELS: Record<string, ModelInfo> = {
     bestFor: "Promo tiles with live text, bilingual versioning, brand-critical hero shots.",
     maxReferenceImages: 14,
     referenceGuidance:
-      "Give it every face you have — it reads all of them, and it holds label type better than anything else here. Front and back first, then the sides; each one you add is a face it no longer has to invent.",
+      "Give it every face you have. It reads all of them, and it holds label type better than anything else here. Front and back first, then the sides; each one you add is a face it no longer has to invent.",
     outputSizes: {
       mode: "tiers",
       presets: [
-        { id: "1K", label: "1K — 1024²", px: 1024, costMultiplier: 1, note: "Web tiles and review rounds." },
-        { id: "2K", label: "2K — 2048²", px: 2048, costMultiplier: 1.5, note: "The planogram default: enough for label type to survive a crop. Billed at 1.5x the 1K rate." },
-        { id: "4K", label: "4K — 4096²", px: 4096, costMultiplier: 2, note: "Print and large in-store screens. Twice the 1K rate, and the slowest." },
+        { id: "1K", label: "1K · 1024²", px: 1024, costMultiplier: 1, note: "Web tiles and review rounds." },
+        { id: "2K", label: "2K · 2048²", px: 2048, costMultiplier: 1.5, note: "The planogram default: enough for label type to survive a crop. Billed at 1.5x the 1K rate." },
+        { id: "4K", label: "4K · 4096²", px: 4096, costMultiplier: 2, note: "Print and large in-store screens. Twice the 1K rate, and the slowest." },
       ],
-      note: "Three named tiers, and the tier moves the price: 2K is 1.5x the 1K rate and 4K is 2x. Anything between them rounds to the nearest — there is no arbitrary pixel size here.",
+      note: "Three named tiers, and the tier moves the price: 2K is 1.5x the 1K rate and 4K is 2x. Anything between them rounds to the nearest. There is no arbitrary pixel size here.",
     },
   },
   "nano-banana-flash": {
@@ -164,8 +164,8 @@ export const MODELS: Record<string, ModelInfo> = {
       "Three is the hard limit and a fourth is dropped rather than blended, so spend them deliberately: the front, plus the two faces closest to the angles you actually need. For more than that, switch model.",
     outputSizes: {
       mode: "aspect",
-      presets: [{ id: "1MP", label: "~1MP — 1024²", px: 1024 }],
-      note: "Takes a shape, not a size: output is about one megapixel whatever you ask for. Also the tightest reference limit here at three images — a fourth face is dropped, not blended.",
+      presets: [{ id: "1MP", label: "~1MP · 1024²", px: 1024 }],
+      note: "Takes a shape, not a size: output is about one megapixel whatever you ask for. Also the tightest reference limit here at three images. A fourth face is dropped, not blended.",
     },
   },
   "flux-2-pro": {
@@ -192,10 +192,10 @@ export const MODELS: Record<string, ModelInfo> = {
     bestFor: "Packshot challenger: identity-true edits where texture matters more than dense label text.",
     maxReferenceImages: 2,
     referenceGuidance:
-      "Built to combine two images, so give it the front plus the single face nearest your target angle. Treat a third as unsupported rather than untested — and describe the pack in words, since it reads a description better than a crowd of references.",
+      "Built to combine two images, so give it the front plus the single face nearest your target angle. Treat a third as unsupported rather than untested, and describe the pack in words, since it reads a description better than a crowd of references.",
     outputSizes: {
       mode: "aspect",
-      presets: [{ id: "auto", label: "Endpoint default — ~1024²", px: 1024 }],
+      presets: [{ id: "auto", label: "Endpoint default · ~1024²", px: 1024 }],
       note: "Aspect-ratio only; the endpoint picks the pixel count. Built around combining two images, so treat a third reference as unsupported rather than merely untested.",
     },
   },
@@ -216,11 +216,11 @@ export const MODELS: Record<string, ModelInfo> = {
     outputSizes: {
       mode: "tiers",
       presets: [
-        { id: "square_hd", label: "1K — 1024²", px: 1024 },
-        { id: "auto_2K", label: "2K — 2048²", px: 2048, note: "Best value per pixel in the set." },
-        { id: "auto_4K", label: "4K — 4096²", px: 4096 },
+        { id: "square_hd", label: "1K · 1024²", px: 1024 },
+        { id: "auto_2K", label: "2K · 2048²", px: 2048, note: "Best value per pixel in the set." },
+        { id: "auto_4K", label: "4K · 4096²", px: 4096 },
       ],
-      note: "Named tiers up to 4K at one flat price — resolution does not move the bill here, which makes it the cheapest route to a 2K or 4K planogram angle by a wide margin.",
+      note: "Named tiers up to 4K at one flat price. Resolution does not move the bill here, which makes it the cheapest route to a 2K or 4K planogram angle by a wide margin.",
     },
   },
   "gpt-image-2-edit": {
@@ -243,7 +243,7 @@ export const MODELS: Record<string, ModelInfo> = {
       "Packshot challenger where the label has to survive: the angle changes and the type on the pack stays readable and correct.",
     maxReferenceImages: 16,
     referenceGuidance:
-      "Sixteen slots, but every one is billed as high-fidelity input — so add faces that show something new, not another crop of the same panel. It follows an instruction more literally than the others, which makes the written brief worth filling in properly.",
+      "Sixteen slots, but every one is billed as high-fidelity input, so add faces that show something new, not another crop of the same panel. It follows an instruction more literally than the others, which makes the written brief worth filling in properly.",
     outputSizes: {
       mode: "pixels",
       presets: [
@@ -252,7 +252,7 @@ export const MODELS: Record<string, ModelInfo> = {
         { id: "2048", label: "2048²", px: 2048, costMultiplier: 4, note: "Four times the pixels of 1024², and four times the bill." },
       ],
       custom: { min: 512, max: 2048, multipleOf: 16, costScalesWithArea: true, basePx: 1024 },
-      note: "The only model here that takes an arbitrary pixel size — both edges must divide by 16. It bills output as image tokens, so the price tracks area exactly: about $0.127 per megapixel, which makes a 2048² render four times the cost of a 1024² one.",
+      note: "The only model here that takes an arbitrary pixel size: both edges must divide by 16. It bills output as image tokens, so the price tracks area exactly: about $0.127 per megapixel, which makes a 2048² render four times the cost of a 1024² one.",
     },
   },
 
@@ -270,7 +270,7 @@ export const MODELS: Record<string, ModelInfo> = {
     outputSizes: {
       mode: "tiers",
       presets: [{ id: "1024x1024", label: "1024²", px: 1024 }],
-      note: "1K only — that is the whole difference between this and Utility Pro. Size does not move the price.",
+      note: "1K only. That is the whole difference between this and Utility Pro. Size does not move the price.",
     },
     referenceGuidance:
       "One image, restaged rather than re-shot. Use this tier to find the prompt: at a sixth of Utility Pro's price you can burn six tries and still be ahead, then re-run the keeper at 2K.",
@@ -297,19 +297,19 @@ export const MODELS: Record<string, ModelInfo> = {
      */
     maxReferenceImages: 1,
     referenceGuidance:
-      "One image, restaged rather than re-shot — so it cannot show you a face your photo does not already contain. Give it the photo OF the angle you are targeting and let it clean up the staging; do not ask it to rotate the pack. Six times the price of Utility 1K, so prove the prompt there first.",
+      "One image, restaged rather than re-shot, so it cannot show you a face your photo does not already contain. Give it the photo OF the angle you are targeting and let it clean up the staging; do not ask it to rotate the pack. Six times the price of Utility 1K, so prove the prompt there first.",
     outputSizes: {
       mode: "tiers",
       presets: [
         { id: "1024x1024", label: "1024²", px: 1024 },
-        { id: "1:1", label: "Square, model native (2K)", px: 2048, note: "A ratio rather than a size — Recraft renders this model's native 2K." },
+        { id: "1:1", label: "Square, model native (2K)", px: 2048, note: "A ratio rather than a size. Recraft renders this model's native 2K." },
       ],
       note: "Size goes as WxH or w:h. The exact list of pixel sizes is published in Recraft's appendix and is worth checking before a batch; the ratio form is the safe one.",
     },
     strengths:
       "The production half of Recraft's utility pair: 2K, tuned for flat lighting and front-facing product composition rather than illustration, with background removal and crisp upscale on the same API.",
     bestFor:
-      "The final render of a restage you already proved on Utility 1K. Not angle synthesis — that needs a model that reads several references at once.",
+      "The final render of a restage you already proved on Utility 1K. Not angle synthesis. That needs a model that reads several references at once.",
   },
 
   // ---------------- Video ----------------
@@ -376,7 +376,7 @@ export const MODELS: Record<string, ModelInfo> = {
     unitCost: 0.15,
     unit: "second",
     strengths:
-      "The strongest creative-control surface: motion brush, camera control, video-to-video. Built for iteration — generate, then refine.",
+      "The strongest creative-control surface: motion brush, camera control, video-to-video. Built for iteration: generate, then refine.",
     bestFor: "VFX-leaning brand films and shot-heavy storytelling where you expect to iterate on the motion.",
   },
   [H3_MODEL_ID]: {
@@ -397,7 +397,7 @@ export const MODELS: Record<string, ModelInfo> = {
     unit: "second",
     strengths:
       "First-and-last-frame control: supply both ends and it generates only the move between them. Native 30-second single takes, audio generated jointly with the picture, and no input footage on the bill.",
-    bestFor: "A move between two frames you have already approved — and the cheapest Seedance route, since nothing is billed as input duration.",
+    bestFor: "A move between two frames you have already approved, and the cheapest Seedance route, since nothing is billed as input duration.",
   },
   "seedance-2.5-ref": {
     id: "seedance-2.5-ref",
@@ -434,7 +434,7 @@ export const MODELS: Record<string, ModelInfo> = {
     strengths:
       "Text-to-sound-effect: one named effect at a time, 0.5-22s, optionally seamless-looping. Delivered as a separate file for placement in an edit.",
     bestFor:
-      "The hero product sound — the crack, the pour, the seal breaking. The one noise the ad is actually selling, which a video model only ever approximates.",
+      "The hero product sound: the crack, the pour, the seal breaking. The one noise the ad is actually selling, which a video model only ever approximates.",
   },
 
   "eleven-music": {
@@ -447,7 +447,7 @@ export const MODELS: Record<string, ModelInfo> = {
     unit: "second",
     billingIncrementSeconds: 60,
     strengths:
-      "Generates an actual composed track — genre, tempo, instrumentation and arrangement — from 3s to 10 minutes.",
+      "Generates an actual composed track (genre, tempo, instrumentation and arrangement) from 3s to 10 minutes.",
     bestFor:
       "A separately directed instrumental music bed for an ad, with control over genre, instrumentation and musical arc.",
   },

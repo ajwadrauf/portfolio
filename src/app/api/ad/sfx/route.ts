@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     }
     if (text.length > 600) {
       return NextResponse.json(
-        { error: "That description is too long — one event, described physically." },
+        { error: "That description is too long. Describe one physical event." },
         { status: 400 },
       );
     }

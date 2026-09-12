@@ -13,7 +13,7 @@ import { seedanceCost } from "@/lib/videoCost";
 import { WALL, WALL_COST } from "@/lib/theWall";
 
 export const metadata: Metadata = {
-  title: "Blender → Seedance — AI Content Studio",
+  title: "Blender → Seedance · AI Content Studio",
   description:
     "Using Blender through MCP to produce clay control passes for Seedance 2.5: what it costs to guess versus to specify, how to keep the two reference lanes apart, and a builder for the brief that constructs the clay.",
 };
@@ -95,8 +95,8 @@ export default function BlenderPage() {
         <p className="mt-6 max-w-[68ch] text-lg leading-relaxed text-muted">
           A generative render is the expensive step and the least repeatable
           one. Describe a camera move in words and you get a different move
-          every take. Build it in Blender as untextured grey geometry — a{" "}
-          <span className="font-semibold text-foreground">clay pass</span> — and
+          every take. Build it in Blender as untextured grey geometry, called a{" "}
+          <span className="font-semibold text-foreground">clay pass</span>, and
           Seedance reads the structure instead of inventing it. The finished
           pixels are still the model&apos;s. The decisions are yours.
         </p>
@@ -110,7 +110,7 @@ export default function BlenderPage() {
               {money(GUESS_TAKE * GUESSED_TAKES)}
             </p>
             <p className="mt-2 text-xs leading-relaxed text-muted">
-              {GUESSED_TAKES} takes at {money(GUESS_TAKE)} — a modest estimate
+              {GUESSED_TAKES} takes at {money(GUESS_TAKE)}. A modest estimate
               for arriving at a specific camera move through wording alone.
             </p>
           </div>
@@ -133,7 +133,7 @@ export default function BlenderPage() {
         </div>
 
         <p className="mt-4 text-xs leading-relaxed text-muted">
-          Priced with the Ad Lab&apos;s token model on the shot below — 12s, 4:3,
+          Priced with the Ad Lab&apos;s token model on the shot below: 12s, 4:3,
           480p. That configuration was measured against a real invoice at $3.05;
           the model puts it at {money(CLAY_TAKE)}.
         </p>
@@ -141,9 +141,9 @@ export default function BlenderPage() {
         <p className="mt-5 max-w-[68ch] text-sm leading-relaxed text-muted">
           The saving is the smaller half of the argument. The larger half is
           that the clay pass makes the shot{" "}
-          <span className="font-semibold text-foreground">repeatable</span> — a
-          consistent camera, blocking and timing reference for each
-          regeneration — which is what lets a concept survive review notes
+          <span className="font-semibold text-foreground">repeatable</span>. It gives
+          each regeneration a consistent camera, blocking and timing reference,
+          which lets a concept survive review notes
           instead of being re-rolled.
         </p>
 
@@ -163,7 +163,7 @@ export default function BlenderPage() {
         <SectionHead
           n="01"
           title="Write the brief that builds the clay"
-          lede="This is the brief you hand to whatever is driving Blender — scene, camera, ID colours, the beat sheet as keyframes, and how to animate it. It also names what you are not simulating, because a placeholder the video prompt does not know about is what produces a flat object skating across a frozen surface."
+          lede="This brief tells whatever is driving Blender how to build the scene, camera and ID colours, turn the beat sheet into keyframes, and animate it. It also names what you are not simulating, because a placeholder the video prompt does not know about is what produces a flat object skating across a frozen surface."
         />
         <BlenderBriefBuilder mode="build" />
 
@@ -171,7 +171,7 @@ export default function BlenderPage() {
           <span className="font-semibold text-foreground">Then write the prompt.</span>{" "}
           The clip this brief produces becomes{" "}
           <code className="font-mono text-xs">[Video1]</code> in a Seedance
-          prompt — a separate document, built from the same shot so the two
+          prompt. It is a separate document, built from the same shot so the two
           cannot drift apart.{" "}
           <Link href="/ai-studio/prompts#clay" className="font-semibold text-accent hover:underline">
             Open the prompt builder →
@@ -189,7 +189,7 @@ export default function BlenderPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={WALL.poster}
-              alt="Final frame of the clay control pass — four ID-coloured packs behind a cookie"
+              alt="Final frame of the clay control pass showing four ID-coloured packs behind a cookie"
               className="h-full w-full object-cover"
             />
             <div className="p-6 sm:p-8">
@@ -206,7 +206,7 @@ export default function BlenderPage() {
                       {c.unit && <span className="ml-0.5 text-xs text-muted">{c.unit}</span>}
                     </p>
                     <p className="text-[11px] leading-snug text-muted">
-                      {c.k.split(" — ")[0].split(",")[0]}
+                      {c.k.split(/ [—·] /)[0].split(",")[0]}
                     </p>
                   </div>
                 ))}
@@ -291,7 +291,7 @@ export default function BlenderPage() {
         <SectionHead
           n="04"
           title="How the build runs"
-          lede="Six phases through the Blender MCP connection. Every call runs in a fresh Python namespace, so the scene lives in a script file rather than in a conversation — which matters because the clay pass gets re-rendered many times."
+          lede="Six phases through the Blender MCP connection. Every call runs in a fresh Python namespace, so the scene lives in a script file rather than in a conversation. That matters because the clay pass gets re-rendered many times."
         />
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PHASES.map((p) => (
@@ -355,8 +355,8 @@ export default function BlenderPage() {
           </Drawer>
 
           <Drawer
-            title={`${VENDOR_OVERLAP.name} — what a vendor now does for you`}
-            hint="A page arguing that knowing the landscape is the job should say that this is partly automated now — and be equally clear that it automates the geometry, not the judgment."
+            title={`${VENDOR_OVERLAP.name}: what a vendor now does for you`}
+            hint="Some of this work is now automated. The distinction matters: a vendor can automate the geometry, while the judgment remains yours."
           >
             <p className="max-w-[70ch] text-sm leading-relaxed text-muted">
               {VENDOR_OVERLAP.what}

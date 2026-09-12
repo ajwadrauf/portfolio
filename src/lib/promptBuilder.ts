@@ -39,7 +39,7 @@ export const HEAD_BLOCKS: BuilderBlock[] = [
   {
     id: "register",
     n: "01",
-    label: "Register — what kind of film is this",
+    label: "Register: what kind of film is this",
     why: "The first clause sets the whole grade. \"Bright and colourful commercial style\" and \"moody cinematic short\" produce different lighting, different lenses and different cutting from identical instructions further down. Say it first and say it plainly; a model that has to infer the register infers it late, after it has already committed to a look.",
     placeholder: "Top-down overhead flat-lay on a bright yellow background, static camera…",
     example:
@@ -48,7 +48,7 @@ export const HEAD_BLOCKS: BuilderBlock[] = [
   {
     id: "subject",
     n: "02",
-    label: "Subject and variants — what is the star",
+    label: "Subject and variants: what is the star",
     why: "Name the hero and name the set it belongs to. \"Four flavours: strawberry, apple, grape and orange\" tells the model there are exactly four things to arrange, so it stops inventing a fifth. Vagueness here is the single most expensive kind: every later instruction is applied to whatever the model decided the subject was.",
     placeholder: "…a tub of vanilla ice milk, its cone, and the syrup…",
     example:
@@ -57,8 +57,8 @@ export const HEAD_BLOCKS: BuilderBlock[] = [
   {
     id: "bindings",
     n: "03",
-    label: "Reference bindings — what each reference is FOR",
-    why: "This is the part almost everyone skips, and it is the part that stops product drift. Uploading references is not enough: each one needs a stated job, bound inline where it applies. \"The pack references [Image1]\" is an instruction. Attaching six files and hoping is not. And bind by token, never by filename — the model resolves references positionally and has never seen what your file is called.",
+    label: "Reference bindings: what each reference is FOR",
+    why: "This is the part almost everyone skips, and it is the part that stops product drift. Uploading references is not enough: each one needs a stated job, bound inline where it applies. \"The pack references [Image1]\" is an instruction. Attaching six files and hoping is not. And bind by token, never by filename. The model resolves references positionally and has never seen what your file is called.",
     placeholder: "[Image1] is the reference for the exact packaging and label…",
     example:
       "[Image1] is the reference for the exact appearance, packaging, proportions and label of the product. [Video1] is the reference for the camera position and the reverse-action stop-motion pacing. Hold the product in [Image1] pixel-consistent throughout: same packaging, same label text, same proportions, no drift, no re-imagining.",
@@ -67,7 +67,7 @@ export const HEAD_BLOCKS: BuilderBlock[] = [
   {
     id: "arrangement",
     n: "04",
-    label: "Arrangement — how the frame is organised",
+    label: "Arrangement: how the frame is organised",
     why: "Composition is a separate decision from subject, and models are good at it when told. \"Everything centred, nothing else in frame\" is a layout rule the model can execute. Leave it out and you get a competent product on an arbitrary table.",
     placeholder: "Everything sits centred in frame, nothing else in shot…",
     example:
@@ -80,7 +80,7 @@ export const TAIL_BLOCKS: BuilderBlock[] = [
   {
     id: "text",
     n: "06",
-    label: "On-screen text — exact words, exact position",
+    label: "On-screen text: exact words, exact position",
     why: "Anything in quotation marks tends to be rendered literally, so put the real copy in quotes and say where it sits and when it arrives. Describing text instead of quoting it produces plausible-looking gibberish, which is the most common reason an otherwise good take is unusable.",
     placeholder: 'Bold stark text snaps on: "BRAND" top-left, "$0.00" bottom-right…',
     example:
@@ -90,9 +90,9 @@ export const TAIL_BLOCKS: BuilderBlock[] = [
   {
     id: "music",
     n: "07",
-    label: "Music bed — or an explicit refusal",
-    why: "A video model approximates music rather than composing it, so this is a fork rather than a field. If a real track is coming from a music model afterwards, say no music here or the two layers fight. If the model is carrying everything, brief the bed the way a composer would — genre, tempo, instrumentation.",
-    placeholder: "Underscored by a playful indie-pop bed at 128 BPM… — or: no music.",
+    label: "Music bed, or an explicit refusal",
+    why: "A video model approximates music rather than composing it, so this is a fork rather than a field. If a real track is coming from a music model afterwards, say no music here or the two layers fight. If the model is carrying everything, brief the bed the way a composer would: genre, tempo, instrumentation.",
+    placeholder: "Underscored by a playful indie-pop bed at 128 BPM… or: no music.",
     example:
       "Underscored by a playful indie-pop advertising bed at 128 BPM: staccato muted electric guitar, bouncy upright bass, glockenspiel accents.",
     optional: true,
@@ -121,7 +121,7 @@ export const BEAT_ROLES: { id: BeatRole; label: string; guidance: string }[] = [
     id: "open",
     label: "Open",
     guidance:
-      "The first beat decides whether anyone sees the rest. Establish the subject and the register immediately — this is not the place for a slow reveal in a cut this short.",
+      "The first beat decides whether anyone sees the rest. Establish the subject and the register immediately. This is not the place for a slow reveal in a cut this short.",
   },
   {
     id: "build",
@@ -133,13 +133,13 @@ export const BEAT_ROLES: { id: BeatRole; label: string; guidance: string }[] = [
     id: "climax",
     label: "Climax",
     guidance:
-      "The one moment the ad is selling. Describe it physically — what breaks, what scatters, what the speed does. Size it to its kind rather than by rule: a slow-motion payoff needs room to be read, a snap reveal is ruined by it. What matters is that exactly one beat is marked as this one.",
+      "The one moment the ad is selling. Describe it physically: what breaks, what scatters, what the speed does. Size it to its kind rather than by rule: a slow-motion payoff needs room to be read, a snap reveal is ruined by it. What matters is that exactly one beat is marked as this one.",
   },
   {
     id: "resolve",
     label: "Resolve",
     guidance:
-      "The product, the price, the lockup. Needs long enough to read — a price card that flashes past in half a second is a wasted beat.",
+      "The product, the price, the lockup. Needs long enough to read. A price card that flashes past in half a second is a wasted beat.",
   },
 ];
 
@@ -216,7 +216,7 @@ export function timelineIssues(
     out.push({
       level: "warn",
       field: "prompt-timeline",
-      text: `${short.length} beat${short.length === 1 ? " is" : "s are"} under ${MIN_BEAT_SECONDS}s. At that length an action registers as a flicker rather than a beat — either give it room or fold it into its neighbour.`,
+      text: `${short.length} beat${short.length === 1 ? " is" : "s are"} under ${MIN_BEAT_SECONDS}s. At that length an action registers as a flicker rather than a beat. Either give it room or fold it into its neighbour.`,
     });
   }
 
@@ -234,7 +234,7 @@ export function timelineIssues(
     out.push({
       level: "error",
       field: "prompt-references",
-      text: `"${filename[0]}" is a filename. The model resolves references positionally as [Image1], [Video1] and so on — it has never seen what your file is called, so a filename is read as literal text and the reference is silently ignored. Bind by token instead.`,
+      text: `"${filename[0]}" is a filename. The model resolves references positionally as [Image1], [Video1] and so on. It has never seen what your file is called, so a filename is read as literal text and the reference is silently ignored. Bind by token instead.`,
     });
   }
 
@@ -245,7 +245,7 @@ export function timelineIssues(
     out.push({
       level: "error",
       field: "prompt-references",
-      text: `${dangling.join(", ")} ${dangling.length === 1 ? "is" : "are"} referenced but not declared above. A token pointing at nothing fails quietly — you get a plausible take built on the wrong reference.`,
+      text: `${dangling.join(", ")} ${dangling.length === 1 ? "is" : "are"} referenced but not declared above. A token pointing at nothing fails quietly. You get a plausible take built on the wrong reference.`,
     });
   }
 
@@ -265,7 +265,7 @@ export type Slot = {
 
 /** The worked example's reference set, matching the example copy above. */
 export const EXAMPLE_SLOTS: Slot[] = [
-  { media: "image", job: "the yellow vanilla tub — product identity" },
+  { media: "image", job: "the yellow vanilla tub · product identity" },
   { media: "video", job: "the opening composition" },
   { media: "video", job: "cut rhythm and camera movement" },
 ];
@@ -400,11 +400,11 @@ export const EXAMPLE_BEATS: Beat[] = [
 export const RULES = [
   {
     h: "Bind references inline, not in a list at the end",
-    p: "A reference mentioned where it applies governs that clause. The same reference listed in a block at the bottom governs everything and therefore nothing — the model averages it into the general look instead of applying it to the shot you meant.",
+    p: "A reference mentioned where it applies governs that clause. The same reference listed in a block at the bottom governs everything and therefore nothing. The model averages it into the general look instead of applying it to the shot you meant.",
   },
   {
     h: "Tokens are numbered per media type, not overall",
-    p: "The first still is [Image1] and the first clip is [Video1] even if three images were uploaded before it. Get this wrong and the prompt points at a file that is not there, which fails silently — you get a plausible video built on the wrong reference.",
+    p: "The first still is [Image1] and the first clip is [Video1] even if three images were uploaded before it. Get this wrong and the prompt points at a file that is not there, which fails silently. You get a plausible video built on the wrong reference.",
   },
   {
     h: "Quote the words you want rendered",
@@ -420,7 +420,7 @@ export const RULES = [
   },
   {
     h: "One take, one climax",
-    p: "Two payoff moments in a 15-second cut means neither lands. If a second idea is worth having, it is worth its own render — which at 480p costs about a fifth of a finished one.",
+    p: "Two payoff moments in a 15-second cut means neither lands. If a second idea is worth having, it is worth its own render, which at 480p costs about a fifth of a finished one.",
   },
 ];
 
@@ -432,5 +432,5 @@ export const SYNTAX_NOTE = {
   playground: "@Image1",
   api: "[Image1]",
   detail:
-    "The Dreamina playground writes references as @Image1 because it resolves them from an attachment picker as you type. Through the API — which is what this studio uses — they are square-bracketed, [Image1]. The structure is identical; only the sigil changes. Paste a playground prompt straight into an API call with the @ intact and the tokens are read as literal text.",
+    "The Dreamina playground writes references as @Image1 because it resolves them from an attachment picker as you type. Through the API (which is what this studio uses), they are square-bracketed, [Image1]. The structure is identical; only the sigil changes. Paste a playground prompt straight into an API call with the @ intact and the tokens are read as literal text.",
 };

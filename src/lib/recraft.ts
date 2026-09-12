@@ -44,7 +44,7 @@ function token(): string {
  */
 function describe(status: number, body: string): string {
   if (status === 401 || status === 403) {
-    return "Recraft rejected the API token. Check RECRAFT_API_TOKEN in .env.local — it is the token from app.recraft.ai/profile/api — then restart the server.";
+    return "Recraft rejected the API token. Check RECRAFT_API_TOKEN in .env.local. It is the token from app.recraft.ai/profile/api. Then restart the server.";
   }
   if (status === 402 || /credit/i.test(body)) {
     return "Recraft says this account is out of credits. Top up at app.recraft.ai and try again.";

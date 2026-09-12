@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     const edited = body.recipe ? recipeSchema.safeParse(body.recipe) : null;
     if (edited && !edited.success) {
       return NextResponse.json(
-        { error: "That recipe is too long to compose — trim a few lines and try again." },
+        { error: "That recipe is too long to compose. Trim a few lines and try again." },
         { status: 400 },
       );
     }
@@ -123,19 +123,19 @@ export async function POST(req: Request) {
         : audioMode === "silent" && body.modelId === H3_MODEL_ID
           ? "forbid dialogue, lip-sync, music and singing; any native ambience should be minimal because the soundtrack is replaced in post"
           : audioMode === "silent"
-          ? "in particular the take MUST stay completely silent — no effects, no ambience, no music"
+          ? "in particular the take MUST stay completely silent: no effects, no ambience, no music"
           : "including its musical direction";
 
     const result = await reasonJson({
       prompt: `You are a creative director finalizing a short-form product ad prompt for a generative video model with native synchronized audio (text in quotes renders as on-screen or spoken content).
 
-The ad concept is ${edited?.success ? "a preset recipe the user has EDITED — treat their edits as the brief and follow them exactly, even where they depart from convention" : "a fixed preset — do NOT change its concept, camera style, structure or audio design"}. Your job is to polish the draft prompt below into the strongest possible ${durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, and keep it as one flowing prompt of 4-8 sentences.${aspect !== preset.aspect ? ` The draft asks for a ${aspect} frame although the concept was staged for ${preset.aspect} — keep that reframing instruction and make the staging genuinely work in ${aspect}.` : ""} Preserve the Audio: cue's instructions exactly in spirit — ${audioRule}. No real-world brand names other than the quoted brand text.${
+The ad concept is ${edited?.success ? "a preset recipe the user has EDITED. Treat their edits as the brief and follow them exactly, even where they depart from convention" : "a fixed preset. Do NOT change its concept, camera style, structure or audio design"}. Your job is to polish the draft prompt below into the strongest possible ${durationSeconds}-second execution: compress the beats to fit the duration, sharpen the physics and motion verbs, keep every text overlay EXACTLY as quoted, and keep it as one flowing prompt of 4-8 sentences.${aspect !== preset.aspect ? ` The draft asks for a ${aspect} frame although the concept was staged for ${preset.aspect}. Keep that reframing instruction and make the staging genuinely work in ${aspect}.` : ""} Preserve the Audio: cue's instructions exactly in spirit: ${audioRule}. No real-world brand names other than the quoted brand text.${
         refs.length > 0
-          ? "\n\nThe draft ends with a reference-usage block addressing references positionally as [Image1], [Video1], [Audio1] and so on. Keep every one of those bracketed tokens EXACTLY as written and keep the instruction that the product must not drift — the video model resolves them against the uploaded reference files."
+          ? "\n\nThe draft ends with a reference-usage block addressing references positionally as [Image1], [Video1], [Audio1] and so on. Keep every one of those bracketed tokens EXACTLY as written and keep the instruction that the product must not drift. The video model resolves them against the uploaded reference files."
           : ""
       }
-${body.imageDataUrl ? "\nA photo of the ACTUAL product is attached, and it will also be passed to the video model as the grounding first frame. Anchor the prompt in what the photo really shows — the packaging's true colors, materials, finish and proportions — and correct any detail in the draft that contradicts the photo. The product in the ad must be recognizably THIS product.\n" : ""}
-Preset: ${preset.name} — ${preset.hook}
+${body.imageDataUrl ? "\nA photo of the ACTUAL product is attached, and it will also be passed to the video model as the grounding first frame. Anchor the prompt in what the photo really shows (the packaging's true colors, materials, finish and proportions) and correct any detail in the draft that contradicts the photo. The product in the ad must be recognizably THIS product.\n" : ""}
+Preset: ${preset.name}. ${preset.hook}
 
 Draft prompt:
 ${baseline}

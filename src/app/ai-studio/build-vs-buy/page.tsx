@@ -3,9 +3,9 @@ import Link from "next/link";
 import { ProductionCalculator } from "@/components/studio/ProductionCalculator";
 
 export const metadata: Metadata = {
-  title: "Build vs. Buy — AI Content Studio",
+  title: "Build vs. Buy · AI Content Studio",
   description:
-    "The stack decision an AI content studio has to make: creative suites, API aggregators, or direct model APIs — compared, with a recommendation.",
+    "Compare creative suites, API aggregators and direct model APIs, with a recommendation for an AI content studio.",
 };
 
 /** The three layers, top (most abstracted) to bottom (closest to the model). */
@@ -16,7 +16,7 @@ const LAYERS = [
     examples: "Higgsfield · Freepik · Krea",
     price: "$15–150 / seat / mo",
     role: "Exploration",
-    body: "Subscription UIs wrapping 15+ third-party models. They still own no frontier models, but calling them a convenience layer is now only half right: the leaders ship into the tools a team already uses — Higgsfield has a Blender add-on that prompts an editable blockout and animates a camera rig, an MCP bridge so an agent can build in the open scene, plus Premiere, After Effects and Figma plugins and a REST API of its own. What you are buying is the integration, not the model.",
+    body: "Subscription UIs wrapping 15+ third-party models. They still own no frontier models, but calling them a convenience layer is now only half right: the leaders ship into the tools a team already uses. Higgsfield has a Blender add-on that prompts an editable blockout and animates a camera rig, an MCP bridge so an agent can build in the open scene, plus Premiere, After Effects and Figma plugins and a REST API of its own. What you are buying is the integration, not the model.",
     wins: [
       "Creatives explore and iterate hands-on, daily",
       "Day-one access to every new model",
@@ -24,7 +24,7 @@ const LAYERS = [
       "Small team, modest volume",
     ],
     fails: [
-      "Volume scales — per-seat plus credits beats you",
+      "At scale, per-seat fees plus credits add up",
       "You need workflow integration, QA gates, audit trails",
       "The headline unlimited plan does not extend to the API or MCP, so an automated pipeline is back on credits",
       "Rights and data-governance terms need enterprise review",
@@ -38,7 +38,7 @@ const LAYERS = [
     role: "Production",
     body: "One key, ~1,000 curated production endpoints (fal) or 50k+ community models (Replicate). The pragmatic middle: model diversity without one integration per vendor.",
     wins: [
-      "Repeatable pipelines — versioning, adaptation, batch",
+      "Repeatable versioning, adaptation and batch pipelines",
       "You swap models often as leaders change",
       "Cost maps linearly to output",
     ],
@@ -53,7 +53,7 @@ const LAYERS = [
     examples: "Gemini · Black Forest Labs · Runway",
     price: "Usage-priced, negotiable",
     role: "Anchor",
-    body: "First-party access: newest capabilities first, best rate limits, enterprise terms negotiated with the model owner. Gemini is the standout for retail — reasoning, vision, stills and video behind one key.",
+    body: "First-party access: newest capabilities first, best rate limits, enterprise terms negotiated with the model owner. Gemini is the standout for retail, with reasoning, vision, stills and video behind one key.",
     wins: [
       "The workload anchors on one vendor's ecosystem",
       "Legal needs first-party rights and indemnity",
@@ -89,7 +89,7 @@ const LENSES = [
   },
   {
     q: "What does this cost at 500 assets a week?",
-    a: "Per-seat suites are flat until volume turns credits into the real bill. APIs are linear from day one — and model routing (draft cheap, finish premium) is where the savings actually live.",
+    a: "Per-seat suites are flat until volume turns credits into the real bill. APIs are linear from day one, and model routing (draft cheap, finish premium) is where the savings actually live.",
   },
   {
     q: "Could we leave in a week?",
@@ -108,7 +108,7 @@ export default function BuildVsBuyPage() {
         </h1>
         <p className="mt-5 text-lg leading-relaxed text-muted">
           Every AI studio faces this stack decision three ways at once. The
-          answer isn&apos;t one of them — it&apos;s knowing which layer each kind of
+          answer is knowing which layer each kind of
           work belongs on, and keeping the freedom to move as the market shifts
           monthly.
         </p>
@@ -169,7 +169,7 @@ export default function BuildVsBuyPage() {
             </div>
           ))}
           <p className="pt-1 text-xs text-muted/70">
-            Each layer sits closer to the model than the one above it — and
+            Each layer sits closer to the model than the one above it and
             gives up convenience for control as you descend.
           </p>
         </div>
@@ -232,8 +232,8 @@ export default function BuildVsBuyPage() {
           </table>
         </div>
         <p className="mt-3 text-xs text-muted/70">
-          &ldquo;Edge&rdquo; marks the layer that wins that row outright — no layer
-          wins enough of them to win the page, which is the point.
+          &ldquo;Edge&rdquo; marks the layer that wins that row outright. No layer
+          wins across the board.
         </p>
       </section>
 

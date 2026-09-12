@@ -10,7 +10,7 @@ import { VELUNE_REFERENCES } from "@/lib/veluneReferences";
 import styles from "@/components/velune/Velune.module.css";
 
 export const metadata: Metadata = {
-  title: "VELUNE — a chocolate film & creative process · Ajwad Rauf",
+  title: "VELUNE · a chocolate film & creative process · Ajwad Rauf",
   description: "Inside a fifteen-second fictional chocolate concept: a Blender camera study, nine AI-generated appearance references for the revised H3 take, a generated H3 film with separate ElevenLabs voiceover and six package-panel references.",
 };
 
