@@ -22,7 +22,7 @@ import { veluneAdExample } from "@/lib/veluneAdExample";
 import { effectMixTracks } from "@/lib/adAudioPlacement";
 import type { CompletedPreflightTake, GenerationSnapshot } from "@/lib/adPreflight";
 import { buildComposition, planProblem, planSeconds, planVideoDirection, soundPlanSchema, timedCues, voiceWindow, type EffectCue, type SoundPlan } from "@/lib/soundPlan";
-import { requestLiveUnlock, useHealth } from "@/lib/useHealth";
+import { requestLiveUnlock, requestUnlockForDemo, useHealth } from "@/lib/useHealth";
 import {
   AD_NEGATIVE_PROMPT,
   AD_PRESETS,
@@ -1414,6 +1414,7 @@ function AdLabWorkspace({
   /** One effect per call — two events in one prompt gives a muddle of both. */
   const generateSfx = useCallback(
     async (text: string) => {
+      if (requestUnlockForDemo(health)) return;
       setAudioError(null);
       setSfxBusy(text);
       try {
@@ -1427,10 +1428,11 @@ function AdLabWorkspace({
         setSfxBusy(null);
       }
     },
-    [audioJobs, sfxSeconds, effectCues, keepAudio],
+    [audioJobs, sfxSeconds, effectCues, keepAudio, health],
   );
 
   const generateMusic = useCallback(async () => {
+    if (requestUnlockForDemo(health)) return;
     setAudioError(null);
     if (musicComposition && soundPlanIssue) { setAudioError(soundPlanIssue); return; }
     setMusicBusy(true);
@@ -1448,7 +1450,7 @@ function AdLabWorkspace({
     } finally {
       setMusicBusy(false);
     }
-  }, [audioJobs, duration, invalidatePrompt, musicAsTimingRef, musicStyleId, musicCustomPrompt, musicKey, musicComposition, soundPlanIssue, keepAudio]);
+  }, [audioJobs, duration, invalidatePrompt, musicAsTimingRef, musicStyleId, musicCustomPrompt, musicKey, musicComposition, soundPlanIssue, keepAudio, health]);
 
   /** Keep the separately generated music bed locked to the video's transport. */
   const syncAudio = useCallback(
@@ -1507,13 +1509,14 @@ function AdLabWorkspace({
 
   const generate = useCallback(async () => {
     if (generateLock.current || !hydrated || draftSaveBlocked) return;
+    if (requestUnlockForDemo(health)) return;
     if (bindingProblems.length) { setError({ at: "generate", text: bindingProblems[0] }); return; }
     setError(null);
     if (audioJobs.busy || audioRefProblem || soundPlanIssue) { setAudioError(soundPlanIssue ?? audioRefProblem ?? "Wait for the audio request to finish before generating video."); return; }
     generateLock.current = true;
     if (health?.live) {
       const ok = window.confirm(
-        `This will run one live ${duration}s video generation at an estimated cost of $${cost.toFixed(2)}. Proceed?`,
+        `Create this ${duration}s video? The estimated cost is $${cost.toFixed(2)}.`,
       );
       if (!ok) { generateLock.current = false; return; }
     }
@@ -3432,7 +3435,7 @@ function AdLabWorkspace({
             canMatchDuration={Boolean(soundPlan && planSeconds(soundPlan) <= secondsCap && snapAdSeconds(modelId, planSeconds(soundPlan)) === planSeconds(soundPlan))}
             busy={audioJobs.busy || phase === "starting"} live={health?.live ?? false}
             scoreToPlan={scoreToPlan} onScoreToPlan={(enabled) => { setScoreToPlan(enabled); if (enabled) { setAudioMode("layered"); if (musicStyleId === NO_MUSIC_ID) setMusicStyleId("premium-cinematic"); } }}
-            onVoice={async (body, label) => { const result = await audioJobs.run("/api/ad/voice", body, label); if (!result.mock) keepAudio(result.audioUrl, label, "Voice · separate take"); return result; }} />
+            onVoice={async (body, label) => { if (requestUnlockForDemo(health)) return null; const result = await audioJobs.run("/api/ad/voice", body, label); if (!result.mock) keepAudio(result.audioUrl, label, "Voice · separate take"); return result; }} />
 
           {project?.example === "velune" && effectCues.some((cue) => cue.id.startsWith("velune-fx-")) && <div className="my-4 rounded-xl border border-border-soft bg-surface-2 p-4 sm:p-5">
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted">VELUNE · picture first, sound after</p>
@@ -3903,7 +3906,7 @@ function AdLabWorkspace({
                 </span>
               )}
               {health && !health.live && (
-                <span className="mt-1 block text-xs text-warning">Demo mode · no generation charge</span>
+                <span className="mt-1 block text-xs text-warning">{gateable ? "Demo mode · unlock to generate" : "Demo mode · no generation charge"}</span>
               )}
             </div>
             <button

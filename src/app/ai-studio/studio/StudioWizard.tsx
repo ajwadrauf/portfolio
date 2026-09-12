@@ -7,7 +7,7 @@ import { parseAdDraft } from "@/lib/adDraft";
 import { campaignDownloadSource, campaignMedia, emptyCampaignDraft, isRealHero, readCampaignDraft, renderCampaignTextTile, veluneCampaignDraft, type CampaignDraft, type CampaignJob as Job, type CampaignSnapshot, type CampaignReceipt } from "@/lib/campaignWorkspace";
 import { LiveGate } from "@/components/LiveGate";
 import { SpendChip } from "@/components/SpendChip";
-import { useHealth, type Health } from "@/lib/useHealth";
+import { requestUnlockForDemo, useHealth, type Health } from "@/lib/useHealth";
 import { DELIVERABLES, type DeliverableSpec } from "@/lib/deliverables";
 import { MODELS, estimateCost } from "@/lib/models";
 import { loadCampaignHandoff, validCampaignHandoffId, type CampaignHandoffRecord } from "@/lib/campaignHandoff";
@@ -379,6 +379,7 @@ export function StudioWizard() {
   }
   async function runGeneration(retry?: Job) {
     if (generationLock.current || !project || hydratedId !== project.id || !brief) return;
+    if (requestUnlockForDemo(health)) return;
     generationLock.current = true;
     const origin = project.id;
     try {

@@ -26,7 +26,6 @@ export function LiveGate() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const wrapRef = useRef<HTMLSpanElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const refresh = useCallback(async () => {
@@ -65,30 +64,27 @@ export function LiveGate() {
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (open && !dialog.open) {
+    if (open && !health?.live && !dialog.open) {
       dialog.showModal();
       // The passcode field is the point of the dialog, so it keeps the focus
       // it had before rather than the browser's first-focusable default.
       inputRef.current?.focus();
-    } else if (!open && dialog.open) {
+    } else if ((!open || health?.live) && dialog.open) {
       dialog.close();
     }
-  }, [open]);
+    if (health?.live && open) setOpen(false);
+  }, [open, health]);
 
-  /*
-   * Somewhere else on the page asked for the passcode field. Scroll it into
-   * view as well as opening it: this control sits in the header and the thing
-   * that prompted for it is usually a screen or two down, so opening alone
-   * would look like nothing happened.
-   */
+  // The native modal opens over the current viewport. Keep the visitor's place in the page.
   useEffect(() => {
     const on = () => {
+      if (health?.live) return;
+      setError(null);
       setOpen(true);
-      wrapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     };
     window.addEventListener(LIVE_GATE_OPEN_EVENT, on);
     return () => window.removeEventListener(LIVE_GATE_OPEN_EVENT, on);
-  }, []);
+  }, [health?.live]);
 
   const submit = useCallback(
     async (e: React.FormEvent) => {
@@ -101,14 +97,14 @@ export function LiveGate() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ passcode: code }),
         });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.error ?? "Unlock failed");
+        await r.json();
+        if (!r.ok) throw new Error(r.status === 401 ? "That passcode didn't match. Give it another try." : r.status === 429 ? "Too many tries for now. Please wait 15 minutes, then try again." : "Couldn't unlock the studio. Please try again in a moment.");
         setCode("");
         setOpen(false);
         await refresh();
         announceLiveModeChange();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unlock failed");
+        setError(err instanceof Error && !(err instanceof TypeError) ? err.message : "Couldn't check the passcode. Please try again.");
       } finally {
         setBusy(false);
       }
@@ -140,7 +136,7 @@ export function LiveGate() {
   }
 
   return (
-    <span ref={wrapRef} className="contents">
+    <span className="contents">
       {health.gate === "unlocked" ? (
         <button
           onClick={() => void lock()}
@@ -151,20 +147,21 @@ export function LiveGate() {
         </button>
       ) : (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => { setError(null); setOpen(true); }}
           className="-my-1.5 inline-flex items-center rounded-full border border-border-soft bg-surface-2 px-2.5 py-1.5 text-xs font-semibold text-muted transition hover:border-accent hover:text-foreground"
         >
-          {health.gate === "exhausted" ? "Budget used · Demo mode" : "Demo mode · Unlock"}
+          {health.gate === "exhausted" ? "Live runs used · Demo mode" : "Demo mode · Unlock"}
         </button>
       )}
 
       <dialog
         ref={dialogRef}
         aria-labelledby="live-gate-title"
-        className="max-w-sm rounded-[6px] border border-border-soft bg-surface p-0 text-foreground backdrop:bg-foreground/40"
+        aria-describedby="live-gate-description"
+        className="fixed inset-0 m-auto max-h-[calc(100dvh-32px)] w-[min(440px,calc(100vw-32px))] overflow-y-auto rounded-2xl border border-border-soft bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/50"
         // Escape and the close button both land here, so state follows the
         // element rather than the two drifting apart.
-        onClose={() => setOpen(false)}
+        onClose={() => { setOpen(false); setCode(""); }}
         onCancel={() => setOpen(false)}
         // A click on the backdrop targets the dialog itself; anything inside
         // targets a descendant. That is the whole test.
@@ -172,14 +169,15 @@ export function LiveGate() {
           if (e.target === dialogRef.current) setOpen(false);
         }}
       >
-        <form onSubmit={submit} className="w-full p-6">
-          <h2 id="live-gate-title" className="text-lg tracking-[-0.02em]">
-            Enable live generation
+        <form onSubmit={submit} className="w-full p-6 sm:p-8">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-accent">A quick heads-up</p>
+          <h2 id="live-gate-title" className="mt-3 text-2xl tracking-[-0.025em]">
+            {health.gate === "exhausted" ? "You're back in demo mode" : "You're in demo mode"}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            Browsing works without this — every page runs in demo mode with
-            realistic mock outputs. Enter the passcode from the application to
-            run real generations against the live models.
+          <p id="live-gate-description" className="mt-3 text-sm leading-relaxed text-muted">
+            {health.gate === "exhausted"
+              ? "This session has used its live runs. Enter the passcode I shared with you to start a fresh session, or keep exploring."
+              : "I built this studio for you to explore. To create your own images, films or sound, enter the passcode I shared with you."}
           </p>
           <label htmlFor="live-passcode" className="label-sm mt-4 block">
             Passcode
@@ -190,7 +188,8 @@ export function LiveGate() {
             type="password"
             autoComplete="off"
             className="input mt-1.5"
-            placeholder="Passcode"
+            placeholder="Enter your passcode"
+            disabled={busy}
             value={code}
             onChange={(e) => setCode(e.target.value)}
             aria-invalid={error ? true : undefined}
@@ -201,22 +200,24 @@ export function LiveGate() {
               {error}
             </p>
           )}
-          <div className="mt-4 flex justify-end gap-2">
+          <p className="mt-3 text-xs leading-relaxed text-muted">After unlocking, click Generate again when you're ready.</p>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
             <button
               type="button"
               className="btn-secondary !px-4 !py-2 text-sm"
               onClick={() => setOpen(false)}
             >
-              Cancel
+              Keep exploring
             </button>
             <button
               type="submit"
               className="btn-primary !px-4 !py-2 text-sm"
               disabled={busy || !code}
             >
-              {busy ? "Checking…" : "Unlock"}
+              {busy ? "Checking…" : "Unlock live tools"}
             </button>
           </div>
+          <p className="mt-5 border-t border-border-soft pt-4 text-xs text-muted">No passcode? <a className="inline-flex min-h-6 items-center font-semibold text-accent underline underline-offset-4" href="mailto:hello@ajwadrauf.com?subject=Studio%20passcode">Ask me for one.</a></p>
         </form>
       </dialog>
     </span>
@@ -260,7 +261,7 @@ export function UngatedBanner() {
     <div className="border-b border-danger/40 bg-danger/10">
       <p className="mx-auto max-w-6xl px-6 py-2 text-xs leading-relaxed text-danger">
         <span className="font-bold">⚠ Ungated live keys.</span> Generation is
-        billing a real account with no passcode in front of it — anyone who can
+        billing a real account with no passcode in front of it. Anyone who can
         open this URL can spend your credits. Set{" "}
         <code className="font-mono">LIVE_PASSCODE</code> in{" "}
         <code className="font-mono">.env.local</code> and restart to put the

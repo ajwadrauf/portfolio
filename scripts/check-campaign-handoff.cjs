@@ -44,7 +44,7 @@ function harness(file, exportName, props = {}, options = {}) {
     'next/dynamic': () => marker,
     '@/components/packshots/CampaignHandoffButton': { CampaignHandoffButton: marker },
     '@/components/packshots/PackshotActions': { PackshotActions: marker },
-    '@/lib/useHealth': { useHealth: () => ({ health: { live: true, gemini: true, fal: true } }) },
+    '@/lib/useHealth': { useHealth: () => ({ health: { live: true, gemini: true, fal: true } }), requestUnlockForDemo: health => { assert.equal(health.live, true); return false; } },
     ...options.overrides,
   };
   const cache = {};

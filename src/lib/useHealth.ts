@@ -50,6 +50,13 @@ export const requestLiveUnlock = () => {
   }
 };
 
+/** Pause a demo generation at the passcode dialog. Unlocking never submits a job. */
+export function requestUnlockForDemo(health: Pick<Health, "live" | "gate"> | null): boolean {
+  if (!health || health.live || (health.gate !== "locked" && health.gate !== "exhausted")) return false;
+  requestLiveUnlock();
+  return true;
+}
+
 /**
  * Current provider/gate state, kept current across the whole page.
  *

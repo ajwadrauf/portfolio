@@ -10,7 +10,7 @@ type Props = {
   duration: number; problem: string | null; onMatchDuration: (seconds: number) => void;
   canMatchDuration: boolean; busy: boolean; live: boolean;
   scoreToPlan: boolean; onScoreToPlan: (value: boolean) => void;
-  onVoice: (body: { text: string; voice: string; stability: number }, label: string) => Promise<{ audioUrl: string; mock: boolean }>;
+  onVoice: (body: { text: string; voice: string; stability: number }, label: string) => Promise<{ audioUrl: string; mock: boolean } | null>;
   takes: Record<string, VoiceTake>; onTakesChange: Dispatch<SetStateAction<Record<string, VoiceTake>>>;
   recoveredVoices: { requestId: string; label: string; audioUrl: string }[];
 };
@@ -57,6 +57,7 @@ export function SoundPlanner({ plan, onChange, duration, problem, onMatchDuratio
     setGenerating(true); setVoiceError("");
     try {
       const result = await onVoice({ text: cue.line.trim(), voice, stability }, `${cue.title} · ${voice} · voiceover`);
+      if (!result) return;
       onTakesChange((previous) => ({ ...previous, [cue.id]: { url: result.audioUrl, spec: settings, mock: result.mock, label: `${cue.title} · ${voice}` } }));
     } catch (e) { setVoiceError(e instanceof Error ? e.message : "Could not generate voiceover"); }
     finally { setGenerating(false); }

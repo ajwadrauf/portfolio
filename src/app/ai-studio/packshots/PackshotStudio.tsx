@@ -8,7 +8,7 @@ import { SpendChip } from "@/components/SpendChip";
 import { PackshotActions as CampaignHandoffButton } from "@/components/packshots/PackshotActions";
 import { useStudioProject } from "@/components/studio/StudioProjectProvider";
 import { FINISH_OPS, type FinishOp } from "@/lib/recraft.client";
-import { useHealth } from "@/lib/useHealth";
+import { requestUnlockForDemo, useHealth } from "@/lib/useHealth";
 import { MODELS, estimateCost } from "@/lib/models";
 import {
   EMPTY_BRIEF,
@@ -441,6 +441,7 @@ function PackshotSession() {
   const finish = useCallback(
     async (job: Job, op: FinishOp) => {
       if (job.status === "mock") return;
+      if (requestUnlockForDemo(health)) return;
       const source = job.finished?.url ?? job.imageUrl ?? job.imageDataUrl;
       if (!source) return;
       if (activeJobs.current.has(job.id)) return;
@@ -466,7 +467,7 @@ function PackshotSession() {
         });
       } finally { activeJobs.current.delete(job.id); }
     },
-    [addSpend, updateJob],
+    [addSpend, updateJob, health],
   );
 
   const done = jobs.filter((j) => j.imageDataUrl || j.imageUrl);
@@ -475,13 +476,14 @@ function PackshotSession() {
 
   const retryFailed = useCallback(async (only?: Job) => {
     if (runLock.current || activeJobs.current.size) return;
+    if (requestUnlockForDemo(health)) return;
     const queue = only ? [only] : failed;
     if (!queue.length) return;
     if (health?.live && !window.confirm("Retry submits a new paid generation using the original inputs. If a previous request timed out, check its provider log before paying again. Continue?")) return;
     runLock.current = true;
     setRunning(true);
     await runBatch(queue);
-  }, [failed, health?.live, runBatch]);
+  }, [failed, health, runBatch]);
 
   /**
    * Save the whole set.
@@ -508,6 +510,7 @@ function PackshotSession() {
 
   const generate = useCallback(async () => {
     if (runLock.current || uploadLock.current || activeJobs.current.size || uploading || !references.length || !selectedAngles.length || overCap) return;
+    if (requestUnlockForDemo(health)) return;
     const input: RunInput = { references: references.map((r) => ({ ...r })), brief: { ...brief }, requestedPx: resolved.px, sku, lang };
     const runId = crypto.randomUUID();
     const models = [...new Set([modelId, ...(challengerId ? [challengerId] : [])])];
@@ -522,13 +525,13 @@ function PackshotSession() {
       ...sizeRequestForModel(MODELS[job.modelId].outputSizes, input.requestedPx) })).byteLength > MAX_PACKSHOT_BODY_BYTES)) {
       setError("This reference set is too large to send. Remove an image or use a tighter crop."); return;
     }
-    if (health?.live && !window.confirm(`This will run ${runs.length} live packshot generations at an estimated cost of $${totalEstimate.toFixed(2)}. Proceed?`)) return;
+    if (health?.live && !window.confirm(`Create ${runs.length} packshots? The estimated cost is $${totalEstimate.toFixed(2)}.`)) return;
     runLock.current = true;
     setRunning(true);
     setError(null);
     setJobs(runs);
     await runBatch(runs);
-  }, [brief, challengerId, health?.live, lang, modelId, overCap, references, resolved.px, runBatch, selectedAngles, sku, totalEstimate, uploading]);
+  }, [brief, challengerId, health, lang, modelId, overCap, references, resolved.px, runBatch, selectedAngles, sku, totalEstimate, uploading]);
 
   return (
     <div className={styles.workspace}>
@@ -1052,7 +1055,7 @@ function PackshotSession() {
                 {groundedCount} with all visible faces supplied ·{" "}
                 <span className="font-bold text-accent">~${totalEstimate.toFixed(2)}</span>
                 {health && !health.live && (
-                  <span className="ml-2 text-xs text-warning">(demo mode — $0)</span>
+                  <span className="ml-2 text-xs text-warning">{health.gate === "locked" || health.gate === "exhausted" ? "Demo mode · unlock to generate" : "Demo mode · $0"}</span>
                 )}
               </div>
               <button
