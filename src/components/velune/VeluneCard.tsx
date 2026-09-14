@@ -12,10 +12,11 @@ export function VeluneCard({ compact = false }: { compact?: boolean }) {
       </div>
       <div className={styles.cardCopy}>
         <p className={styles.eyebrow}>VELUNE / Independent concept</p>
-        <span className={styles.status}>Film · Stills · Social adaptation</span>
+        <span className={styles.status}>Film · Stills · After Effects</span>
         <h3 id={compact ? "velune-studio-title" : "velune-home-title"}>A little chocolate.<br />A world within.</h3>
-        <p>A fifteen-second chocolate film, finished with sound and typography, alongside campaign stills and a vertical social layout. Follow the decisions from camera study to delivery.</p>
+        <p>A chocolate campaign spanning film, stills and social, with a fifteen-second Adobe After Effects motion study built through AI-assisted scripting. Follow the decisions from visual references to delivery, then explore editable typography, 3D carton moves and a chocolate portal reveal.</p>
         <Link className={styles.cta} href="/velune">Explore the VELUNE campaign <span aria-hidden>↗</span></Link>
+        <Link className={styles.referenceJump} href="/velune#after-effects">Watch the After Effects study <span aria-hidden>↗</span></Link>
       </div>
     </article>
   );

@@ -25,7 +25,7 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Ajwad Rauf · applied AI, creative work and production systems",
   description:
-    "I turn emerging AI into creative work and production systems people can actually use. Explore the VELUNE campaign, the studio behind it and Project Forge. Applied AI and creative technology, from Toronto.",
+    "I turn emerging AI into creative work and production systems people can actually use. Explore the VELUNE campaign and After Effects motion study, the studio behind it and Project Forge. Applied AI and creative technology, from Toronto.",
 };
 
 /**
@@ -168,8 +168,10 @@ export default function Home() {
               </p>
               <p className="ar-film-project-note">
                 VELUNE connects packaging, visual references, an H3 film and
-                ElevenLabs sound. The earlier ice-cream study shown here explores
-                how a Blender camera plan translates through Seedance.
+                ElevenLabs sound. A separate Adobe After Effects study extends
+                the campaign into editable motion design. The earlier ice-cream
+                study shown here explores how a Blender camera plan translates
+                through Seedance.
               </p>
               <p className="ar-role-note">
                 <strong>My role</strong> Concept, workflow design, model selection

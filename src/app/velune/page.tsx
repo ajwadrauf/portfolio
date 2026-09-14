@@ -5,13 +5,14 @@ import { SoundtrackPreview } from "@/components/ad/SoundtrackPreview";
 import { VELUNE_PACKAGE_PANELS } from "@/lib/velunePackaging";
 import { Wordmark } from "@/components/Wordmark";
 import { VelunePlayer } from "@/components/velune/VelunePlayer";
+import { VeluneMotionStudy } from "@/components/velune/VeluneMotionStudy";
 import { VELUNE_MEDIA } from "@/components/velune/veluneStudy";
 import { VELUNE_REFERENCES } from "@/lib/veluneReferences";
 import styles from "@/components/velune/Velune.module.css";
 
 export const metadata: Metadata = {
   title: "VELUNE · a chocolate campaign & creative process · Ajwad Rauf",
-  description: "A fictional chocolate campaign from brief to delivery: a finished film with H3 sound and ElevenLabs voiceover, campaign still, vertical social layout and English/French adaptation.",
+  description: "A fictional chocolate campaign from brief to delivery: finished films, an editable After Effects motion study, H3 sound and ElevenLabs voiceover, campaign stills and social adaptations.",
 };
 
 const DECISIONS = [
@@ -59,8 +60,8 @@ export default function VelunePage() {
             <a className={styles.referenceJump} href="#visual-references">Explore the appearance references <span aria-hidden="true">↓</span></a>
           </div>
           <aside className={styles.heroNote}>
-            <span className={styles.status}>Film · Campaign stills · Social layout</span>
-            <p>Follow the camera plan, visual direction and finishing decisions. The complete campaign set, including the film with its mixed soundtrack, comes together at the end.</p>
+            <span className={styles.status}>Film · Stills · After Effects</span>
+            <p>Follow the camera plan, visual direction and finishing decisions. The campaign set comes together at the end, followed by an After Effects motion study with an editable project.</p>
             <dl><div><dt>Format</dt><dd>15 seconds / 16:9</dd></div><div><dt>Edit target</dt><dd>360 frames / 24 fps</dd></div><div><dt>Structure</dt><dd>12 shots / 11 hard cuts</dd></div><div><dt>Project</dt><dd>Independent concept</dd></div></dl>
           </aside>
         </section>
@@ -183,7 +184,7 @@ export default function VelunePage() {
         </section>
 
         <section className={`${styles.wrap} ${styles.credits}`}>
-          <div><p className={styles.eyebrow}>My role</p><h2>Ajwad Rauf</h2><p>Concept adaptation, creative direction, reference selection and production review. I identified where the picture lost credibility and chose what needed to change. AI assisted the brief, code, imagery and local finishing. Blender supplied the camera study, H3 Max the generated picture and native sound, and ElevenLabs the voiceover.</p></div>
+          <div><p className={styles.eyebrow}>My role</p><h2>Ajwad Rauf</h2><p>Concept adaptation, creative direction, reference selection and production review. I identified where the picture lost credibility and chose what needed to change. AI assisted the brief, code, imagery and local finishing. Blender supplied the camera study, H3 Max the generated picture and native sound, and ElevenLabs the voiceover. A separate After Effects study extends the direction through editable motion graphics.</p></div>
           <div><p className={styles.eyebrow}>Study notes</p><p>An independent fictional campaign concept. The final files bring together the selected imagery, typeset graphics and mixed sound. This is portfolio work, with no client performance results attached. Source files remain available below.</p><Link href="/#ar-work">Back to selected work <span aria-hidden>↗</span></Link></div>
         </section>
         <section className={styles.cinema} id="velune-film" aria-labelledby="film-heading">
@@ -202,6 +203,7 @@ export default function VelunePage() {
           </div>
         </section>
 
+        <VeluneMotionStudy />
       </main>
       <footer className={`${styles.wrap} ${styles.footer}`}><span>Ajwad Rauf · Toronto · 2026</span><a href="mailto:hello@ajwadrauf.com">hello@ajwadrauf.com ↗</a></footer>
     </div>

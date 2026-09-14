@@ -31,3 +31,12 @@ export const VELUNE_MEDIA = {
   packaging: "/studio/velune/packaging-concepts.jpg",
   report: "/studio/velune/report-concept.jpg",
 } as const;
+
+export const VELUNE_MOTION = {
+  film: "/studio/velune/motion/velune-wonder-lab.mp4",
+  poster: "/studio/velune/motion/closing.jpg",
+  opening: "/studio/velune/motion/opening.jpg",
+  collection: "/studio/velune/motion/collection.jpg",
+  closing: "/studio/velune/motion/closing.jpg",
+  bundle: "/studio/velune/motion/velune-after-effects.zip",
+} as const;

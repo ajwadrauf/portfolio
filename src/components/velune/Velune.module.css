@@ -277,3 +277,30 @@
 .originalArtwork summary { padding-block: 20px; cursor: pointer; }
 @media (max-width: 700px) { .panelGallery { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; } .panelGallery img { height: 180px; } }
 @media (max-width: 420px) { .panelGallery { grid-template-columns: 1fr; } }
+
+.motionSection { padding-block: 72px; scroll-margin-top: 24px; background: #301721; color: #f5ecd9; border-top: 1px solid #826447; }
+.motionSection .eyebrow { color: #ddc191; font-size: 12px; }
+.motionSection p { color: #d7c7c8; }
+.motionSection .sectionHead > p { font-size: 16px; }
+.motionSection .finalVideo { border: 1px solid #71535e; }
+.motionFilmNote { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; align-items: center; margin-top: 14px; font-size: 14px; }
+.motionFilmNote a { display: inline-flex; min-height: 44px; align-items: center; text-decoration: underline; text-underline-offset: 4px; }
+.motionMoments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 42px; }
+.motionMoments figure { min-width: 0; }
+.motionMoments img { aspect-ratio: 16 / 9; border: 1px solid #71535e; }
+.page .motionMoments figcaption { padding-top: 22px; }
+.motionMoments h3 { color: #f5ecd9; font: 26px/1.2 Georgia, serif; margin-block: 10px 14px; }
+.motionMoments p { font-size: 16px; line-height: 1.7; }
+.motionHandoff { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: center; border-block: 1px solid #71535e; padding-block: 32px; margin-top: 40px; }
+.motionHandoff h3 { margin-block: 10px 14px; }
+.motionHandoff p { font-size: 16px; line-height: 1.7; }
+.motionHandoffAction a { display: flex; gap: 24px; align-items: center; justify-content: space-between; padding: 16px 22px; background: #e1c08c; color: #301721; font-size: 16px; font-weight: 600; }
+.motionHandoffAction a:hover { background: #edcf9f; }
+.motionHandoffAction p { font-size: 14px; margin-top: 12px; }
+.motionSection .motionCredit { font-size: 14px; max-width: 100ch; margin-top: 26px; }
+@media (max-width: 760px) {
+  .motionSection { padding-block: 48px; }
+  .motionMoments, .motionHandoff { grid-template-columns: 1fr; gap: 28px; }
+  .motionMoments { margin-top: 26px; }
+  .motionHandoff { margin-top: 26px; }
+}
