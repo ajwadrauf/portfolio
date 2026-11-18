@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { weaveUrl } from "@/app/ai-studio/workflows/study";
 import { SoundtrackPreview } from "@/components/ad/SoundtrackPreview";
 import { VELUNE_PACKAGE_PANELS } from "@/lib/velunePackaging";
 import { Wordmark } from "@/components/Wordmark";
@@ -12,7 +13,7 @@ import styles from "@/components/velune/Velune.module.css";
 
 export const metadata: Metadata = {
   title: "VELUNE · a chocolate campaign & creative process · Ajwad Rauf",
-  description: "A fictional chocolate campaign from brief to delivery: finished films, an editable After Effects motion study, H3 sound and ElevenLabs voiceover, campaign stills and social adaptations.",
+  description: "An independent chocolate campaign from brief to delivery, with ComfyUI and Figma Weave carton studies, H3 film, ElevenLabs voiceover and editable After Effects motion.",
 };
 
 const DECISIONS = [
@@ -57,11 +58,25 @@ export default function VelunePage() {
             <h1>VELUNE<span>Wonder within.</span></h1>
             <p className={styles.lead}>A small chocolate contains a world of discovery. The challenge is making that world read in fifteen seconds.</p>
             <a className={styles.cta} href="#camera-study">Explore the making of <span aria-hidden>↓</span></a>
-            <a className={styles.referenceJump} href="#visual-references">Explore the appearance references <span aria-hidden="true">↓</span></a>
+            <div className={styles.heroJumps}>
+              <Link className={styles.referenceJump} href="/ai-studio/workflows">Compare the carton workflows <span aria-hidden>↗</span></Link>
+              <a className={styles.referenceJump} href="#visual-references">Appearance references <span aria-hidden>↓</span></a>
+            </div>
+            <nav className={styles.toolNav} aria-labelledby="velune-tools">
+              <p className={styles.eyebrow} id="velune-tools">Tools used</p>
+              <ul>
+                <li><a href="#camera-study">Blender</a></li>
+                <li><a href="#creative-review">H3 Max</a></li>
+                <li><a href="#sound-direction">ElevenLabs</a></li>
+                <li><a href="#after-effects">After Effects</a></li>
+                <li><Link href="/ai-studio/workflows#workflow-graphs">ComfyUI</Link></li>
+                <li><a href={weaveUrl} target="_blank" rel="noreferrer">Figma Weave <span aria-hidden>↗</span></a></li>
+              </ul>
+            </nav>
           </div>
           <aside className={styles.heroNote}>
-            <span className={styles.status}>Film · Stills · After Effects</span>
-            <p>Follow the camera plan, visual direction and finishing decisions. The campaign set comes together at the end, followed by an After Effects motion study with an editable project.</p>
+            <span className={styles.status}>Film · Stills · Motion</span>
+            <p>Follow the camera plan and finishing decisions through to the campaign delivery. The carton study explores two more visual directions using the same Raspberry Ganache reference.</p>
             <dl><div><dt>Format</dt><dd>15 seconds / 16:9</dd></div><div><dt>Edit target</dt><dd>360 frames / 24 fps</dd></div><div><dt>Structure</dt><dd>12 shots / 11 hard cuts</dd></div><div><dt>Project</dt><dd>Independent concept</dd></div></dl>
           </aside>
         </section>
@@ -177,7 +192,7 @@ export default function VelunePage() {
           <ol className={styles.stages}>{STAGES.map((stage) => <li key={stage.n}><span className={styles.stageNumber}>{stage.n}</span><div><span className={styles.stageState}>{stage.state}</span><h3>{stage.title}</h3><p>{stage.body}</p></div></li>)}</ol>
         </section>
 
-        <section className={styles.soundSection} aria-labelledby="sound-heading">
+        <section className={styles.soundSection} id="sound-direction" aria-labelledby="sound-heading">
           <div className={`${styles.wrap} ${styles.soundGrid}`}>
             <div><p className={styles.eyebrow}>06 / Sound direction</p><h2 id="sound-heading">A little curiosity.<br /><em>Room to listen.</em></h2><p>Four short voice lines leave space for the visual reveals. The final mix combines the supplied ElevenLabs voice with H3’s original sound, lowering the background during speech and letting the final sound settle at the cut.</p><p>Ad Lab keeps voice, the optional music brief and effect cues available separately. The campaign MP4 below already contains the selected mix; the original layers remain available for comparison.</p><Link className={styles.cta} href="/ai-studio/ads#ad-sound">Explore the sound workflow <span aria-hidden>↗</span></Link></div>
             <div className={styles.voice}><p className={styles.eyebrow}>Proposed voice windows / seconds</p>{VOICE.map((line) => <div key={line.window}><span>{line.window}</span><blockquote>“{line.text}”</blockquote></div>)}<p className={styles.pronunciation}>VELUNE is pronounced veh-LOON. These are the planned narration windows. The delivered film uses the supplied voiceover recording, with its existing timing.</p></div>

@@ -21,6 +21,26 @@
 .cta:hover { background: var(--accent); border-color: var(--accent); }
 .hero .cta { margin-top: 28px; max-width: 330px; }
 .referenceJump { display: inline-flex; gap: 20px; align-items: center; min-height: 44px; margin-top: 8px; font-size: 12px; color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+.heroJumps { display: flex; flex-wrap: wrap; column-gap: 20px; }
+.heroJumps .referenceJump { gap: 6px; margin-top: 4px; }
+.toolNav { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.toolNav ul { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 8px; }
+.toolNav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.toolNav a:hover { background: var(--surface-2); border-color: var(--accent); }
+.soundSection { scroll-margin-top: 24px; }
 .heroNote { border-left: 1px solid var(--border); padding-left: 32px; }
 .status { display: inline-block; border: 1px solid var(--accent); color: var(--accent); padding: 6px 10px; border-radius: 3px; font-size: 11px; line-height: 1.5; }
 .heroNote > p { font-size: 14px; margin-block: 20px 24px; }

@@ -14,9 +14,13 @@ export function VeluneCard({ compact = false }: { compact?: boolean }) {
         <p className={styles.eyebrow}>VELUNE / Independent concept</p>
         <span className={styles.status}>Film · Stills · After Effects</span>
         <h3 id={compact ? "velune-studio-title" : "velune-home-title"}>A little chocolate.<br />A world within.</h3>
-        <p>A chocolate campaign spanning film, stills and social, with a fifteen-second Adobe After Effects motion study built through AI-assisted scripting. Follow the decisions from visual references to delivery, then explore editable typography, 3D carton moves and a chocolate portal reveal.</p>
+        <p>A chocolate campaign spanning film, stills and social. See how the carton holds up in ComfyUI and Figma Weave, then follow the campaign through to the finished film and an editable After Effects motion study.</p>
         <Link className={styles.cta} href="/velune">Explore the VELUNE campaign <span aria-hidden>↗</span></Link>
-        <Link className={styles.referenceJump} href="/velune#after-effects">Watch the After Effects study <span aria-hidden>↗</span></Link>
+        {compact ? (
+          <Link className={styles.referenceJump} href="/velune#after-effects">Watch the After Effects study <span aria-hidden>↗</span></Link>
+        ) : (
+          <Link className={styles.referenceJump} href="/ai-studio/workflows">Compare the carton workflows <span aria-hidden>↗</span></Link>
+        )}
       </div>
     </article>
   );

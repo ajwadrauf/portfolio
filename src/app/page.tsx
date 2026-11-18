@@ -25,7 +25,7 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Ajwad Rauf · applied AI, creative work and production systems",
   description:
-    "I turn emerging AI into creative work and production systems people can actually use. Explore the VELUNE campaign and After Effects motion study, the studio behind it and Project Forge. Applied AI and creative technology, from Toronto.",
+    "I turn emerging AI into creative work and production systems people can actually use. Explore the VELUNE campaign and node workflows, the studio behind the work and Project Forge. Applied AI and creative technology, from Toronto.",
 };
 
 /**
@@ -106,37 +106,11 @@ export default function Home() {
           <Link href="/project-forge"><span>Helping teams deliver</span><strong>Project Forge <span aria-hidden>↗</span></strong></Link>
         </nav>
 
-        {/* ------------------------------- Film ------------------------------ */}
-        <section className="ar-film" id="ar-film" aria-labelledby="ar-film-heading">
-          <div className="ar-wrap">
-            <div className="ar-film-heading">
-              <div>
-                <p className="ar-eyebrow">01 / Motion study</p>
-                <h2 id="ar-film-heading">
-                  A thought.
-                  <br />
-                  <em>Made visible.</em>
-                </h2>
-              </div>
-              <p>
-                A cursor becomes a swarm. A swarm finds its form.
-                <br />
-                Twelve seconds of motion, built in Blender.
-              </p>
-            </div>
-            <TokenFilm />
-            <div className="ar-film-note">
-              <span>Concept → choreography → Blender → final film</span>
-              <span>800 tokens. One signature.</span>
-            </div>
-          </div>
-        </section>
-
         {/* --------------------------- Selected work ------------------------- */}
         <section className="ar-work ar-wrap" id="ar-work" aria-labelledby="ar-work-heading">
           <div className="ar-section-heading">
             <div>
-              <p className="ar-eyebrow">02 / Selected work</p>
+              <p className="ar-eyebrow">01 / Selected work</p>
               <h2 id="ar-work-heading">
                 The work behind
                 <br />
@@ -167,11 +141,10 @@ export default function Home() {
                 reference, which quality gate, and at what cost.
               </p>
               <p className="ar-film-project-note">
-                VELUNE connects packaging, visual references, an H3 film and
-                ElevenLabs sound. A separate Adobe After Effects study extends
-                the campaign into editable motion design. The earlier ice-cream
-                study shown here explores how a Blender camera plan translates
-                through Seedance.
+                VELUNE pairs a finished H3 film and ElevenLabs voiceover with
+                editable After Effects motion. A separate carton study compares
+                ComfyUI and Figma Weave. The ice-cream example here shows how a
+                Blender camera plan translates through Seedance.
               </p>
               <p className="ar-role-note">
                 <strong>My role</strong> Concept, workflow design, model selection
@@ -286,7 +259,7 @@ export default function Home() {
         <section className="ar-approach" id="ar-approach" aria-labelledby="ar-story-heading">
           <div className="ar-wrap ar-story-grid">
             <div className="ar-story-title">
-              <p className="ar-eyebrow">03 / Staying ahead</p>
+              <p className="ar-eyebrow">02 / Staying ahead</p>
               <h2 id="ar-story-heading">
                 The next model
                 <br />
@@ -336,7 +309,31 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ------------------------------ Contact ---------------------------- */}
+        {/* ------------------------------- Film ------------------------------ */}
+        <section className="ar-film" id="ar-film" aria-labelledby="ar-film-heading">
+          <div className="ar-wrap">
+            <div className="ar-film-heading">
+              <div>
+                <p className="ar-eyebrow">03 / Motion study</p>
+                <h2 id="ar-film-heading">
+                  A thought.
+                  <br />
+                  <em>Made visible.</em>
+                </h2>
+              </div>
+              <p>
+                A cursor becomes a swarm. A swarm finds its form.
+                <br />
+                Twelve seconds of motion, built in Blender.
+              </p>
+            </div>
+            <TokenFilm />
+            <div className="ar-film-note">
+              <span>Concept → choreography → Blender → final film</span>
+              <span>800 tokens. One signature.</span>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer className="ar-contact" id="ar-contact">
