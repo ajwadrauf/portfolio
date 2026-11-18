@@ -5,22 +5,22 @@ import styles from "./Velune.module.css";
 const MOMENTS = [
   {
     time: "00–03s / Curiosity",
-    title: "Type becomes part of the scene.",
-    body: "Individual letters arrive from depth while gold contours trace the chocolate. The opening reads even with sound off.",
+    title: "Type enters from depth",
+    body: "Letters arrive as gold contours trace the chocolate. The opening reads with the sound off.",
     image: VELUNE_MOTION.opening,
     alt: "WONDER lettering surrounded by gold contours over the chocolate macro scene",
   },
   {
     time: "03–07s / The collection",
-    title: "Give the cartons a little theatre.",
-    body: "Three photographic carton cards rotate into place in a 3D scene. Their artwork stays intact as the camera moves.",
+    title: "Three cartons in motion",
+    body: "The cartons rotate in 3D while their photographic artwork stays intact.",
     image: VELUNE_MOTION.collection,
     alt: "Three VELUNE flavour cartons arranged in the After Effects collection scene",
   },
   {
     time: "10–15s / Wonder within",
-    title: "Make the ending feel earned.",
-    body: "A circular reveal opens into the chocolate world. The emblem draws on, the name settles and the light slowly falls.",
+    title: "The light falls on the reveal",
+    body: "A circular reveal opens onto the three chocolates. The emblem draws on and the light slowly falls.",
     image: VELUNE_MOTION.closing,
     alt: "VELUNE and Wonder within above the three chocolate centres in the closing scene",
   },
@@ -28,14 +28,14 @@ const MOMENTS = [
 
 export function VeluneMotionStudy() {
   return (
-    <section className={styles.motionSection} id="after-effects" aria-labelledby="motion-heading">
+    <section className={styles.motionSection} id="after-effects" aria-labelledby="motion-heading" tabIndex={-1}>
       <div className={styles.wrap}>
         <div className={styles.sectionHead}>
           <div>
-            <p className={styles.eyebrow}>08 / After Effects motion study</p>
-            <h2 id="motion-heading">A different kind<br /><em>of wonder.</em></h2>
+            <p className={styles.eyebrow}>After Effects motion study</p>
+            <h2 id="motion-heading">Wonder Lab</h2>
           </div>
-          <p>The same chocolate world, with a new motion language. Animated lettering, 3D carton moves and a gold portal reveal bring more expression to the brand, with control over every keyframe.</p>
+          <p>A companion film that explores animated lettering, 3D carton moves and a gold portal reveal.</p>
         </div>
         <video
           className={styles.finalVideo}
@@ -69,16 +69,16 @@ export function VeluneMotionStudy() {
         <div className={styles.motionHandoff}>
           <div>
             <p className={styles.eyebrow}>Inside the project</p>
-            <h3>A finish you can keep working on.</h3>
-            <p>Editable text, shape paths, cameras and keyframes live in a native After Effects project. Change a headline, swap the carton artwork or adjust the timing. The included script rebuilds the composition from its source assets.</p>
+            <h3>Editable motion project</h3>
+            <p>Edit the text, paths, cameras and keyframes in After Effects. The included script can rebuild the composition from its source assets.</p>
           </div>
           <div className={styles.motionHandoffAction}>
             <a href={VELUNE_MOTION.bundle} download>Download the editable project <span aria-hidden="true">↓</span></a>
             <p>ZIP · 44 MB · After Effects 2026<br />Project, script, assets, MP4 and instructions</p>
           </div>
         </div>
-        <p className={styles.motionCredit}>My role: creative direction, reference selection and review, with AI-assisted scripting and motion development. Built and rendered in Adobe After Effects using the existing VELUNE imagery, a short H3 sequence and the campaign’s H3 / ElevenLabs sound mix.</p>
-        <a className={styles.deliveryBack} href="#velune-film">Revisit the campaign delivery ↑</a>
+        <p className={styles.motionCredit}><strong>My role</strong> · Creative direction, reference selection and review, with AI-assisted scripting. The After Effects render uses VELUNE imagery, a short H3 sequence and the campaign sound mix.</p>
+        <a className={styles.deliveryBack} href="#velune-film">Continue to the finished campaign ↓</a>
       </div>
     </section>
   );
