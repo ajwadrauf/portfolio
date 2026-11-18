@@ -13,7 +13,7 @@ import { seedanceCost } from "@/lib/videoCost";
 import { WALL, WALL_COST } from "@/lib/theWall";
 
 export const metadata: Metadata = {
-  title: "Blender → Seedance · AI Content Studio",
+  title: "Blender → Seedance · The Workroom",
   description:
     "Using Blender through MCP to produce clay control passes for Seedance 2.5: what it costs to guess versus to specify, how to keep the two reference lanes apart, and a builder for the brief that constructs the clay.",
 };
@@ -133,7 +133,7 @@ export default function BlenderPage() {
         </div>
 
         <p className="mt-4 text-xs leading-relaxed text-muted">
-          Priced with the Ad Lab&apos;s token model on the shot below: 12s, 4:3,
+          Priced with the Motion&apos;s token model on the shot below: 12s, 4:3,
           480p. That configuration was measured against a real invoice at $3.05;
           the model puts it at {money(CLAY_TAKE)}.
         </p>
@@ -412,7 +412,7 @@ export default function BlenderPage() {
             Prompt builder →
           </Link>
           <Link href="/ai-studio/ads" className="btn-secondary">
-            Open the Ad Lab
+            Open the Motion
           </Link>
         </div>
       </section>

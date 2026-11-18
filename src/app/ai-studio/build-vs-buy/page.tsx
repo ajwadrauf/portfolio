@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ProductionCalculator } from "@/components/studio/ProductionCalculator";
 
 export const metadata: Metadata = {
-  title: "Build vs. Buy · AI Content Studio",
+  title: "Build vs. Buy · The Workroom",
   description:
     "Compare creative suites, API aggregators and direct model APIs, with a recommendation for an AI content studio.",
 };

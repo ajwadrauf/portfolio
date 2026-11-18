@@ -40,7 +40,7 @@ export type BuilderMode = "build" | "seedance";
  *
  * 4:3 was missing while the worked example used it, so loading the example put
  * the select into a value it could not display — the shot said 4:3 and the
- * control said 1:1. Everything the Ad Lab accepts belongs here.
+ * control said 1:1. Everything Motion accepts belongs here.
  */
 const ASPECTS = ["1:1", "4:3", "3:4", "16:9", "9:16", "4:5", "21:9"];
 
@@ -148,8 +148,8 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
       await flush();
       const { parseAdDraft } = await import("@/lib/adDraft");
       const previous = parseAdDraft(project?.drafts.ad);
-      const handoff = parseAdDraft({ ...previous, completedTake: null, productImage: null, endImage: null, imported: true, lane: "blender", schema: "adlab-draft-v1", source: "blender", prompt: composeBlenderPrompt(b), modelId: "seedance-2.5-ref", duration: Number(b.seconds), aspect: b.aspect, references: manifest.filter((row) => row.asset).map((row) => ({ ...referenceAsset(row.asset!), token: row.token, role: row.job })), referenceManifest: manifest.map((row) => ({ token: row.token, job: row.job, assetId: row.asset?.id ?? null })), sceneCards: b.beats.filter((beat) => beat.action.trim()).map((beat, index) => ({ id: `blender-scene-${index + 1}`, title: `Scene ${index + 1}`, start: Number(beat.from), end: Number(beat.to), action: beat.action, camera: `${getCameraMove(b.move)?.label ?? "Custom move"}: ${b.rig}`, sound: "Plan sound in Ad Lab", referenceIds: manifest.filter((row) => row.asset).map((row) => row.asset!.id) })) });
-      if (!handoff) throw new Error("Review the prompt length, reference count and scene times before sending. Ad Lab needs valid scenes and at most 20 attached references.");
+      const handoff = parseAdDraft({ ...previous, completedTake: null, productImage: null, endImage: null, imported: true, lane: "blender", schema: "adlab-draft-v1", source: "blender", prompt: composeBlenderPrompt(b), modelId: "seedance-2.5-ref", duration: Number(b.seconds), aspect: b.aspect, references: manifest.filter((row) => row.asset).map((row) => ({ ...referenceAsset(row.asset!), token: row.token, role: row.job })), referenceManifest: manifest.map((row) => ({ token: row.token, job: row.job, assetId: row.asset?.id ?? null })), sceneCards: b.beats.filter((beat) => beat.action.trim()).map((beat, index) => ({ id: `blender-scene-${index + 1}`, title: `Scene ${index + 1}`, start: Number(beat.from), end: Number(beat.to), action: beat.action, camera: `${getCameraMove(b.move)?.label ?? "Custom move"}: ${b.rig}`, sound: "Plan sound in Motion", referenceIds: manifest.filter((row) => row.asset).map((row) => row.asset!.id) })) });
+      if (!handoff) throw new Error("Review the prompt length, reference count and scene times before sending. Motion needs valid scenes and at most 20 attached references.");
       await saveDraft("ad", handoff);
       router.push("/ai-studio/ads");
     } catch (error) { setActionError(error instanceof Error ? error.message : "The handoff could not be saved. Your shot remains here; retry or export the production ZIP."); }
@@ -564,7 +564,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
           <span className="chip !border-accent/30 !text-accent">
             {build
               ? "Output: Blender build brief for Claude Code, Cowork or MCP"
-              : "Output: Seedance prompt for the Ad Lab"}
+              : "Output: Seedance prompt for the Motion"}
           </span>
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary !px-3 !py-1.5 text-xs" onClick={() => void copy()}>
@@ -577,7 +577,7 @@ export function BlenderBriefBuilder({ mode = "seedance" }: { mode?: BuilderMode 
             {build && <button className="btn-primary !px-3 !py-1.5 text-xs" onClick={() => void continueToPrompt()}>Continue this shot →</button>}
             {!build && (
               <button className="btn-primary !px-3 !py-1.5 text-xs" disabled={busy || !Number.isFinite(Number(b.seconds)) || Number(b.seconds) < 4 || Number(b.seconds) > 30} onClick={() => void openInLab()}>
-                Open in Ad Lab →
+                Open in Motion →
               </button>
             )}
           </div>

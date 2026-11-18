@@ -162,12 +162,12 @@ function previousTakes(): CompletedTake[] {
  * everything after the offending character in some mail clients.
  */
 const ACCESS_REQUEST_MAILTO = `mailto:hello@ajwadrauf.com?subject=${encodeURIComponent(
-  "Access code request · AI Content Studio",
+  "Access code request · The Workroom",
 )}&body=${encodeURIComponent(
   [
     "Hi Ajwad,",
     "",
-    "I was trying the Ad Lab on ajwadrauf.com and would like to run a live generation rather than a demo one. Could you send me an access code?",
+    "I was trying Motion on ajwadrauf.com and would like to run a live generation rather than a demo one. Could you send me an access code?",
     "",
     "Name:",
     "Company:",
@@ -194,12 +194,12 @@ const OVERDUE_MS = 500_000;
 
 /** A pre-addressed report for a render that has run long. */
 const STUCK_RENDER_MAILTO = `mailto:hello@ajwadrauf.com?subject=${encodeURIComponent(
-  "Long-running render · AI Content Studio",
+  "Long-running render · The Workroom",
 )}&body=${encodeURIComponent(
   [
     "Hi Ajwad,",
     "",
-    "A render in the Ad Lab has been going for longer than the expected few minutes and may be stuck.",
+    "A render in Motion has been going for longer than the expected few minutes and may be stuck.",
     "",
     "What I was generating:",
     "Roughly when I started it:",
@@ -928,7 +928,7 @@ function AdLabWorkspace({
       ? { durationSeconds: displayed.duration, width: displayed.videoWidth, height: displayed.videoHeight }
       : null);
     setPhase("done");
-    void saveAsset({ id: `ad-video-${requestId}`.slice(0, 200), name: `Ad Lab · ${generationSnapshot?.durationSeconds ?? saved?.context?.durationSeconds ?? "completed"}s take`, kind: "video", url, role: "Completed model output · native audio; review required", source: "generated", status: "ready", metadata: { takeId: take.id, context: take.context, sceneCards: take.sceneCards ?? null } }).catch((e) => setDraftStatus(`Video is ready, but project save failed: ${e instanceof Error ? e.message : "storage unavailable"}`));
+    void saveAsset({ id: `ad-video-${requestId}`.slice(0, 200), name: `Motion · ${generationSnapshot?.durationSeconds ?? saved?.context?.durationSeconds ?? "completed"}s take`, kind: "video", url, role: "Completed model output · native audio; review required", source: "generated", status: "ready", metadata: { takeId: take.id, context: take.context, sceneCards: take.sceneCards ?? null } }).catch((e) => setDraftStatus(`Video is ready, but project save failed: ${e instanceof Error ? e.message : "storage unavailable"}`));
     try {
       const retained = { id: take.id, videoUrl: take.videoUrl, context: take.context, sceneCards: take.sceneCards };
       localStorage.setItem(TAKE_KEY, JSON.stringify([retained, ...history.filter((item) => item.videoUrl !== url)].slice(0, 12)));
@@ -1305,7 +1305,7 @@ function AdLabWorkspace({
       if ((productImage ? 1 : 0) + refs.length + (timingRefActive ? 1 : 0) >= referenceCaps.total || refs.filter((r) => r.media === media).length + (media === "image" && productImage ? 1 : 0) >= referenceCaps[media]) { setRefError(`This model accepts at most ${referenceCaps.total} combined references. Remove a file before adding another.`); return; }
       try {
         if ((isAudio || /\.(m4a|aac)$/i.test(file.name)) && !/\.(mp3|wav)$/i.test(file.name)) {
-          setRefError("Audio references must be MP3 or WAV in Ad Lab. Convert this track before uploading.");
+          setRefError("Audio references must be MP3 or WAV in Motion. Convert this track before uploading.");
           return;
         }
         if (media !== "image") {
@@ -1887,8 +1887,8 @@ function AdLabWorkspace({
     <div className={styles.page}>
       <div className={styles.hero}>
         <div>
-          <p className={styles.eyebrow}>AI Content Studio · Video workspace</p>
-          <h1 id="ad-lab-workspace" className={styles.heroTitle}>Ad Lab</h1>
+          <p className={styles.eyebrow}>The Workroom · Video workspace</p>
+          <h1 id="ad-lab-workspace" className={styles.heroTitle}>Motion</h1>
           <p className={styles.lead}>Shape the picture. Plan the sound. Make the film.</p>
           <div className={styles.heroExample}>
             <VeluneExampleButton className={styles.exampleButton} />
@@ -4151,7 +4151,7 @@ function AdLabWorkspace({
           </div>
         )}
         {resultNotice && completedTake && videoUrl && <aside className={styles.resultNotice} aria-label="Completed render notification"><div><p role="status" className="text-sm font-semibold">Your take is ready.</p><button type="button" onClick={() => showResultSection("ad-result")} className="inline-flex min-h-11 items-center gap-3 text-sm font-semibold underline underline-offset-4">Watch & review <span aria-hidden>↗</span></button></div><button type="button" aria-label="Dismiss completed render notification" onClick={() => setResultNotice(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/25 text-lg">×</button></aside>}
-        <AdFinishing key={project?.id ?? "loading"} tracks={mixTracks} onChange={setMixTracks} available={availableMixTracks} duration={finishingDuration} originalAudioAvailable={Boolean(completedTake?.videoUrl)} ducking={ducking} onDucking={setDucking} videoUrl={completedTake?.videoUrl ?? (project?.example === "velune" ? project.assets.find((asset) => asset.id === "velune-motion" && asset.status === "ready")?.url ?? null : null)} sceneCards={finishingScenes} onSaveMix={async (dataUrl, manifest) => { const id = `ad-mix-${crypto.randomUUID()}`; await saveAsset({ id, name: "Ad Lab · mixed soundtrack.wav", kind: "audio", dataUrl, role: "Mixed separate soundtrack · place at zero; original video audio unchanged", source: "generated", status: "ready", metadata: manifest }); await saveAsset({ id: `${id}-settings`, name: "Ad Lab · editor cue bundle settings", kind: "document", dataUrl: adDocumentDataUrl({ ...manifest, sceneCues: finishingScenes }), role: "Editor handoff · separate video and soundtrack", source: "generated", status: "ready" }); }} />
+        <AdFinishing key={project?.id ?? "loading"} tracks={mixTracks} onChange={setMixTracks} available={availableMixTracks} duration={finishingDuration} originalAudioAvailable={Boolean(completedTake?.videoUrl)} ducking={ducking} onDucking={setDucking} videoUrl={completedTake?.videoUrl ?? (project?.example === "velune" ? project.assets.find((asset) => asset.id === "velune-motion" && asset.status === "ready")?.url ?? null : null)} sceneCards={finishingScenes} onSaveMix={async (dataUrl, manifest) => { const id = `ad-mix-${crypto.randomUUID()}`; await saveAsset({ id, name: "Motion · mixed soundtrack.wav", kind: "audio", dataUrl, role: "Mixed separate soundtrack · place at zero; original video audio unchanged", source: "generated", status: "ready", metadata: manifest }); await saveAsset({ id: `${id}-settings`, name: "Motion · editor cue bundle settings", kind: "document", dataUrl: adDocumentDataUrl({ ...manifest, sceneCues: finishingScenes }), role: "Editor handoff · separate video and soundtrack", source: "generated", status: "ready" }); }} />
       </div>
     </div>
   );

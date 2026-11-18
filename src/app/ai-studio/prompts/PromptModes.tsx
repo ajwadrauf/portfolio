@@ -30,7 +30,7 @@ export function PromptModes() {
       </section>}
     <details className="mx-auto mb-14 max-w-5xl rounded-[6px] border border-border-soft bg-surface p-5">
       <summary className="cursor-pointer font-semibold">Generation limits and reference notes</summary>
-      <p className="mt-3 text-xs text-muted">Documented as of August 2026. Check the selected model in Ad Lab before a paid run.</p>
+      <p className="mt-3 text-xs text-muted">Documented as of August 2026. Check the selected model in Motion before a paid run.</p>
       <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{SPECS.map((sp) => <div key={sp.k}><dt className="label-sm">{sp.k}</dt><dd className="mt-1 text-xs leading-relaxed">{sp.v}</dd></div>)}</dl>
     </details>
   </>;

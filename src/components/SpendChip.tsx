@@ -3,7 +3,7 @@ import { Why } from "@/components/Why";
 /**
  * The running cost estimate, in the one place all three tools read from.
  *
- * It used to read "Session spend" in Ad Lab, Campaign Studio and Packshots,
+ * It used to read "Session spend" in Motion, Campaigns and Packshots,
  * which was wrong in two ways at once: the figure is keyed on
  * `studio-session-spend` in localStorage, so it outlives the tab it was
  * started in, and it is an estimate this page computes rather than anything a

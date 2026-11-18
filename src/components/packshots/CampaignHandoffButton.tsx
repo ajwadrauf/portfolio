@@ -12,7 +12,7 @@ function closeBlankTab(tab: Window | null) {
   try { if (tab && !tab.closed && tab.location.href === "about:blank") tab.close(); } catch { /* Never close a tab the user has navigated elsewhere. */ }
 }
 
-export function CampaignHandoffButton({ source, meta, sources, disabled = false, label = "Use in Campaign Studio", prominent = false }: Props) {
+export function CampaignHandoffButton({ source, meta, sources, disabled = false, label = "Use in Campaigns", prominent = false }: Props) {
   const metadata = JSON.stringify(sources ?? meta);
   const key = useMemo(() => ({ source, metadata, disabled }), [source, metadata, disabled]);
   const currentKey = useRef(key);
@@ -48,8 +48,8 @@ export function CampaignHandoffButton({ source, meta, sources, disabled = false,
       tab = window.open("about:blank", "_blank");
       if (tab) {
         tab.opener = null;
-        tab.document.title = "Preparing your packshot · Campaign Studio";
-        tab.document.body.textContent = "Preparing your completed packshot for Campaign Studio… You can keep working in the Packshots tab.";
+        tab.document.title = "Preparing your packshot · Campaigns";
+        tab.document.body.textContent = "Preparing your completed packshot for Campaigns… You can keep working in the Packshots tab.";
       }
     } catch { closeBlankTab(tab); tab = null; }
     const operation: Pending = { controller: new AbortController(), tab, key };
@@ -76,7 +76,7 @@ export function CampaignHandoffButton({ source, meta, sources, disabled = false,
   }
 
   return <div className={`${styles.handoff} ${prominent ? styles.prominent : ""}`}>
-    {current.href && !disabled ? <a className={styles.action} href={current.href} target="_blank" rel="noopener noreferrer">Open in Campaign Studio <span aria-hidden="true">↗</span></a> :
+    {current.href && !disabled ? <a className={styles.action} href={current.href} target="_blank" rel="noopener noreferrer">Open in Campaigns <span aria-hidden="true">↗</span></a> :
       <button className={styles.action} type="button" disabled={disabled || current.busy} onClick={send}>
         {current.busy ? "Preparing your views…" : label}<span aria-hidden="true">↗</span>
       </button>}

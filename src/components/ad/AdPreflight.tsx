@@ -53,7 +53,7 @@ function saveReview(review: SavedReview) {
   localStorage.setItem(REPORTS_KEY, JSON.stringify([review, ...records.filter((saved) => saved.videoUrl !== review.videoUrl)].slice(0, 12)));
 }
 
-/** A stale or partially written browser record must not break the Ad Lab. */
+/** A stale or partially written browser record must not break the Motion. */
 function validReport(value: unknown, videoUrl: string): value is PreflightReport {
   if (!value || typeof value !== "object") return false;
   const report = value as Partial<PreflightReport>;
@@ -80,7 +80,7 @@ function stamp(seconds: number) {
 function readableReport(saved: SavedReview, take: CompletedPreflightTake): string {
   const { report } = saved;
   return [
-    "# Ad Lab · AI-assisted preflight",
+    "# Motion · AI-assisted preflight",
     "",
     "This is an evidence review, not publishing approval. AI findings may miss issues. Rights, consent and final approval require a named human.",
     "",
@@ -188,7 +188,7 @@ export function AdPreflight({ take, metadata, referenceImages, health, onSpend, 
     const review: SavedReview = { takeId: take.id, videoUrl: take.videoUrl, report, declarations: reviewedDeclarations, reviewer, notes };
     try { saveReview(review); }
     catch { setMessage("Browser storage is unavailable. Download the report to keep it."); }
-    void saveAsset({ id: `ad-review-${take.id}`.slice(0, 200), name: "Ad Lab · AI-assisted video preflight", kind: "document", dataUrl: adDocumentDataUrl(review), role: "Video evidence review · embedded audio only; human approval remains separate", source: "generated", status: "ready", metadata: { review, takeId: take.id, videoUrl: take.videoUrl, reviewType: "ai_preflight", approval: false } }).catch((e) => setMessage(`Review is available here, but its project save failed: ${e instanceof Error ? e.message : "storage unavailable"}`));
+    void saveAsset({ id: `ad-review-${take.id}`.slice(0, 200), name: "Motion · AI-assisted video preflight", kind: "document", dataUrl: adDocumentDataUrl(review), role: "Video evidence review · embedded audio only; human approval remains separate", source: "generated", status: "ready", metadata: { review, takeId: take.id, videoUrl: take.videoUrl, reviewType: "ai_preflight", approval: false } }).catch((e) => setMessage(`Review is available here, but its project save failed: ${e instanceof Error ? e.message : "storage unavailable"}`));
   }, [loaded, report, reviewedDeclarations, reviewer, notes, take.id, take.videoUrl, saveAsset]);
 
   const counts = useMemo(() => ({

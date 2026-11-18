@@ -11,7 +11,7 @@ import {
 } from "@/lib/theWall";
 
 export const metadata: Metadata = {
-  title: "The Wall · a clay control pass · AI Content Studio",
+  title: "The Wall · a clay control pass · The Workroom",
   description:
     "A worked Blender clay pass for Seedance 2.5: twelve seconds of untextured geometry that settles every camera decision before a credit is spent, including the moment the brief's final frame turned out to be arithmetically impossible.",
 };

@@ -496,7 +496,7 @@ export function CreamCompare({ compact = false, id = "motion-study", cue }: Prop
               Build a Blender brief <span aria-hidden>↗</span>
             </Link>
             <Link href="/ai-studio/ads" className="btn-block btn-block-light">
-              Open Ad Lab <span aria-hidden>↗</span>
+              Open Motion <span aria-hidden>↗</span>
             </Link>
             <Link href="/ai-studio/ads#cream-making-of" className="btn-block btn-block-light">
               See the five references &amp; prompts <span aria-hidden>↗</span>

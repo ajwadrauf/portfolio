@@ -3,7 +3,7 @@ import { MODELS } from "@/lib/models";
 import { ModelExplorer } from "@/components/studio/ModelExplorer";
 
 export const metadata: Metadata = {
-  title: "Model Landscape · AI Content Studio",
+  title: "Model Landscape · The Workroom",
   description:
     "The 2026 AI production model landscape: image and video models compared by strengths, cost and the jobs they should own.",
 };
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 const IMAGE_NOTES = [
   {
     name: "Nano Banana Pro (Gemini 3 Pro Image)",
-    take: "The studio's default for detailed product stills and text-sensitive work. Review generated lettering against approved copy. Campaign Studio also offers locally typeset EN/FR layouts when exact words should remain editable.",
+    take: "The studio's default for detailed product stills and text-sensitive work. Review generated lettering against approved copy. Campaigns also offers locally typeset EN/FR layouts when exact words should remain editable.",
   },
   {
     name: "Nano Banana 2 / Flash Image",

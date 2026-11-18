@@ -137,7 +137,7 @@ export async function preparePreflightMedia(request: PreflightRequest): Promise<
   } catch { throw new PreflightInputError("The generated video could not be opened. Check that it still plays before requesting a review.", 422); }
   if (!response.ok || response.redirected) throw new PreflightInputError("The generated video is unavailable or has expired. No AI review was submitted.", 422);
   const mime = (response.headers.get("content-type") ?? "").split(";")[0].trim();
-  if (mime !== "video/mp4") { await response.body?.cancel(); throw new PreflightInputError("Preflight currently supports the MP4 output from Ad Lab.", 422); }
+  if (mime !== "video/mp4") { await response.body?.cancel(); throw new PreflightInputError("Preflight currently supports the MP4 output from Motion.", 422); }
   const length = Number(response.headers.get("content-length"));
   const maxBytes = media.kind === "public" ? MAX_PUBLIC_VIDEO_BYTES : MAX_PRIVATE_VIDEO_BYTES;
   if (length > maxBytes) { await response.body?.cancel(); throw new PreflightInputError(media.kind === "veo" ? "This private Veo file exceeds the 12 MB review limit. Keep it for manual review or create a shorter take." : "This video exceeds the 95 MB review limit. Keep it for manual review or create a shorter take.", 413); }

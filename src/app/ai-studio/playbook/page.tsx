@@ -5,7 +5,7 @@ import { PreflightChecklist } from "./PreflightChecklist";
 import { PLAYBOOK_CHECKLIST } from "@/lib/adPreflight";
 
 export const metadata: Metadata = {
-  title: "Production Playbook · AI Content Studio",
+  title: "Production Playbook · The Workroom",
   description:
     "The reusable playbook behind the demo: workflow, prompt system, model routing, quality gates, cost governance, the generative-AI guardrails this work is held to, a pre-flight checklist, and measurement.",
 };
@@ -571,8 +571,8 @@ STYLE SUFFIX   "commercial retail quality, sharp focus"
             />
             <div className="mb-5 rounded-[6px] border border-accent/25 bg-accent/[0.05] p-4">
               <p className="font-semibold text-foreground">Run this against a finished take.</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted">Ad Lab can review a generated video and its embedded audio, fill this checklist with evidence, and flag what still needs a human decision. Rights, consent and publishing approval remain documentary checks.</p>
-              <Link href="/ai-studio/ads#ad-generate" className="mt-2 inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Open Ad Lab’s video review →</Link>
+              <p className="mt-1 text-sm leading-relaxed text-muted">Motion can review a generated video and its embedded audio, fill this checklist with evidence, and flag what still needs a human decision. Rights, consent and publishing approval remain documentary checks.</p>
+              <Link href="/ai-studio/ads#ad-generate" className="mt-2 inline-flex min-h-11 items-center font-semibold text-accent underline underline-offset-4">Open Motion’s video review →</Link>
             </div>
             <PreflightChecklist groups={PLAYBOOK_CHECKLIST} />
           </section>

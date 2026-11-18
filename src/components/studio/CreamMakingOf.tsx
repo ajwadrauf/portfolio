@@ -98,7 +98,7 @@ export function CreamMakingOf() {
         <div className={styles.footer}>
           <a href="/studio/cream/direction-18s.txt" download>Download the full brief <span aria-hidden>↓</span></a>
           <Link href="/ai-studio/blender">Build your own Blender brief <span aria-hidden>↗</span></Link>
-          <a href="/ai-studio/ads">Back to Ad Lab <span aria-hidden>↑</span></a>
+          <a href="/ai-studio/ads">Back to Motion <span aria-hidden>↑</span></a>
         </div>
       </div>
     </section>

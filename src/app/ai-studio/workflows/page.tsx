@@ -5,7 +5,7 @@ import { media } from "./study";
 import styles from "./workflows.module.css";
 
 export const metadata: Metadata = {
-  title: "VELUNE node workflows · AI Content Studio · Ajwad Rauf",
+  title: "Creative Flows · VELUNE carton study · The Workroom",
   description: "An independent VELUNE production study. Compare ComfyUI and Figma Weave runs, inspect the graphs, and see how the selected carton images were finished.",
   alternates: { canonical: "https://www.ajwadrauf.com/ai-studio/workflows" },
   openGraph: { images: [{ url: `https://www.ajwadrauf.com${media}/finished-premium.webp`, alt: "Finished VELUNE Raspberry Ganache carton in amber studio light" }] },
@@ -27,12 +27,12 @@ export default function WorkflowCase() {
     <div className={styles.page}>
       <div className={styles.wrap}>
         <nav className={styles.breadcrumb} aria-label="Case study navigation">
-          <Link href="/ai-studio">← AI Content Studio</Link>
+          <Link href="/ai-studio">← The Workroom</Link>
           <Link href="/velune">VELUNE campaign ↗</Link>
         </nav>
         <header className={styles.hero}>
           <div>
-            <p className={styles.kicker}>VELUNE / Carton image study</p>
+            <p className={styles.kicker}>Creative Flows / VELUNE carton study</p>
             <h1>Raspberry Ganache</h1>
           </div>
           <div className={styles.intro}>
@@ -74,12 +74,12 @@ export default function WorkflowCase() {
         <section className={styles.handoff} aria-labelledby="handoff-heading">
           <h2 id="handoff-heading">From study to production</h2>
           <ol>
-            <li><strong>Source the product</strong><span>Packshot Studio and Blender already provide artwork views and camera references.</span></li>
+            <li><strong>Source the product</strong><span>Product Shots and Blender already provide artwork views and camera references.</span></li>
             <li><strong>Explore the set</strong><span>ComfyUI and Weave ran externally. This study uses saved renders and an exported graph.</span></li>
             <li><strong>Review and finish</strong><span>Select the lighting, restore approved artwork and add editable type or motion in finishing.</span></li>
-            <li><strong>Proposed studio link</strong><span>Attach the selected plate, prompt, graph and review decision to a Campaign Studio project. Keep model runs behind studio access and budget controls.</span></li>
+            <li><strong>Proposed studio link</strong><span>Attach the selected plate, prompt, graph and review decision to a Campaigns project. Keep model runs behind studio access and budget controls.</span></li>
           </ol>
-          <div className={styles.handoffLinks}><Link href="/ai-studio/studio">Explore Campaign Studio ↗</Link><Link href="/velune#after-effects">See editable After Effects finishing ↗</Link></div>
+          <div className={styles.handoffLinks}><Link href="/ai-studio/studio">Explore Campaigns ↗</Link><Link href="/velune#after-effects">See editable After Effects finishing ↗</Link></div>
         </section>
       </div>
     </div>

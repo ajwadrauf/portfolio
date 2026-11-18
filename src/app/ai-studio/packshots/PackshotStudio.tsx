@@ -536,8 +536,8 @@ function PackshotSession() {
   return (
     <div className={styles.workspace}>
       <header className={styles.heading}>
-        <p className={styles.eyebrow}>AI Content Studio · Product imagery</p>
-        <h1>Packshot Studio</h1>
+        <p className={styles.eyebrow}>The Workroom · Product imagery</p>
+        <h1>Product Shots</h1>
         <p>Start with the artwork. Or the photograph. Bring the whole package into view.</p>
       </header>
       <div className={styles.utilities}>

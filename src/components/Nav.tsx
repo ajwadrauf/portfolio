@@ -3,22 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { WORKROOM_TOOLS } from "@/lib/workroom";
 import { UngatedBanner } from "./LiveGate";
 import { Wordmark } from "./Wordmark";
 
-const LINKS = [
-  { href: "/ai-studio", label: "Overview" },
-  { href: "/ai-studio/ads", label: "Ad Lab" },
-  // "Studio" alone read as the whole AI Content Studio rather than one tool
-  // inside it, which is the single most confusable label in the row.
-  { href: "/ai-studio/studio", label: "Campaign Studio" },
-  { href: "/ai-studio/packshots", label: "Packshots" },
+const TOOLS = WORKROOM_TOOLS.map(({ href, name }) => ({ href, label: name }));
+const GUIDES = [
+  { href: "/ai-studio/projects", label: "Projects & assets" },
   { href: "/ai-studio/prompts", label: "Prompt builder" },
   { href: "/ai-studio/blender", label: "Blender" },
   { href: "/ai-studio/models", label: "Models" },
   { href: "/ai-studio/build-vs-buy", label: "Build vs. Buy" },
   { href: "/ai-studio/playbook", label: "Playbook" },
 ] as const;
+const LINKS = [{ href: "/ai-studio", label: "Overview" }, ...TOOLS, ...GUIDES];
 
 /**
  * Which entry a path belongs to.
@@ -45,10 +43,11 @@ export function Nav() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const guidesRef = useRef<HTMLDetailsElement>(null);
   const menuId = useId();
 
   const current = activeHref(pathname);
-  const currentLabel = LINKS.find((l) => l.href === current)?.label ?? "AI Content Studio";
+  const currentLabel = LINKS.find((l) => l.href === current)?.label ?? "The Workroom";
 
   const close = useCallback((returnFocus = false) => {
     setOpen(false);
@@ -75,6 +74,7 @@ export function Nav() {
   // Arriving somewhere new closes the menu that took you there.
   useEffect(() => {
     setOpen(false);
+    if (guidesRef.current) guidesRef.current.open = false;
   }, [pathname]);
 
   const linkClass = (href: string) =>
@@ -101,7 +101,7 @@ export function Nav() {
             href="/ai-studio"
             className="-my-2 inline-flex items-center self-center whitespace-nowrap py-2 label !text-[12px] !text-accent font-semibold min-[360px]:!text-[14px]"
           >
-            AI Content Studio
+            The Workroom
           </Link>
         </div>
 
@@ -137,7 +137,7 @@ export function Nav() {
           {open && (
             <ul
               id={menuId}
-              className="absolute left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-[6px] border border-accent/25 bg-surface py-1 shadow-[0_8px_24px_rgba(43,37,34,0.13)]"
+              className="absolute left-0 right-0 z-50 mt-1.5 max-h-[min(35rem,calc(100dvh-9rem))] overflow-auto rounded-[6px] border border-accent/25 bg-surface py-1 shadow-[0_8px_24px_rgba(43,37,34,0.13)]"
             >
               {LINKS.map((l) => (
                 <li key={l.href}>
@@ -165,10 +165,10 @@ export function Nav() {
         </div>
 
         <nav
-          aria-label="Studio sections"
+          aria-label="Workroom tools"
           className="hidden min-w-0 items-center gap-1 text-sm min-[1280px]:flex"
         >
-          {LINKS.map((l) => (
+          {TOOLS.map((l) => (
             <Link
               key={l.href}
               href={l.href}
@@ -180,6 +180,22 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
+          <details ref={guidesRef} className="relative" onKeyDown={(event) => {
+            if (event.key !== "Escape" || !event.currentTarget.open) return;
+            event.currentTarget.open = false;
+            event.currentTarget.querySelector("summary")?.focus();
+          }}>
+            <summary className="cursor-pointer whitespace-nowrap rounded-[6px] px-3 py-1.5 text-muted hover:text-accent">Projects &amp; guides</summary>
+            <ul className="absolute right-0 z-50 mt-1.5 w-48 rounded-[6px] border border-border-soft bg-surface p-1 shadow-lg">
+              {GUIDES.map((guide) => (
+                <li key={guide.href}>
+                  <Link href={guide.href} aria-current={pathname === guide.href ? "page" : undefined} className={`block ${linkClass(guide.href)}`} onClick={() => { if (guidesRef.current) guidesRef.current.open = false; }}>
+                    {guide.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </details>
         </nav>
       </div>
       <UngatedBanner />

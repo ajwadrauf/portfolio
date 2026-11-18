@@ -6,6 +6,7 @@ import { HomeNav } from "@/components/HomeNav";
 import { SmoothAnchors } from "@/components/home/SmoothAnchors";
 import { ViewportPreview } from "@/components/home/ViewportPreview";
 import { VELUNE_MEDIA, VELUNE_MOTION } from "@/components/velune/veluneStudy";
+import { WORKROOM_TOOLS } from "@/lib/workroom";
 import "@/components/home/home.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -18,7 +19,7 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: "Ajwad Rauf · Creative direction, generative AI and production leadership",
-  description: "Ajwad Rauf leads marketing production at Loblaw and directs independent AI-assisted work. Explore VELUNE, AI Content Studio, PersoPot and Project Forge.",
+  description: "Ajwad Rauf leads marketing production at Loblaw and directs independent AI-assisted work. Explore VELUNE, The Workroom, PersoPot and Project Forge.",
   alternates: { canonical: "https://www.ajwadrauf.com/" },
   openGraph: {
     images: [{ url: "https://www.ajwadrauf.com/homepage/velune-hero.webp", width: 1440, height: 810, alt: "Three filled VELUNE chocolates revealed on a ceramic plate" }],
@@ -32,21 +33,15 @@ const METHOD = [
 ] as const;
 
 const PROJECT_INDEX = [
-  { name: "VELUNE", field: "Campaign direction & motion", href: "#ar-work", image: "/homepage/velune-hero.webp" },
-  { name: "AI Content Studio", field: "Working production tools", href: "#ar-studio", image: "/homepage/studio-packshot.jpg" },
-  { name: "PersoPot", field: "Consumer product & creative", href: "#ar-persopot", image: "/homepage/persopot-motion-poster.jpg" },
+  { id: "workroom", name: "The Workroom", field: "AI-powered creative workspace", href: "#ar-studio", image: "/homepage/studio-packshot.jpg", sizes: "(max-width: 560px) 52vw, (max-width: 850px) 60vw, 36vw" },
+  { id: "velune", name: "VELUNE", field: "Campaign direction & motion", href: "#ar-work", image: "/homepage/velune-hero.webp", sizes: "(max-width: 560px) 90vw, (max-width: 850px) 69vw, 40vw" },
+  { id: "persopot", name: "PersoPot", field: "Try-on & shared shortlist", href: "#ar-persopot", image: "/homepage/persopot-motion-poster.jpg", sizes: "(max-width: 560px) 44vw, (max-width: 850px) 33vw, 19vw" },
 ] as const;
 
 const VELUNE_ARTIFACTS = [
   { label: "Six-sided carton", href: "/velune#package-design", image: "/studio/velune/references/v2/01_velune_pistachio_carton.jpeg", width: 1672, height: 941, alt: "VELUNE Pistachio Praline carton" },
   { label: "12-shot camera plan", href: "/velune#camera-study", image: VELUNE_MEDIA.poster, width: 1920, height: 1080, alt: "Frame from the VELUNE Blender animatic" },
   { label: "Social & bilingual", href: "/velune#campaign-formats", image: VELUNE_MEDIA.bilingualStill, width: 1080, height: 1350, alt: "English and French VELUNE campaign layout" },
-] as const;
-
-const STUDIO_TOOLS = [
-  { name: "Packshot Studio", href: "/ai-studio/packshots", task: "Map artwork to a measured 3D package and render all seven views in the browser." },
-  { name: "Campaign Studio", href: "/ai-studio/studio", task: "Use a product brief and reference set to build creative across formats and languages." },
-  { name: "Ad Lab", href: "/ai-studio/ads", task: "Plan shots, direct the picture and mix a separate soundtrack." },
 ] as const;
 
 export default function Home() {
@@ -57,43 +52,47 @@ export default function Home() {
       <HomeNav />
 
       <main id="ar-main" tabIndex={-1}>
-        <section className="ar-hero ar-wrap" id="ar-top" aria-labelledby="ar-hero-heading">
-          <div className="ar-hero-copy">
-            <p className="ar-kicker">Creative direction &amp; production leadership</p>
-            <h1 id="ar-hero-heading">The idea leads.<br /><em>The technology follows.</em></h1>
-            <p className="ar-lead">I direct AI-assisted campaigns and build the production workflows that help teams take a brief through to finished work.</p>
-            <p className="ar-affiliation">Marketing production at Loblaw <span aria-hidden>·</span> Toronto</p>
-            <div className="ar-actions">
-              <a className="ar-primary" href="#ar-work">Explore selected work <span aria-hidden>↓</span></a>
-              <a className="ar-link" href="#ar-studio">See the working studio <span aria-hidden>↓</span></a>
+        <section className="ar-opening" id="ar-top" aria-labelledby="ar-hero-heading">
+          <div className="ar-hero ar-wrap">
+            <div className="ar-hero-copy">
+              <p className="ar-kicker">Creative direction &amp; production leadership</p>
+              <h1 id="ar-hero-heading">The idea leads.<br /><em>The technology follows.</em></h1>
+              <p className="ar-lead">I direct campaigns, build creative tools and lead the teams that bring the work to life.</p>
+              <p className="ar-affiliation">Marketing production at Loblaw <span aria-hidden>·</span> Toronto</p>
+              <div className="ar-actions">
+                <a className="ar-primary" href="#ar-work">Explore selected work <span aria-hidden>↓</span></a>
+                <Link className="ar-link" href="/ai-studio">Open The Workroom <span aria-hidden>↗</span></Link>
+              </div>
             </div>
+            <nav className="ar-stage" aria-label="Featured projects">
+              <ul>
+                {PROJECT_INDEX.map((project) => (
+                  <li key={project.id} className={`ar-stage-project ar-stage-${project.id}`}>
+                    <a href={project.href}>
+                      <Image src={project.image} fill alt="" sizes={project.sizes} loading="eager" />
+                      <span className="ar-stage-caption"><span>{project.field}</span><strong>{project.name} <span aria-hidden>↓</span></strong></span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <span className="ar-stage-glass" aria-hidden />
+            </nav>
           </div>
-          <nav className="ar-project-index" aria-label="Featured projects">
-            <p className="ar-kicker">Featured projects</p>
-            <ul>
-              {PROJECT_INDEX.map((project) => (
-                <li key={project.name}>
-                  <a href={project.href}>
-                    <Image src={project.image} width={340} height={200} alt="" sizes="(max-width: 500px) 108px, 172px" loading="eager" />
-                    <span><strong>{project.name}</strong><span>{project.field}</span></span>
-                    <span className="ar-index-arrow" aria-hidden>↓</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
         </section>
 
         <section className="ar-campaign" id="ar-work" aria-labelledby="ar-work-heading">
+          <div className="ar-wrap ar-gallery-heading">
+            <h2 id="ar-work-heading">Selected work</h2>
+            <p>Campaigns, tools and the decisions that shaped them.</p>
+          </div>
           <div className="ar-wrap ar-campaign-grid">
             <div className="ar-campaign-copy">
-              <p className="ar-kicker">Selected work / Independent campaign</p>
-              <h2 id="ar-work-heading">VELUNE <em>Wonder within.</em></h2>
+              <p className="ar-kicker">Independent campaign</p>
+              <h3>VELUNE <em>Wonder within.</em></h3>
               <p className="ar-lead">A fictional chocolate brand and a 15-second film that makes the first look inside feel like a discovery.</p>
               <p>I directed the reveal, camera rhythm and product references, then reviewed the generated shots for packaging, pacing and legibility. The campaign extends into social, bilingual imagery and editable motion.</p>
               <div className="ar-campaign-links">
                 <Link className="ar-primary" href="/velune">Explore the VELUNE campaign <span aria-hidden>↗</span></Link>
-                <Link className="ar-link" href="/velune#camera-study">Shot-by-shot decisions <span aria-hidden>↗</span></Link>
                 <Link className="ar-link" href="/velune/treatment">Creative treatment <span aria-hidden>↗</span></Link>
               </div>
             </div>
@@ -108,7 +107,7 @@ export default function Home() {
           <ul className="ar-wrap ar-campaign-artifacts" aria-label="Explore the VELUNE deliverables">
             {VELUNE_ARTIFACTS.map((artifact) => (
               <li key={artifact.label}>
-                <Link href={artifact.href}>
+                <Link href={artifact.href} aria-label={artifact.label}>
                   <Image src={artifact.image} width={artifact.width} height={artifact.height} alt={artifact.alt} sizes="(max-width: 560px) 108px, 150px" />
                   <span>{artifact.label} <span aria-hidden>↗</span></span>
                 </Link>
@@ -120,24 +119,24 @@ export default function Home() {
         <section className="ar-wrap ar-studio" id="ar-studio" aria-labelledby="ar-studio-heading">
           <div className="ar-studio-intro">
             <div className="ar-studio-copy">
-              <p className="ar-kicker">Try the working tools</p>
-              <h2 id="ar-studio-heading">AI Content Studio</h2>
-              <p>I built a workspace for packshots, campaign layouts, video and sound. Start with a reference, a brief or a motion guide, then carry the work between tools.</p>
+              <p className="ar-kicker">An AI-powered creative workspace</p>
+              <h2 id="ar-studio-heading">The Workroom</h2>
+              <p>I built The Workroom for product imagery, campaign layouts, video and sound. Start with a brief, artwork or a motion guide, then carry the work through to review.</p>
               <div className="ar-actions">
-                <Link className="ar-primary" href="/ai-studio">Open the studio <span aria-hidden>↗</span></Link>
-                <Link className="ar-link" href="/ai-studio#studio-start">Try the VELUNE example <span aria-hidden>↗</span></Link>
+                <Link className="ar-primary" href="/ai-studio">Open The Workroom <span aria-hidden>↗</span></Link>
+                <Link className="ar-link" href="/ai-studio#studio-velune-example">Try the VELUNE example <span aria-hidden>↗</span></Link>
               </div>
               <p className="ar-studio-access">Browse examples and render artwork locally in demo mode. Live AI generation requires a passcode and uses credits.</p>
             </div>
             <figure className="ar-studio-interface">
-              <Link href="/ai-studio/packshots" aria-label="Open the working Packshot Studio">
-                <Image src="/homepage/studio-packshot.jpg" width={1080} height={781} alt="Packshot Studio showing the VELUNE carton in 3D alongside six assigned artwork faces and measurements" sizes="(max-width: 800px) 92vw, (max-width: 1360px) 53vw, 675px" />
+              <Link href="/ai-studio/packshots" aria-label="Open Product Shots">
+                <Image src="/homepage/studio-packshot.jpg" width={1080} height={781} alt="The VELUNE carton in 3D alongside six assigned artwork faces and measurements" sizes="(max-width: 800px) 92vw, (max-width: 1360px) 53vw, 675px" />
               </Link>
-              <figcaption>Packshot Studio <span>Live 3D carton preview</span></figcaption>
+              <figcaption>Product Shots <span>Live 3D carton preview</span></figcaption>
             </figure>
           </div>
-          <ul className="ar-studio-tools" aria-label="Open a studio tool">
-            {STUDIO_TOOLS.map((tool) => (
+          <ul className="ar-studio-tools" aria-label="Open a Workroom tool">
+            {WORKROOM_TOOLS.map((tool) => (
               <li key={tool.name}>
                 <Link href={tool.href}>
                   <strong>{tool.name}</strong><span className="ar-tool-arrow" aria-hidden>↗</span>

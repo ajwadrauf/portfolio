@@ -168,7 +168,7 @@ export function PromptBuilder() {
       const { parseAdDraft } = await import("@/lib/adDraft");
       const previous = parseAdDraft(project?.drafts.ad);
       const handoff = parseAdDraft({ ...previous, completedTake: null, productImage: null, endImage: null, imported: true, lane: "blender", schema: "adlab-draft-v1", source: "prompt", prompt, modelId: "seedance-2.5-ref", duration, references: manifest.filter((row) => row.asset).map((row) => ({ ...referenceAsset(row.asset!), role: row.job, token: row.token })), referenceManifest: manifest.map((row) => ({ token: row.token, job: row.job, assetId: row.asset?.id ?? null })), sceneCards: beats.map((beat, index) => ({ id: `prompt-scene-${index + 1}`, title: `Scene ${index + 1} · ${beat.role}`, start: times[index].start, end: times[index].end, action: beat.action, camera: values.arrangement ?? "", sound: beat.audio || throughline, referenceIds: manifest.filter((row) => beat.action.includes(row.token) && row.asset).map((row) => row.asset!.id) })) });
-      if (!handoff) throw new Error("Review the prompt length, reference count and scene times before sending. Ad Lab needs valid scenes and at most 20 attached references.");
+      if (!handoff) throw new Error("Review the prompt length, reference count and scene times before sending. Motion needs valid scenes and at most 20 attached references.");
       await saveDraft("ad", handoff);
       router.push("/ai-studio/ads");
     } catch (error) { setActionError(error instanceof Error ? error.message : "The handoff could not be saved. Your prompt remains here; retry or download the production bundle."); }
@@ -261,7 +261,7 @@ export function PromptBuilder() {
           stills came before it.
         </p>
 
-        <p className="mt-2 text-xs text-muted">Choose completed assets from your project library. Unfilled slots can stay in the plan; Ad Lab will show what still needs attaching.</p>
+        <p className="mt-2 text-xs text-muted">Choose completed assets from your project library. Unfilled slots can stay in the plan; Motion will show what still needs attaching.</p>
         {bindingNote && <p className="mt-3 text-xs text-accent" role="status">{bindingNote}</p>}
         <div className="mt-4 space-y-2">
           {slots.map((s, i) => (
@@ -672,11 +672,11 @@ export function PromptBuilder() {
             {copied ? "Copied" : "Copy"}
           </button>
           <button className="btn-primary !px-3 !py-1.5 text-xs" disabled={!prompt || busy || issues.some((issue) => issue.level === "error")} onClick={() => void sendToAdLab()}>
-            Send to Ad Lab →
+            Send to Motion →
           </button>
           <button className="btn-secondary !px-3 !py-1.5 text-xs" disabled={!prompt || busy} onClick={() => void download()}>Download production ZIP</button>
         </div>
-        <p className="mt-3 text-xs text-muted">{manifest.filter((row) => row.asset).length} of {manifest.length} reference slots attached. Ad Lab opens for review; generation is a separate action.</p>
+        <p className="mt-3 text-xs text-muted">{manifest.filter((row) => row.asset).length} of {manifest.length} reference slots attached. Motion opens for review; generation is a separate action.</p>
         {actionError && <p className="mt-3 text-sm text-danger" role="alert">{actionError}</p>}
       </section>
 

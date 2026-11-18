@@ -50,7 +50,7 @@ export default function VelunePage() {
       <a className={styles.skip} href="#velune-main">Skip to study</a>
       <header className={`${styles.wrap} ${styles.nav}`}>
         <Link href="/" aria-label="Ajwad Rauf, homepage"><Wordmark size="md" /></Link>
-        <nav aria-label="Project navigation"><Link href="/#ar-work">← All work</Link><Link href="/ai-studio">AI Content Studio ↗</Link></nav>
+        <nav aria-label="Project navigation"><Link href="/#ar-work">← All work</Link><Link href="/ai-studio">The Workroom ↗</Link></nav>
       </header>
       <main id="velune-main" tabIndex={-1}>
         <section className={styles.heroCover} aria-labelledby="velune-title">
@@ -153,7 +153,7 @@ export default function VelunePage() {
               <div><p className={styles.eyebrow}>Appearance direction</p><h2 id="references-heading">Visual references</h2></div>
               <p>Nine AI-generated stills guide the look in H3. The numbers match their upload order.</p>
             </div>
-            <div className={styles.referenceActions}><Link className={styles.cta} href="/ai-studio/ads">Try this direction in Ad Lab <span aria-hidden>↗</span></Link><a className={styles.referenceJump} href="/studio/velune/velune_h3_v2_pack.zip" download>Download the named images & H3 prompt <span aria-hidden>↓</span></a><p>In Ad Lab, choose “Load VELUNE example” for the images, Blender guide and H3 Max settings.</p></div>
+            <div className={styles.referenceActions}><Link className={styles.cta} href="/ai-studio/ads">Try this direction in Motion <span aria-hidden>↗</span></Link><a className={styles.referenceJump} href="/studio/velune/velune_h3_v2_pack.zip" download>Download the named images & H3 prompt <span aria-hidden>↓</span></a><p>In Motion, choose “Load VELUNE example” for the images, Blender guide and H3 Max settings.</p></div>
             <div className={styles.referenceProvenance}>
               <p><strong>Appearance</strong>Supplied AI reference images</p>
               <p><strong>Movement</strong>Original Blender camera layouts</p>
@@ -181,7 +181,7 @@ export default function VelunePage() {
                 </div>
               </div>
             ))}
-            <p className={styles.referenceFootnote}>Loading the Ad Lab example creates a separate working copy.</p>
+            <p className={styles.referenceFootnote}>Loading the motion example creates a separate working copy.</p>
           </div>
         </section>
 

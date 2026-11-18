@@ -5,9 +5,9 @@ import { VeluneCard } from "@/components/velune/VeluneCard";
 import { StudioStart } from "@/components/studio/StudioStart";
 
 export const metadata: Metadata = {
-  title: "AI Content Studio · Ajwad Rauf",
+  title: "The Workroom · Ajwad Rauf",
   description:
-    "A working AI content studio for product imagery, bilingual campaigns, motion and sound. Follow VELUNE from references and a Blender camera plan into an H3 film and ElevenLabs sound, then explore the tools behind it.",
+    "An AI-powered creative workspace for products, campaigns, motion and review. Follow VELUNE from references and a Blender camera plan into an H3 film and ElevenLabs sound, then explore the tools behind it.",
 };
 
 const SHELL = "mx-auto w-full max-w-6xl px-6";
@@ -22,27 +22,43 @@ const SHELL = "mx-auto w-full max-w-6xl px-6";
 const TOOLS = [
   {
     href: "/ai-studio/ads",
-    name: "Ad Lab",
+    name: "Motion",
     task: "Shape a product ad with a beat sheet, references and sound direction",
     body: "Preset ad recipes any SKU can run through, with editable aesthetics, beat-by-beat action and overlay specs. Reference-to-video keeps the product consistent. Sound is built in layers rather than asked for in one go.",
     tags: ["Short-form video", "Prompt systems", "Sound design"],
-    cta: "Open Ad Lab",
+    cta: "Open Motion",
   },
   {
     href: "/ai-studio/studio",
-    name: "Campaign Studio",
+    name: "Campaigns",
     task: "Build an editable campaign brief and a multi-format creative pack",
     body: "Vision analysis, an AI-written brief you can edit, then stills and video across formats, languages and seasons. Each deliverable goes to the model that suits it at the price it deserves.",
     tags: ["Stills", "Motion", "EN/FR versioning"],
-    cta: "Open Campaign Studio",
+    cta: "Open Campaigns",
   },
   {
     href: "/ai-studio/packshots",
-    name: "Packshot Studio",
+    name: "Product Shots",
     task: "Turn product photos or packaging artwork into usable views",
-    body: "Start from photos, or map flat artwork onto a measured package. Inspect it in 3D, render clean views and send the full set into Campaign Studio. Reconstructed views remain flagged for label QA.",
+    body: "Start from photos, or map flat artwork onto a measured package. Inspect it in 3D, render clean views and send the full set into Campaigns. Reconstructed views remain flagged for label QA.",
     tags: ["Product on white", "A/B bake-offs", "Governance"],
-    cta: "Open Packshot Studio",
+    cta: "Open Product Shots",
+  },
+  {
+    href: "/ai-studio/workflows",
+    name: "Creative Flows",
+    task: "See what changed from the same input to two generated treatments",
+    body: "Inspect the ComfyUI and Figma Weave nodes, compare the results and see where the approved carton face was restored.",
+    tags: ["Reference inputs", "Node graphs", "Creative direction"],
+    cta: "Open Creative Flows",
+  },
+  {
+    href: "/ai-studio/review",
+    name: "Review",
+    task: "Record the evidence and decision for a specific asset version",
+    body: "Use the existing project checklist for product fidelity, language and release checks. Save or export a review for handoff.",
+    tags: ["Asset versions", "Human review", "Handoff"],
+    cta: "Open Review",
   },
   {
     href: "/ai-studio/blender",
@@ -122,12 +138,10 @@ export default function StudioOverview() {
       {/* ------------------------------- Hero ------------------------------ */}
       <section className={`${SHELL} pb-14 pt-14 sm:pb-16 sm:pt-20`}>
         <h1 className="max-w-3xl text-[clamp(2.4rem,6vw,4rem)] font-medium leading-[1.02] tracking-[-0.04em]">
-          AI Content Studio
+          The Workroom
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
-          A working kit for packshots, campaign assets, motion and sound. VELUNE
-          shows the tools in use, from its Blender camera plan to the finished film
-          and a side-by-side study in ComfyUI and Figma Weave.
+          An AI-powered creative workspace for product imagery, campaigns, motion and review. Follow a VELUNE example through the tools or start with your own artwork.
         </p>
         <div className="mt-9 flex max-w-lg flex-col gap-3 sm:flex-row">
           <a href="#tools" className="btn-block">
@@ -158,13 +172,12 @@ export default function StudioOverview() {
           phone, so a 16px margin dropped the heading underneath it. */}
       <section id="tools" className={`${SHELL} scroll-mt-28 py-16 lg:py-20`}>
         <div className="max-w-2xl">
-          <p className="label !text-accent">Six surfaces, one production system</p>
+          <p className="label !text-accent">Production tools and guides</p>
           <h2 className="mt-2 text-[clamp(1.7rem,3.4vw,2.4rem)] tracking-[-0.035em]">
             Choose your starting point.
           </h2>
           <p className="mt-3 leading-relaxed text-muted">
-            Each covers a different slice of what a retail agency actually ships,
-            and they share the same intake, routing, cost and governance layer.
+            Choose a tool for the job, then bring the same source assets and decisions into the next step.
           </p>
         </div>
 
@@ -290,7 +303,7 @@ export default function StudioOverview() {
           </p>
           <div className="mt-8 max-w-sm">
             <Link href="/ai-studio/ads" className="btn-block">
-              Start in the Ad Lab <span aria-hidden>↗</span>
+              Start in Motion <span aria-hidden>↗</span>
             </Link>
           </div>
         </div>

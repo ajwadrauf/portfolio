@@ -112,7 +112,7 @@ export async function sourceImage(source: string, signal?: AbortSignal): Promise
     const bytes = Uint8Array.from(decoded, (character) => character.charCodeAt(0));
     return validateCampaignImage(new Blob([bytes], { type: match[1] }));
   }
-  if (!isCampaignProviderUrl(source)) throw new Error("This packshot is not from a supported image provider. Download it and upload the image in Campaign Studio instead.");
+  if (!isCampaignProviderUrl(source)) throw new Error("This packshot is not from a supported image provider. Download it and upload the image in Campaigns instead.");
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
@@ -148,21 +148,21 @@ export async function sourceImage(source: string, signal?: AbortSignal): Promise
 
 function storageError(error: unknown): Error {
   const name = error && typeof error === "object" && "name" in error ? error.name : "";
-  if (name === "QuotaExceededError") return new Error("This browser has no room for the packshot handoff. Download the image and upload it in Campaign Studio, or free browser storage and retry.");
-  return new Error("This browser could not save or read the packshot handoff. Allow site storage, or download the image and upload it in Campaign Studio.");
+  if (name === "QuotaExceededError") return new Error("This browser has no room for the packshot handoff. Download the image and upload it in Campaigns, or free browser storage and retry.");
+  return new Error("This browser could not save or read the packshot handoff. Allow site storage, or download the image and upload it in Campaigns.");
 }
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof indexedDB === "undefined") { reject(new Error("This browser does not support local packshot handoffs. Download the image and upload it in Campaign Studio.")); return; }
+    if (typeof indexedDB === "undefined") { reject(new Error("This browser does not support local packshot handoffs. Download the image and upload it in Campaigns.")); return; }
     let request: IDBOpenDBRequest;
     let settled = false;
-    const timer = setTimeout(() => fail(new Error("Site storage took too long to open. Close older Campaign Studio tabs and try again.")), IO_TIMEOUT);
+    const timer = setTimeout(() => fail(new Error("Site storage took too long to open. Close older Campaigns tabs and try again.")), IO_TIMEOUT);
     const fail = (error: Error) => { if (!settled) { settled = true; clearTimeout(timer); reject(error); } };
     try { request = indexedDB.open(DATABASE, 1); } catch (error) { fail(storageError(error)); return; }
     request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: "id" }); };
     request.onerror = () => fail(storageError(request.error));
-    request.onblocked = () => fail(new Error("Another tab is blocking packshot storage. Close older Campaign Studio tabs and retry."));
+    request.onblocked = () => fail(new Error("Another tab is blocking packshot storage. Close older Campaigns tabs and retry."));
     request.onsuccess = () => {
       if (settled) { request.result.close(); return; }
       settled = true;

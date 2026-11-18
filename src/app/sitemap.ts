@@ -19,6 +19,7 @@ const ROUTES = [
   "/ai-studio/models",
   "/ai-studio/build-vs-buy",
   "/ai-studio/playbook",
+  "/ai-studio/review",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
