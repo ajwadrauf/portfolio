@@ -12,41 +12,28 @@
 .nav { min-height: 100px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--border); }
 .nav nav { display: flex; gap: 28px; flex-wrap: wrap; font-size: 13px; }
 .nav nav a { padding-block: 12px; }
-.hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 80px; padding-block: 80px; align-items: end; }
-.hero h1 { font-family: Georgia, serif; font-size: clamp(60px, 8vw, 108px); letter-spacing: .055em; line-height: 1.06; margin-block: 24px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 76px); padding-block: 60px; align-items: center; }
+.hero h1 { font-family: Georgia, serif; font-size: clamp(60px, 8vw, 108px); letter-spacing: .055em; line-height: 1.02; margin-block: 15px 20px; }
 .hero h1 span { display: block; font-size: clamp(28px, 3vw, 42px); font-style: italic; letter-spacing: -.025em; margin-top: 8px; color: var(--accent); }
 .hero .lead { max-width: 39ch; font-size: clamp(18px, 2vw, 22px); line-height: 1.6; }
 .cta { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 52px; background: var(--foreground); color: var(--background); border: 1px solid var(--foreground); border-radius: 3px; padding: 14px 18px; font-size: 14px; font-weight: 500; line-height: 1.5; transition: background .2s; }
 .cta span { font-size: 22px; }
 .cta:hover { background: var(--accent); border-color: var(--accent); }
-.hero .cta { margin-top: 28px; max-width: 330px; }
-.referenceJump { display: inline-flex; gap: 20px; align-items: center; min-height: 44px; margin-top: 8px; font-size: 12px; color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
-.heroJumps { display: flex; flex-wrap: wrap; column-gap: 20px; }
-.heroJumps .referenceJump { gap: 6px; margin-top: 4px; }
-.toolNav { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
-.toolNav ul { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 8px; }
-.toolNav a {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 4px 9px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.toolNav a:hover { background: var(--surface-2); border-color: var(--accent); }
-.soundSection { scroll-margin-top: 24px; }
-.heroNote { border-left: 1px solid var(--border); padding-left: 32px; }
+.referenceJump { display: inline-flex; gap: 10px; align-items: center; min-height: 44px; margin-top: 8px; font-size: 13px; color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+.heroJumps { display: flex; flex-wrap: wrap; column-gap: 20px; margin-top: 12px; }
+.heroJumps .referenceJump { margin: 0; font-weight: 600; }
+.toolNav { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 16px; margin-top: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+.toolNav ul { display: flex; flex-wrap: wrap; gap: 0 12px; }
+.toolNav a { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; color: var(--accent); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.toolNav a:hover, .heroJumps a:hover { text-decoration-thickness: 2px; }
+.heroVisual figure { border-top: 2px solid #502633; }
+.heroVisual figure figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 14px; padding-block: 8px 12px; }
+.heroVisual dl { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); font-size: 12px; }
+.heroVisual dl > div { padding: 8px 0; }
+.heroVisual dt { color: var(--muted); font-size: 11px; }
+.heroVisual dd { margin: 0; }
 .status { display: inline-block; border: 1px solid var(--accent); color: var(--accent); padding: 6px 10px; border-radius: 3px; font-size: 11px; line-height: 1.5; }
-.heroNote > p { font-size: 14px; margin-block: 20px 24px; }
-.heroNote dl { font-size: 12px; }
-.heroNote dl > div { display: flex; justify-content: space-between; gap: 16px; padding-block: 10px; border-bottom: 1px solid var(--border); }
-.heroNote dt { color: var(--muted); }
+.soundSection { scroll-margin-top: 24px; }
 .campaignBrief { display: grid; grid-template-columns: 1fr 2fr; gap: 48px; padding-bottom: 64px; }
 .campaignBrief h2 { font: 30px/1.3 Georgia,serif; margin-top: 12px; }
 .campaignBrief dl { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
@@ -165,34 +152,26 @@
 .credits a { display: inline-flex; align-items: center; gap: 26px; min-height: 44px; text-decoration: underline; text-underline-offset: 4px; color: var(--accent); margin-top: 12px; }
 .footer { display: flex; justify-content: space-between; gap: 24px; align-items: center; min-height: 88px; border-top: 1px solid var(--border); font-size: 12px; }
 .footer a { min-height: 44px; display: flex; align-items: center; }
-.card { display: grid; grid-template-columns: 1.18fr 1fr; align-items: stretch; border: 1px solid var(--border); margin-block: 36px; background: var(--surface); overflow: hidden; }
-.cardImage { background: #241512; display: flex; flex-direction: column; justify-content: center; }
-.cardImage img { display: block; width: 100%; height: auto; }
-.cardImage > span { color: #ddc191; padding: 0 24px 20px; font: 10px/1.5 var(--font-jetbrains-mono), monospace; text-transform: uppercase; letter-spacing: .08em; }
-.cardCopy { padding: 34px; }
-.cardCopy .eyebrow { color: var(--muted); }
-.cardCopy .status { margin-top: 10px; }
-.card .cardCopy h3 { font-size: clamp(26px, 2.7vw, 36px); line-height: 1.15; margin-block: 22px 16px; letter-spacing: -.035em; }
-.card .cardCopy > p:not(.eyebrow) { color: var(--muted); font-size: 14px; line-height: 1.65; }
-.card .cardCopy .cta { margin-top: 24px; color: var(--background); text-decoration: none; }
-.compactCard { grid-template-columns: 1fr 1.5fr; margin-block: 0; }
-.compactCard .cardCopy { padding: 28px; }
-.compactCard .cardCopy h3 { font-size: 28px; }
-/* The home page has ID-scoped link/margin resets; preserve this shared card's
-   readable button and spacing without changing any existing home styles. */
-:global(#ajwad-home) .cardCopy h3 { margin-block: 22px 16px; }
-:global(#ajwad-home) .cardCopy .cta { color: var(--background); }
+.card { display: grid; grid-template-columns: minmax(0, 1.36fr) minmax(0, 1fr); align-items: center; gap: clamp(22px, 4vw, 60px); border-block: 1px solid var(--border); padding-block: clamp(16px, 2.7vw, 32px); margin-block: 36px; }
+.compactCard { margin-block: 0; }
+.cardImage { margin: 0; min-width: 0; }
+.cardImage img { display: block; width: 100%; height: auto; background: #241512; }
+.cardImage > figcaption { color: var(--muted); padding-top: 8px; font: 11px/1.5 var(--font-jetbrains-mono), monospace; }
+.cardLabel { color: var(--accent); font-size: 12px; }
+.card .cardCopy h3 { margin-block: 4px 10px; font: 400 clamp(38px, 6vw, 72px)/1.02 Georgia, serif; letter-spacing: .045em; }
+.cardCopy > p:not(.cardLabel) { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 47ch; }
+.cardLinks { display: flex; flex-wrap: wrap; column-gap: 18px; margin-top: 10px; }
+.cardLinks a, :global(#ajwad-home) .cardLinks a { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.cardLinks a:hover { text-decoration-thickness: 2px; }
 @media (max-width: 1000px) {
   .wrap { padding-inline: 32px; }
   .hero { gap: 32px; padding-block: 56px; }
-  .heroNote { padding-left: 24px; }
   .sectionHead { gap: 30px; }
   .soundGrid { gap: 40px; }
   .reportRow { gap: 32px; }
   .productReferenceGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .castingReferenceGrid .referenceCard { display: block; }
   .page .castingReferenceGrid .referenceCard figcaption { padding-block: 16px 4px; }
-  .cardCopy { padding: 24px; }
   .stages { grid-template-columns: 1fr 1fr; }
   .stages li { padding-bottom: 24px; }
   .stages li:nth-child(3) { padding-left: 0; border-left: none; }
@@ -204,11 +183,6 @@
   .nav nav { gap: 0; justify-content: flex-end; font-size: 11px; flex-direction: column; align-items: flex-end; }
   .nav nav a { padding-block: 5px; min-height: 28px; }
   .hero { grid-template-columns: 1fr; gap: 32px; padding-block: 40px; }
-  .heroNote { border-left: none; border-top: 1px solid var(--border); padding: 24px 0 0; }
-  .heroNote > p { max-width: 54ch; margin-bottom: 16px; }
-  .heroNote dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
-  .heroNote dl > div { flex-direction: column; gap: 2px; }
-  .hero .cta { max-width: none; }
   .sectionHead { grid-template-columns: 1fr; gap: 20px; margin-bottom: 26px; }
   .cinema, .artSection { padding-block: 40px; }
   .section { padding-block: 44px; }
@@ -243,8 +217,6 @@
   .credits { grid-template-columns: 1fr; gap: 36px; padding-block: 44px; }
   .footer { flex-wrap: wrap; gap: 2px; padding-block: 20px; }
   .card, .compactCard { grid-template-columns: 1fr; }
-  .cardCopy, .compactCard .cardCopy { padding: 24px; }
-  .cardImage > span { padding-bottom: 14px; }
 }
 @media (max-width: 600px) {
   .referenceProvenance { grid-template-columns: 1fr; gap: 12px; }

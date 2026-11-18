@@ -121,15 +121,13 @@ export default function StudioOverview() {
     <div>
       {/* ------------------------------- Hero ------------------------------ */}
       <section className={`${SHELL} pb-14 pt-14 sm:pb-16 sm:pt-20`}>
-        <p className="chip mb-6">Portfolio · applied AI for content production</p>
         <h1 className="max-w-3xl text-[clamp(2.4rem,6vw,4rem)] font-medium leading-[1.02] tracking-[-0.04em]">
-          Make the work.
-          <span className="block text-accent">Build the system.</span>
+          AI Content Studio
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-          Product imagery, campaigns and motion, connected by clear briefs, model
-          choices and quality checks. Follow the VELUNE case from its camera plan
-          and references into an H3 film, ElevenLabs sound and campaign adaptations.
+        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
+          A working kit for packshots, campaign assets, motion and sound. VELUNE
+          shows the tools in use, from its Blender camera plan to the finished film
+          and a side-by-side study in ComfyUI and Figma Weave.
         </p>
         <div className="mt-9 flex max-w-lg flex-col gap-3 sm:flex-row">
           <a href="#tools" className="btn-block">
@@ -151,9 +149,6 @@ export default function StudioOverview() {
       {/* ------------------------- The work, first ------------------------- */}
       <section className={`${SHELL} py-12`} aria-label="VELUNE campaign case study">
         <VeluneCard compact />
-        <Link href="/ai-studio/workflows" className="mt-4 inline-flex items-center gap-2 py-2 text-sm font-semibold text-accent underline underline-offset-4">
-          Compare the VELUNE ComfyUI and Figma Weave workflows <span aria-hidden>↗</span>
-        </Link>
       </section>
 
       <CreamCompare />

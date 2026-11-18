@@ -54,11 +54,11 @@ export default function VelunePage() {
       <main id="velune-main">
         <section className={`${styles.wrap} ${styles.hero}`}>
           <div>
-            <p className={styles.eyebrow}>Independent fictional concept / Film study 02</p>
+            <p className={styles.eyebrow}>Independent chocolate campaign</p>
             <h1>VELUNE<span>Wonder within.</span></h1>
-            <p className={styles.lead}>A small chocolate contains a world of discovery. The challenge is making that world read in fifteen seconds.</p>
-            <a className={styles.cta} href="#camera-study">Explore the making of <span aria-hidden>↓</span></a>
+            <p className={styles.lead}>A 15-second film introducing three filled chocolates, built around the first look inside.</p>
             <div className={styles.heroJumps}>
+              <a className={styles.referenceJump} href="#camera-study">Explore the making of <span aria-hidden>↓</span></a>
               <Link className={styles.referenceJump} href="/ai-studio/workflows">Compare the carton workflows <span aria-hidden>↗</span></Link>
               <a className={styles.referenceJump} href="#visual-references">Appearance references <span aria-hidden>↓</span></a>
             </div>
@@ -74,21 +74,27 @@ export default function VelunePage() {
               </ul>
             </nav>
           </div>
-          <aside className={styles.heroNote}>
-            <span className={styles.status}>Film · Stills · Motion</span>
-            <p>Follow the camera plan and finishing decisions through to the campaign delivery. The carton study explores two more visual directions using the same Raspberry Ganache reference.</p>
-            <dl><div><dt>Format</dt><dd>15 seconds / 16:9</dd></div><div><dt>Edit target</dt><dd>360 frames / 24 fps</dd></div><div><dt>Structure</dt><dd>12 shots / 11 hard cuts</dd></div><div><dt>Project</dt><dd>Independent concept</dd></div></dl>
-          </aside>
+          <div className={styles.heroVisual}>
+            <figure>
+              <Image src="/studio/velune/references/v2/02_velune_raspberry_carton.jpeg" width={1672} height={941} sizes="(max-width: 800px) 94vw, 600px" loading="eager" alt="VELUNE Raspberry Ganache carton on the original burgundy set" />
+              <figcaption>Raspberry Ganache <span>Carton reference</span></figcaption>
+            </figure>
+            <dl aria-label="Campaign film at a glance">
+              <div><dt>Format</dt><dd>15 seconds · 16:9</dd></div>
+              <div><dt>Edit</dt><dd>360 frames · 24 fps</dd></div>
+              <div><dt>Structure</dt><dd>12 shots · 11 cuts</dd></div>
+            </dl>
+          </div>
         </section>
 
         <section className={`${styles.wrap} ${styles.campaignBrief}`} aria-label="Campaign brief">
-          <div><p className={styles.eyebrow}>The brief</p><h2>A world in one bite.</h2></div>
+          <h2>Campaign brief</h2>
           <dl><div><dt>Audience</dt><dd>Adults drawn to distinctive chocolate and small moments of indulgence.</dd></div><div><dt>Objective</dt><dd>Introduce VELUNE and make its three filled centres memorable.</dd></div><div><dt>Delivery</dt><dd>A film with embedded sound, campaign still, vertical social layout and English/French still.</dd></div></dl>
         </section>
 
         <section className={styles.cinema} id="camera-study" aria-labelledby="camera-heading">
           <div className={styles.wrap}>
-            <div className={styles.sectionHead}><div><p className={styles.eyebrow}>01 / Camera & choreography</p><h2 id="camera-heading">Direct the movement.<br /><em>Then build the finish.</em></h2></div><p id="velune-video-description">A silent Blender animatic, from the chocolate tunnel and three-flavour montage to a laboratory reveal, printed report and final return. Select any shot below to inspect the plan.</p></div>
+            <div className={styles.sectionHead}><div><p className={styles.eyebrow}>Blender animatic</p><h2 id="camera-heading">Camera and choreography</h2></div><p id="velune-video-description">A silent Blender animatic, from the chocolate tunnel and three-flavour montage to a laboratory reveal, printed report and final return. Select any shot below to inspect the plan.</p></div>
             <VelunePlayer />
             <Link className={styles.cta} href="/ai-studio#studio-start">Explore the editable VELUNE studio example <span aria-hidden>↗</span></Link>
             <p className={styles.mediaNote}>Original Blender guide, unchanged. The revised H3 prompt replaces the opening and ending, adds working gestures and changes the serving to three centres. Those updates are shown in the reference images below, not in this animatic.</p>
@@ -99,7 +105,7 @@ export default function VelunePage() {
           <div className={styles.sectionHead}><div><p className={styles.eyebrow}>02 / The direction</p><h2 id="decisions-heading">Every move has a job.</h2></div><p>The inherited shot rhythm provides the structure. Chocolate-specific forms, restrained colour and deliberate moments of stillness give VELUNE its own story.</p></div>
           <div className={styles.decisions}>{DECISIONS.map((item) => <article key={item.n}><span className={styles.eyebrow}>{item.n}</span><h3>{item.title}</h3><p>{item.body}</p><p className={styles.detail}>{item.detail}</p></article>)}</div>
           <div className={styles.judgment} id="creative-review">
-            <div className={styles.judgmentHeading}><p className={styles.eyebrow}>A decision you can see</p><h3>The camera plan was useful.<br />The proxy artwork was getting through.</h3><p>The generated take briefly returned to flat Blender carton artwork. I kept the sequence, then replaced the three short carton inserts with the selected appearance images during local finishing.</p></div>
+            <div className={styles.judgmentHeading}><p className={styles.eyebrow}>Film frame at 2.375 seconds</p><h3>Replacing the proxy carton</h3><p>The generated take briefly returned to flat Blender carton artwork. I kept the sequence, then replaced the three short carton inserts with the selected appearance images during local finishing.</p></div>
             <div className={styles.comparisonGrid}>
               <figure><Image src="/studio/velune/delivery/carton-before.jpg" width={1344} height={768} alt="Source H3 frame at 2.375 seconds: the raspberry carton has flat proxy artwork" sizes="(max-width: 760px) 90vw, 45vw" /><figcaption><strong>Before · H3 source take</strong><span>At 2.375s, the flat shield graphic replaces the intended chocolate photograph.</span></figcaption></figure>
               <figure><Image src="/studio/velune/delivery/carton-after.jpg" width={1920} height={1080} alt="Finished frame at 2.375 seconds: selected raspberry carton artwork shows the whole bonbon and exposed filling" sizes="(max-width: 760px) 90vw, 45vw" /><figcaption><strong>After · Local finishing</strong><span>The selected cover restores paper texture, carton depth and the visible raspberry centre.</span></figcaption></figure>

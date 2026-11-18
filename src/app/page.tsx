@@ -109,14 +109,7 @@ export default function Home() {
         {/* --------------------------- Selected work ------------------------- */}
         <section className="ar-work ar-wrap" id="ar-work" aria-labelledby="ar-work-heading">
           <div className="ar-section-heading">
-            <div>
-              <p className="ar-eyebrow">01 / Selected work</p>
-              <h2 id="ar-work-heading">
-                The work behind
-                <br />
-                <em>the point of view.</em>
-              </h2>
-            </div>
+            <h2 id="ar-work-heading">Selected work</h2>
             <p>
               Start with VELUNE, explore the studio behind it, then see how I help
               teams move work from request to release.
@@ -128,7 +121,7 @@ export default function Home() {
           <article className="ar-studio-project">
             <div className="ar-project-copy">
               <div className="ar-project-meta">
-                <span className="ar-eyebrow">01 / AI Content Studio</span>
+                <span className="ar-eyebrow">AI Content Studio</span>
                 <span className="ar-status">Live studio</span>
               </div>
               <h3>
@@ -191,7 +184,7 @@ export default function Home() {
           <div className="ar-project-pair">
             <article>
               <div className="ar-project-meta">
-                <span className="ar-eyebrow">02 / Persopot</span>
+                <span className="ar-eyebrow">Persopot</span>
                 <span className="ar-status">Consumer product</span>
               </div>
               <div className="ar-perso-visual">
@@ -221,7 +214,7 @@ export default function Home() {
 
             <article>
               <div className="ar-project-meta">
-                <span className="ar-eyebrow">03 / Project Forge</span>
+                <span className="ar-eyebrow">Project Forge</span>
                 <span className="ar-status ar-status-internal">Internal · Loblaw</span>
               </div>
               <div className="ar-forge-visual">
@@ -259,7 +252,7 @@ export default function Home() {
         <section className="ar-approach" id="ar-approach" aria-labelledby="ar-story-heading">
           <div className="ar-wrap ar-story-grid">
             <div className="ar-story-title">
-              <p className="ar-eyebrow">02 / Staying ahead</p>
+              <p className="ar-eyebrow">Approach</p>
               <h2 id="ar-story-heading">
                 The next model
                 <br />
@@ -314,7 +307,7 @@ export default function Home() {
           <div className="ar-wrap">
             <div className="ar-film-heading">
               <div>
-                <p className="ar-eyebrow">03 / Motion study</p>
+                <p className="ar-eyebrow">Motion study</p>
                 <h2 id="ar-film-heading">
                   A thought.
                   <br />

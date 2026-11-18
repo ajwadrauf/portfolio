@@ -7,8 +7,8 @@ import styles from "./workflows.module.css";
 export const metadata: Metadata = {
   title: "VELUNE node workflows · AI Content Studio · Ajwad Rauf",
   description: "An independent VELUNE production study. Compare ComfyUI and Figma Weave runs, inspect the graphs, and see how the selected carton images were finished.",
-  alternates: { canonical: "https://ajwadrauf.com/ai-studio/workflows" },
-  openGraph: { images: [{ url: `https://ajwadrauf.com${media}/finished-premium.webp`, alt: "Finished VELUNE Raspberry Ganache carton in amber studio light" }] },
+  alternates: { canonical: "https://www.ajwadrauf.com/ai-studio/workflows" },
+  openGraph: { images: [{ url: `https://www.ajwadrauf.com${media}/finished-premium.webp`, alt: "Finished VELUNE Raspberry Ganache carton in amber studio light" }] },
 };
 
 const comparison = [
@@ -32,12 +32,12 @@ export default function WorkflowCase() {
         </nav>
         <header className={styles.hero}>
           <div>
-            <p className={styles.kicker}>VELUNE / Independent production study</p>
-            <h1>Direct the scene.<br /><em>Protect the product.</em></h1>
+            <p className={styles.kicker}>VELUNE / Carton image study</p>
+            <h1>Raspberry Ganache</h1>
           </div>
           <div className={styles.intro}>
-            <p>A Raspberry Ganache carton, two art directions and the same brief in ComfyUI and Figma Weave. The test was whether I could change the whole mood of a shot while keeping the pack recognizably VELUNE.</p>
-            <p className={styles.credit}><strong>Creative direction &amp; production study</strong> · Ajwad Rauf</p>
+            <p>Two lighting treatments for the same carton, tested in ComfyUI and Figma Weave. I reviewed what happened to the packaging as the set changed.</p>
+            <p className={styles.credit}>Independent study · Ajwad Rauf</p>
           </div>
         </header>
 
@@ -47,22 +47,20 @@ export default function WorkflowCase() {
         <section className={styles.director} aria-labelledby="review-heading">
           <div>
             <p className={styles.kicker}>Creative director’s review</p>
-            <h2 id="review-heading">Choose the light. Check the lettering.</h2>
-            <p>For premium, a warm glow behind the pack made the set feel more intentional. For social, stronger diagonal light carried the energy. At full size, both selected images had changed the chocolate illustration and paper colour enough to warrant a correction.</p>
+            <h2 id="review-heading">Where the carton changed</h2>
+            <p>At full size, the chocolate on both selected cartons looked darker and the paper had turned redder. I mapped the reference artwork onto the front face and kept the generated scene, shadow and side face.</p>
             <Link href="/velune#creative-review" className={styles.textLink}>See the carton correction in the original film case ↗</Link>
           </div>
           <div className={styles.reviewNotes}>
-            <h3>What passed the creative review</h3>
-            <p>The selected lighting, backdrop and overall composition. The finished study plates use a perspective-mapped source front to recover the wordmark, flavour label and chocolate detail.</p>
-            <h3>What still needs finishing</h3>
-            <p>For live production, use approved master artwork on every visible face, proof the colour and copy, and check each placement. The supplied carton is concept artwork. The generated side face remains in both study plates.</p>
+            <h3>Before a production release</h3>
+            <p>Apply approved artwork to every visible face, proof the colour and lettering, and check the crop and type in each placement. The carton in this study is concept artwork.</p>
             <a className={styles.textLink} href={`${media}/velune-raspberry-reference.png`} download>Download the shared carton reference ↓</a>
           </div>
         </section>
 
         <section className={styles.comparisonSection} aria-labelledby="table-heading">
           <div className={styles.sectionHead}>
-            <div><p className={styles.kicker}>Production comparison</p><h2 id="table-heading">Where each tool fits.</h2></div>
+            <h2 id="table-heading">ComfyUI and Figma Weave</h2>
             <p>Both used the same input, prompts and seed with FLUX.1 Kontext Dev. Weave manages its own runtime and ComfyUI exposed an FP8 checkpoint and sampler settings. The different output sizes and execution paths limit any model-quality or cost comparison.</p>
           </div>
           <table className={styles.table} aria-label="ComfyUI and Figma Weave production comparison">
@@ -74,8 +72,7 @@ export default function WorkflowCase() {
         </section>
 
         <section className={styles.handoff} aria-labelledby="handoff-heading">
-          <p className={styles.kicker}>Studio handoff</p>
-          <h2 id="handoff-heading">Keep the decision with the asset.</h2>
+          <h2 id="handoff-heading">From study to production</h2>
           <ol>
             <li><strong>Source the product</strong><span>Packshot Studio and Blender already provide artwork views and camera references.</span></li>
             <li><strong>Explore the set</strong><span>ComfyUI and Weave ran externally. This study uses saved renders and an exported graph.</span></li>
