@@ -30,6 +30,7 @@ export function ProjectDock() {
     try { await fn(); } catch (e) { setMessage(e instanceof Error ? e.message : "The project could not be updated."); }
     finally { setBusy(false); }
   };
+  if (pathname === "/ai-studio/workflows") return null;
   return <div className="border-b border-border-soft bg-surface" aria-label="Current studio project">
     <div className="mx-auto max-w-6xl px-6 py-3">
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 text-sm">

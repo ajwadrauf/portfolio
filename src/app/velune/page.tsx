@@ -104,6 +104,7 @@ export default function VelunePage() {
             <img src={VELUNE_MEDIA.contactSheet} width={1280} height={1632} alt="Thirty representative poses from the actual VELUNE Blender camera study, including the question-mark assembly, observer arcs and studio pullback" loading="lazy" />
             <figcaption>Camera-study contact sheet · Actual Blender frames <a href={VELUNE_MEDIA.contactSheet} target="_blank" rel="noreferrer">Open full image ↗</a></figcaption>
           </figure>
+          <Link className={styles.referenceJump} href="/ai-studio/workflows">See the ComfyUI and Figma Weave carton study <span aria-hidden>↗</span></Link>
         </section>
 
         <section className={styles.referenceSection} id="visual-references" aria-labelledby="references-heading">

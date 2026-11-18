@@ -151,6 +151,9 @@ export default function StudioOverview() {
       {/* ------------------------- The work, first ------------------------- */}
       <section className={`${SHELL} py-12`} aria-label="VELUNE campaign case study">
         <VeluneCard compact />
+        <Link href="/ai-studio/workflows" className="mt-4 inline-flex items-center gap-2 py-2 text-sm font-semibold text-accent underline underline-offset-4">
+          Compare the VELUNE ComfyUI and Figma Weave workflows <span aria-hidden>↗</span>
+        </Link>
       </section>
 
       <CreamCompare />

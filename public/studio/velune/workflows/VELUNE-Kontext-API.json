@@ -1,0 +1,296 @@
+{
+  "1": {
+    "inputs": {
+      "image": "velune-raspberry-reference.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "01 · Product / packaging"
+    }
+  },
+  "4": {
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "FluxKontextImageScale",
+    "_meta": {
+      "title": "Kontext reference sizing"
+    }
+  },
+  "5": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "FLUX VAE"
+    }
+  },
+  "6": {
+    "inputs": {
+      "pixels": [
+        "4",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "Encode reference latents"
+    }
+  },
+  "7": {
+    "inputs": {
+      "clip_name1": "clip_l.safetensors",
+      "clip_name2": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "FLUX text encoders"
+    }
+  },
+  "8": {
+    "inputs": {
+      "unet_name": "flux1-dev-kontext_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "FLUX.1 Kontext Dev"
+    }
+  },
+  "9": {
+    "inputs": {
+      "text": "Edit this product photograph of one VELUNE Raspberry Ganache carton. Keep the box shape, camera angle, VELUNE wordmark, Raspberry Ganache flavour label, plum paperboard and the printed whole and cut chocolate exactly as in the input. Change the set and studio lighting around the carton. Keep it grounded with a believable contact shadow. One continuous product photograph. Do not add packaging, props, logos, claims or overlay text. Create a quiet luxury editorial in a deep wine-red studio. A single warm, diffused key light from upper left grazes the paper grain, with a soft shadow and very subtle dark tabletop reflection. Keep the carton well lit and let the background fall off on the left for separate copy. Rich burgundy, warm amber highlights, refined restraint.",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Direction A · premium hero"
+    }
+  },
+  "10": {
+    "inputs": {
+      "text": "Edit this product photograph of one VELUNE Raspberry Ganache carton. Keep the box shape, camera angle, VELUNE wordmark, Raspberry Ganache flavour label, plum paperboard and the printed whole and cut chocolate exactly as in the input. Change the set and studio lighting around the carton. Keep it grounded with a believable contact shadow. One continuous product photograph. Do not add packaging, props, logos, claims or overlay text. Create a bold mobile-first social image using a saturated raspberry backdrop and a wide diagonal shaft of light that lands behind the carton. Brighten the set and add a crisp edge shadow. Keep the box front readable against the vivid backdrop, leave a calm area toward the upper left for separately typeset copy, and keep the carton fully in frame.",
+      "clip": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Direction B · social energy"
+    }
+  },
+  "11": {
+    "inputs": {
+      "conditioning": [
+        "9",
+        0
+      ],
+      "latent": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Attach product reference · A"
+    }
+  },
+  "12": {
+    "inputs": {
+      "conditioning": [
+        "10",
+        0
+      ],
+      "latent": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Attach product reference · B"
+    }
+  },
+  "13": {
+    "inputs": {
+      "guidance": 2.5,
+      "conditioning": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "Visual guidance A"
+    }
+  },
+  "14": {
+    "inputs": {
+      "guidance": 2.5,
+      "conditioning": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "Visual guidance B"
+    }
+  },
+  "15": {
+    "inputs": {
+      "conditioning": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Negative conditioning A"
+    }
+  },
+  "16": {
+    "inputs": {
+      "conditioning": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Negative conditioning B"
+    }
+  },
+  "17": {
+    "inputs": {
+      "seed": 26001117,
+      "steps": 28,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0,
+      "model": [
+        "8",
+        0
+      ],
+      "positive": [
+        "13",
+        0
+      ],
+      "negative": [
+        "15",
+        0
+      ],
+      "latent_image": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "Render A · HERO"
+    }
+  },
+  "18": {
+    "inputs": {
+      "seed": 26001117,
+      "steps": 28,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0,
+      "model": [
+        "8",
+        0
+      ],
+      "positive": [
+        "14",
+        0
+      ],
+      "negative": [
+        "16",
+        0
+      ],
+      "latent_image": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "Render B · SOCIAL"
+    }
+  },
+  "19": {
+    "inputs": {
+      "samples": [
+        "17",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "Decode HERO"
+    }
+  },
+  "20": {
+    "inputs": {
+      "samples": [
+        "18",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "Decode SOCIAL"
+    }
+  },
+  "21": {
+    "inputs": {
+      "filename_prefix": "VELUNE_Kontext_PREMIUM",
+      "images": [
+        "19",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save A · HERO"
+    }
+  },
+  "22": {
+    "inputs": {
+      "filename_prefix": "VELUNE_Kontext_SOCIAL",
+      "images": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save B · SOCIAL"
+    }
+  }
+}
