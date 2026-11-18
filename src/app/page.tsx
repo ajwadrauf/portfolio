@@ -5,7 +5,6 @@ import { Instrument_Serif } from "next/font/google";
 import { HomeNav } from "@/components/HomeNav";
 import { SmoothAnchors } from "@/components/home/SmoothAnchors";
 import { VELUNE_MOTION } from "@/components/velune/veluneStudy";
-import { CREAM_FINAL } from "@/components/studio/creamStudy";
 import "@/components/home/home.css";
 
 const instrumentSerif = Instrument_Serif({
@@ -107,29 +106,36 @@ export default function Home() {
           </article>
         </section>
 
-        <section className="ar-wrap ar-range" aria-labelledby="ar-range-heading">
+        <section className="ar-wrap ar-range" id="ar-more-work" aria-labelledby="ar-range-heading">
           <h2 id="ar-range-heading">More work</h2>
           <div className="ar-range-grid">
             <article className="ar-range-project">
-              <div className="ar-range-images ar-persopot">
-                <Image src="/homepage/persopot-navy.webp" width={638} height={1140} alt="PersoPot try-on of a navy dress on the same model" sizes="(max-width: 760px) 42vw, 20vw" />
-                <Image src="/homepage/persopot-sage.webp" width={638} height={1140} alt="PersoPot try-on of a sage dress on the same model" sizes="(max-width: 760px) 42vw, 20vw" />
-              </div>
+              <figure className="ar-range-preview ar-persopot">
+                <video width={1120} height={728} controls muted playsInline preload="none" poster="/homepage/persopot-motion-poster.jpg" aria-label="Play the PersoPot preview" aria-describedby="ar-persopot-preview-description">
+                  <source src="/homepage/persopot-motion.mp4" type="video/mp4" />
+                  <a href="/homepage/persopot-motion.mp4">Open the PersoPot preview</a>
+                </video>
+                <figcaption id="ar-persopot-preview-description"><span>Try on, shortlist, ask a friend</span><span>12 sec · Silent</span></figcaption>
+              </figure>
               <div className="ar-range-copy">
                 <p className="ar-kicker">Consumer product</p>
                 <h3>PersoPot</h3>
-                <p>I built a fashion product around a decision people already make together: try a look, shortlist it, and ask a friend. The try-ons show two options on the same identity.</p>
+                <p>I built PersoPot to help people try outfits on their own photo, save a shortlist and ask a friend what they’d pick. The preview shows AI try-ons and sample feedback.</p>
                 <a className="ar-link" href="https://persopot.com/" target="_blank" rel="noreferrer">Explore PersoPot <span aria-hidden>↗</span></a>
               </div>
             </article>
             <article className="ar-range-project">
-              <div className="ar-range-images ar-cream">
-                <Image src={CREAM_FINAL.poster} width={480} height={854} alt="Vanilla, chocolate and strawberry ice cream in the finished Cream in motion film" sizes="(max-width: 760px) 44vw, 22vw" />
-              </div>
+              <figure className="ar-range-preview ar-cream">
+                <video width={1120} height={728} controls muted playsInline preload="none" poster="/homepage/cream-motion-poster.jpg" aria-label="Play the Cream in Motion comparison" aria-describedby="ar-cream-preview-description">
+                  <source src="/homepage/cream-motion.mp4" type="video/mp4" />
+                  <a href="/homepage/cream-motion.mp4">Open the Cream in Motion comparison</a>
+                </video>
+                <figcaption id="ar-cream-preview-description"><span>Blender blocking, shaded render, Seedance</span><span>10 sec · Silent</span></figcaption>
+              </figure>
               <div className="ar-range-copy">
                 <p className="ar-kicker">Blender to film</p>
                 <h3>Cream in motion</h3>
-                <p>A seven-shot Blender camera plan guided an 18-second Seedance film. Compare the blocking, the shaded pass and the generated result.</p>
+                <p>A seven-shot Blender camera plan guided an 18-second Seedance film. Watch the same two shots across blocking, shading and generation.</p>
                 <Link className="ar-link" href="/ai-studio/ads/cream-in-motion">Explore the motion study <span aria-hidden>↗</span></Link>
               </div>
             </article>
@@ -141,13 +147,12 @@ export default function Home() {
             <div>
               <p className="ar-kicker">Loblaw · Marketing production</p>
               <h2 id="ar-leadership-heading">How I lead production</h2>
-              <p className="ar-lead">I lead an eight-person marketing production team with three direct reports.</p>
+              <p className="ar-lead">I lead a marketing production team at Loblaw.</p>
               <p>I coach colleagues through briefing, QA and approvals, coordinate marketing and technical partners, and run working sessions on where generative AI can help and how to review its output.</p>
             </div>
             <div>
               <dl className="ar-leadership-facts">
-                <div><dt>Team members</dt><dd>8</dd></div>
-                <div><dt>Direct reports</dt><dd>3</dd></div>
+                <div><dt>Direct reports</dt><dd>7</dd></div>
               </dl>
               <div className="ar-forge">
                 <h3>Project Forge</h3>
