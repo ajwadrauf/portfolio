@@ -7,6 +7,7 @@ const ROUTES = [
   "",
   "/project-forge",
   "/velune",
+  "/velune/treatment",
   "/ai-studio",
   "/ai-studio/workflows",
   "/ai-studio/studio",

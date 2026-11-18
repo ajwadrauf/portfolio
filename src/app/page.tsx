@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Instrument_Serif } from "next/font/google";
 import { HomeNav } from "@/components/HomeNav";
 import { SmoothAnchors } from "@/components/home/SmoothAnchors";
-import { TokenFilm } from "@/components/home/TokenFilm";
-import { TokenSculpture } from "@/components/home/TokenSculpture";
-import { CreamFilm } from "@/components/home/CreamFilm";
-import { VeluneCard } from "@/components/velune/VeluneCard";
+import { VELUNE_MOTION } from "@/components/velune/veluneStudy";
+import { CREAM_FINAL } from "@/components/studio/creamStudy";
 import "@/components/home/home.css";
 
-/**
- * The expressive half of the page's voice, loaded here rather than in the root
- * layout so the studio never pays for a face it does not use. It is bound to
- * <em> in home.css, which is why the variable has to reach the page root.
- */
 const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument-serif",
   subsets: ["latin"],
@@ -23,343 +17,185 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Ajwad Rauf · applied AI, creative work and production systems",
-  description:
-    "I turn emerging AI into creative work and production systems people can actually use. Explore the VELUNE campaign and node workflows, the studio behind the work and Project Forge. Applied AI and creative technology, from Toronto.",
+  title: "Ajwad Rauf · Creative direction, generative AI and production leadership",
+  description: "Ajwad Rauf leads marketing production at Loblaw and directs independent AI-assisted work. Explore VELUNE, AI Content Studio, PersoPot and Project Forge.",
+  alternates: { canonical: "https://www.ajwadrauf.com/" },
+  openGraph: {
+    images: [{ url: "https://www.ajwadrauf.com/homepage/velune-hero.webp", width: 1440, height: 810, alt: "Three filled VELUNE chocolates revealed on a ceramic plate" }],
+  },
 };
 
-/**
- * The three ice-cream frames.
- *
- * Appearance references behind the finished film. Keep them available as
- * process material, clearly distinguished from the generated video.
- */
-const REFERENCES = [
-  { src: "/homepage/macro.jpg", alt: "Close study of vanilla ice-cream texture" },
-  {
-    src: "/homepage/trio.jpg",
-    alt: "Vanilla, chocolate and strawberry ice-cream concept reference",
-  },
-  { src: "/homepage/spiral.jpg", alt: "A vanilla cream ribbon spiralling around a scoop" },
-] as const;
-
 const METHOD = [
-  {
-    n: "01",
-    h: "Explore what’s next.",
-    p: "Find the capability that changes what a team can make.",
-  },
-  {
-    n: "02",
-    h: "Test what holds.",
-    p: "Put fidelity, control, speed and cost against a real brief.",
-  },
-  {
-    n: "03",
-    h: "Build what lasts.",
-    p: "Turn the experiment into a system someone else can run.",
-  },
+  { title: "Brief the idea", body: "Agree on what the audience should notice, feel or do. Give each reference a job before building the first frame." },
+  { title: "Review the work", body: "Compare against the brief at full size. Check the product, the copy and the decisions that still need a person." },
+  { title: "Make the handoff clear", body: "Keep the approved artwork, review notes and editable files together so a teammate can make the next version." },
 ] as const;
 
 export default function Home() {
   return (
     <div id="ajwad-home" className={instrumentSerif.variable}>
       <SmoothAnchors />
-      <a className="ar-skip" href="#ar-main">
-        Skip to content
-      </a>
-
+      <a className="ar-skip" href="#ar-main">Skip to content</a>
       <HomeNav />
 
       <main id="ar-main" tabIndex={-1}>
-        {/* ------------------------------- Hero ------------------------------ */}
-        <section className="ar-hero ar-wrap" id="ar-top">
+        <section className="ar-hero ar-wrap" id="ar-top" aria-labelledby="ar-hero-heading">
           <div className="ar-hero-copy">
-            <p className="ar-eyebrow">
-              <span className="ar-dot" />
-              Applied AI &amp; creative technology · Toronto
-            </p>
-            <h1>
-              AI moves fast.
-              <br />I make it <em>work.</em>
-            </h1>
-            <p className="ar-hero-description">
-              I turn emerging AI into creative work and production systems people can
-              actually use.
-            </p>
-            <div className="ar-hero-actions">
-              <a className="ar-button ar-primary" href="#ar-work">
-                Explore the work <span aria-hidden>↘</span>
-              </a>
-              <a className="ar-text-link" href="#ar-film">
-                Watch the 12-second film <span aria-hidden>▷</span>
-              </a>
+            <p className="ar-kicker">Creative direction &amp; production leadership</p>
+            <h1 id="ar-hero-heading">The idea leads.<br /><em>The technology follows.</em></h1>
+            <p className="ar-lead">I direct AI-assisted campaigns and build the production workflows that help teams take a brief through to finished work.</p>
+            <p className="ar-affiliation">Marketing production at Loblaw <span aria-hidden>·</span> Toronto</p>
+            <div className="ar-actions">
+              <a className="ar-primary" href="#ar-work">Explore selected work <span aria-hidden>↓</span></a>
+              <Link className="ar-link" href="/velune#velune-film">Watch VELUNE <span aria-hidden>↗</span></Link>
             </div>
-            <p className="ar-hero-footnote">From the first experiment to the last mile.</p>
           </div>
-          <TokenSculpture />
+          <figure className="ar-hero-visual">
+            <Link href="/velune" aria-label="Explore the VELUNE campaign">
+              <Image src="/homepage/velune-hero.webp" width={1440} height={810} alt="Pistachio, raspberry and caramel chocolate centres on a cream plate against a burgundy set" sizes="(max-width: 760px) 94vw, (max-width: 1300px) 56vw, 715px" preload />
+            </Link>
+            <figcaption><strong>VELUNE</strong><span>Frame from the finished film</span></figcaption>
+          </figure>
         </section>
 
-        <nav className="ar-evidence-route ar-wrap" aria-label="Explore the portfolio">
-          <Link href="/velune"><span>The creative work</span><strong>VELUNE <span aria-hidden>↗</span></strong></Link>
-          <Link href="/ai-studio"><span>The tools behind it</span><strong>AI Content Studio <span aria-hidden>↗</span></strong></Link>
-          <Link href="/project-forge"><span>Helping teams deliver</span><strong>Project Forge <span aria-hidden>↗</span></strong></Link>
-        </nav>
-
-        {/* --------------------------- Selected work ------------------------- */}
-        <section className="ar-work ar-wrap" id="ar-work" aria-labelledby="ar-work-heading">
-          <div className="ar-section-heading">
-            <h2 id="ar-work-heading">Selected work</h2>
-            <p>
-              Start with VELUNE, explore the studio behind it, then see how I help
-              teams move work from request to release.
-            </p>
-          </div>
-
-          <VeluneCard />
-
-          <article className="ar-studio-project">
-            <div className="ar-project-copy">
-              <div className="ar-project-meta">
-                <span className="ar-eyebrow">AI Content Studio</span>
-                <span className="ar-status">Live studio</span>
+        <section className="ar-campaign" id="ar-work" aria-labelledby="ar-work-heading">
+          <div className="ar-wrap ar-campaign-grid">
+            <div className="ar-campaign-copy">
+              <p className="ar-kicker">Selected work / Independent campaign</p>
+              <h2 id="ar-work-heading">VELUNE <em>Wonder within.</em></h2>
+              <p className="ar-lead">A fictional chocolate brand and a 15-second film that makes the first look inside feel like a discovery.</p>
+              <p>I directed the reveal, camera rhythm and product references, then reviewed the generated shots for packaging, pacing and legibility. The campaign extends into social, bilingual imagery and editable motion.</p>
+              <div className="ar-campaign-links">
+                <Link className="ar-primary" href="/velune">Explore the VELUNE campaign <span aria-hidden>↗</span></Link>
+                <Link className="ar-link" href="/velune#camera-study">Shot-by-shot decisions <span aria-hidden>↗</span></Link>
+                <Link className="ar-link" href="/velune/treatment">Creative treatment <span aria-hidden>↗</span></Link>
               </div>
-              <h3>
-                From the brief
-                <br />to the handoff.
-              </h3>
-              <p>
-                A working toolkit for product imagery, bilingual campaigns, motion and
-                sound. Built around the decisions that make AI useful: which model, which
-                reference, which quality gate, and at what cost.
-              </p>
-              <p className="ar-film-project-note">
-                VELUNE pairs a finished H3 film and ElevenLabs voiceover with
-                editable After Effects motion. A separate carton study compares
-                ComfyUI and Figma Weave. The ice-cream example here shows how a
-                Blender camera plan translates through Seedance.
-              </p>
-              <p className="ar-role-note">
-                <strong>My role</strong> Concept, workflow design, model selection
-                and testing, with AI-assisted development and production. I direct
-                and review the work.
-              </p>
-              <div className="ar-tags">
-                <span>Retail &amp; CPG</span>
-                <span>Stills + motion + sound</span>
-                <span>Model routing</span>
-              </div>
-              <Link className="ar-project-link" href="/ai-studio">
-                Explore AI Content Studio <span aria-hidden>↗</span>
-              </Link>
-              <p className="ar-access-note">
-                Browse the workflows. Live generation is available by request.
-              </p>
             </div>
-            <div className="ar-studio-visual">
-              <CreamFilm />
-              <details className="ar-film-references">
-                <summary>Explore the appearance references</summary>
-              <div className="ar-image-triptych">
-                {REFERENCES.map((r) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={r.src}
-                    src={r.src}
-                    width={435}
-                    height={780}
-                    alt={r.alt}
-                    loading="lazy"
-                  />
-                ))}
-              </div>
-              <div className="ar-image-caption">
-                <span>Behind the film</span>
-                <span>Appearance references</span>
-              </div>
-              </details>
+            <figure className="ar-video">
+              <video width={960} height={540} controls muted playsInline preload="none" poster="/homepage/velune-preview.webp" aria-label="Six-second silent preview of the VELUNE campaign">
+                <source src="/homepage/velune-preview.mp4" type="video/mp4" />
+                <a href="/homepage/velune-preview.mp4">Open the VELUNE preview</a>
+              </video>
+              <figcaption>Campaign excerpt <span>06 sec / silent</span></figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section className="ar-wrap ar-studio" aria-labelledby="ar-studio-heading">
+          <div className="ar-studio-copy">
+            <p className="ar-kicker">Creative production</p>
+            <h2 id="ar-studio-heading">AI Content Studio</h2>
+            <p>A toolkit I built for product imagery, campaign layouts, video and sound. It connects references and briefs to model choice and creative review so a team can carry a concept across formats.</p>
+            <Link className="ar-link" href="/ai-studio">Explore AI Content Studio <span aria-hidden>↗</span></Link>
+          </div>
+          <article className="ar-workflow" aria-labelledby="ar-workflow-heading">
+            <div className="ar-workflow-images">
+              <figure>
+                <Image src="/studio/velune/workflows/weave-social-detail.webp" width={380} height={419} alt="Generated VELUNE carton detail with altered chocolate artwork and brighter red packaging" sizes="(max-width: 760px) 46vw, 32vw" />
+                <figcaption>Generated carton</figcaption>
+              </figure>
+              <figure>
+                <Image src="/studio/velune/workflows/finished-social-detail.webp" width={380} height={419} alt="Finished VELUNE carton with the illustrated chocolate and label restored from the reference face" sizes="(max-width: 760px) 46vw, 32vw" />
+                <figcaption>Reference face restored</figcaption>
+              </figure>
+            </div>
+            <div className="ar-workflow-caption">
+              <h3 id="ar-workflow-heading">ComfyUI × Figma Weave</h3>
+              <p>Both workflows changed the artwork on the pack. I selected the lighting and restored the original carton face during finishing.</p>
+              <Link className="ar-link" href="/ai-studio/workflows">Compare the carton workflows <span aria-hidden>↗</span></Link>
             </div>
           </article>
+        </section>
 
-          <div className="ar-project-pair">
-            <article>
-              <div className="ar-project-meta">
-                <span className="ar-eyebrow">Persopot</span>
-                <span className="ar-status">Consumer product</span>
+        <section className="ar-wrap ar-range" aria-labelledby="ar-range-heading">
+          <h2 id="ar-range-heading">More work</h2>
+          <div className="ar-range-grid">
+            <article className="ar-range-project">
+              <div className="ar-range-images ar-persopot">
+                <Image src="/homepage/persopot-navy.webp" width={638} height={1140} alt="PersoPot try-on of a navy dress on the same model" sizes="(max-width: 760px) 42vw, 20vw" />
+                <Image src="/homepage/persopot-sage.webp" width={638} height={1140} alt="PersoPot try-on of a sage dress on the same model" sizes="(max-width: 760px) 42vw, 20vw" />
               </div>
-              <div className="ar-perso-visual">
-                <span className="ar-perso-title">persopot.</span>
-                <div className="ar-perso-orbit">
-                  <span>Headshots</span>
-                  <span>Try it on</span>
-                  <span>Ask a bestie</span>
-                </div>
-                <span className="ar-perso-caption">Your identity. More possibilities.</span>
+              <div className="ar-range-copy">
+                <p className="ar-kicker">Consumer product</p>
+                <h3>PersoPot</h3>
+                <p>I built a fashion product around a decision people already make together: try a look, shortlist it, and ask a friend. The try-ons show two options on the same identity.</p>
+                <a className="ar-link" href="https://persopot.com/" target="_blank" rel="noreferrer">Explore PersoPot <span aria-hidden>↗</span></a>
               </div>
-              <h3>AI with a social life.</h3>
-              <p>
-                Studio headshots and outfit try-ons, built around one identity. Shared
-                collections make the result part of a conversation, with the people whose
-                opinions matter.
-              </p>
-              <a
-                className="ar-project-link"
-                href="https://persopot.com"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Visit Persopot <span aria-hidden>↗</span>
-              </a>
             </article>
-
-            <article>
-              <div className="ar-project-meta">
-                <span className="ar-eyebrow">Project Forge</span>
-                <span className="ar-status ar-status-internal">Internal · Loblaw</span>
+            <article className="ar-range-project">
+              <div className="ar-range-images ar-cream">
+                <Image src={CREAM_FINAL.poster} width={480} height={854} alt="Vanilla, chocolate and strawberry ice cream in the finished Cream in motion film" sizes="(max-width: 760px) 44vw, 22vw" />
               </div>
-              <div className="ar-forge-visual">
-                <span className="ar-forge-monogram" aria-hidden>
-                  F<span>↗</span>
-                </span>
-                <ol aria-label="Project Forge workflow">
-                  <li>Brief</li>
-                  <li>Build</li>
-                  <li>Review</li>
-                  <li>Deploy</li>
-                </ol>
-                <span className="ar-forge-caption">
-                  A clearer path from request to release.
-                </span>
+              <div className="ar-range-copy">
+                <p className="ar-kicker">Blender to film</p>
+                <h3>Cream in motion</h3>
+                <p>A seven-shot Blender camera plan guided an 18-second Seedance film. Compare the blocking, the shaded pass and the generated result.</p>
+                <Link className="ar-link" href="/ai-studio/ads/cream-in-motion">Explore the motion study <span aria-hidden>↗</span></Link>
               </div>
-              <h3>Make the work flow.</h3>
-              <p>
-                An internal platform for promotional email badges: intake, bilingual
-                briefs, review, QA and sign-off. One connected workflow for marketers and
-                production teams.
-              </p>
-              <p className="ar-role-note">
-                <strong>My role</strong> Workflow design and application build,
-                connecting the steps teams need to brief, review and release work.
-              </p>
-              <Link className="ar-project-link" href="/project-forge">
-                View Forge case study <span aria-hidden>↗</span>
-              </Link>
             </article>
           </div>
         </section>
 
-        {/* ----------------------------- Approach ---------------------------- */}
-        <section className="ar-approach" id="ar-approach" aria-labelledby="ar-story-heading">
-          <div className="ar-wrap ar-story-grid">
-            <div className="ar-story-title">
-              <p className="ar-eyebrow">Approach</p>
-              <h2 id="ar-story-heading">
-                The next model
-                <br />
-                is coming.
-                <br />
-                <em>So is the next brief.</em>
-              </h2>
-              <span className="ar-story-mark" aria-hidden>
-                ↗
-              </span>
+        <section className="ar-leadership" id="ar-leadership" aria-labelledby="ar-leadership-heading">
+          <div className="ar-wrap ar-leadership-grid">
+            <div>
+              <p className="ar-kicker">Loblaw · Marketing production</p>
+              <h2 id="ar-leadership-heading">How I lead production</h2>
+              <p className="ar-lead">I lead an eight-person marketing production team with three direct reports.</p>
+              <p>I coach colleagues through briefing, QA and approvals, coordinate marketing and technical partners, and run working sessions on where generative AI can help and how to review its output.</p>
             </div>
-            <div className="ar-story-body">
-              <p className="ar-story-lead">
-                New models. New possibilities.
-                <br />
-                The real question is what&rsquo;s ready to work.
-              </p>
-              <p>
-                A launch can change what&rsquo;s possible overnight. A production brief
-                asks harder questions: can it hold the packaging, render the French copy,
-                meet the deadline and stay inside the budget?
-              </p>
-              <p>
-                That&rsquo;s where I spend my time. I test new capabilities against real
-                work, build around the ones that hold up, and keep the system flexible
-                enough for what comes next.
-              </p>
-              <p className="ar-story-punch">
-                Staying ahead is a practice.
-                <br />
-                <span>Curiosity. Testing. Shipping. Repeat.</span>
-              </p>
-              <Link className="ar-text-link" href="/ai-studio/models">
-                Inside my model toolkit <span aria-hidden>↗</span>
-              </Link>
+            <div>
+              <dl className="ar-leadership-facts">
+                <div><dt>Team members</dt><dd>8</dd></div>
+                <div><dt>Direct reports</dt><dd>3</dd></div>
+              </dl>
+              <div className="ar-forge">
+                <h3>Project Forge</h3>
+                <p>I designed and built an internal tool to connect intake, bilingual checks, creative review and sign-off. The design gives producers and approvers a shared record of what needs to happen next.</p>
+                <Link className="ar-link" href="/project-forge">Read the Project Forge case study <span aria-hidden>↗</span></Link>
+              </div>
             </div>
-          </div>
-
-          <div className="ar-wrap ar-method">
-            {METHOD.map((m) => (
-              <article key={m.n}>
-                <span className="ar-method-number">{m.n}</span>
-                <h3>{m.h}</h3>
-                <p>{m.p}</p>
-              </article>
-            ))}
           </div>
         </section>
 
-        {/* ------------------------------- Film ------------------------------ */}
-        <section className="ar-film" id="ar-film" aria-labelledby="ar-film-heading">
-          <div className="ar-wrap">
-            <div className="ar-film-heading">
-              <div>
-                <p className="ar-eyebrow">Motion study</p>
-                <h2 id="ar-film-heading">
-                  A thought.
-                  <br />
-                  <em>Made visible.</em>
-                </h2>
+        <section className="ar-wrap ar-approach" id="ar-approach" aria-labelledby="ar-approach-heading">
+          <h2 id="ar-approach-heading">How I work</h2>
+          <dl>
+            {METHOD.map((step) => <div key={step.title}><dt>{step.title}</dt><dd>{step.body}</dd></div>)}
+          </dl>
+        </section>
+
+        <section className="ar-motion" id="ar-film" aria-labelledby="ar-motion-heading">
+          <div className="ar-wrap ar-motion-grid">
+            <div>
+              <p className="ar-kicker">Motion reel</p>
+              <h2 id="ar-motion-heading">Selected motion</h2>
+              <p>Excerpts from VELUNE, its editable After Effects study, the shaded Blender pass for Cream in motion, and TOKEN.</p>
+              <div className="ar-motion-links">
+                <Link className="ar-link" href="/velune#after-effects">After Effects project <span aria-hidden>↗</span></Link>
+                <a className="ar-link" href="/homepage/token-film.mp4">Watch the full TOKEN film <span aria-hidden>↗</span></a>
               </div>
-              <p>
-                A cursor becomes a swarm. A swarm finds its form.
-                <br />
-                Twelve seconds of motion, built in Blender.
-              </p>
             </div>
-            <TokenFilm />
-            <div className="ar-film-note">
-              <span>Concept → choreography → Blender → final film</span>
-              <span>800 tokens. One signature.</span>
-            </div>
+            <figure className="ar-video">
+              <video width={960} height={540} controls muted playsInline preload="none" poster={VELUNE_MOTION.collection} aria-label="Eleven-second silent reel of four motion studies">
+                <source src="/homepage/motion-reel.mp4" type="video/mp4" />
+                <a href="/homepage/motion-reel.mp4">Open the motion reel</a>
+              </video>
+              <figcaption>Four motion studies <span>11 sec / silent</span></figcaption>
+            </figure>
           </div>
         </section>
       </main>
 
-      <footer className="ar-contact" id="ar-contact">
-        <div className="ar-wrap">
-          <div className="ar-contact-heading">
-            <div>
-              <p className="ar-eyebrow">Have something in mind?</p>
-              <h2>
-                Let&rsquo;s build
-                <br />
-                <em>what&rsquo;s next.</em>
-              </h2>
-            </div>
-            <a
-              className="ar-contact-circle"
-              href="mailto:hello@ajwadrauf.com"
-              aria-label="Email Ajwad Rauf"
-            >
-              <span aria-hidden>↗</span>
-            </a>
-          </div>
-          <div className="ar-contact-bottom">
-            <a href="mailto:hello@ajwadrauf.com">hello@ajwadrauf.com</a>
-            <a
-              href="https://www.linkedin.com/in/ajwadrauf"
-              target="_blank"
-              rel="noreferrer"
-            >
-              LinkedIn ↗
-            </a>
-            <span>Ajwad Rauf · Toronto · 2026</span>
-            <a href="#ar-top">Back to top ↑</a>
-          </div>
+      <footer className="ar-contact ar-wrap" id="ar-contact">
+        <div>
+          <p className="ar-kicker">Contact</p>
+          <h2>Let’s talk about the work.</h2>
+        </div>
+        <div className="ar-contact-links">
+          <a className="ar-link" href="mailto:hello@ajwadrauf.com">hello@ajwadrauf.com <span aria-hidden>↗</span></a>
+          <a className="ar-link" href="https://www.linkedin.com/in/ajwadrauf" target="_blank" rel="noreferrer">LinkedIn <span aria-hidden>↗</span></a>
+          <a className="ar-link" href="#ar-top">Back to top ↑</a>
         </div>
       </footer>
     </div>

@@ -60,6 +60,7 @@ export default function VelunePage() {
             <div className={styles.heroJumps}>
               <a className={styles.referenceJump} href="#camera-study">Explore the making of <span aria-hidden>↓</span></a>
               <Link className={styles.referenceJump} href="/ai-studio/workflows">Compare the carton workflows <span aria-hidden>↗</span></Link>
+              <Link className={styles.referenceJump} href="/velune/treatment">Creative treatment <span aria-hidden>↗</span></Link>
               <a className={styles.referenceJump} href="#visual-references">Appearance references <span aria-hidden>↓</span></a>
             </div>
             <nav className={styles.toolNav} aria-labelledby="velune-tools">

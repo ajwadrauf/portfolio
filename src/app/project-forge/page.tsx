@@ -12,7 +12,7 @@ const META = [
   { k: "My role", v: "Workflow design & application build" },
   { k: "Timeline", v: "2025–2026" },
   { k: "Client", v: "Loblaw Companies (internal)" },
-  { k: "Type", v: "Internal web app, in production" },
+  { k: "Type", v: "Internal workflow application" },
   { k: "Access", v: "Internal tool, no public URL" },
 ];
 
@@ -120,9 +120,9 @@ const HIGHLIGHTS = [
 ];
 
 const OUTCOMES = [
-  "Replaced an ad-hoc, multi-tool request process with one auditable pipeline and a clear status for every badge.",
-  "Standardized bilingual output and the compliance and QA pass, so quality no longer depends on who picked up the request.",
-  "Automated the reminders, digests and follow-ups that used to be chased by hand.",
+  "Keeps a brief, its production record and approval status in one workflow.",
+  "Pairs English and French content with the same review and QA steps.",
+  "Supports automated reminders, digests and follow-ups.",
 ];
 
 const SHELL = "mx-auto max-w-[1440px] px-6 sm:px-12 lg:px-24";
@@ -175,9 +175,8 @@ export default function ProjectForgePage() {
         <div className="accent-rule mt-8 max-w-[340px]" />
         <p className="mt-8 max-w-[58ch] text-[15px] leading-[1.7] text-muted sm:text-[17px]">
           An internal production platform for an enterprise retail CRM email
-          program. It moves every promotional badge from first request to final
-          deployment through one auditable workflow, with the reviews, bilingual
-          copy and compliance checks built in.
+          program. I built it to carry promotional badge requests through
+          bilingual copy checks, review and an approved handoff for release.
         </p>
         <p className="mt-4 max-w-[58ch] text-sm leading-[1.7] text-muted">
           <strong className="font-medium text-foreground">My role</strong>{" "}
@@ -227,9 +226,9 @@ export default function ProjectForgePage() {
           <div>
             <SectionHead n="01" title="What it is" />
             <p className="mt-7 max-w-[64ch] text-[15px] leading-[1.75] sm:text-[17px]">
-              Project Forge is the system a retail marketing team uses to brief,
-              build, review and ship the promotional badges that run in their
-              CRM emails. These offer tiles carry a campaign&apos;s price
+              Project Forge was built for a retail marketing team to brief,
+              build and review promotional badges for CRM emails. These offer
+              tiles carry a campaign&apos;s price
               points, dates and calls to action.
             </p>
             <p className="mt-4 max-w-[64ch] text-[15px] leading-[1.75] text-muted sm:text-[17px]">
@@ -354,7 +353,7 @@ export default function ProjectForgePage() {
 
       {/* ---------------- 05 Outcome ---------------- */}
       <section className={`${SHELL} border-t border-border-soft py-14 lg:py-18`}>
-        <SectionHead n="05" title="Outcome" />
+        <SectionHead n="05" title="What the build supports" />
         <ul className="mt-7 max-w-[64ch]">
           {OUTCOMES.map((o) => (
             <li
@@ -368,14 +367,6 @@ export default function ProjectForgePage() {
               {o}
             </li>
           ))}
-          <li className="relative border-b border-border-soft py-3.5 pl-7 text-[15px] italic leading-[1.7] text-muted sm:text-[17px]">
-            <span
-              aria-hidden
-              className="absolute left-0 top-[21px] h-[9px] w-[9px] rounded-full border border-border-strong"
-            />
-            Measures of turnaround time, volume and error rate are available
-            on request rather than published.
-          </li>
         </ul>
       </section>
 
@@ -395,7 +386,7 @@ export default function ProjectForgePage() {
               </a>
             </div>
             <p className="mt-5 max-w-[60ch] text-sm leading-[1.65] text-muted">
-              This case study describes internal work delivered at Loblaw.
+              This case study describes an internal workflow I designed and built at Loblaw.
               Proprietary process detail and internal metrics are withheld; a
               deeper walkthrough is available on request.
             </p>
