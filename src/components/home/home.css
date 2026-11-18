@@ -172,8 +172,8 @@
 }
 @media (max-width: 500px) {
   #ajwad-home .ar-nav { min-height: 0; align-items: start; flex-direction: column; padding-block: .85rem .25rem; }
-  #ajwad-home .ar-nav nav { column-gap: 1rem; }
-  #ajwad-home .ar-nav nav a { font-size: .81rem; }
+  #ajwad-home .ar-nav nav { width: 100%; justify-content: space-between; column-gap: .35rem; }
+  #ajwad-home .ar-nav nav a { min-height: 44px; font-size: clamp(.72rem, 3.3vw, .81rem); }
   #ajwad-home h1 { font-size: clamp(2.85rem, 13.2vw, 4.15rem); line-height: .98; }
   #ajwad-home .ar-hero { padding-top: 2rem; }
   #ajwad-home .ar-approach dl { grid-template-columns: minmax(0,1fr); gap: 1.55rem; }

@@ -532,7 +532,7 @@ export function StudioWizard() {
 
       {step !== "upload" && importedPackshot && (
         <div className="card mt-6 flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
-          <p className="min-w-0 break-words"><span className="font-semibold">From Packshots:</span> {importedPackshot.views.length > 1 ? `${importedPackshot.views.length} rendered views` : importedPackshot.meta.name} · {importedPackshot.meta.variant}</p>
+          <p className="min-w-0 break-words"><span className="font-semibold">From Product Shots:</span> {importedPackshot.views.length > 1 ? `${importedPackshot.views.length} rendered views` : importedPackshot.meta.name} · {importedPackshot.meta.variant}</p>
           <span className={importedPackshot.meta.review === "reviewed" ? "text-muted" : "text-warning"}>{importedPackshot.meta.review === "reviewed" ? "Review marked in Packshots" : "Human review still needed"}</span>
         </div>
       )}
