@@ -38,13 +38,6 @@ export const graphs = {
     image: "comfy-graph.webp",
     height: 744,
     alt: "Executed ComfyUI canvas with a shared reference feeding two sampler branches and their saved image previews",
-    nodes: [
-      { label: "Load reference", type: "LoadImage → FluxKontextImageScale", detail: "Both branches use the same 896 × 1120 Raspberry Ganache source. Kontext sizes the latent input for its image buckets." },
-      { label: "Fix the product", type: "VAEEncode → ReferenceLatent", detail: "The visual reference enters both prompt conditionings as an encoded latent. It guides the render. A human review still checks every visible package detail." },
-      { label: "Branch the art direction", type: "CLIPTextEncode → FluxGuidance", detail: "One branch asks for warm falloff and restrained reflections. The other asks for saturated raspberry and directional light. Both prompts ask to preserve the carton shape, lettering and artwork." },
-      { label: "Render both directions", type: "KSampler", detail: "FLUX.1 Kontext Dev FP8, seed 26001117, 28 steps, FLUX guidance 2.5, CFG 1, Euler/simple and denoise 1. Both branches ran in one queue job." },
-      { label: "Save candidates", type: "VAEDecode → SaveImage / PreviewImage", detail: "The graph saved two 944 × 1104 PNGs and previewed both. The saved PNGs retain the graph and prompt metadata for handoff." },
-    ],
   },
   weave: {
     label: "Figma Weave",
@@ -52,11 +45,5 @@ export const graphs = {
     image: "weave-graph.webp",
     height: 834,
     alt: "Native Figma Weave canvas with one product image, two prompt nodes, two generated carton images and the Compare node",
-    nodes: [
-      { label: "Import one carton", type: "Import", detail: "One file node supplies the same reference to both Flux Kontext nodes. A future SKU can swap this single input." },
-      { label: "Write two treatments", type: "Prompt × 2", detail: "The two text nodes carry the same premium and social prompts used in ComfyUI. The prompts are visible beside the outputs so a reviewer can trace the choices." },
-      { label: "Run each direction", type: "Flux Kontext Dev × 2", detail: "Each native model ran once at 3 trial credits, with seed 26001117, 28 steps, guidance 2.5 and PNG output. The match-input setting returned 896 × 1120 for each." },
-      { label: "Compare the outputs", type: "Compare · Slider", detail: "Both model results feed the native slider for visual review. The slider passes images through. The creative decision and artwork restoration happen after review." },
-    ],
   },
 } as const;
