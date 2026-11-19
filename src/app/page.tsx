@@ -145,21 +145,25 @@ export default function Home() {
               </li>
             ))}
           </ul>
-          <article className="ar-workflow" aria-labelledby="ar-workflow-heading">
+          <article className="ar-workflow" id="ar-velune-workflow" aria-labelledby="ar-workflow-heading">
+            <div className="ar-workflow-caption">
+              <p className="ar-kicker">VELUNE · ComfyUI</p>
+              <h3 id="ar-workflow-heading">One carton, three exports</h3>
+              <p>The same Raspberry Ganache carton goes from a clean storefront image to English and French social ads. When I revised the French headline, only three nodes reran. The storefront image and English ad stayed pixel-identical.</p>
+              <div className="ar-workflow-links">
+                <Link className="ar-primary" href="/velune#campaign-assembly">Explore the workflow and replay</Link>
+                <Link className="ar-link" href="/ai-studio/workflows">Compare ComfyUI and Figma Weave</Link>
+              </div>
+            </div>
             <div className="ar-workflow-images">
               <figure>
-                <Image src="/studio/velune/workflows/weave-social-detail.webp" width={380} height={419} alt="Generated VELUNE carton detail with altered chocolate artwork and brighter red packaging" sizes="(max-width: 760px) 46vw, 32vw" />
-                <figcaption>Generated carton</figcaption>
+                <Image src="/studio/velune/campaign-flow/storefront.webp" width={900} height={900} alt="The full Raspberry Ganache carton on white, with a soft contact shadow" sizes="(max-width: 760px) 46vw, (max-width: 1360px) 27vw, 345px" />
+                <figcaption>Storefront · 1:1</figcaption>
               </figure>
               <figure>
-                <Image src="/studio/velune/workflows/finished-social-detail.webp" width={380} height={419} alt="Finished VELUNE carton with the illustrated chocolate and label restored from the reference face" sizes="(max-width: 760px) 46vw, 32vw" />
-                <figcaption>Reference face restored</figcaption>
+                <Image src="/studio/velune/campaign-flow/social-fr.webp" width={864} height={1080} alt="Finished French social ad with the same carton beside a raspberry bonbon and the headline Le chocolat. Puis la framboise." sizes="(max-width: 760px) 46vw, (max-width: 1360px) 27vw, 345px" />
+                <figcaption>French social · 4:5</figcaption>
               </figure>
-            </div>
-            <div className="ar-workflow-caption">
-              <h3 id="ar-workflow-heading">ComfyUI × Figma Weave</h3>
-              <p>Both workflows changed the artwork on the pack. I selected the lighting and restored the original carton face during finishing.</p>
-              <Link className="ar-link" href="/ai-studio/workflows">Compare the carton workflows <span aria-hidden>↗</span></Link>
             </div>
           </article>
         </section>
