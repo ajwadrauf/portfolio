@@ -156,12 +156,16 @@ export default function Home() {
               </div>
             </div>
             <div className="ar-workflow-images">
-              <figure>
-                <Image src="/studio/velune/campaign-flow/storefront.webp" width={900} height={900} alt="The full Raspberry Ganache carton on white, with a soft contact shadow" sizes="(max-width: 760px) 46vw, (max-width: 1360px) 27vw, 345px" />
+              <figure className="ar-workflow-storefront">
+                <Image src="/studio/velune/campaign-flow/storefront.webp" width={900} height={900} alt="The full Raspberry Ganache carton on white, with a soft contact shadow" sizes="(max-width: 560px) 54vw, (max-width: 960px) 32vw, (max-width: 1360px) 20vw, 255px" />
                 <figcaption>Storefront · 1:1</figcaption>
               </figure>
               <figure>
-                <Image src="/studio/velune/campaign-flow/social-fr.webp" width={864} height={1080} alt="Finished French social ad with the same carton beside a raspberry bonbon and the headline Le chocolat. Puis la framboise." sizes="(max-width: 760px) 46vw, (max-width: 1360px) 27vw, 345px" />
+                <Image src="/studio/velune/campaign-flow/social-en.webp" width={864} height={1080} alt="Finished English social ad with the same carton beside a raspberry bonbon and the headline Curiosity tastes like this." sizes="(max-width: 560px) 46vw, (max-width: 960px) 32vw, (max-width: 1360px) 20vw, 255px" />
+                <figcaption>English social · 4:5</figcaption>
+              </figure>
+              <figure>
+                <Image src="/studio/velune/campaign-flow/social-fr.webp" width={864} height={1080} alt="Finished French social ad with the same carton beside a raspberry bonbon and the headline Le chocolat. Puis la framboise." sizes="(max-width: 560px) 46vw, (max-width: 960px) 32vw, (max-width: 1360px) 20vw, 255px" />
                 <figcaption>French social · 4:5</figcaption>
               </figure>
             </div>
