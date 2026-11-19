@@ -225,20 +225,19 @@ export default function Home() {
         <section className="ar-motion" id="ar-film" aria-labelledby="ar-motion-heading">
           <div className="ar-wrap ar-motion-grid">
             <div>
-              <p className="ar-kicker">Motion reel</p>
-              <h2 id="ar-motion-heading">Selected motion</h2>
-              <p>Excerpts from VELUNE, its editable After Effects study, the shaded Blender pass for Cream in motion, and TOKEN.</p>
+              <p className="ar-kicker">After Effects study</p>
+              <h2 id="ar-motion-heading">VELUNE in motion</h2>
+              <p>Animated type introduces the three flavours, then the camera moves inside the chocolate landscape for the final reveal.</p>
               <div className="ar-motion-links">
-                <Link className="ar-link" href="/velune#after-effects">After Effects project <span aria-hidden>↗</span></Link>
-                <a className="ar-link" href="/homepage/token-film.mp4">Watch the full TOKEN film <span aria-hidden>↗</span></a>
+                <Link className="ar-link" href="/velune#after-effects">See the After Effects project <span aria-hidden>↗</span></Link>
               </div>
             </div>
             <figure className="ar-video">
-              <video width={960} height={540} controls muted playsInline preload="none" poster={VELUNE_MOTION.collection} aria-label="Eleven-second silent reel of four motion studies">
-                <source src="/homepage/motion-reel.mp4" type="video/mp4" />
-                <a href="/homepage/motion-reel.mp4">Open the motion reel</a>
+              <video width={960} height={540} controls muted playsInline preload="none" poster={VELUNE_MOTION.collection} aria-label="VELUNE Wonder within. After Effects motion study">
+                <source src={VELUNE_MOTION.film} type="video/mp4" />
+                <a href={VELUNE_MOTION.film}>Open the VELUNE motion study</a>
               </video>
-              <figcaption>Four motion studies <span>11 sec / silent</span></figcaption>
+              <figcaption>Wonder within. <span>15 sec · Sound available</span></figcaption>
             </figure>
           </div>
         </section>
