@@ -1,0 +1,101 @@
+{
+  "engine": "ComfyUI 0.46.0",
+  "commit": "d758970",
+  "runtime": "Local CPU",
+  "nodeIds": {
+    "carton": 1,
+    "mask": 2,
+    "squareProduct": 7,
+    "squareOutput": 8,
+    "socialArt": 9,
+    "socialProduct": 18,
+    "textZone": 22,
+    "en": 23,
+    "enOutput": 25,
+    "fr": 26,
+    "frOutput": 28
+  },
+  "nodeCount": 28,
+  "edgeCount": 34,
+  "baselineRunId": "8201852e-96fe-4ba1-a96c-49cee5f21b96",
+  "revisionRunId": "ae2ca50f-dbec-408a-9c35-508a6bed3a89",
+  "revisedHeadline": {
+    "before": "Le chocolat.\nDes framboises.",
+    "after": "Le chocolat.\nPuis la framboise."
+  },
+  "cachedNodeIds": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25"
+  ],
+  "outputs": [
+    {
+      "key": "storefront",
+      "node": 8,
+      "file": "VELUNE-storefront.png",
+      "width": 1200,
+      "height": 1200,
+      "changed": false,
+      "pixelSha256": "a66754c7ca7b05a27600fc8574b0948aab0fbf0cef28316ce150c365a7227c54"
+    },
+    {
+      "key": "socialEn",
+      "node": 25,
+      "file": "VELUNE-social-EN.png",
+      "width": 1080,
+      "height": 1350,
+      "changed": false,
+      "pixelSha256": "a217e4d16837f825bd72bf110436edd5d10855940e69e30f7d179d10cc5c1d78"
+    },
+    {
+      "key": "socialFr",
+      "node": 28,
+      "file": "VELUNE-social-FR.png",
+      "width": 1080,
+      "height": 1350,
+      "changed": true,
+      "pixelSha256": "9c134e70f876c693b433489a99f789fd6d2f6a1325cea78eb2c872be143734cf"
+    }
+  ],
+  "checks": {
+    "frontPanelPixels": 335256,
+    "maxChannelDrift": 0,
+    "localizedArtworkPixelsUnchanged": 869400
+  },
+  "reranNodes": [
+    {
+      "id": 26,
+      "title": "Edit French headline"
+    },
+    {
+      "id": 27,
+      "title": "Compose French social"
+    },
+    {
+      "id": 28,
+      "title": "Export · social FR"
+    }
+  ]
+}

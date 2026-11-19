@@ -6,6 +6,7 @@ import { SoundtrackPreview } from "@/components/ad/SoundtrackPreview";
 import { VELUNE_PACKAGE_PANELS } from "@/lib/velunePackaging";
 import { Wordmark } from "@/components/Wordmark";
 import { VelunePlayer } from "@/components/velune/VelunePlayer";
+import { CampaignFlow } from "@/components/velune/campaign-flow/CampaignFlow";
 import { VeluneMotionStudy } from "@/components/velune/VeluneMotionStudy";
 import { VeluneSectionNav } from "@/components/velune/VeluneSectionNav";
 import { VELUNE_MEDIA } from "@/components/velune/veluneStudy";
@@ -14,7 +15,7 @@ import styles from "@/components/velune/Velune.module.css";
 
 export const metadata: Metadata = {
   title: "VELUNE · a chocolate campaign & creative process · Ajwad Rauf",
-  description: "An independent chocolate campaign from brief to delivery, with ComfyUI and Figma Weave carton studies, H3 film, ElevenLabs voiceover and editable After Effects motion.",
+  description: "An independent chocolate campaign from brief to delivery. Inspect the ComfyUI workflow behind three campaign exports, then see the H3 film and editable After Effects motion.",
 };
 
 const DECISIONS = [
@@ -70,7 +71,7 @@ export default function VelunePage() {
                   <li><a href="#creative-review">H3 Max</a></li>
                   <li><a href="#sound-direction">ElevenLabs</a></li>
                   <li><a href="#after-effects">After Effects</a></li>
-                  <li><Link href="/ai-studio/workflows#workflow-graphs">ComfyUI</Link></li>
+                  <li><a href="#campaign-assembly">ComfyUI</a></li>
                   <li><a href={weaveUrl} target="_blank" rel="noreferrer">Figma Weave <span aria-hidden>↗</span></a></li>
                 </ul>
               </nav>
@@ -211,6 +212,14 @@ export default function VelunePage() {
               <div><h3>The Centre Report</h3><p>I replaced the generated report with a typeset graphic so the packaging, fillings and text read clearly in the held shot.</p><a className={styles.referenceJump} href="/studio/velune/finishing/velune_centre_report_v2.svg" download>Download the report master ↓</a></div>
             </div>
           </div>
+        </section>
+
+        <section className={`${styles.wrap} ${styles.section}`} id="campaign-assembly" aria-labelledby="campaign-assembly-heading" tabIndex={-1}>
+          <div className={styles.sectionHead}>
+            <div><p className={styles.eyebrow}>ComfyUI campaign workflow</p><h2 id="campaign-assembly-heading">One carton, three exports</h2></div>
+            <p>The Raspberry Ganache carton feeds a storefront image and two social ads. Select a node to see what it does, then replay the French headline edit to see which steps ran again.</p>
+          </div>
+          <CampaignFlow />
         </section>
 
         <section className={`${styles.wrap} ${styles.section}`} id="production-workflow" aria-labelledby="workflow-heading" tabIndex={-1}>

@@ -9,6 +9,7 @@ const sections = [
   { id: "creative-direction", label: "Creative decisions" },
   { id: "visual-references", label: "Visual references" },
   { id: "package-design", label: "Packaging" },
+  { id: "campaign-assembly", label: "Node workflow" },
   { id: "production-workflow", label: "Production" },
   { id: "sound-direction", label: "Sound" },
   { id: "after-effects", label: "After Effects" },

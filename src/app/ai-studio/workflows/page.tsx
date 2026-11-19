@@ -79,7 +79,11 @@ export default function WorkflowCase() {
             <li><strong>Review and finish</strong><span>Select the lighting, restore approved artwork and add editable type or motion in finishing.</span></li>
             <li><strong>Proposed studio link</strong><span>Attach the selected plate, prompt, graph and review decision to a Campaigns project. Keep model runs behind studio access and budget controls.</span></li>
           </ol>
-          <div className={styles.handoffLinks}><Link href="/ai-studio/studio">Explore Campaigns ↗</Link><Link href="/velune#after-effects">See editable After Effects finishing ↗</Link></div>
+          <div className={styles.handoffLinks}>
+            <Link href="/velune#campaign-assembly">Inspect the VELUNE campaign workflow ↗</Link>
+            <Link href="/ai-studio/studio">Explore Campaigns ↗</Link>
+            <Link href="/velune#after-effects">See editable After Effects finishing ↗</Link>
+          </div>
         </section>
       </div>
     </div>

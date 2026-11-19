@@ -1,0 +1,141 @@
+h3.graphTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.rerunSteps {
+  list-style: decimal;
+  padding-inline-start: 1.15rem;
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.graph {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.75fr) minmax(0, 2.5fr);
+  align-items: center;
+  gap: 2rem;
+  font-size: 0.9rem;
+}
+
+.source {
+  position: relative;
+}
+
+.source::after {
+  position: absolute;
+  width: 2rem;
+  border-top: 1px solid currentColor;
+  opacity: 0.24;
+  content: "";
+  top: 50%;
+  left: 100%;
+}
+
+.branches {
+  display: grid;
+  gap: 1rem;
+  padding-left: 1rem;
+  border-left: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+}
+
+.branch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.1fr);
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.languages {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.node {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.7rem;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.node:hover, .node[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.node[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.nodeState {
+  font-size: 0.74rem;
+  opacity: 0.84;
+}
+
+.inspection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(1.5rem, 6vw, 4.5rem);
+  padding-block: 1.6rem;
+}
+
+.detail {
+  display: grid;
+  gap: 0.65rem;
+  margin-block: 1rem 1.2rem;
+  font-size: 0.91rem;
+}
+
+.detail dt {
+  font-weight: 600;
+}
+
+.revision {
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+}
+
+.preview {
+  width: min(100%, 26rem);
+  margin-inline: auto;
+}
+
+.preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.preview figcaption {
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 640px) {
+  .graph, .inspection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph {
+    gap: 0.6rem;
+  }
+
+  .source::after {
+    display: none;
+  }
+
+  .branches {
+    margin-left: 0.5rem;
+    padding-left: 0.65rem;
+  }
+}
