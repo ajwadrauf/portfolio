@@ -56,10 +56,36 @@ const steps = {
     output: "1080 × 1350 PNG. This branch reran after the headline edit.",
     preview: "social-fr",
   },
+  frenchHeadline: {
+    name: "Edit French headline",
+    nodes: [26],
+    input: "The reserved headline area and the French copy.",
+    process: "Draw the new line of copy in the existing type style.",
+    output: "A typeset headline ready to composite.",
+    preview: "social-fr",
+  },
+  frenchCompose: {
+    name: "Compose French social",
+    nodes: [27],
+    input: "The shared social layout and the typeset French headline.",
+    process: "Place the headline in its reserved area, above the carton and contact shadow.",
+    output: "The revised 4:5 French composition.",
+    preview: "social-fr",
+  },
+  frenchExport: {
+    name: "Export · social FR",
+    nodes: [28],
+    input: "The revised French composition.",
+    process: "Save the image with its editable ComfyUI graph embedded in the PNG.",
+    output: "The final 1080 × 1350 French export.",
+    preview: "social-fr",
+  },
 } as const;
 
 type Step = keyof typeof steps;
+const frenchPath = ["frenchHeadline", "frenchCompose", "frenchExport"] as const;
 const cached = new Set(run.cachedNodeIds.map(Number));
+const rerunIds = new Set(run.reranNodes.map(({ id }) => id));
 
 const previews = {
   carton: { width: 592, height: 788, alt: "Original VELUNE Raspberry Ganache carton cutout", caption: "Shared product input" },
@@ -74,17 +100,28 @@ export function CampaignFlow() {
   const [selected, setSelected] = useState<Step>("french");
   const [revised, setRevised] = useState(false);
   const step = steps[selected];
-  const previewKey = selected === "french" && !revised ? "social-fr-before" : step.preview;
-  const preview = previews[previewKey];
-  const reran = run.reranNodes.length;
+  const isFrench = step.preview === "social-fr";
+  const comparing = revised && isFrench;
+  const previewKeys: (keyof typeof previews)[] = comparing
+    ? ["social-fr-before", "social-fr"]
+    : [isFrench ? "social-fr-before" : step.preview];
 
   function node(key: Step) {
     const item = steps[key];
-    const reused = item.nodes.every((id) => cached.has(id));
+    const reused = revised && item.nodes.every((id) => cached.has(id));
+    const reran = revised && item.nodes.length === 1 && rerunIds.has(item.nodes[0]);
     return (
-      <button type="button" className={styles.node} aria-pressed={selected === key} aria-controls="campaign-step-details" onClick={() => setSelected(key)}>
+      <button
+        type="button"
+        className={styles.node}
+        data-rerun={reran || undefined}
+        aria-pressed={selected === key}
+        aria-controls="campaign-step-details"
+        onClick={() => setSelected(key)}
+      >
         {item.name}
-        {revised && <span className={styles.nodeState}>{reused ? "Reused" : "Reran"}</span>}
+        {reused && <span className={styles.nodeState}>Reused</span>}
+        {reran && <span className={styles.nodeState}>Reran</span>}
       </button>
     );
   }
@@ -104,15 +141,23 @@ export function CampaignFlow() {
               <span aria-hidden="true">→</span>
               <div>{node("storefront")}</div>
             </div>
-            <div className={styles.branch}>
+            <div className={`${styles.branch} ${styles.socialBranch}`}>
               {node("social")}
               <span aria-hidden="true">→</span>
-              <div className={styles.languages}>{node("english")}{node("french")}</div>
+              <div className={styles.languages}>
+                {node("english")}
+                <div>
+                  {node("french")}
+                  <ol className={styles.frenchPath} aria-label="French social nodes">
+                    {frenchPath.map((key) => <li key={key}>{node(key)}</li>)}
+                  </ol>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
-      <section className={styles.inspection} aria-label="Selected stage details">
+      <section className={styles.inspection} data-comparing={comparing || undefined} aria-label="Selected stage details">
         <div id="campaign-step-details">
           <h3>{step.name}</h3>
           <dl className={styles.detail}>
@@ -123,23 +168,35 @@ export function CampaignFlow() {
           <div className={styles.revision}>
             <h4 className="font-semibold">Change one line of copy</h4>
             <p className="mt-1 text-sm text-muted">Replay the recorded edit to the French ad. The storefront and English exports stayed identical, and the carton and shadow stayed in place.</p>
-            <button className="btn-secondary mt-3" type="button" onClick={() => { setRevised(!revised); setSelected("french"); }}>
-              {revised ? "Show first French export" : "Replay French revision"}
+            <button className="btn-secondary mt-3" type="button" aria-controls="campaign-flow-preview" onClick={() => { setRevised(!revised); setSelected("french"); }}>
+              {revised ? "Reset replay" : "Replay French revision"}
             </button>
             <p role="status" className="mt-3 text-sm text-muted">
-              {revised ? `${reran} of ${run.nodeCount} nodes reran. ${run.cachedNodeIds.length} reused their first results.` : "First run · all three exports produced."}
+              {revised ? `${rerunIds.size} of ${run.nodeCount} nodes reran. ${run.cachedNodeIds.length} reused their first results.` : "First run · all three exports produced."}
             </p>
-            {revised && (
-              <ol className={styles.rerunSteps} aria-label="Nodes that reran">
-                {run.reranNodes.map(({ id, title }) => <li key={id}>{title}</li>)}
-              </ol>
-            )}
           </div>
         </div>
-        <figure className={styles.preview}>
-          <Image src={`${media}/${previewKey}.webp`} width={preview.width} height={preview.height} sizes="(max-width: 768px) 90vw, 430px" alt={preview.alt} />
-          <figcaption>{preview.caption}</figcaption>
-        </figure>
+        <div id="campaign-flow-preview" className={comparing ? styles.comparison : undefined} role={comparing ? "group" : undefined} aria-label={comparing ? "French ad before and after" : undefined}>
+          {previewKeys.map((key) => {
+            const preview = previews[key];
+            const before = key === "social-fr-before";
+            const changedLine = (before ? run.revisedHeadline.before : run.revisedHeadline.after).split("\n").at(-1);
+            return (
+              <figure className={styles.preview} key={key}>
+                <Image
+                  src={`${media}/${key}.webp`}
+                  width={preview.width}
+                  height={preview.height}
+                  sizes={comparing ? "(max-width: 640px) 45vw, 350px" : "(max-width: 640px) 90vw, 430px"}
+                  alt={preview.alt}
+                />
+                <figcaption>
+                  {comparing ? <><strong>{before ? "Before" : "After"}</strong><span lang="fr">{changedLine}</span></> : preview.caption}
+                </figcaption>
+              </figure>
+            );
+          })}
+        </div>
       </section>
       <p className="border-t border-border-soft pt-4 text-sm text-muted">Recorded in {run.engine} on a local CPU. The social still life was generated separately. The node graph assembles the original packaging, artwork, shadows and type.</p>
     </>

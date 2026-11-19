@@ -3,14 +3,6 @@ h3.graphTitle {
   font-weight: 600;
 }
 
-.rerunSteps {
-  list-style: decimal;
-  padding-inline-start: 1.15rem;
-  margin-top: 0.55rem;
-  color: var(--muted);
-  font-size: 0.84rem;
-}
-
 .graph {
   display: grid;
   grid-template-columns: minmax(9rem, 0.75fr) minmax(0, 2.5fr);
@@ -49,7 +41,42 @@ h3.graphTitle {
 
 .languages {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.5rem;
+}
+
+.socialBranch {
+  align-items: start;
+}
+
+.socialBranch > span {
+  padding-top: 0.58rem;
+}
+
+.frenchPath {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0.55rem 0 0 0.65rem;
+  margin-left: 0.65rem;
+  border-left: 1px solid var(--border);
+}
+
+.frenchPath li {
+  position: relative;
+}
+
+.frenchPath li + li::before {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: 0.75rem;
+  border-top: 1px solid var(--border);
+  content: "";
+}
+
+.frenchPath .node {
+  height: 100%;
+  font-size: 0.84rem;
 }
 
 .node {
@@ -75,9 +102,20 @@ h3.graphTitle {
   background: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
+.node[data-rerun] {
+  border-color: var(--color-accent);
+  border-inline-start-width: 3px;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+}
+
+.node[data-rerun][aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
 .nodeState {
   font-size: 0.74rem;
-  opacity: 0.84;
+  font-weight: 600;
 }
 
 .inspection {
@@ -86,6 +124,10 @@ h3.graphTitle {
   align-items: start;
   gap: clamp(1.5rem, 6vw, 4.5rem);
   padding-block: 1.6rem;
+}
+
+.inspection[data-comparing] {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
 }
 
 .detail {
@@ -121,8 +163,42 @@ h3.graphTitle {
   font-size: 0.82rem;
 }
 
+.comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: clamp(0.6rem, 2vw, 1.25rem);
+}
+
+.comparison figcaption {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.comparison figcaption span {
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .frenchPath {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
+  .frenchPath li + li::before {
+    top: auto;
+    bottom: 100%;
+    right: auto;
+    left: 50%;
+    height: 0.4rem;
+    width: 0;
+    border-top: 0;
+    border-left: 1px solid var(--border);
+  }
+}
+
 @media (max-width: 640px) {
-  .graph, .inspection {
+  .graph, .inspection, .inspection[data-comparing] {
     grid-template-columns: minmax(0, 1fr);
   }
 
