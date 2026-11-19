@@ -1,0 +1,171 @@
+.board {
+  grid-area: graph;
+  container-type: inline-size;
+  min-width: 0;
+  padding: clamp(.65rem, 2vw, 1.05rem);
+  border: 1px solid var(--ar-line);
+  background: color-mix(in srgb, white 34%, var(--ar-paper));
+}
+
+.layout {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+}
+
+.graph {
+  --node-gap: clamp(.35rem, 1vw, .65rem);
+  --wire-height: .7rem;
+  --wire: #8e989c;
+  --track: calc((100% - 2 * var(--node-gap)) / 3);
+  display: grid;
+}
+
+.node {
+  position: relative;
+  min-height: 44px;
+  border: 1px solid var(--ar-line);
+  background: #fcfbf8;
+  color: var(--ar-ink);
+  cursor: pointer;
+  font-size: .77rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.node > span {
+  display: block;
+  padding: .42rem .16rem;
+}
+
+.node:hover {
+  border-color: var(--ar-plum);
+}
+
+.node[aria-pressed="true"] {
+  color: var(--ar-plum);
+  border-color: var(--ar-plum);
+  box-shadow: inset 0 -2px var(--ar-plum);
+  background: #e5edf0;
+}
+
+.node:focus-visible {
+  z-index: 1;
+  outline: 2px solid var(--ar-plum);
+  outline-offset: 3px;
+}
+
+.source {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-bottom: var(--wire-height);
+}
+
+.source .node {
+  width: min(100%, 11rem);
+}
+
+.source::after,
+.branches .node::before,
+.branches .node::after,
+.outputs .node::before {
+  position: absolute;
+  inset-inline-start: 50%;
+  height: var(--wire-height);
+  border-inline-start: 1px solid var(--wire);
+  content: "";
+  pointer-events: none;
+}
+
+.source::after {
+  bottom: 0;
+}
+
+.branches,
+.outputs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--node-gap);
+  padding-top: var(--wire-height);
+}
+
+.branches {
+  padding-bottom: var(--wire-height);
+}
+
+.branches .node:last-child {
+  grid-column: span 2;
+}
+
+.branches .node::before,
+.outputs .node::before {
+  bottom: calc(100% + 1px);
+}
+
+.branches .node::after {
+  top: calc(100% + 1px);
+}
+
+.branches::before,
+.outputs::before {
+  position: absolute;
+  top: 0;
+  border-top: 1px solid var(--wire);
+  content: "";
+  pointer-events: none;
+}
+
+.branches::before {
+  inset-inline-start: calc(var(--track) / 2);
+  inset-inline-end: calc(var(--track) + var(--node-gap) / 2);
+}
+
+.outputs::before {
+  inset-inline-start: 50%;
+  inset-inline-end: calc(var(--track) / 2);
+}
+
+.outputs .node {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  text-align: center;
+}
+
+.thumbnail {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  background: white;
+}
+
+.preview {
+  width: min(100%, 14rem);
+  margin-inline: auto;
+}
+
+.previewImage {
+  aspect-ratio: 4 / 5;
+  background: white;
+}
+
+.previewImage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preview figcaption span {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-size: .8rem;
+}
+
+@container (min-width: 545px) {
+  .layout {
+    grid-template-columns: minmax(0, 1.18fr) minmax(0, .82fr);
+    column-gap: clamp(1rem, 2.25vw, 1.65rem);
+  }
+}

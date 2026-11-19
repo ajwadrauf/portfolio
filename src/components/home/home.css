@@ -107,12 +107,10 @@
 #ajwad-home .ar-studio-tools a:hover strong { color: var(--ar-plum); text-decoration: underline; text-underline-offset: .2em; }
 #ajwad-home .ar-tool-arrow { color: var(--ar-plum); }
 #ajwad-home .ar-tool-task { grid-column: 1 / -1; max-width: 36ch; color: var(--ar-muted); font-size: .88rem; line-height: 1.55; }
-#ajwad-home .ar-workflow { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, .8fr); grid-template-areas: "exports introduction"; align-items: center; gap: clamp(1.25rem, 4vw, 3.8rem); margin-top: clamp(1.6rem, 4vw, 3rem); }
+#ajwad-home .ar-workflow { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, .8fr); grid-template-areas: "graph introduction"; align-items: center; gap: clamp(1.25rem, 4vw, 3.8rem); margin-top: clamp(1.6rem, 4vw, 3rem); }
 #ajwad-home .ar-workflow-caption { grid-area: introduction; }
 #ajwad-home .ar-workflow-caption h3 { margin-block: .4rem .65rem; }
 #ajwad-home .ar-workflow-links { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .85rem; margin-top: 1rem; }
-#ajwad-home .ar-workflow-images { grid-area: exports; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: clamp(.55rem, 1vw, .95rem); }
-#ajwad-home .ar-workflow-images img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: contain; background: #fff; }
 
 #ajwad-home .ar-range { padding-block: clamp(2.6rem, 5.7vw, 5rem); }
 #ajwad-home .ar-range h2 { margin-bottom: 1.15rem; }
@@ -154,8 +152,8 @@
   #ajwad-home .ar-hero { gap: 1.55rem; }
   #ajwad-home .ar-stage { height: clamp(19rem,63vw,29rem); }
 }
-@media (max-width: 960px) {
-  #ajwad-home .ar-workflow { grid-template-columns: minmax(0,1fr); grid-template-areas: "introduction" "exports"; }
+@media (max-width: 1060px) {
+  #ajwad-home .ar-workflow { grid-template-columns: minmax(0,1fr); grid-template-areas: "introduction" "graph"; }
 }
 @media (max-width: 700px) {
   #ajwad-home .ar-range-grid { grid-template-columns: minmax(0,1fr); gap: 1.55rem; }
@@ -164,9 +162,6 @@
   #ajwad-home .ar-studio-tools a { padding-inline: 0; }
 }
 @media (max-width: 560px) {
-  #ajwad-home .ar-workflow-images { grid-template-columns: repeat(2,minmax(0,1fr)); row-gap: .9rem; }
-  #ajwad-home .ar-workflow-storefront { grid-column: 1 / -1; }
-  #ajwad-home .ar-workflow-storefront img { aspect-ratio: 16 / 9; }
   #ajwad-home .ar-stage { height: auto; }
   #ajwad-home .ar-stage ul { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; }
   #ajwad-home .ar-stage-project { position: relative; inset: auto; width: 100%; height: auto; aspect-ratio: 1.28; }

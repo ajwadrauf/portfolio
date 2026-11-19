@@ -2,99 +2,14 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { campaignMedia as media, campaignSteps as steps, campaignPreviews as previews } from "./campaign-data";
 import run from "./run-evidence.json";
 import styles from "./campaign-flow.module.css";
-
-const media = "/studio/velune/campaign-flow";
-
-const steps = {
-  carton: {
-    name: "Original carton",
-    nodes: [1, 2],
-    input: "The Raspberry Ganache carton and its transparency mask.",
-    process: "Read the original artwork and route the same silhouette to both branches.",
-    output: "One product source for the rest of the graph.",
-    preview: "carton",
-  },
-  square: {
-    name: "Build the square",
-    nodes: [3, 4, 5, 6, 7],
-    input: "The carton, a white canvas and a separate shadow.",
-    process: "Place the carton at native size and composite the shadow beneath it.",
-    output: "The inspected front panel matches the source pixel for pixel.",
-    preview: "storefront",
-  },
-  social: {
-    name: "Build the social layout",
-    nodes: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
-    input: "The same carton, a generated raspberry still life and a separate contact shadow.",
-    process: "Reframe to 4:5, place the carton alongside the bonbon and reserve a headline area.",
-    output: "One shared layout for both languages.",
-    preview: "social-art",
-  },
-  storefront: {
-    name: "Storefront",
-    nodes: [8],
-    input: "The finished square composition.",
-    process: "Save the product-detail image with embedded workflow data.",
-    output: "1200 × 1200 PNG.",
-    preview: "storefront",
-  },
-  english: {
-    name: "English social",
-    nodes: [23, 24, 25],
-    input: "The social layout and editable English copy.",
-    process: "Typeset the headline and composite it into the reserved area.",
-    output: "1080 × 1350 PNG. Identical after the French edit.",
-    preview: "social-en",
-  },
-  french: {
-    name: "French social",
-    nodes: [26, 27, 28],
-    input: "The same social layout and editable French copy.",
-    process: "Typeset and export the French ad independently.",
-    output: "1080 × 1350 PNG. This branch reran after the headline edit.",
-    preview: "social-fr",
-  },
-  frenchHeadline: {
-    name: "Edit French headline",
-    nodes: [26],
-    input: "The reserved headline area and the French copy.",
-    process: "Draw the new line of copy in the existing type style.",
-    output: "A typeset headline ready to composite.",
-    preview: "social-fr",
-  },
-  frenchCompose: {
-    name: "Compose French social",
-    nodes: [27],
-    input: "The shared social layout and the typeset French headline.",
-    process: "Place the headline in its reserved area, above the carton and contact shadow.",
-    output: "The revised 4:5 French composition.",
-    preview: "social-fr",
-  },
-  frenchExport: {
-    name: "Export · social FR",
-    nodes: [28],
-    input: "The revised French composition.",
-    process: "Save the image with its editable ComfyUI graph embedded in the PNG.",
-    output: "The final 1080 × 1350 French export.",
-    preview: "social-fr",
-  },
-} as const;
 
 type Step = keyof typeof steps;
 const frenchPath = ["frenchHeadline", "frenchCompose", "frenchExport"] as const;
 const cached = new Set(run.cachedNodeIds.map(Number));
 const rerunIds = new Set(run.reranNodes.map(({ id }) => id));
-
-const previews = {
-  carton: { width: 592, height: 788, alt: "Original VELUNE Raspberry Ganache carton cutout", caption: "Shared product input" },
-  storefront: { width: 1200, height: 1200, alt: "VELUNE carton with a soft contact shadow on white", caption: "Storefront · 1:1" },
-  "social-art": { width: 1080, height: 1350, alt: "A cut raspberry ganache bonbon and fresh berries on a burgundy set", caption: "Generated still-life input" },
-  "social-en": { width: 1080, height: 1350, alt: "VELUNE social ad with English headline Curiosity tastes like this", caption: "Social · English" },
-  "social-fr": { width: 1080, height: 1350, alt: "VELUNE social ad with French headline Le chocolat. Puis la framboise.", caption: "Social · French, revised" },
-  "social-fr-before": { width: 1080, height: 1350, alt: "VELUNE social ad with French headline Le chocolat. Des framboises.", caption: "Social · French, first pass" },
-} as const;
 
 export function CampaignFlow() {
   const [selected, setSelected] = useState<Step>("french");
