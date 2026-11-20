@@ -59,13 +59,59 @@
 
 .source {
   position: relative;
-  display: flex;
-  justify-content: center;
+  display: grid;
+  justify-items: center;
+  gap: var(--wire-height);
   padding-bottom: var(--wire-height);
 }
 
-.source .controlNode {
+.source .controlNode, .lightNode {
   width: min(100%, 13rem);
+}
+
+.lightNode {
+  border: 1px solid var(--ar-line);
+  background: #fcfbf8;
+  padding: .3rem .4rem .4rem;
+}
+
+.lightLabel {
+  display: block;
+  padding: .2rem .15rem .3rem;
+  text-align: center;
+  color: var(--ar-ink);
+  font-size: .77rem;
+  font-weight: 650;
+}
+
+.lightOptions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--ar-line);
+  background: var(--ar-line);
+}
+
+.lightOptions button {
+  min-width: 0;
+  min-height: 44px;
+  background: white;
+  color: var(--ar-ink);
+  font-size: .74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lightOptions button[aria-pressed="true"] {
+  background: #e5edf0;
+  box-shadow: inset 0 -2px var(--ar-plum);
+  color: var(--ar-plum);
+}
+
+.lightOptions button:focus-visible {
+  z-index: 1;
+  outline: 2px solid var(--ar-plum);
+  outline-offset: -2px;
 }
 
 .controlNode {
@@ -95,6 +141,7 @@
 }
 
 .source::after,
+.source .controlNode::after,
 .branchCell:last-child .controlNode::before,
 .branchCell:last-child .controlNode::after,
 .copyTrigger::after,
@@ -150,6 +197,7 @@
   bottom: 100%;
 }
 
+.source .controlNode::after,
 .branchCell:last-child .controlNode::after,
 .copyTrigger::after {
   top: 100%;
@@ -220,18 +268,19 @@
   inset-inline-end: calc(var(--track) / 2);
 }
 
-.graph[data-change="carton"] .source::after,
-.graph[data-change="carton"] .branchCell:first-child::before,
-.graph[data-change="carton"] .branchCell:last-child .controlNode::before,
-.graph:is([data-change="carton"], [data-change="backdrop"]) .branchCell:last-child .controlNode::after,
+.graph[data-change="carton"] .source .controlNode::after,
+.graph:is([data-change="carton"], [data-change="lighting"]) .source::after,
+.graph:is([data-change="carton"], [data-change="lighting"]) .branchCell:first-child::before,
+.graph:is([data-change="carton"], [data-change="lighting"]) .branchCell:last-child .controlNode::before,
+.graph:is([data-change="carton"], [data-change="lighting"], [data-change="backdrop"]) .branchCell:last-child .controlNode::after,
 .graph[data-change] .copyTrigger::after,
 .outputs .node[data-wire-active]::before {
   border-inline-start: 2px solid var(--active-wire);
 }
 
-.graph[data-change="carton"] .branches::before,
-.graph:is([data-change="carton"], [data-change="backdrop"], [data-change="english"]) .outputs::before,
-.graph:is([data-change="carton"], [data-change="backdrop"], [data-change="french"]) .outputs::after {
+.graph:is([data-change="carton"], [data-change="lighting"]) .branches::before,
+.graph:is([data-change="carton"], [data-change="lighting"], [data-change="backdrop"], [data-change="english"]) .outputs::before,
+.graph:is([data-change="carton"], [data-change="lighting"], [data-change="backdrop"], [data-change="french"]) .outputs::after {
   border-top: 2px solid var(--active-wire);
 }
 

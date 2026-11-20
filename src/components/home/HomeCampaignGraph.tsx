@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { campaignMedia } from "@/components/velune/campaign-flow/campaign-data";
 import {
   backdrops, defaultHeadline, drawVeluneLayout, flavours, layoutDimensions,
-  type Backdrop, type CopyLanguage, type Export, type Flavour, type Template,
+  type Backdrop, type CopyLanguage, type Export, type Flavour, type LayoutSettings, type Template,
 } from "./velune-layouts";
+import { productLighting, type Lighting } from "./velune-lighting";
 import styles from "./home-campaign-graph.module.css";
 
 const outputs = ["storefront", "english", "french"] as const;
@@ -25,10 +26,11 @@ const stages = {
 
 type Step = keyof typeof stages;
 type HeadlineEdits = Partial<Record<Flavour, Partial<Record<CopyLanguage, string>>>>;
-type GraphChange = "carton" | "backdrop" | CopyLanguage;
+type GraphChange = "carton" | "lighting" | "backdrop" | CopyLanguage;
 
 const affectedOutputs = {
   carton: outputs,
+  lighting: outputs,
   backdrop: ["english", "french"],
   english: ["english"],
   french: ["french"],
@@ -36,17 +38,19 @@ const affectedOutputs = {
 
 const changeAnnouncements = {
   carton: "All three exports updated.",
+  lighting: "Product light and shadows updated in all three exports.",
   backdrop: "English and French ads updated.",
   english: "English ad updated.",
   french: "French ad updated.",
 } as const satisfies Record<GraphChange, string>;
 
 function LayoutPreview({
-  carton, flavour, backdrop, template, headline, thumbnail = false, label,
+  carton, flavour, backdrop, lighting, template, headline, thumbnail = false, label,
 }: {
   carton: HTMLImageElement | null;
   flavour: Flavour;
   backdrop: Backdrop;
+  lighting: Lighting;
   template: Template;
   headline?: string;
   thumbnail?: boolean;
@@ -56,17 +60,18 @@ function LayoutPreview({
   const { width, height } = layoutDimensions(template);
   const previewWidth = thumbnail ? 240 : 540;
   const scene = template === "english" || template === "french" ? backdrop : "mulberry";
+  const lamp = template === "carton" ? "left" : lighting;
 
   useEffect(() => {
     const current = canvas.current;
     if (!current) return;
-    if (carton) drawVeluneLayout(current, carton, flavour, scene, template, headline);
+    if (carton) drawVeluneLayout(current, { carton, flavour, backdrop: scene, lighting: lamp }, template, headline);
     else {
       const context = current.getContext("2d");
       context?.resetTransform();
       context?.clearRect(0, 0, current.width, current.height);
     }
-  }, [carton, flavour, scene, template, headline]);
+  }, [carton, flavour, scene, lamp, template, headline]);
 
   return (
     <canvas
@@ -81,18 +86,20 @@ function LayoutPreview({
   );
 }
 
-function downloadLayout(carton: HTMLImageElement, flavour: Flavour, backdrop: Backdrop, template: Export, headline?: string) {
+function downloadLayout(settings: LayoutSettings, template: Export, headline?: string) {
+  const { flavour, backdrop, lighting } = settings;
   const canvas = document.createElement("canvas");
   const { width, height } = layoutDimensions(template);
   canvas.width = width;
   canvas.height = height;
-  drawVeluneLayout(canvas, carton, flavour, backdrop, template, headline);
+  drawVeluneLayout(canvas, settings, template, headline);
   canvas.toBlob((file) => {
     if (!file) return;
     const url = URL.createObjectURL(file);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `velune-${flavour}-${template}${template === "storefront" ? "" : `-${backdrop}`}.png`;
+    const light = lighting === "left" ? "" : `-${lighting}-light`;
+    link.download = `velune-${flavour}-${template}${template === "storefront" ? "" : `-${backdrop}`}${light}.png`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }, "image/png");
@@ -102,6 +109,7 @@ export function HomeCampaignGraph() {
   const [active, setActive] = useState<Step>("english");
   const [flavour, setFlavour] = useState<Flavour>("raspberry");
   const [backdrop, setBackdrop] = useState<Backdrop>("mulberry");
+  const [lighting, setLighting] = useState<Lighting>("left");
   const [lastChange, setLastChange] = useState<GraphChange | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyLanguage, setCopyLanguage] = useState<CopyLanguage>("english");
@@ -111,7 +119,7 @@ export function HomeCampaignGraph() {
   const carton = loaded?.flavour === flavour ? loaded.image : null;
   const stage = stages[active];
   const { template } = stage;
-  const preview = { carton, flavour, backdrop };
+  const preview = { carton, flavour, backdrop, lighting };
   const headline = headlineFor(template);
   const selectedHeadline = headlineFor(copyLanguage) ?? "";
 
@@ -180,6 +188,27 @@ export function HomeCampaignGraph() {
                 }}>
                   {Object.entries(flavours).map(([key, option]) => <option key={key} value={key}>{option.name}</option>)}
                 </select>
+              </div>
+              <div className={styles.lightNode} role="group" aria-label="Product lighting">
+                <span className={styles.lightLabel}>Product lighting</span>
+                <div className={styles.lightOptions}>
+                  {Object.entries(productLighting).map(([key, preset]) => (
+                    <button
+                      type="button"
+                      key={key}
+                      aria-label={preset.label}
+                      aria-pressed={lighting === key}
+                      onClick={() => {
+                        if (key === lighting) return;
+                        setLighting(key as Lighting);
+                        setLastChange("lighting");
+                        if (active === "carton") setActive("storefront");
+                      }}
+                    >
+                      {preset.shortLabel}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className={styles.branches} role="group" aria-label="Layouts from the original carton">
@@ -273,11 +302,12 @@ export function HomeCampaignGraph() {
           </div>
           <figcaption aria-live="polite">
             <strong>{stage.label}</strong>
+            {template !== "carton" && <span>{productLighting[lighting].label}</span>}
             <span>{carton ? stage.description : failed === flavour ? "The carton couldn’t load. Choose another flavour and try again." : "Loading carton artwork…"}</span>
           </figcaption>
           {template !== "carton" && (
             <button className={styles.download} type="button" disabled={!carton} onClick={() => {
-              if (carton) downloadLayout(carton, flavour, backdrop, template, headline);
+              if (carton) downloadLayout({ carton, flavour, backdrop, lighting }, template, headline);
             }}>
               Download PNG
             </button>
