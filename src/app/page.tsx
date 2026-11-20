@@ -148,9 +148,9 @@ export default function Home() {
           </ul>
           <article className="ar-workflow" id="ar-velune-workflow" aria-labelledby="ar-workflow-heading">
             <div className="ar-workflow-caption">
-              <p className="ar-kicker">VELUNE · ComfyUI</p>
+              <p className="ar-kicker">VELUNE · Live layouts</p>
               <h3 id="ar-workflow-heading">One carton, three exports</h3>
-              <p>The same Raspberry Ganache carton goes from a clean storefront image to English and French social ads. When I revised the French headline, only three nodes reran. The storefront image and English ad stayed pixel-identical.</p>
+              <p>Swap the carton flavour to update all three layouts. Change the backdrop for both social ads, then download the output you want.</p>
               <div className="ar-workflow-links">
                 <Link className="ar-primary" href="/velune#campaign-assembly">Explore the workflow and replay</Link>
                 <Link className="ar-link" href="/ai-studio/workflows">Compare ComfyUI and Figma Weave</Link>
