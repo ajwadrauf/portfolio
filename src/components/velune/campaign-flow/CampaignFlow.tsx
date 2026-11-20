@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { ChocolateArrangement } from "./ChocolateArrangement";
 import { campaignMedia as media, campaignSteps as steps, campaignPreviews as previews } from "./campaign-data";
 import run from "./run-evidence.json";
 import nativeApi from "./campaign-api.json";
@@ -15,6 +16,7 @@ const rerunIds = new Set(run.reranNodes.map(({ id }) => id));
 export function CampaignFlow() {
   const [selected, setSelected] = useState<Step>("french");
   const [revised, setRevised] = useState(false);
+  const [arranged, setArranged] = useState(false);
   const step = steps[selected];
   const isFrench = step.preview === "social-fr";
   const comparing = revised && isFrench;
@@ -36,7 +38,10 @@ export function CampaignFlow() {
         data-rerun={reran || undefined}
         aria-pressed={selected === key}
         aria-controls="campaign-step-details"
-        onClick={() => setSelected(key)}
+        onClick={() => {
+          setSelected(key);
+          if (key === "chocolate") setArranged(true);
+        }}
       >
         {item.name}
         {reused && <span className={styles.nodeState}>Reused</span>}
@@ -87,6 +92,11 @@ export function CampaignFlow() {
             <div><dt>What it does</dt><dd>{step.process}</dd></div>
             <div><dt>Output</dt><dd>{step.output}</dd></div>
           </dl>
+          {selected === "chocolate" && (
+            <p className="mb-4 text-sm text-muted">
+              The live preview uses three views from the VELUNE references. <a className="text-accent underline underline-offset-4" href={`${media}/chocolate-art.webp`} target="_blank" rel="noreferrer">See the cutout used in the recorded run</a>.
+            </p>
+          )}
           <div className={styles.revision}>
             <h4 className="font-semibold">Change one line of copy</h4>
             <p className="mt-1 text-sm text-muted">Replay the recorded edit to the French ad. The storefront and English exports stayed identical, and the carton and shadow stayed in place.</p>
@@ -98,26 +108,31 @@ export function CampaignFlow() {
             </p>
           </div>
         </div>
-        <div id="campaign-flow-preview" className={comparing ? styles.comparison : undefined} role={comparing ? "group" : undefined} aria-label={comparing ? "French ad before and after" : undefined}>
-          {previewKeys.map((key) => {
-            const preview = previews[key];
-            const before = key === "social-fr-before";
-            const changedLine = (before ? run.revisedHeadline.before : run.revisedHeadline.after).split("\n").at(-1);
-            return (
-              <figure className={styles.preview} key={key}>
-                <Image
-                  src={`${media}/${key}.webp`}
-                  width={preview.width}
-                  height={preview.height}
-                  sizes={comparing ? "(max-width: 640px) 45vw, 350px" : "(max-width: 640px) 90vw, 430px"}
-                  alt={preview.alt}
-                />
-                <figcaption>
-                  {comparing ? <><strong>{before ? "Before" : "After"}</strong><span lang="fr">{changedLine}</span></> : preview.caption}
-                </figcaption>
-              </figure>
-            );
-          })}
+        <div id="campaign-flow-preview">
+          {arranged && <div hidden={selected !== "chocolate"}><ChocolateArrangement /></div>}
+          {selected !== "chocolate" && (
+            <div className={comparing ? styles.comparison : undefined} role={comparing ? "group" : undefined} aria-label={comparing ? "French ad before and after" : undefined}>
+              {previewKeys.map((key) => {
+                const preview = previews[key];
+                const before = key === "social-fr-before";
+                const changedLine = (before ? run.revisedHeadline.before : run.revisedHeadline.after).split("\n").at(-1);
+                return (
+                  <figure className={styles.preview} key={key}>
+                    <Image
+                      src={`${media}/${key}.webp`}
+                      width={preview.width}
+                      height={preview.height}
+                      sizes={comparing ? "(max-width: 640px) 45vw, 350px" : "(max-width: 640px) 90vw, 430px"}
+                      alt={preview.alt}
+                    />
+                    <figcaption>
+                      {comparing ? <><strong>{before ? "Before" : "After"}</strong><span lang="fr">{changedLine}</span></> : preview.caption}
+                    </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
       <details className={styles.backend}>

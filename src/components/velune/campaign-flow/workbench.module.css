@@ -1,0 +1,79 @@
+.arrangement {
+  width: min(100%, 29rem);
+  margin-inline: auto;
+}
+
+.controls {
+  display: grid;
+  gap: .6rem;
+  padding: .65rem .75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.arrangementHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .35rem .75rem;
+}
+
+.arrangementHead h4 {
+  font-size: .95rem;
+  font-weight: 650;
+}
+
+.arrangementHead button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.pieces {
+  display: grid;
+  gap: .35rem;
+}
+
+.pieces li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .45rem;
+  font-size: .8rem;
+}
+
+.pieces select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: .35rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.pieces button {
+  min-height: 44px;
+  padding-inline: .15rem;
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.status {
+  font-size: .78rem;
+}
+
+.arrangementPreview {
+  display: grid;
+  margin-top: .75rem;
+  aspect-ratio: 4 / 5;
+  background: #2f121e;
+}
+
+.arrangementPreview :is(img, canvas) {
+  grid-area: 1 / 1;
+  display: block;
+  width: 100%;
+  height: auto;
+}
