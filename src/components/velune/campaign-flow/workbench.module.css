@@ -77,3 +77,20 @@
   width: 100%;
   height: auto;
 }
+
+.arrangementActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem .75rem;
+}
+
+.rearrange {
+  min-height: 44px;
+  color: var(--color-accent);
+  font-size: .82rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

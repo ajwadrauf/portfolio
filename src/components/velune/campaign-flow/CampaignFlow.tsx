@@ -94,7 +94,7 @@ export function CampaignFlow() {
           </dl>
           {selected === "chocolate" && (
             <p className="mb-4 text-sm text-muted">
-              The live preview uses three views from the VELUNE references. <a className="text-accent underline underline-offset-4" href={`${media}/chocolate-art.webp`} target="_blank" rel="noreferrer">See the cutout used in the recorded run</a>.
+              The live preview stages separate chocolates beside the carton. Choose a view for each piece or rearrange the group. <a className="text-accent underline underline-offset-4" href={`${media}/chocolate-art.webp`} target="_blank" rel="noreferrer">See the cutout used in the recorded run</a>.
             </p>
           )}
           <div className={styles.revision}>
