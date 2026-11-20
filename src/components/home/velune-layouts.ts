@@ -79,6 +79,34 @@ function drawShadow(ctx: CanvasRenderingContext2D, x: number, y: number, radius:
   ctx.restore();
 }
 
+// Left corner, fold, and right corner along each source carton’s bottom edge.
+const cartonBases = {
+  raspberry: [[0.0086, 0.9555], [0.9039, 0.9973], [0.9951, 0.9510]],
+  pistachio: [[0.0056, 0.9512], [0.1163, 0.9966], [0.9957, 0.9592]],
+  caramel: [[0.0047, 0.9649], [0.8937, 0.9965], [0.9951, 0.9535]],
+} as const;
+
+function drawCartonContact(
+  ctx: CanvasRenderingContext2D, flavour: Flavour, left: number, top: number,
+  width: number, height: number, shade: string,
+) {
+  const [[startX, startY], [foldX, foldY], [endX, endY]] = cartonBases[flavour];
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = shade;
+  // Canvas blur is in device pixels, so scale it with thumbnails and exports.
+  ctx.shadowColor = shade;
+  ctx.shadowBlur = 16 * ctx.getTransform().a;
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(left + width * startX, top + height * startY + 1);
+  ctx.lineTo(left + width * foldX, top + height * foldY + 1);
+  ctx.lineTo(left + width * endX, top + height * endY + 1);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawGroundedCarton(ctx: CanvasRenderingContext2D, settings: LayoutSettings, centre: number, floor: number, height: number, storefront: boolean) {
   const { carton, flavour, lighting } = settings;
   const lamp = productLighting[lighting];
@@ -87,7 +115,10 @@ function drawGroundedCarton(ctx: CanvasRenderingContext2D, settings: LayoutSetti
     ctx, centre + width * lamp.shadowOffset, floor - 6,
     width * lamp.shadowWidth, lamp.shadowDepth, storefront ? "#2813225c" : "#13080d88",
   );
-  drawShadow(ctx, centre, floor - 4, width * 0.58, 0.08, storefront ? "#26152255" : "#13080d9c");
+  drawCartonContact(
+    ctx, flavour, centre - width / 2, floor - height, width, height,
+    storefront ? "#2418227c" : "#140910a6",
+  );
   drawCarton(ctx, lightCarton(carton, flavour, lighting), centre, floor, width, height);
 }
 

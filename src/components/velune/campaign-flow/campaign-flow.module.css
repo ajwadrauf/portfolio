@@ -215,3 +215,54 @@ h3.graphTitle {
     padding-left: 0.65rem;
   }
 }
+
+.socialInputs {
+  display: grid;
+  gap: .35rem;
+}
+
+.backend {
+  border-block: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  font-size: .86rem;
+}
+
+.backend summary {
+  padding: .9rem 0;
+  color: var(--color-accent);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.backend[open] {
+  padding-bottom: 1rem;
+}
+
+.receipts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem 1.5rem;
+  margin-block: .65rem .9rem;
+  overflow-wrap: anywhere;
+}
+
+.receipts dt, .backend h4 {
+  font-weight: 650;
+}
+
+.receipts dd {
+  margin: 0;
+}
+
+.backend h4 {
+  margin-top: 1rem;
+}
+
+.backend pre {
+  max-height: 17rem;
+  margin: .45rem 0 .75rem;
+  overflow: auto;
+  padding: .65rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: .74rem;
+}

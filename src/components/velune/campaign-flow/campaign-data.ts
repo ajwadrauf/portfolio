@@ -17,13 +17,21 @@ export const campaignSteps = {
     output: "The inspected front panel matches the source pixel for pixel.",
     preview: "storefront",
   },
+  chocolate: {
+    name: "Chocolate artwork",
+    nodes: [19, 20, 21, 22, 23, 24],
+    input: "The two chocolates printed on the original Raspberry Ganache carton.",
+    process: "Isolate the printed artwork, then use ImageScale to size it to 240 × 181 pixels. The chocolate is 44% of the carton’s width.",
+    output: "The matching chocolates are a separate layer in both social ads.",
+    preview: "chocolate-art",
+  },
   social: {
     name: "Build the social layout",
-    nodes: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
-    input: "The same carton, a generated raspberry still life and a separate contact shadow.",
-    process: "Reframe to 4:5, place the carton alongside the bonbon and reserve a headline area.",
-    output: "One shared layout for both languages.",
-    preview: "social-art",
+    nodes: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 25, 26, 27, 28, 29],
+    input: "The carton, the matching chocolate layer, a burgundy set and contact shadows.",
+    process: "Place the 544 × 724 carton first, then place the smaller chocolates and reserve the headline area.",
+    output: "One shared 4:5 layout for both languages.",
+    preview: "social-layout",
   },
   storefront: {
     name: "Storefront",
@@ -35,7 +43,7 @@ export const campaignSteps = {
   },
   english: {
     name: "English social",
-    nodes: [23, 24, 25],
+    nodes: [30, 31, 32],
     input: "The social layout and editable English copy.",
     process: "Typeset the headline and composite it into the reserved area.",
     output: "1080 × 1350 PNG. Identical after the French edit.",
@@ -43,7 +51,7 @@ export const campaignSteps = {
   },
   french: {
     name: "French social",
-    nodes: [26, 27, 28],
+    nodes: [33, 34, 35],
     input: "The same social layout and editable French copy.",
     process: "Typeset and export the French ad independently.",
     output: "1080 × 1350 PNG. This branch reran after the headline edit.",
@@ -51,7 +59,7 @@ export const campaignSteps = {
   },
   frenchHeadline: {
     name: "Edit French headline",
-    nodes: [26],
+    nodes: [33],
     input: "The reserved headline area and the French copy.",
     process: "Draw the new line of copy in the existing type style.",
     output: "A typeset headline ready to composite.",
@@ -59,7 +67,7 @@ export const campaignSteps = {
   },
   frenchCompose: {
     name: "Compose French social",
-    nodes: [27],
+    nodes: [34],
     input: "The shared social layout and the typeset French headline.",
     process: "Place the headline in its reserved area, above the carton and contact shadow.",
     output: "The revised 4:5 French composition.",
@@ -67,7 +75,7 @@ export const campaignSteps = {
   },
   frenchExport: {
     name: "Export · social FR",
-    nodes: [28],
+    nodes: [35],
     input: "The revised French composition.",
     process: "Save the image with its editable ComfyUI graph embedded in the PNG.",
     output: "The final 1080 × 1350 French export.",
@@ -78,7 +86,8 @@ export const campaignSteps = {
 export const campaignPreviews = {
   carton: { width: 592, height: 788, alt: "Original VELUNE Raspberry Ganache carton cutout", caption: "Shared product input" },
   storefront: { width: 1200, height: 1200, alt: "VELUNE carton with a soft contact shadow on white", caption: "Storefront · 1:1" },
-  "social-art": { width: 1080, height: 1350, alt: "A cut raspberry ganache bonbon and fresh berries on a burgundy set", caption: "Generated still-life input" },
+  "chocolate-art": { width: 347, height: 261, alt: "Two raspberry ganache chocolates isolated from the illustration printed on the VELUNE carton", caption: "Chocolate artwork from the carton" },
+  "social-layout": { width: 1080, height: 1350, alt: "Shared burgundy layout with the VELUNE carton in front, matching smaller chocolates at right and room for the headline above", caption: "Shared layout before headlines" },
   "social-en": { width: 1080, height: 1350, alt: "VELUNE social ad with English headline Curiosity tastes like this", caption: "Social · English" },
   "social-fr": { width: 1080, height: 1350, alt: "VELUNE social ad with French headline Le chocolat. Puis la framboise.", caption: "Social · French, revised" },
   "social-fr-before": { width: 1080, height: 1350, alt: "VELUNE social ad with French headline Le chocolat. Des framboises.", caption: "Social · French, first pass" },

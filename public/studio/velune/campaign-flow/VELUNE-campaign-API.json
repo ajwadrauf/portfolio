@@ -1,0 +1,534 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "velune-carton-master.png"
+    },
+    "_meta": {
+      "title": "Approved Raspberry Ganache carton"
+    }
+  },
+  "2": {
+    "class_type": "InvertMask",
+    "inputs": {
+      "mask": [
+        "1",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Read the carton silhouette"
+    }
+  },
+  "3": {
+    "class_type": "EmptyImage",
+    "inputs": {
+      "width": 1200,
+      "height": 1200,
+      "batch_size": 1,
+      "color": 16777215
+    },
+    "_meta": {
+      "title": "Pure white · 1200 square"
+    }
+  },
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "velune-storefront-shadow.png"
+    },
+    "_meta": {
+      "title": "Storefront shadow"
+    }
+  },
+  "5": {
+    "class_type": "InvertMask",
+    "inputs": {
+      "mask": [
+        "4",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Shadow alpha"
+    }
+  },
+  "6": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "destination": [
+        "3",
+        0
+      ],
+      "source": [
+        "4",
+        0
+      ],
+      "mask": [
+        "5",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Ground the carton on white"
+    }
+  },
+  "7": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "x": 304,
+      "y": 182,
+      "resize_source": false,
+      "destination": [
+        "6",
+        0
+      ],
+      "source": [
+        "1",
+        0
+      ],
+      "mask": [
+        "2",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Place original-size carton"
+    }
+  },
+  "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "velune-storefront",
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Export · storefront"
+    }
+  },
+  "9": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "velune-burgundy-set.png"
+    },
+    "_meta": {
+      "title": "Unoccupied burgundy set"
+    }
+  },
+  "10": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "upscale_method": "lanczos",
+      "width": 1080,
+      "height": 1350,
+      "crop": "center",
+      "image": [
+        "9",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Build 1080 × 1350 frame"
+    }
+  },
+  "11": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "velune-pair-contact-shadows.png"
+    },
+    "_meta": {
+      "title": "Social contact shadow"
+    }
+  },
+  "12": {
+    "class_type": "InvertMask",
+    "inputs": {
+      "mask": [
+        "11",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Shadow alpha"
+    }
+  },
+  "13": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "destination": [
+        "10",
+        0
+      ],
+      "source": [
+        "11",
+        0
+      ],
+      "mask": [
+        "12",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Place shadow into the art"
+    }
+  },
+  "14": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "upscale_method": "bilinear",
+      "width": 544,
+      "height": 724,
+      "crop": "disabled",
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Scale carton to the social grid"
+    }
+  },
+  "15": {
+    "class_type": "MaskToImage",
+    "inputs": {
+      "mask": [
+        "2",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Route the same carton alpha"
+    }
+  },
+  "16": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "upscale_method": "bilinear",
+      "width": 544,
+      "height": 724,
+      "crop": "disabled",
+      "image": [
+        "15",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Match alpha to carton size"
+    }
+  },
+  "17": {
+    "class_type": "ImageToMask",
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "16",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Use the resized silhouette"
+    }
+  },
+  "18": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "x": 106,
+      "y": 444,
+      "resize_source": false,
+      "destination": [
+        "13",
+        0
+      ],
+      "source": [
+        "14",
+        0
+      ],
+      "mask": [
+        "17",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Place the hero carton"
+    }
+  },
+  "19": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "velune-carton-chocolate.png"
+    },
+    "_meta": {
+      "title": "Chocolate from the carton face"
+    }
+  },
+  "20": {
+    "class_type": "InvertMask",
+    "inputs": {
+      "mask": [
+        "19",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Chocolate outline alpha"
+    }
+  },
+  "21": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "upscale_method": "bilinear",
+      "width": 240,
+      "height": 181,
+      "crop": "disabled",
+      "image": [
+        "19",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Size chocolate to 44% of carton width"
+    }
+  },
+  "22": {
+    "class_type": "MaskToImage",
+    "inputs": {
+      "mask": [
+        "20",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Convert chocolate alpha"
+    }
+  },
+  "23": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "upscale_method": "bilinear",
+      "width": 240,
+      "height": 181,
+      "crop": "disabled",
+      "image": [
+        "22",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Match alpha to chocolate size"
+    }
+  },
+  "24": {
+    "class_type": "ImageToMask",
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "23",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Use the scaled chocolate silhouette"
+    }
+  },
+  "25": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "x": 708,
+      "y": 955,
+      "resize_source": false,
+      "destination": [
+        "18",
+        0
+      ],
+      "source": [
+        "21",
+        0
+      ],
+      "mask": [
+        "24",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Place matching chocolate beside the carton"
+    }
+  },
+  "26": {
+    "class_type": "ImageCrop",
+    "inputs": {
+      "width": 942,
+      "height": 60,
+      "x": 70,
+      "y": 86,
+      "image": [
+        "25",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Reserve collection line"
+    }
+  },
+  "27": {
+    "class_type": "TextOverlay",
+    "inputs": {
+      "text": "V E L U N E   /   R A S P B E R R Y   G A N A C H E",
+      "font_size": 35,
+      "color": "#F3B4A5",
+      "position": "top",
+      "align": "left",
+      "outline": false,
+      "images": [
+        "26",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Typeset the collection line"
+    }
+  },
+  "28": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "x": 70,
+      "y": 86,
+      "resize_source": false,
+      "destination": [
+        "25",
+        0
+      ],
+      "source": [
+        "27",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Keep one shared social composition"
+    }
+  },
+  "29": {
+    "class_type": "ImageCrop",
+    "inputs": {
+      "width": 940,
+      "height": 390,
+      "x": 69,
+      "y": 155,
+      "image": [
+        "28",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Reserve the headline area"
+    }
+  },
+  "30": {
+    "class_type": "TextOverlay",
+    "inputs": {
+      "text": "Curiosity\ntastes like this.",
+      "font_size": 24,
+      "color": "#FFE6D4",
+      "position": "top",
+      "align": "left",
+      "outline": false,
+      "images": [
+        "29",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Edit English headline"
+    }
+  },
+  "31": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "x": 69,
+      "y": 155,
+      "resize_source": false,
+      "destination": [
+        "28",
+        0
+      ],
+      "source": [
+        "30",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Compose English social"
+    }
+  },
+  "32": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "velune-social-en",
+      "images": [
+        "31",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Export · social EN"
+    }
+  },
+  "33": {
+    "class_type": "TextOverlay",
+    "inputs": {
+      "text": "Le chocolat.\nPuis la framboise.",
+      "font_size": 24,
+      "color": "#FFE6D4",
+      "position": "top",
+      "align": "left",
+      "outline": false,
+      "images": [
+        "29",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Edit French headline"
+    }
+  },
+  "34": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "x": 69,
+      "y": 155,
+      "resize_source": false,
+      "destination": [
+        "28",
+        0
+      ],
+      "source": [
+        "33",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Compose French social"
+    }
+  },
+  "35": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "velune-social-fr",
+      "images": [
+        "34",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Export · social FR"
+    }
+  }
+}

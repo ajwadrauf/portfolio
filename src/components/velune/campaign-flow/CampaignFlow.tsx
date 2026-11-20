@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { campaignMedia as media, campaignSteps as steps, campaignPreviews as previews } from "./campaign-data";
 import run from "./run-evidence.json";
+import nativeApi from "./campaign-api.json";
 import styles from "./campaign-flow.module.css";
 
 type Step = keyof typeof steps;
@@ -17,6 +18,9 @@ export function CampaignFlow() {
   const step = steps[selected];
   const isFrench = step.preview === "social-fr";
   const comparing = revised && isFrench;
+  const selectedNodes = Object.fromEntries(step.nodes.map((id) => [
+    id, nativeApi[String(id) as keyof typeof nativeApi],
+  ]));
   const previewKeys: (keyof typeof previews)[] = comparing
     ? ["social-fr-before", "social-fr"]
     : [isFrench ? "social-fr-before" : step.preview];
@@ -57,7 +61,10 @@ export function CampaignFlow() {
               <div>{node("storefront")}</div>
             </div>
             <div className={`${styles.branch} ${styles.socialBranch}`}>
-              {node("social")}
+              <div className={styles.socialInputs}>
+                {node("chocolate")}
+                {node("social")}
+              </div>
               <span aria-hidden="true">→</span>
               <div className={styles.languages}>
                 {node("english")}
@@ -113,7 +120,19 @@ export function CampaignFlow() {
           })}
         </div>
       </section>
-      <p className="border-t border-border-soft pt-4 text-sm text-muted">Recorded in {run.engine} on a local CPU. The social still life was generated separately. The node graph assembles the original packaging, artwork, shadows and type.</p>
+      <details className={styles.backend}>
+        <summary>Show ComfyUI backend</summary>
+        <p>{run.engine} · {run.runtime} · {run.nodeCount} nodes · {run.edgeCount} connections</p>
+        <dl className={styles.receipts}>
+          <div><dt>First run</dt><dd>{run.baselineRunId}</dd></div>
+          <div><dt>French revision</dt><dd>{run.revisionRunId}</dd></div>
+          <div><dt>Execution</dt><dd>{rerunIds.size} nodes reran · {run.cachedNodeIds.length} reused</dd></div>
+        </dl>
+        <p>The carton and both chocolates come from the same reference artwork. Each is a separate image layer with its own scale and placement.</p>
+        <h4>API nodes for {step.name}</h4>
+        <pre tabIndex={0} aria-label={`ComfyUI API nodes for ${step.name}`}>{JSON.stringify(selectedNodes, null, 2)}</pre>
+        <a className="text-sm text-accent underline underline-offset-4" href={`${media}/VELUNE-campaign-API.json`} download>Download the full API graph</a>
+      </details>
     </>
   );
 }

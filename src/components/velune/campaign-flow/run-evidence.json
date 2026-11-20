@@ -9,16 +9,23 @@
     "squareOutput": 8,
     "socialArt": 9,
     "socialProduct": 18,
-    "textZone": 22,
-    "en": 23,
-    "enOutput": 25,
-    "fr": 26,
-    "frOutput": 28
+    "chocolate": 19,
+    "chocolateMask": 20,
+    "chocolateSized": 21,
+    "chocolateMaskImage": 22,
+    "chocolateAlphaSized": 23,
+    "chocolateAlpha": 24,
+    "socialPair": 25,
+    "textZone": 29,
+    "en": 30,
+    "enOutput": 32,
+    "fr": 33,
+    "frOutput": 35
   },
-  "nodeCount": 28,
-  "edgeCount": 34,
-  "baselineRunId": "8201852e-96fe-4ba1-a96c-49cee5f21b96",
-  "revisionRunId": "ae2ca50f-dbec-408a-9c35-508a6bed3a89",
+  "nodeCount": 35,
+  "edgeCount": 42,
+  "baselineRunId": "e68f06b5-8815-4cfe-8846-c1cb3cf561bf",
+  "revisionRunId": "6dab47a4-9821-4cb7-9192-a9d69f335544",
   "revisedHeadline": {
     "before": "Le chocolat.\nDes framboises.",
     "after": "Le chocolat.\nPuis la framboise."
@@ -48,7 +55,28 @@
     "22",
     "23",
     "24",
-    "25"
+    "25",
+    "26",
+    "27",
+    "28",
+    "29",
+    "30",
+    "31",
+    "32"
+  ],
+  "reranNodes": [
+    {
+      "id": 33,
+      "title": "Edit French headline"
+    },
+    {
+      "id": 34,
+      "title": "Compose French social"
+    },
+    {
+      "id": 35,
+      "title": "Export · social FR"
+    }
   ],
   "outputs": [
     {
@@ -62,40 +90,27 @@
     },
     {
       "key": "socialEn",
-      "node": 25,
+      "node": 32,
       "file": "VELUNE-social-EN.png",
       "width": 1080,
       "height": 1350,
       "changed": false,
-      "pixelSha256": "a217e4d16837f825bd72bf110436edd5d10855940e69e30f7d179d10cc5c1d78"
+      "pixelSha256": "439d0f74b7f68ef1b5e22b259f62cf6cb8132328ec7c8e5a5f5f4d90fcb44e75"
     },
     {
       "key": "socialFr",
-      "node": 28,
+      "node": 35,
       "file": "VELUNE-social-FR.png",
       "width": 1080,
       "height": 1350,
       "changed": true,
-      "pixelSha256": "9c134e70f876c693b433489a99f789fd6d2f6a1325cea78eb2c872be143734cf"
+      "pixelSha256": "08383014036003a38fa6031b80a5fadd21c310740d403fbc00568be354dc2dfd"
     }
   ],
   "checks": {
     "frontPanelPixels": 335256,
     "maxChannelDrift": 0,
-    "localizedArtworkPixelsUnchanged": 869400
-  },
-  "reranNodes": [
-    {
-      "id": 26,
-      "title": "Edit French headline"
-    },
-    {
-      "id": 27,
-      "title": "Compose French social"
-    },
-    {
-      "id": 28,
-      "title": "Export · social FR"
-    }
-  ]
+    "localizedArtworkPixelsUnchanged": 869400,
+    "matchingChocolatePixels": 6993
+  }
 }
