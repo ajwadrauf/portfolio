@@ -260,3 +260,100 @@
     column-gap: clamp(1rem, 2.25vw, 1.65rem);
   }
 }
+
+.graphPanel {
+  min-width: 0;
+}
+
+.copyTrigger {
+  margin-block-start: var(--wire-height);
+}
+
+.copyTrigger > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .35rem;
+  padding-inline: .6rem;
+}
+
+.copyTrigger[aria-expanded="true"] {
+  border-color: var(--ar-plum);
+  background: #e5edf0;
+}
+
+.copyEditor {
+  margin-top: .85rem;
+  padding: .65rem;
+  border: 1px solid var(--ar-line);
+  background: #fcfbf8;
+}
+
+.copyToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: .2rem .55rem;
+  margin-bottom: .45rem;
+}
+
+.copyLanguages {
+  display: inline-flex;
+  gap: 1px;
+  border: 1px solid var(--ar-line);
+  background: var(--ar-line);
+}
+
+.copyLanguages button, .resetCopy {
+  min-height: 44px;
+  font-size: .75rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.copyLanguages button {
+  padding: .4rem .65rem;
+  background: #fcfbf8;
+}
+
+.copyLanguages button[aria-pressed="true"] {
+  background: var(--ar-plum);
+  color: white;
+}
+
+.resetCopy {
+  color: var(--ar-plum);
+  text-decoration: underline;
+  text-underline-offset: .25em;
+}
+
+.resetCopy:disabled {
+  visibility: hidden;
+}
+
+.copyEditor label {
+  display: block;
+  margin-bottom: .3rem;
+  color: var(--ar-muted);
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.copyEditor textarea {
+  display: block;
+  width: 100%;
+  min-height: 4rem;
+  padding: .4rem .5rem;
+  resize: vertical;
+  border: 1px solid var(--ar-line);
+  border-radius: 0;
+  background: white;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.copyEditor :is(button, textarea):focus-visible {
+  outline: 2px solid var(--ar-plum);
+  outline-offset: 2px;
+}

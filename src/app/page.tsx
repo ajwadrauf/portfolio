@@ -150,7 +150,7 @@ export default function Home() {
             <div className="ar-workflow-caption">
               <p className="ar-kicker">VELUNE · Live layouts</p>
               <h3 id="ar-workflow-heading">One carton, three exports</h3>
-              <p>Swap the carton flavour to update all three layouts. Change the backdrop for both social ads, then download the output you want.</p>
+              <p>Swap the carton across three layouts, change both social backdrops or edit each headline on its own. Download any layout as a PNG.</p>
               <div className="ar-workflow-links">
                 <Link className="ar-primary" href="/velune#campaign-assembly">Explore the workflow and replay</Link>
                 <Link className="ar-link" href="/ai-studio/workflows">Compare ComfyUI and Figma Weave</Link>

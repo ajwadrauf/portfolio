@@ -27,11 +27,31 @@ export const backdrops = {
 
 export type Flavour = keyof typeof flavours;
 export type Backdrop = keyof typeof backdrops;
-export type Export = "storefront" | "english" | "french";
+export type CopyLanguage = "english" | "french";
+export type Export = "storefront" | CopyLanguage;
 export type Template = Export | "carton";
 
 export function layoutDimensions(template: Template) {
   return template === "storefront" ? { width: 1200, height: 1200 } : { width: 1080, height: 1350 };
+}
+
+export function defaultHeadline(flavour: Flavour, language: CopyLanguage) {
+  const product = flavours[flavour];
+  return (language === "french" ? product.frenchHeadline : product.englishHeadline).join("\n");
+}
+
+function headlineLines(ctx: CanvasRenderingContext2D, headline: string, width: number) {
+  const [first, ...remaining] = headline.trim().split(/\s*\n\s*/);
+  if (remaining.length) return [first, remaining.join(" ")];
+
+  const words = first.split(/\s+/);
+  let line = "";
+  for (const [index, word] of words.entries()) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(next).width > width) return [line, words.slice(index).join(" ")];
+    line = next;
+  }
+  return [line];
 }
 
 function drawCarton(ctx: CanvasRenderingContext2D, carton: HTMLImageElement, centre: number, floor: number, height: number) {
@@ -77,7 +97,14 @@ function drawSocialSet(ctx: CanvasRenderingContext2D, palette: (typeof backdrops
   ctx.restore();
 }
 
-export function drawVeluneLayout(canvas: HTMLCanvasElement, carton: HTMLImageElement, flavour: Flavour, backdrop: Backdrop, template: Template) {
+export function drawVeluneLayout(
+  canvas: HTMLCanvasElement,
+  carton: HTMLImageElement,
+  flavour: Flavour,
+  backdrop: Backdrop,
+  template: Template,
+  headline?: string,
+) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const { width, height } = layoutDimensions(template);
@@ -102,7 +129,6 @@ export function drawVeluneLayout(canvas: HTMLCanvasElement, carton: HTMLImageEle
   const palette = backdrops[backdrop];
   const product = flavours[flavour];
   const french = template === "french";
-  const lines = french ? product.frenchHeadline : product.englishHeadline;
   drawSocialSet(ctx, palette);
   drawShadow(ctx, 628, 1130, 353, "#13080d80");
   drawShadow(ctx, 588, 1132, 239, "#13080d72");
@@ -113,8 +139,8 @@ export function drawVeluneLayout(canvas: HTMLCanvasElement, carton: HTMLImageEle
   ctx.fillText("VELUNE", 82, 112);
   ctx.fillStyle = palette.ink;
   ctx.font = "88px Georgia, serif";
-  ctx.fillText(lines[0], 76, 236, 928);
-  ctx.fillText(lines[1], 76, 327, 928);
+  const lines = headlineLines(ctx, headline ?? defaultHeadline(flavour, template), 928);
+  lines.forEach((line, index) => ctx.fillText(line, 76, 236 + index * 91, 928));
 
   ctx.strokeStyle = palette.accent;
   ctx.lineWidth = 1;
