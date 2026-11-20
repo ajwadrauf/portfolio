@@ -17,7 +17,9 @@
   --node-gap: clamp(.35rem, 1vw, .65rem);
   --wire-height: .7rem;
   --wire: #8e989c;
+  --active-wire: #416d7d;
   --track: calc((100% - 2 * var(--node-gap)) / 3);
+  --social-inset: calc(var(--track) + var(--node-gap) / 2);
   display: grid;
 }
 
@@ -93,6 +95,9 @@
 }
 
 .source::after,
+.branchCell:last-child .controlNode::before,
+.branchCell:last-child .controlNode::after,
+.copyTrigger::after,
 .outputs .node::before {
   position: absolute;
   inset-inline-start: 50%;
@@ -127,7 +132,7 @@
   grid-column: span 2;
 }
 
-.branchCell::before {
+.branchCell:first-child::before {
   position: absolute;
   inset-block: calc(-1 * var(--wire-height));
   inset-inline-start: 50%;
@@ -140,8 +145,14 @@
   width: 100%;
 }
 
+.branchCell:last-child .controlNode::before,
 .outputs .node::before {
-  bottom: calc(100% + 1px);
+  bottom: 100%;
+}
+
+.branchCell:last-child .controlNode::after,
+.copyTrigger::after {
+  top: 100%;
 }
 
 .backdropSelector {
@@ -185,7 +196,8 @@
 }
 
 .branches::before,
-.outputs::before {
+.outputs::before,
+.outputs::after {
   position: absolute;
   top: 0;
   border-top: 1px solid var(--wire);
@@ -195,12 +207,32 @@
 
 .branches::before {
   inset-inline-start: calc(var(--track) / 2);
-  inset-inline-end: calc(var(--track) + var(--node-gap) / 2);
+  inset-inline-end: var(--social-inset);
 }
 
 .outputs::before {
   inset-inline-start: 50%;
+  inset-inline-end: var(--social-inset);
+}
+
+.outputs::after {
+  inset-inline-start: calc(100% - var(--social-inset));
   inset-inline-end: calc(var(--track) / 2);
+}
+
+.graph[data-change="carton"] .source::after,
+.graph[data-change="carton"] .branchCell:first-child::before,
+.graph[data-change="carton"] .branchCell:last-child .controlNode::before,
+.graph:is([data-change="carton"], [data-change="backdrop"]) .branchCell:last-child .controlNode::after,
+.graph[data-change] .copyTrigger::after,
+.outputs .node[data-wire-active]::before {
+  border-inline-start: 2px solid var(--active-wire);
+}
+
+.graph[data-change="carton"] .branches::before,
+.graph:is([data-change="carton"], [data-change="backdrop"], [data-change="english"]) .outputs::before,
+.graph:is([data-change="carton"], [data-change="backdrop"], [data-change="french"]) .outputs::after {
+  border-top: 2px solid var(--active-wire);
 }
 
 .outputs .node {

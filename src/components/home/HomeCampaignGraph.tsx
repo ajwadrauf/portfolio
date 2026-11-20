@@ -25,6 +25,21 @@ const stages = {
 
 type Step = keyof typeof stages;
 type HeadlineEdits = Partial<Record<Flavour, Partial<Record<CopyLanguage, string>>>>;
+type GraphChange = "carton" | "backdrop" | CopyLanguage;
+
+const affectedOutputs = {
+  carton: outputs,
+  backdrop: ["english", "french"],
+  english: ["english"],
+  french: ["french"],
+} as const satisfies Record<GraphChange, readonly Export[]>;
+
+const changeAnnouncements = {
+  carton: "All three exports updated.",
+  backdrop: "English and French ads updated.",
+  english: "English ad updated.",
+  french: "French ad updated.",
+} as const satisfies Record<GraphChange, string>;
 
 function LayoutPreview({
   carton, flavour, backdrop, template, headline, thumbnail = false, label,
@@ -87,6 +102,7 @@ export function HomeCampaignGraph() {
   const [active, setActive] = useState<Step>("english");
   const [flavour, setFlavour] = useState<Flavour>("raspberry");
   const [backdrop, setBackdrop] = useState<Backdrop>("mulberry");
+  const [lastChange, setLastChange] = useState<GraphChange | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyLanguage, setCopyLanguage] = useState<CopyLanguage>("english");
   const [headlines, setHeadlines] = useState<HeadlineEdits>({});
@@ -116,6 +132,7 @@ export function HomeCampaignGraph() {
       [flavour]: { ...current[flavour], [copyLanguage]: value },
     }));
     setActive(copyLanguage);
+    if ((value ?? defaultHeadline(flavour, copyLanguage)) !== selectedHeadline) setLastChange(copyLanguage);
   }
 
   useEffect(() => {
@@ -135,6 +152,7 @@ export function HomeCampaignGraph() {
         type="button"
         className={styles.node}
         aria-pressed={active === key}
+        data-wire-active={(thumbnail && lastChange !== null && affectedOutputs[lastChange].some((output) => output === key)) || undefined}
         aria-controls="homepage-campaign-preview"
         onClick={() => {
           if (key === "english" || key === "french") selectLanguage(key);
@@ -151,13 +169,14 @@ export function HomeCampaignGraph() {
     <div className={styles.board}>
       <div className={styles.layout}>
         <div className={styles.graphPanel}>
-          <div className={styles.graph} role="group" aria-label="VELUNE campaign graph">
+          <div className={styles.graph} data-change={lastChange ?? undefined} role="group" aria-label="VELUNE campaign graph">
             <div className={styles.source}>
               <div className={styles.controlNode}>
                 {node("carton")}
                 <select aria-label="Packaging flavour" value={flavour} onChange={(event) => {
                   setFailed(null);
                   setFlavour(event.target.value as Flavour);
+                  setLastChange("carton");
                 }}>
                   {Object.entries(flavours).map(([key, option]) => <option key={key} value={key}>{option.name}</option>)}
                 </select>
@@ -178,7 +197,9 @@ export function HomeCampaignGraph() {
                           aria-label={`${option.name} backdrop`}
                           aria-pressed={backdrop === key}
                           onClick={() => {
+                            if (key === backdrop) return;
                             setBackdrop(key as Backdrop);
+                            setLastChange("backdrop");
                             if (active !== "english" && active !== "french" && active !== "social") setActive("english");
                           }}
                         >
@@ -206,6 +227,7 @@ export function HomeCampaignGraph() {
               {outputs.map((key) => node(key, true))}
             </div>
           </div>
+          <p className="sr-only" role="status">{lastChange && changeAnnouncements[lastChange]}</p>
           <div className={styles.copyEditor} id="homepage-campaign-copy" hidden={!copyOpen}>
             <div className={styles.copyToolbar}>
               <div className={styles.copyLanguages} role="group" aria-label="Headline language">
